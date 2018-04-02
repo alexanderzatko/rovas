@@ -1,2 +1,2 @@
 # rovas
-Application for participating in the NEO economy
+Application allowing participating in the NEO economy
