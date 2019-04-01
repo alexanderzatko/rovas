@@ -1,0 +1,1150 @@
+openapi: 3.0.1
+info:
+  title: Rovas API
+  description: 'Rovas is an application that allows participation in NEO - a community economic system, based on the **Merit economy** principles. See the [Merit economy white paper](https://papers.ssrn.com/abstract=2933031) for more info.'
+  termsOfService: https://merit.world/terms/
+  contact:
+    email: rovas@merit.world
+  license:
+    name: Apache 2.0
+    url: http://www.apache.org/licenses/LICENSE-2.0.html
+  version: 1.0.0
+externalDocs:
+  description: Information about Rovas and NEO
+  url: https://merit.world/
+servers:
+- url: https://dev.merit.world/
+- url: https://rovas.merit.world/
+paths:
+  /rovas/rules/rules_proxy_create_new_project:
+    post:
+      tags:
+      - rule
+      summary: Create a new project in Rovas
+      requestBody:
+        description: Once a project is created, Rovas automatically creates also a new merit allocation document for the project owner.
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NewProject'
+          application/xml:
+            schema:
+              $ref: '#/components/schemas/NewProject'
+        required: true
+      responses:
+        '200':
+          description: returns project/node ID of the created project
+          content:
+            application/json:
+              schema:
+                type: integer
+                format: int.64
+                example: 2344443
+  /rovas/rules/rules_proxy_create_work_report:
+    post:
+      tags:
+      - rule
+      summary: Create a new work report in Rovas
+      requestBody:
+        description: tbd.
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NewWorkReport'
+          application/xml:
+            schema:
+              $ref: '#/components/schemas/NewWorkReport'
+        required: true
+      responses:
+        '200':
+          description: returns the new work report node ID
+          content:
+            application/json:
+              schema:
+                type: integer
+                format: int.64
+                example: 2344443
+components:
+  schemas:
+    NewProject:
+      required:
+      - project_name
+      - project_author_uid
+      - project_status
+      - project_participation
+      - system_project
+      type: object
+      properties:
+        project_name:
+          type: string
+          example: Test project title
+        project_author_uid:
+          type: integer
+          format: int64
+          example: 123
+        project_url:
+          type: string
+          example: "https://nabezky.sk/node/388383"
+        project_price:
+          type: number
+          format: float
+          example: 2.3
+        project_status:
+          type: integer
+          description: 0 unfinished, 1 for sale, 2 sold, 3 expired 
+          enum: [0,1,2,3]
+        project_participation:
+          type: integer
+          description: 0 - Private, 1 - Public, 2 - Public - dependent on parent project
+          enum: [0,1,2]
+        project_description:
+          type: string
+          example: Report from a ski trip
+        system_project:
+          type: integer
+          description: 0 - no, 1 - yes
+          enum: [0,1]
+    NewWorkReport:
+      required:
+      - wr_classification
+      - verificationstatus
+      - systemreport
+      - wr_activity_name
+      - wr_hours
+      type: object
+      properties:
+        wr_classification:
+          type: integer
+          format: int32
+          description: node ID of the NACE taxonomy term in Rovas
+          enum:
+            - 1856 #Work activities
+            - 1857 #Unspecified activity
+            - 860 #A Agriculture, forestry and fishing
+            - 861 #01 Crop and animal production, hunting and related service activities
+            - 862 #01.1 Growing of non-perennial crops
+            - 863 #01.11 Growing of cereals (except rice), leguminous crops and oil seeds
+            - 864 #01.12 Growing of rice
+            - 865 #01.13 Growing of vegetables and melons, roots and tubers
+            - 866 #01.14 Growing of sugar cane
+            - 867 #01.15 Growing of tobacco
+            - 868 #01.16 Growing of fibre crops
+            - 869 #01.19 Growing of other non-perennial crops
+            - 870 #01.2 Growing of perennial crops
+            - 871 #01.21 Growing of grapes
+            - 872 #01.22 Growing of tropical and subtropical fruits
+            - 873 #01.23 Growing of citrus fruits
+            - 874 #01.24 Growing of pome fruits and stone fruits
+            - 875 #01.25 Growing of other tree and bush fruits and nuts
+            - 876 #01.26 Growing of oleaginous fruits
+            - 877 #01.27 Growing of beverage crops
+            - 878 #01.28 Growing of spices, aromatic, drug and pharmaceutical crops
+            - 879 #01.29 Growing of other perennial crops
+            - 880 #01.3 Plant propagation
+            - 881 #01.30 Plant propagation
+            - 882 #01.4 Animal production
+            - 883 #01.41 Raising of dairy cattle
+            - 884 #01.42 Raising of other cattle and buffaloes
+            - 885 #01.43 Raising of horses and other equines
+            - 886 #01.44 Raising of camels and camelids
+            - 887 #01.45 Raising of sheep and goats
+            - 888 #01.46 Raising of swine/pigs
+            - 889 #01.47 Raising of poultry
+            - 890 #01.49 Raising of other animals
+            - 891 #01.5 Mixed farming
+            - 892 #01.50 Mixed farming
+            - 893 #01.6 Support activities to agriculture and post-harvest crop activities
+            - 894 #01.61 Support activities for crop production
+            - 895 #01.62 Support activities for animal production
+            - 896 #01.63 Post-harvest crop activities
+            - 897 #01.64 Seed processing for propagation
+            - 898 #01.7 Hunting, trapping and related service activities
+            - 899 #01.70 Hunting, trapping and related service activities
+            - 900 #02 Forestry and logging
+            - 901 #02.1 Silviculture and other forestry activities
+            - 902 #02.10 Silviculture and other forestry activities
+            - 903 #02.2 Logging
+            - 904 #02.20 Logging
+            - 905 #02.3 Gathering of wild growing non-wood products
+            - 906 #02.30 Gathering of wild growing non-wood products
+            - 907 #02.4 Support services to forestry
+            - 908 #02.40 Support services to forestry
+            - 909 #03 Fishing and aquaculture
+            - 910 #03.1 Fishing
+            - 911 #03.11 Marine fishing
+            - 912 #03.12 Freshwater fishing
+            - 913 #03.2 Aquaculture
+            - 914 #03.21 Marine aquaculture
+            - 915 #03.22 Freshwater aquaculture
+            - 916 #B Mining and quarrying
+            - 917 #05 Mining of coal and lignite
+            - 918 #05.1 Mining of hard coal
+            - 919 #05.10 Mining of hard coal
+            - 920 #05.2 Mining of lignite
+            - 921 #05.20 Mining of lignite
+            - 922 #06 Extraction of crude petroleum and natural gas
+            - 923 #06.1 Extraction of crude petroleum
+            - 924 #06.10 Extraction of crude petroleum
+            - 925 #06.2 Extraction of natural gas
+            - 926 #06.20 Extraction of natural gas
+            - 927 #07 Mining of metal ores
+            - 928 #07.1 Mining of iron ores
+            - 929 #07.10 Mining of iron ores
+            - 930 #07.2 Mining of non-ferrous metal ores
+            - 931 #07.21 Mining of uranium and thorium ores
+            - 932 #07.29 Mining of other non-ferrous metal ores
+            - 933 #08 Other mining and quarrying
+            - 934 #08.1 Quarrying of stone, sand and clay
+            - 935 #08.11 Quarrying of ornamental and building stone, limestone, gypsum, chalk and slate
+            - 936 #08.12 Operation of gravel and sand pits; mining of clays and kaolin
+            - 937 #08.9 Mining and quarrying n.e.c.
+            - 938 #08.91 Mining of chemical and fertiliser minerals
+            - 939 #08.92 Extraction of peat
+            - 940 #08.93 Extraction of salt
+            - 941 #08.99 Other mining and quarrying n.e.c.
+            - 942 #09 Mining support service activities
+            - 943 #09.1 Support activities for petroleum and natural gas extraction
+            - 944 #09.10 Support activities for petroleum and natural gas extraction
+            - 945 #09.9 Support activities for other mining and quarrying
+            - 946 #09.90 Support activities for other mining and quarrying
+            - 947 #C Manufacturing
+            - 948 #10 Manufacture of food products
+            - 949 #10.1 Processing and preserving of meat and production of meat products
+            - 950 #10.11 Processing and preserving of meat
+            - 951 #10.12 Processing and preserving of poultry meat
+            - 952 #10.13 Production of meat and poultry meat products
+            - 953 #10.2 Processing and preserving of fish, crustaceans and molluscs
+            - 954 #10.20 Processing and preserving of fish, crustaceans and molluscs
+            - 955 #10.3 Processing and preserving of fruit and vegetables
+            - 956 #10.31 Processing and preserving of potatoes
+            - 957 #10.32 Manufacture of fruit and vegetable juice
+            - 958 #10.39 Other processing and preserving of fruit and vegetables
+            - 959 #10.4 Manufacture of vegetable and animal oils and fats
+            - 960 #10.41 Manufacture of oils and fats
+            - 961 #10.42 Manufacture of margarine and similar edible fats
+            - 962 #10.5 Manufacture of dairy products
+            - 963 #10.51 Operation of dairies and cheese making
+            - 964 #10.52 Manufacture of ice cream
+            - 965 #10.6 Manufacture of grain mill products, starches and starch products
+            - 966 #10.61 Manufacture of grain mill products
+            - 967 #10.62 Manufacture of starches and starch products
+            - 968 #10.7 Manufacture of bakery and farinaceous products
+            - 969 #10.71 Manufacture of bread; manufacture of fresh pastry goods and cakes
+            - 970 #10.72 Manufacture of rusks and biscuits; manufacture of preserved pastry goods and cakes
+            - 971 #10.73 Manufacture of macaroni, noodles, couscous and similar farinaceous products
+            - 972 #10.8 Manufacture of other food products
+            - 973 #10.81 Manufacture of sugar
+            - 974 #10.82 Manufacture of cocoa, chocolate and sugar confectionery
+            - 975 #10.83 Processing of tea and coffee
+            - 976 #10.84 Manufacture of condiments and seasonings
+            - 977 #10.85 Manufacture of prepared meals and dishes
+            - 978 #10.86 Manufacture of homogenised food preparations and dietetic food
+            - 979 #10.89 Manufacture of other food products n.e.c.
+            - 980 #10.9 Manufacture of prepared animal feeds
+            - 981 #10.91 Manufacture of prepared feeds for farm animals
+            - 982 #10.92 Manufacture of prepared pet foods
+            - 983 #11 Manufacture of beverages
+            - 984 #11.0 Manufacture of beverages
+            - 985 #11.01 Distilling, rectifying and blending of spirits
+            - 986 #11.02 Manufacture of wine from grape
+            - 987 #11.03 Manufacture of cider and other fruit wines
+            - 988 #11.04 Manufacture of other non-distilled fermented beverages
+            - 989 #11.05 Manufacture of beer
+            - 990 #11.06 Manufacture of malt
+            - 991 #11.07 Manufacture of soft drinks; production of mineral waters and other bottled waters
+            - 992 #12 Manufacture of tobacco products
+            - 993 #12.0 Manufacture of tobacco products
+            - 994 #12.00 Manufacture of tobacco products
+            - 995 #13 Manufacture of textiles
+            - 996 #13.1 Preparation and spinning of textile fibres
+            - 997 #13.10 Preparation and spinning of textile fibres
+            - 998 #13.2 Weaving of textiles
+            - 999 #13.20 Weaving of textiles
+            - 1000 #13.3 Finishing of textiles
+            - 1001 #13.30 Finishing of textiles
+            - 1002 #13.9 Manufacture of other textiles
+            - 1003 #13.91 Manufacture of knitted and crocheted fabrics
+            - 1004 #13.92 Manufacture of made-up textile articles, except apparel
+            - 1005 #13.93 Manufacture of carpets and rugs
+            - 1006 #13.94 Manufacture of cordage, rope, twine and netting
+            - 1007 #13.95 Manufacture of non-wovens and articles made from non-wovens, except apparel
+            - 1008 #13.96 Manufacture of other technical and industrial textiles
+            - 1009 #13.99 Manufacture of other textiles n.e.c.
+            - 1010 #14 Manufacture of wearing apparel
+            - 1011 #14.1 Manufacture of wearing apparel, except fur apparel
+            - 1012 #14.11 Manufacture of leather clothes
+            - 1013 #14.12 Manufacture of workwear
+            - 1014 #14.13 Manufacture of other outerwear
+            - 1015 #14.14 Manufacture of underwear
+            - 1016 #14.19 Manufacture of other wearing apparel and accessories
+            - 1017 #14.2 Manufacture of articles of fur
+            - 1018 #14.20 Manufacture of articles of fur
+            - 1019 #14.3 Manufacture of knitted and crocheted apparel
+            - 1020 #14.31 Manufacture of knitted and crocheted hosiery
+            - 1021 #14.39 Manufacture of other knitted and crocheted apparel
+            - 1022 #15 Manufacture of leather and related products
+            - 1023 #15.1 Tanning and dressing of leather; manufacture of luggage, handbags, saddlery and harness; dressing and dyeing of fur
+            - 1024 #15.11 Tanning and dressing of leather; dressing and dyeing of fur
+            - 1025 #15.12 Manufacture of luggage, handbags and the like, saddlery and harness
+            - 1026 #15.20 Manufacture of footwear
+            - 1027 #15.2 Manufacture of footwear
+            - 1028 #16 Manufacture of wood and of products of wood and cork, except furniture; manufacture of articles of straw and plaiting materials
+            - 1029 #16.1 Sawmilling and planing of wood
+            - 1030 #16.10 Sawmilling and planing of wood
+            - 1031 #16.2 Manufacture of products of wood, cork, straw and plaiting materials
+            - 1032 #16.21 Manufacture of veneer sheets and wood-based panels
+            - 1033 #16.22 Manufacture of assembled parquet floors
+            - 1034 #16.23 Manufacture of other builders' carpentry and joinery
+            - 1035 #16.24 Manufacture of wooden containers
+            - 1036 #16.29 Manufacture of other products of wood; manufacture of articles of cork, straw and plaiting materials
+            - 1037 #17 Manufacture of paper and paper products
+            - 1038 #17.1 Manufacture of pulp, paper and paperboard
+            - 1039 #17.11 Manufacture of pulp
+            - 1040 #17.12 Manufacture of paper and paperboard
+            - 1041 #17.2 Manufacture of articles of paper and paperboard
+            - 1042 #17.21 Manufacture of corrugated paper and paperboard and of containers of paper and paperboard
+            - 1043 #17.22 Manufacture of household and sanitary goods and of toilet requisites
+            - 1044 #17.23 Manufacture of paper stationery
+            - 1045 #17.24 Manufacture of wallpaper
+            - 1046 #17.29 Manufacture of other articles of paper and paperboard
+            - 1047 #18 Printing and reproduction of recorded media
+            - 1048 #18.1 Printing and service activities related to printing
+            - 1049 #18.11 Printing of newspapers
+            - 1050 #18.12 Other printing
+            - 1051 #18.13 Pre-press and pre-media services
+            - 1052 #18.14 Binding and related services
+            - 1053 #18.2 Reproduction of recorded media
+            - 1054 #18.20 Reproduction of recorded media
+            - 1055 #19 Manufacture of coke and refined petroleum products
+            - 1056 #19.1 Manufacture of coke oven products
+            - 1057 #19.10 Manufacture of coke oven products
+            - 1058 #19.2 Manufacture of refined petroleum products
+            - 1059 #19.20 Manufacture of refined petroleum products
+            - 1060 #20 Manufacture of chemicals and chemical products
+            - 1061 #20.1 Manufacture of basic chemicals, fertilisers and nitrogen compounds, plastics and synthetic rubber in primary forms
+            - 1062 #20.11 Manufacture of industrial gases
+            - 1063 #20.12 Manufacture of dyes and pigments
+            - 1064 #20.13 Manufacture of other inorganic basic chemicals
+            - 1065 #20.14 Manufacture of other organic basic chemicals
+            - 1066 #20.15 Manufacture of fertilisers and nitrogen compounds
+            - 1067 #20.16 Manufacture of plastics in primary forms
+            - 1068 #20.17 Manufacture of synthetic rubber in primary forms
+            - 1069 #20.2 Manufacture of pesticides and other agrochemical products
+            - 1070 #20.20 Manufacture of pesticides and other agrochemical products
+            - 1071 #20.3 Manufacture of paints, varnishes and similar coatings, printing ink and mastics
+            - 1072 #20.30 Manufacture of paints, varnishes and similar coatings, printing ink and mastics
+            - 1073 #20.4 Manufacture of soap and detergents, cleaning and polishing preparations, perfumes and toilet preparations
+            - 1074 #20.41 Manufacture of soap and detergents, cleaning and polishing preparations
+            - 1075 #20.42 Manufacture of perfumes and toilet preparations
+            - 1076 #20.5 Manufacture of other chemical products
+            - 1077 #20.51 Manufacture of explosives
+            - 1078 #20.52 Manufacture of glues
+            - 1079 #20.53 Manufacture of essential oils
+            - 1080 #20.59 Manufacture of other chemical products n.e.c.
+            - 1081 #20.6 Manufacture of man-made fibres
+            - 1082 #20.60 Manufacture of man-made fibres
+            - 1083 #21 Manufacture of basic pharmaceutical products and pharmaceutical preparations
+            - 1084 #21.1 Manufacture of basic pharmaceutical products
+            - 1085 #21.10 Manufacture of basic pharmaceutical products
+            - 1086 #21.2 Manufacture of pharmaceutical preparations
+            - 1087 #21.20 Manufacture of pharmaceutical preparations
+            - 1088 #22 Manufacture of rubber and plastic products
+            - 1089 #22.1 Manufacture of rubber products
+            - 1090 #22.11 Manufacture of rubber tyres and tubes; retreading and rebuilding of rubber tyres
+            - 1091 #22.19 Manufacture of other rubber products
+            - 1092 #22.2 Manufacture of plastic products
+            - 1093 #22.21 Manufacture of plastic plates, sheets, tubes and profiles
+            - 1094 #22.22 Manufacture of plastic packing goods
+            - 1095 #22.23 Manufacture of builders’ ware of plastic
+            - 1096 #22.29 Manufacture of other plastic products
+            - 1097 #23 Manufacture of other non-metallic mineral products
+            - 1098 #23.1 Manufacture of glass and glass products
+            - 1099 #23.11 Manufacture of flat glass
+            - 1100 #23.12 Shaping and processing of flat glass
+            - 1101 #23.13 Manufacture of hollow glass
+            - 1102 #23.14 Manufacture of glass fibres
+            - 1103 #23.19 Manufacture and processing of other glass, including technical glassware
+            - 1104 #23.2 Manufacture of refractory products
+            - 1105 #23.20 Manufacture of refractory products
+            - 1106 #23.3 Manufacture of clay building materials
+            - 1107 #23.31 Manufacture of ceramic tiles and flags
+            - 1108 #23.32 Manufacture of bricks, tiles and construction products, in baked clay
+            - 1109 #23.4 Manufacture of other porcelain and ceramic products
+            - 1110 #23.41 Manufacture of ceramic household and ornamental articles
+            - 1111 #23.42 Manufacture of ceramic sanitary fixtures
+            - 1112 #23.43 Manufacture of ceramic insulators and insulating fittings
+            - 1113 #23.44 Manufacture of other technical ceramic products
+            - 1114 #23.49 Manufacture of other ceramic products
+            - 1115 #23.5 Manufacture of cement, lime and plaster
+            - 1116 #23.51 Manufacture of cement
+            - 1117 #23.52 Manufacture of lime and plaster
+            - 1118 #23.6 Manufacture of articles of concrete, cement and plaster
+            - 1119 #23.61 Manufacture of concrete products for construction purposes
+            - 1120 #23.62 Manufacture of plaster products for construction purposes
+            - 1121 #23.63 Manufacture of ready-mixed concrete
+            - 1122 #23.64 Manufacture of mortars
+            - 1123 #23.65 Manufacture of fibre cement
+            - 1124 #23.69 Manufacture of other articles of concrete, plaster and cement
+            - 1125 #23.7 Cutting, shaping and finishing of stone
+            - 1126 #23.70 Cutting, shaping and finishing of stone
+            - 1127 #23.9 Manufacture of abrasive products and non-metallic mineral products n.e.c.
+            - 1128 #23.91 Production of abrasive products
+            - 1129 #23.99 Manufacture of other non-metallic mineral products n.e.c.
+            - 1130 #24 Manufacture of basic metals
+            - 1131 #24.1 Manufacture of basic iron and steel and of ferro-alloys
+            - 1132 #24.10 Manufacture of basic iron and steel and of ferro-alloys
+            - 1133 #24.2 Manufacture of tubes, pipes, hollow profiles and related fittings, of steel
+            - 1134 #24.20 Manufacture of tubes, pipes, hollow profiles and related fittings, of steel
+            - 1135 #24.3 Manufacture of other products of first processing of steel
+            - 1136 #24.31 Cold drawing of bars
+            - 1137 #24.32 Cold rolling of narrow strip
+            - 1138 #24.33 Cold forming or folding
+            - 1139 #24.34 Cold drawing of wire
+            - 1140 #24.4 Manufacture of basic precious and other non-ferrous metals
+            - 1141 #24.41 Precious metals production
+            - 1142 #24.42 Aluminium production
+            - 1143 #24.43 Lead, zinc and tin production
+            - 1144 #24.44 Copper production
+            - 1145 #24.45 Other non-ferrous metal production
+            - 1146 #24.46 Processing of nuclear fuel
+            - 1147 #24.5 Casting of metals
+            - 1148 #24.51 Casting of iron
+            - 1149 #24.52 Casting of steel
+            - 1150 #24.53 Casting of light metals
+            - 1151 #24.54 Casting of other non-ferrous metals
+            - 1152 #25 Manufacture of fabricated metal products, except machinery and equipment
+            - 1153 #25.1 Manufacture of structural metal products
+            - 1154 #25.11 Manufacture of metal structures and parts of structures
+            - 1155 #25.12 Manufacture of doors and windows of metal
+            - 1156 #25.2 Manufacture of tanks, reservoirs and containers of metal
+            - 1157 #25.21 Manufacture of central heating radiators and boilers
+            - 1158 #25.29 Manufacture of other tanks, reservoirs and containers of metal
+            - 1159 #25.3 Manufacture of steam generators, except central heating hot water boilers
+            - 1160 #25.30 Manufacture of steam generators, except central heating hot water boilers
+            - 1161 #25.4 Manufacture of weapons and ammunition
+            - 1162 #25.40 Manufacture of weapons and ammunition
+            - 1163 #25.5 Forging, pressing, stamping and roll-forming of metal; powder metallurgy
+            - 1164 #25.50 Forging, pressing, stamping and roll-forming of metal; powder metallurgy
+            - 1165 #25.6 Treatment and coating of metals; machining
+            - 1166 #25.61 Treatment and coating of metals
+            - 1167 #25.62 Machining
+            - 1168 #25.7 Manufacture of cutlery, tools and general hardware
+            - 1169 #25.71 Manufacture of cutlery
+            - 1170 #25.72 Manufacture of locks and hinges
+            - 1171 #25.73 Manufacture of tools
+            - 1172 #25.9 Manufacture of other fabricated metal products
+            - 1173 #25.91 Manufacture of steel drums and similar containers
+            - 1174 #25.92 Manufacture of light metal packaging
+            - 1175 #25.93 Manufacture of wire products, chain and springs
+            - 1176 #25.94 Manufacture of fasteners and screw machine products
+            - 1177 #25.99 Manufacture of other fabricated metal products n.e.c.
+            - 1178 #26 Manufacture of computer, electronic and optical products
+            - 1179 #26.1 Manufacture of electronic components and boards
+            - 1180 #26.11 Manufacture of electronic components
+            - 1181 #26.12 Manufacture of loaded electronic boards
+            - 1182 #26.2 Manufacture of computers and peripheral equipment
+            - 1183 #26.20 Manufacture of computers and peripheral equipment
+            - 1184 #26.3 Manufacture of communication equipment
+            - 1185 #26.30 Manufacture of communication equipment
+            - 1186 #26.4 Manufacture of consumer electronics
+            - 1187 #26.40 Manufacture of consumer electronics
+            - 1188 #26.5 Manufacture of instruments and appliances for measuring, testing and navigation; watches and clocks
+            - 1189 #26.51 Manufacture of instruments and appliances for measuring, testing and navigation
+            - 1190 #26.52 Manufacture of watches and clocks
+            - 1191 #26.6 Manufacture of irradiation, electromedical and electrotherapeutic equipment
+            - 1192 #26.60 Manufacture of irradiation, electromedical and electrotherapeutic equipment
+            - 1193 #26.7 Manufacture of optical instruments and photographic equipment
+            - 1194 #26.70 Manufacture of optical instruments and photographic equipment
+            - 1195 #26.8 Manufacture of magnetic and optical media
+            - 1196 #26.80 Manufacture of magnetic and optical media
+            - 1197 #27 Manufacture of electrical equipment
+            - 1198 #27.1 Manufacture of electric motors, generators, transformers and electricity distribution and control apparatus
+            - 1199 #27.11 Manufacture of electric motors, generators and transformers
+            - 1200 #27.12 Manufacture of electricity distribution and control apparatus
+            - 1201 #27.2 Manufacture of batteries and accumulators
+            - 1202 #27.20 Manufacture of batteries and accumulators
+            - 1203 #27.3 Manufacture of wiring and wiring devices
+            - 1204 #27.31 Manufacture of fibre optic cables
+            - 1205 #27.32 Manufacture of other electronic and electric wires and cables
+            - 1206 #27.33 Manufacture of wiring devices
+            - 1207 #27.4 Manufacture of electric lighting equipment
+            - 1208 #27.40 Manufacture of electric lighting equipment
+            - 1209 #27.5 Manufacture of domestic appliances
+            - 1210 #27.51 Manufacture of electric domestic appliances
+            - 1211 #27.52 Manufacture of non-electric domestic appliances
+            - 1212 #27.9 Manufacture of other electrical equipment
+            - 1213 #27.90 Manufacture of other electrical equipment
+            - 1214 #28 Manufacture of machinery and equipment n.e.c.
+            - 1215 #28.1 Manufacture of general-purpose machinery
+            - 1216 #28.11 Manufacture of engines and turbines, except aircraft, vehicle and cycle engines
+            - 1217 #28.12 Manufacture of fluid power equipment
+            - 1218 #28.13 Manufacture of other pumps and compressors
+            - 1219 #28.14 Manufacture of other taps and valves
+            - 1220 #28.15 Manufacture of bearings, gears, gearing and driving elements
+            - 1221 #28.2 Manufacture of other general-purpose machinery
+            - 1222 #28.21 Manufacture of ovens, furnaces and furnace burners
+            - 1223 #28.22 Manufacture of lifting and handling equipment
+            - 1224 #28.23 Manufacture of office machinery and equipment (except computers and peripheral equipment)
+            - 1225 #28.24 Manufacture of power-driven hand tools
+            - 1226 #28.25 Manufacture of non-domestic cooling and ventilation equipment
+            - 1227 #28.29 Manufacture of other general-purpose machinery n.e.c.
+            - 1228 #28.3 Manufacture of agricultural and forestry machinery
+            - 1229 #28.30 Manufacture of agricultural and forestry machinery
+            - 1230 #28.4 Manufacture of metal forming machinery and machine tools
+            - 1231 #28.41 Manufacture of metal forming machinery
+            - 1232 #28.49 Manufacture of other machine tools
+            - 1233 #28.9 Manufacture of other special-purpose machinery
+            - 1234 #28.91 Manufacture of machinery for metallurgy
+            - 1235 #28.92 Manufacture of machinery for mining, quarrying and construction
+            - 1236 #28.93 Manufacture of machinery for food, beverage and tobacco processing
+            - 1237 #28.94 Manufacture of machinery for textile, apparel and leather production
+            - 1238 #28.95 Manufacture of machinery for paper and paperboard production
+            - 1239 #28.96 Manufacture of plastics and rubber machinery
+            - 1240 #28.99 Manufacture of other special-purpose machinery n.e.c.
+            - 1241 #29 Manufacture of motor vehicles, trailers and semi-trailers
+            - 1242 #29.1 Manufacture of motor vehicles
+            - 1243 #29.10 Manufacture of motor vehicles
+            - 1244 #29.2 Manufacture of bodies (coachwork) for motor vehicles; manufacture of trailers and semi-trailers
+            - 1245 #29.20 Manufacture of bodies (coachwork) for motor vehicles; manufacture of trailers and semi-trailers
+            - 1246 #29.3 Manufacture of parts and accessories for motor vehicles
+            - 1247 #29.31 Manufacture of electrical and electronic equipment for motor vehicles
+            - 1248 #29.32 Manufacture of other parts and accessories for motor vehicles
+            - 1249 #30 Manufacture of other transport equipment
+            - 1250 #30.1 Building of ships and boats
+            - 1251 #30.11 Building of ships and floating structures
+            - 1252 #30.12 Building of pleasure and sporting boats
+            - 1253 #30.2 Manufacture of railway locomotives and rolling stock
+            - 1254 #30.20 Manufacture of railway locomotives and rolling stock
+            - 1255 #30.3 Manufacture of air and spacecraft and related machinery
+            - 1256 #30.30 Manufacture of air and spacecraft and related machinery
+            - 1257 #30.4 Manufacture of military fighting vehicles
+            - 1258 #30.40 Manufacture of military fighting vehicles
+            - 1259 #30.9 Manufacture of transport equipment n.e.c.
+            - 1260 #30.91 Manufacture of motorcycles
+            - 1261 #30.92 Manufacture of bicycles and invalid carriages
+            - 1262 #30.99 Manufacture of other transport equipment n.e.c.
+            - 1263 #31 Manufacture of furniture
+            - 1264 #31.0 Manufacture of furniture
+            - 1265 #31.01 Manufacture of office and shop furniture
+            - 1266 #31.02 Manufacture of kitchen furniture
+            - 1267 #31.03 Manufacture of mattresses
+            - 1268 #31.09 Manufacture of other furniture
+            - 1269 #32 Other manufacturing
+            - 1270 #32.1 Manufacture of jewellery, bijouterie and related articles
+            - 1271 #32.11 Striking of coins
+            - 1272 #32.12 Manufacture of jewellery and related articles
+            - 1273 #32.13 Manufacture of imitation jewellery and related articles
+            - 1274 #32.2 Manufacture of musical instruments
+            - 1275 #32.20 Manufacture of musical instruments
+            - 1276 #32.3 Manufacture of sports goods
+            - 1277 #32.30 Manufacture of sports goods
+            - 1278 #32.4 Manufacture of games and toys
+            - 1279 #32.40 Manufacture of games and toys
+            - 1280 #32.5 Manufacture of medical and dental instruments and supplies
+            - 1281 #32.50 Manufacture of medical and dental instruments and supplies
+            - 1282 #32.9 Manufacturing n.e.c.
+            - 1283 #32.91 Manufacture of brooms and brushes
+            - 1284 #32.99 Other manufacturing n.e.c.
+            - 1285 #33 Repair and installation of machinery and equipment
+            - 1286 #33.1 Repair of fabricated metal products, machinery and equipment
+            - 1287 #33.11 Repair of fabricated metal products
+            - 1288 #33.12 Repair of machinery
+            - 1289 #33.13 Repair of electronic and optical equipment
+            - 1290 #33.14 Repair of electrical equipment
+            - 1291 #33.15 Repair and maintenance of ships and boats
+            - 1292 #33.16 Repair and maintenance of aircraft and spacecraft
+            - 1293 #33.17 Repair and maintenance of other transport equipment
+            - 1294 #33.19 Repair of other equipment
+            - 1295 #33.2 Installation of industrial machinery and equipment
+            - 1296 #33.20 Installation of industrial machinery and equipment
+            - 1297 #D Electricity, gas, steam and air conditioning supply
+            - 1298 #35 Electricity, gas, steam and air conditioning supply
+            - 1299 #35.1 Electric power generation, transmission and distribution
+            - 1300 #35.11 Production of electricity
+            - 1301 #35.12 Transmission of electricity
+            - 1302 #35.13 Distribution of electricity
+            - 1303 #35.14 Trade of electricity
+            - 1304 #35.2 Manufacture of gas; distribution of gaseous fuels through mains
+            - 1305 #35.21 Manufacture of gas
+            - 1306 #35.22 Distribution of gaseous fuels through mains
+            - 1307 #35.23 Trade of gas through mains
+            - 1308 #35.3 Steam and air conditioning supply
+            - 1309 #35.30 Steam and air conditioning supply
+            - 1310 #E Water supply; sewerage, waste management and remediation activities
+            - 1311 #36 Water collection, treatment and supply
+            - 1312 #36.0 Water collection, treatment and supply
+            - 1313 #36.00 Water collection, treatment and supply
+            - 1314 #37 Sewerage
+            - 1315 #37.0 Sewerage
+            - 1316 #37.00 Sewerage
+            - 1317 #38 Waste collection, treatment and disposal activities; materials recovery
+            - 1318 #38.1 Waste collection
+            - 1319 #38.11 Collection of non-hazardous waste
+            - 1320 #38.12 Collection of hazardous waste
+            - 1321 #38.2 Waste treatment and disposal
+            - 1322 #38.21 Treatment and disposal of non-hazardous waste
+            - 1323 #38.22 Treatment and disposal of hazardous waste
+            - 1324 #38.3 Materials recovery
+            - 1325 #38.31 Dismantling of wrecks
+            - 1326 #38.32 Recovery of sorted materials
+            - 1327 #39 Remediation activities and other waste management services
+            - 1328 #39.0 Remediation activities and other waste management services
+            - 1329 #39.00 Remediation activities and other waste management services
+            - 1330 #F Construction
+            - 1331 #41 Construction of buildings
+            - 1332 #41.1 Development of building projects
+            - 1333 #41.10 Development of building projects
+            - 1334 #41.2 Construction of residential and non-residential buildings
+            - 1335 #41.20 Construction of residential and non-residential buildings
+            - 1336 #42 Civil engineering
+            - 1337 #42.1 Construction of roads and railways
+            - 1338 #42.11 Construction of roads and motorways
+            - 1339 #42.12 Construction of railways and underground railways
+            - 1340 #42.13 Construction of bridges and tunnels
+            - 1341 #42.2 Construction of utility projects
+            - 1342 #42.21 Construction of utility projects for fluids
+            - 1343 #42.22 Construction of utility projects for electricity and telecommunications
+            - 1344 #42.9 Construction of other civil engineering projects
+            - 1345 #42.91 Construction of water projects
+            - 1346 #42.99 Construction of other civil engineering projects n.e.c.
+            - 1347 #43 Specialised construction activities
+            - 1348 #43.1 Demolition and site preparation
+            - 1349 #43.11 Demolition
+            - 1350 #43.12 Site preparation
+            - 1351 #43.13 Test drilling and boring
+            - 1352 #43.2 Electrical, plumbing and other construction installation activities
+            - 1353 #43.21 Electrical installation
+            - 1354 #43.22 Plumbing, heat and air-conditioning installation
+            - 1355 #43.29 Other construction installation
+            - 1356 #43.3 Building completion and finishing
+            - 1357 #43.31 Plastering
+            - 1358 #43.32 Joinery installation
+            - 1359 #43.33 Floor and wall covering
+            - 1360 #43.34 Painting and glazing
+            - 1361 #43.39 Other building completion and finishing
+            - 1362 #43.9 Other specialised construction activities
+            - 1363 #43.91 Roofing activities
+            - 1364 #43.99 Other specialised construction activities n.e.c.
+            - 1365 #G Wholesale and retail trade; repair of motor vehicles and motorcycles
+            - 1366 #45 Wholesale and retail trade and repair of motor vehicles and motorcycles
+            - 1367 #45.1 Sale of motor vehicles
+            - 1368 #45.11 Sale of cars and light motor vehicles
+            - 1369 #45.19 Sale of other motor vehicles
+            - 1370 #45.2 Maintenance and repair of motor vehicles
+            - 1371 #45.20 Maintenance and repair of motor vehicles
+            - 1372 #45.3 Sale of motor vehicle parts and accessories
+            - 1373 #45.31 Wholesale trade of motor vehicle parts and accessories
+            - 1374 #45.32 Retail trade of motor vehicle parts and accessories
+            - 1375 #45.4 Sale, maintenance and repair of motorcycles and related parts and accessories
+            - 1376 #45.40 Sale, maintenance and repair of motorcycles and related parts and accessories
+            - 1377 #46 Wholesale trade, except of motor vehicles and motorcycles
+            - 1378 #46.1 Wholesale on a fee or contract basis
+            - 1379 #46.11 Agents involved in the sale of agricultural raw materials, live animals, textile raw materials and semi-finished goods
+            - 1380 #46.12 Agents involved in the sale of fuels, ores, metals and industrial chemicals
+            - 1381 #46.13 Agents involved in the sale of timber and building materials
+            - 1382 #46.14 Agents involved in the sale of machinery, industrial equipment, ships and aircraft
+            - 1383 #46.15 Agents involved in the sale of furniture, household goods, hardware and ironmongery
+            - 1384 #46.16 Agents involved in the sale of textiles, clothing, fur, footwear and leather goods
+            - 1385 #46.17 Agents involved in the sale of food, beverages and tobacco
+            - 1386 #46.18 Agents specialised in the sale of other particular products
+            - 1387 #46.19 Agents involved in the sale of a variety of goods
+            - 1388 #46.2 Wholesale of agricultural raw materials and live animals
+            - 1389 #46.21 Wholesale of grain, unmanufactured tobacco, seeds and animal feeds
+            - 1390 #46.22 Wholesale of flowers and plants
+            - 1391 #46.23 Wholesale of live animals
+            - 1392 #46.24 Wholesale of hides, skins and leather
+            - 1393 #46.3 Wholesale of food, beverages and tobacco
+            - 1394 #46.31 Wholesale of fruit and vegetables
+            - 1395 #46.32 Wholesale of meat and meat products
+            - 1396 #46.33 Wholesale of dairy products, eggs and edible oils and fats
+            - 1397 #46.34 Wholesale of beverages
+            - 1398 #46.35 Wholesale of tobacco products
+            - 1399 #46.36 Wholesale of sugar and chocolate and sugar confectionery
+            - 1400 #46.37 Wholesale of coffee, tea, cocoa and spices
+            - 1401 #46.38 Wholesale of other food, including fish, crustaceans and molluscs
+            - 1402 #46.39 Non-specialised wholesale of food, beverages and tobacco
+            - 1403 #46.4 Wholesale of household goods
+            - 1404 #46.41 Wholesale of textiles
+            - 1405 #46.42 Wholesale of clothing and footwear
+            - 1406 #46.43 Wholesale of electrical household appliances
+            - 1407 #46.44 Wholesale of china and glassware and cleaning materials
+            - 1408 #46.45 Wholesale of perfume and cosmetics
+            - 1409 #46.46 Wholesale of pharmaceutical goods
+            - 1410 #46.47 Wholesale of furniture, carpets and lighting equipment
+            - 1411 #46.48 Wholesale of watches and jewellery
+            - 1412 #46.49 Wholesale of other household goods
+            - 1413 #46.5 Wholesale of information and communication equipment
+            - 1414 #46.51 Wholesale of computers, computer peripheral equipment and software
+            - 1415 #46.52 Wholesale of electronic and telecommunications equipment and parts
+            - 1416 #46.6 Wholesale of other machinery, equipment and supplies
+            - 1417 #46.61 Wholesale of agricultural machinery, equipment and supplies
+            - 1418 #46.62 Wholesale of machine tools
+            - 1419 #46.63 Wholesale of mining, construction and civil engineering machinery
+            - 1420 #46.64 Wholesale of machinery for the textile industry and of sewing and knitting machines
+            - 1421 #46.65 Wholesale of office furniture
+            - 1422 #46.66 Wholesale of other office machinery and equipment
+            - 1423 #46.69 Wholesale of other machinery and equipment
+            - 1424 #46.7 Other specialised wholesale
+            - 1425 #46.71 Wholesale of solid, liquid and gaseous fuels and related products
+            - 1426 #46.72 Wholesale of metals and metal ores
+            - 1427 #46.73 Wholesale of wood, construction materials and sanitary equipment
+            - 1428 #46.74 Wholesale of hardware, plumbing and heating equipment and supplies
+            - 1429 #46.75 Wholesale of chemical products
+            - 1430 #46.76 Wholesale of other intermediate products
+            - 1431 #46.77 Wholesale of waste and scrap
+            - 1432 #46.9 Non-specialised wholesale trade
+            - 1433 #46.90 Non-specialised wholesale trade
+            - 1434 #47 Retail trade, except of motor vehicles and motorcycles
+            - 1435 #47.1 Retail sale in non-specialised stores
+            - 1436 #47.11 Retail sale in non-specialised stores with food, beverages or tobacco predominating
+            - 1437 #47.19 Other retail sale in non-specialised stores
+            - 1438 #47.2 Retail sale of food, beverages and tobacco in specialised stores
+            - 1439 #47.21 Retail sale of fruit and vegetables in specialised stores
+            - 1440 #47.22 Retail sale of meat and meat products in specialised stores
+            - 1441 #47.23 Retail sale of fish, crustaceans and molluscs in specialised stores
+            - 1442 #47.24 Retail sale of bread, cakes, flour confectionery and sugar confectionery in specialised stores
+            - 1443 #47.25 Retail sale of beverages in specialised stores
+            - 1444 #47.26 Retail sale of tobacco products in specialised stores
+            - 1445 #47.29 Other retail sale of food in specialised stores
+            - 1446 #47.3 Retail sale of automotive fuel in specialised stores
+            - 1447 #47.30 Retail sale of automotive fuel in specialised stores
+            - 1448 #47.4 Retail sale of information and communication equipment in specialised stores
+            - 1449 #47.41 Retail sale of computers, peripheral units and software in specialised stores
+            - 1450 #47.42 Retail sale of telecommunications equipment in specialised stores
+            - 1451 #47.43 Retail sale of audio and video equipment in specialised stores
+            - 1452 #47.5 Retail sale of other household equipment in specialised stores
+            - 1453 #47.51 Retail sale of textiles in specialised stores
+            - 1454 #47.52 Retail sale of hardware, paints and glass in specialised stores
+            - 1455 #47.53 Retail sale of carpets, rugs, wall and floor coverings in specialised stores
+            - 1456 #47.54 Retail sale of electrical household appliances in specialised stores
+            - 1457 #47.59 Retail sale of furniture, lighting equipment and other household articles in specialised stores
+            - 1458 #47.6 Retail sale of cultural and recreation goods in specialised stores
+            - 1459 #47.61 Retail sale of books in specialised stores
+            - 1460 #47.62 Retail sale of newspapers and stationery in specialised stores
+            - 1461 #47.63 Retail sale of music and video recordings in specialised stores
+            - 1462 #47.64 Retail sale of sporting equipment in specialised stores
+            - 1463 #47.65 Retail sale of games and toys in specialised stores
+            - 1464 #47.7 Retail sale of other goods in specialised stores
+            - 1465 #47.71 Retail sale of clothing in specialised stores
+            - 1466 #47.72 Retail sale of footwear and leather goods in specialised stores
+            - 1467 #47.73 Dispensing chemist in specialised stores
+            - 1468 #47.74 Retail sale of medical and orthopaedic goods in specialised stores
+            - 1469 #47.75 Retail sale of cosmetic and toilet articles in specialised stores
+            - 1470 #47.76 Retail sale of flowers, plants, seeds, fertilisers, pet animals and pet food in specialised stores
+            - 1471 #47.77 Retail sale of watches and jewellery in specialised stores
+            - 1472 #47.78 Other retail sale of new goods in specialised stores
+            - 1473 #47.79 Retail sale of second-hand goods in stores
+            - 1474 #47.8 Retail sale via stalls and markets
+            - 1475 #47.81 Retail sale via stalls and markets of food, beverages and tobacco products
+            - 1476 #47.82 Retail sale via stalls and markets of textiles, clothing and footwear
+            - 1477 #47.89 Retail sale via stalls and markets of other goods
+            - 1478 #47.9 Retail trade not in stores, stalls or markets
+            - 1479 #47.91 Retail sale via mail order houses or via Internet
+            - 1480 #47.99 Other retail sale not in stores, stalls or markets
+            - 1481 #H Transportation and storage
+            - 1482 #49 Land transport and transport via pipelines
+            - 1483 #49.1 Passenger rail transport, interurban
+            - 1484 #49.10 Passenger rail transport, interurban
+            - 1485 #49.2 Freight rail transport
+            - 1486 #49.20 Freight rail transport
+            - 1487 #49.3 Other passenger land transport
+            - 1488 #49.31 Urban and suburban passenger land transport
+            - 1489 #49.32 Taxi operation
+            - 1490 #49.39 Other passenger land transport n.e.c.
+            - 1491 #49.4 Freight transport by road and removal services
+            - 1492 #49.41 Freight transport by road
+            - 1493 #49.42 Removal services
+            - 1494 #49.5 Transport via pipeline
+            - 1495 #49.50 Transport via pipeline
+            - 1496 #50 Water transport
+            - 1497 #50.1 Sea and coastal passenger water transport
+            - 1498 #50.10 Sea and coastal passenger water transport
+            - 1499 #50.2 Sea and coastal freight water transport
+            - 1500 #50.20 Sea and coastal freight water transport
+            - 1501 #50.3 Inland passenger water transport
+            - 1502 #50.30 Inland passenger water transport
+            - 1503 #50.4 Inland freight water transport
+            - 1504 #50.40 Inland freight water transport
+            - 1505 #51 Air transport
+            - 1506 #51.1 Passenger air transport
+            - 1507 #51.10 Passenger air transport
+            - 1508 #51.2 Freight air transport and space transport
+            - 1509 #51.21 Freight air transport
+            - 1510 #51.22 Space transport
+            - 1511 #52 Warehousing and support activities for transportation
+            - 1512 #52.1 Warehousing and storage
+            - 1513 #52.10 Warehousing and storage
+            - 1514 #52.2 Support activities for transportation
+            - 1515 #52.21 Service activities incidental to land transportation
+            - 1516 #52.22 Service activities incidental to water transportation
+            - 1517 #52.23 Service activities incidental to air transportation
+            - 1518 #52.24 Cargo handling
+            - 1519 #52.29 Other transportation support activities
+            - 1520 #53 Postal and courier activities
+            - 1521 #53.1 Postal activities under universal service obligation
+            - 1522 #53.10 Postal activities under universal service obligation
+            - 1523 #53.2 Other postal and courier activities
+            - 1524 #53.20 Other postal and courier activities
+            - 1525 #I Accommodation and food service activities
+            - 1526 #55 Accommodation
+            - 1527 #55.1 Hotels and similar accommodation
+            - 1528 #55.10 Hotels and similar accommodation
+            - 1529 #55.2 Holiday and other short-stay accommodation
+            - 1530 #55.20 Holiday and other short-stay accommodation
+            - 1531 #55.3 Camping grounds, recreational vehicle parks and trailer parks
+            - 1532 #55.30 Camping grounds, recreational vehicle parks and trailer parks
+            - 1533 #55.9 Other accommodation
+            - 1534 #55.90 Other accommodation
+            - 1535 #56 Food and beverage service activities
+            - 1536 #56.1 Restaurants and mobile food service activities
+            - 1537 #56.10 Restaurants and mobile food service activities
+            - 1538 #56.2 Event catering and other food service activities
+            - 1539 #56.21 Event catering activities
+            - 1540 #56.29 Other food service activities
+            - 1541 #56.3 Beverage serving activities
+            - 1542 #56.30 Beverage serving activities
+            - 1543 #J Information and communication
+            - 1544 #58 Publishing activities
+            - 1545 #58.1 Publishing of books, periodicals and other publishing activities
+            - 1546 #58.11 Book publishing
+            - 1547 #58.12 Publishing of directories and mailing lists
+            - 1548 #58.13 Publishing of newspapers
+            - 1549 #58.14 Publishing of journals and periodicals
+            - 1550 #58.19 Other publishing activities
+            - 1551 #58.2 Software publishing
+            - 1552 #58.21 Publishing of computer games
+            - 1553 #58.29 Other software publishing
+            - 1554 #59 Motion picture, video and television programme production, sound recording and music publishing activities
+            - 1555 #59.1 Motion picture, video and television programme activities
+            - 1556 #59.11 Motion picture, video and television programme production activities
+            - 1557 #59.12 Motion picture, video and television programme post-production activities
+            - 1558 #59.13 Motion picture, video and television programme distribution activities
+            - 1559 #59.14 Motion picture projection activities
+            - 1560 #59.2 Sound recording and music publishing activities
+            - 1561 #59.20 Sound recording and music publishing activities
+            - 1562 #60 Programming and broadcasting activities
+            - 1563 #60.1 Radio broadcasting
+            - 1564 #60.10 Radio broadcasting
+            - 1565 #60.2 Television programming and broadcasting activities
+            - 1566 #60.20 Television programming and broadcasting activities
+            - 1567 #61 Telecommunications
+            - 1568 #61.1 Wired telecommunications activities
+            - 1569 #61.10 Wired telecommunications activities
+            - 1570 #61.2 Wireless telecommunications activities
+            - 1571 #61.20 Wireless telecommunications activities
+            - 1572 #61.3 Satellite telecommunications activities
+            - 1573 #61.30 Satellite telecommunications activities
+            - 1574 #61.9 Other telecommunications activities
+            - 1575 #61.90 Other telecommunications activities
+            - 1576 #62 Computer programming, consultancy and related activities
+            - 1577 #62.0 Computer programming, consultancy and related activities
+            - 1578 #62.01 Computer programming activities
+            - 1579 #62.02 Computer consultancy activities
+            - 1580 #62.03 Computer facilities management activities
+            - 1581 #62.09 Other information technology and computer service activities
+            - 1582 #63 Information service activities
+            - 1583 #63.1 Data processing, hosting and related activities; web portals
+            - 1584 #63.11 Data processing, hosting and related activities
+            - 1585 #63.12 Web portals
+            - 1586 #63.9 Other information service activities
+            - 1587 #63.91 News agency activities
+            - 1588 #63.99 Other information service activities n.e.c.
+            - 1589 #K Financial and insurance activities
+            - 1590 #64 Financial service activities, except insurance and pension funding
+            - 1591 #64.1 Monetary intermediation
+            - 1592 #64.11 Central banking
+            - 1593 #64.19 Other monetary intermediation
+            - 1594 #64.2 Activities of holding companies
+            - 1595 #64.20 Activities of holding companies
+            - 1596 #64.3 Trusts, funds and similar financial entities
+            - 1597 #64.30 Trusts, funds and similar financial entities
+            - 1598 #64.9 Other financial service activities, except insurance and pension funding
+            - 1599 #64.91 Financial leasing
+            - 1600 #64.92 Other credit granting
+            - 1601 #64.99 Other financial service activities, except insurance and pension funding n.e.c.
+            - 1602 #65 Insurance, reinsurance and pension funding, except compulsory social security
+            - 1603 #65.1 Insurance
+            - 1604 #65.11 Life insurance
+            - 1605 #65.12 Non-life insurance
+            - 1606 #65.2 Reinsurance
+            - 1607 #65.20 Reinsurance
+            - 1608 #65.3 Pension funding
+            - 1609 #65.30 Pension funding
+            - 1610 #66 Activities auxiliary to financial services and insurance activities
+            - 1611 #66.1 Activities auxiliary to financial services, except insurance and pension funding
+            - 1612 #66.11 Administration of financial markets
+            - 1613 #66.12 Security and commodity contracts brokerage
+            - 1614 #66.19 Other activities auxiliary to financial services, except insurance and pension funding
+            - 1615 #66.2 Activities auxiliary to insurance and pension funding
+            - 1616 #66.21 Risk and damage evaluation
+            - 1617 #66.22 Activities of insurance agents and brokers
+            - 1618 #66.29 Other activities auxiliary to insurance and pension funding
+            - 1619 #66.3 Fund management activities
+            - 1620 #66.30 Fund management activities
+            - 1621 #L Real estate activities
+            - 1622 #68 Real estate activities
+            - 1623 #68.1 Buying and selling of own real estate
+            - 1624 #68.10 Buying and selling of own real estate
+            - 1625 #68.2 Rental and operating of own or leased real estate
+            - 1626 #68.20 Rental and operating of own or leased real estate
+            - 1627 #68.3 Real estate activities on a fee or contract basis
+            - 1628 #68.31 Real estate agencies
+            - 1629 #68.32 Management of real estate on a fee or contract basis
+            - 1630 #M Professional, scientific and technical activities
+            - 1631 #69 Legal and accounting activities
+            - 1632 #69.1 Legal activities
+            - 1633 #69.10 Legal activities
+            - 1634 #69.2 Accounting, bookkeeping and auditing activities; tax consultancy
+            - 1635 #69.20 Accounting, bookkeeping and auditing activities; tax consultancy
+            - 1636 #70 Activities of head offices; management consultancy activities
+            - 1637 #70.1 Activities of head offices
+            - 1638 #70.10 Activities of head offices
+            - 1639 #70.2 Management consultancy activities
+            - 1640 #70.21 Public relations and communication activities
+            - 1641 #70.22 Business and other management consultancy activities
+            - 1642 #71 Architectural and engineering activities; technical testing and analysis
+            - 1643 #71.1 Architectural and engineering activities and related technical consultancy
+            - 1644 #71.11 Architectural activities
+            - 1645 #71.12 Engineering activities and related technical consultancy
+            - 1646 #71.2 Technical testing and analysis
+            - 1647 #71.20 Technical testing and analysis
+            - 1648 #72 Scientific research and development
+            - 1649 #72.1 Research and experimental development on natural sciences and engineering
+            - 1650 #72.11 Research and experimental development on biotechnology
+            - 1651 #72.19 Other research and experimental development on natural sciences and engineering
+            - 1652 #72.2 Research and experimental development on social sciences and humanities
+            - 1653 #72.20 Research and experimental development on social sciences and humanities
+            - 1654 #73 Advertising and market research
+            - 1655 #73.1 Advertising
+            - 1656 #73.11 Advertising agencies
+            - 1657 #73.12 Media representation
+            - 1658 #73.2 Market research and public opinion polling
+            - 1659 #73.20 Market research and public opinion polling
+            - 1660 #74 Other professional, scientific and technical activities
+            - 1661 #74.1 Specialised design activities
+            - 1662 #74.10 Specialised design activities
+            - 1663 #74.2 Photographic activities
+            - 1664 #74.20 Photographic activities
+            - 1665 #74.3 Translation and interpretation activities
+            - 1666 #74.30 Translation and interpretation activities
+            - 1667 #74.9 Other professional, scientific and technical activities n.e.c.
+            - 1668 #74.90 Other professional, scientific and technical activities n.e.c.
+            - 1669 #75 Veterinary activities
+            - 1670 #75.0 Veterinary activities
+            - 1671 #75.00 Veterinary activities
+            - 1672 #N Administrative and support service activities
+            - 1673 #77 Rental and leasing activities
+            - 1674 #77.1 Rental and leasing of motor vehicles
+            - 1675 #77.11 Rental and leasing of cars and light motor vehicles
+            - 1676 #77.12 Rental and leasing of trucks
+            - 1677 #77.2 Rental and leasing of personal and household goods
+            - 1678 #77.21 Rental and leasing of recreational and sports goods
+            - 1679 #77.22 Rental of video tapes and disks
+            - 1680 #77.29 Rental and leasing of other personal and household goods
+            - 1681 #77.3 Rental and leasing of other machinery, equipment and tangible goods
+            - 1682 #77.31 Rental and leasing of agricultural machinery and equipment
+            - 1683 #77.32 Rental and leasing of construction and civil engineering machinery and equipment
+            - 1684 #77.33 Rental and leasing of office machinery and equipment (including computers)
+            - 1685 #77.34 Rental and leasing of water transport equipment
+            - 1686 #77.35 Rental and leasing of air transport equipment
+            - 1687 #77.39 Rental and leasing of other machinery, equipment and tangible goods n.e.c.
+            - 1688 #77.4 Leasing of intellectual property and similar products, except copyrighted works
+            - 1689 #77.40 Leasing of intellectual property and similar products, except copyrighted works
+            - 1690 #78 Employment activities
+            - 1691 #78.1 Activities of employment placement agencies
+            - 1692 #78.10 Activities of employment placement agencies
+            - 1693 #78.2 Temporary employment agency activities
+            - 1694 #78.20 Temporary employment agency activities
+            - 1695 #78.3 Other human resources provision
+            - 1696 #78.30 Other human resources provision
+            - 1697 #79 Travel agency, tour operator and other reservation service and related activities
+            - 1698 #79.1 Travel agency and tour operator activities
+            - 1699 #79.11 Travel agency activities
+            - 1700 #79.12 Tour operator activities
+            - 1701 #79.9 Other reservation service and related activities
+            - 1702 #79.90 Other reservation service and related activities
+            - 1703 #80 Security and investigation activities
+            - 1704 #80.1 Private security activities
+            - 1705 #80.10 Private security activities
+            - 1706 #80.2 Security systems service activities
+            - 1707 #80.20 Security systems service activities
+            - 1708 #80.3 Investigation activities
+            - 1709 #80.30 Investigation activities
+            - 1710 #81 Services to buildings and landscape activities
+            - 1711 #81.1 Combined facilities support activities
+            - 1712 #81.10 Combined facilities support activities
+            - 1713 #81.2 Cleaning activities
+            - 1714 #81.21 General cleaning of buildings
+            - 1715 #81.22 Other building and industrial cleaning activities
+            - 1716 #81.29 Other cleaning activities
+            - 1717 #81.3 Landscape service activities
+            - 1718 #81.30 Landscape service activities
+            - 1719 #82 Office administrative, office support and other business support activities
+            - 1720 #82.1 Office administrative and support activities
+            - 1721 #82.11 Combined office administrative service activities
+            - 1722 #82.19 Photocopying, document preparation and other specialised office support activities
+            - 1723 #82.2 Activities of call centres
+            - 1724 #82.20 Activities of call centres
+            - 1725 #82.3 Organisation of conventions and trade shows
+            - 1726 #82.30 Organisation of conventions and trade shows
+            - 1727 #82.9 Business support service activities n.e.c.
+            - 1728 #82.91 Activities of collection agencies and credit bureaus
+            - 1729 #82.92 Packaging activities
+            - 1730 #82.99 Other business support service activities n.e.c.
+            - 1731 #O Public administration and defence; compulsory social security
+            - 1732 #84 Public administration and defence; compulsory social security
+            - 1733 #84.1 Administration of the State and the economic and social policy of the community
+            - 1734 #84.11 General public administration activities
+            - 1735 #84.12 Regulation of the activities of providing health care, education, cultural services and other social services, excluding social security
+            - 1736 #84.13 Regulation of and contribution to more efficient operation of businesses
+            - 1737 #84.2 Provision of services to the community as a whole
+            - 1738 #84.21 Foreign affairs
+            - 1739 #84.22 Defence activities
+            - 1740 #84.23 Justice and judicial activities
+            - 1741 #84.24 Public order and safety activities
+            - 1742 #84.25 Fire service activities
+            - 1743 #84.3 Compulsory social security activities
+            - 1744 #84.30 Compulsory social security activities
+            - 1745 #P Education
+            - 1746 #85 Education
+            - 1747 #85.1 Pre-primary education
+            - 1748 #85.10 Pre-primary education
+            - 1749 #85.2 Primary education
+            - 1750 #85.20 Primary education
+            - 1751 #85.3 Secondary education
+            - 1752 #85.31 General secondary education
+            - 1753 #85.32 Technical and vocational secondary education
+            - 1754 #85.4 Higher education
+            - 1755 #85.41 Post-secondary non-tertiary education
+            - 1756 #85.42 Tertiary education
+            - 1757 #85.5 Other education
+            - 1758 #85.51 Sports and recreation education
+            - 1759 #85.52 Cultural education
+            - 1760 #85.53 Driving school activities
+            - 1761 #85.59 Other education n.e.c.
+            - 1762 #85.6 Educational support activities
+            - 1763 #85.60 Educational support activities
+            - 1764 #Q Human health and social work activities
+            - 1765 #86 Human health activities
+            - 1766 #86.1 Hospital activities
+            - 1767 #86.10 Hospital activities
+            - 1768 #86.2 Medical and dental practice activities
+            - 1769 #86.21 General medical practice activities
+            - 1770 #86.22 Specialist medical practice activities
+            - 1771 #86.23 Dental practice activities
+            - 1772 #86.9 Other human health activities
+            - 1773 #86.90 Other human health activities
+            - 1774 #87 Residential care activities
+            - 1775 #87.1 Residential nursing care activities
+            - 1776 #87.10 Residential nursing care activities
+            - 1777 #87.2 Residential care activities for mental retardation, mental health and substance abuse
+            - 1778 #87.20 Residential care activities for mental retardation, mental health and substance abuse
+            - 1779 #87.3 Residential care activities for the elderly and disabled
+            - 1780 #87.30 Residential care activities for the elderly and disabled
+            - 1781 #87.9 Other residential care activities
+            - 1782 #87.90 Other residential care activities
+            - 1783 #88 Social work activities without accommodation
+            - 1784 #88.1 Social work activities without accommodation for the elderly and disabled
+            - 1785 #88.10 Social work activities without accommodation for the elderly and disabled
+            - 1786 #88.9 Other social work activities without accommodation
+            - 1787 #88.91 Child day-care activities
+            - 1788 #88.99 Other social work activities without accommodation n.e.c.
+            - 1789 #R Arts, entertainment and recreation
+            - 1790 #90 Creative, arts and entertainment activities
+            - 1791 #90.0 Creative, arts and entertainment activities
+            - 1792 #90.01 Performing arts
+            - 1793 #90.02 Support activities to performing arts
+            - 1794 #90.03 Artistic creation
+            - 1795 #90.04 Operation of arts facilities
+            - 1796 #91 Libraries, archives, museums and other cultural activities
+            - 1797 #91.0 Libraries, archives, museums and other cultural activities
+            - 1798 #91.01 Library and archives activities
+            - 1799 #91.02 Museums activities
+            - 1800 #91.03 Operation of historical sites and buildings and similar visitor attractions
+            - 1801 #91.04 Botanical and zoological gardens and nature reserves activities
+            - 1802 #92 Gambling and betting activities
+            - 1803 #92.0 Gambling and betting activities
+            - 1804 #92.00 Gambling and betting activities
+            - 1805 #93 Sports activities and amusement and recreation activities
+            - 1806 #93.1 Sports activities
+            - 1807 #93.11 Operation of sports facilities
+            - 1808 #93.12 Activities of sports clubs
+            - 1809 #93.13 Fitness facilities
+            - 1810 #93.19 Other sports activities
+            - 1811 #93.2 Amusement and recreation activities
+            - 1812 #93.21 Activities of amusement parks and theme parks
+            - 1813 #93.29 Other amusement and recreation activities
+            - 1814 #S Other service activities
+            - 1815 #94 Activities of membership organisations
+            - 1816 #94.1 Activities of business, employers and professional membership organisations
+            - 1817 #94.11 Activities of business and employers membership organisations
+            - 1818 #94.12 Activities of professional membership organisations
+            - 1819 #94.2 Activities of trade unions
+            - 1820 #94.20 Activities of trade unions
+            - 1821 #94.9 Activities of other membership organisations
+            - 1822 #94.91 Activities of religious organisations
+            - 1823 #94.92 Activities of political organisations
+            - 1824 #94.99 Activities of other membership organisations n.e.c.
+            - 1825 #95 Repair of computers and personal and household goods
+            - 1826 #95.1 Repair of computers and communication equipment
+            - 1827 #95.11 Repair of computers and peripheral equipment
+            - 1828 #95.12 Repair of communication equipment
+            - 1829 #95.2 Repair of personal and household goods
+            - 1830 #95.21 Repair of consumer electronics
+            - 1831 #95.22 Repair of household appliances and home and garden equipment
+            - 1832 #95.23 Repair of footwear and leather goods
+            - 1833 #95.24 Repair of furniture and home furnishings
+            - 1834 #95.25 Repair of watches, clocks and jewellery
+            - 1835 #95.29 Repair of other personal and household goods
+            - 1836 #96 Other personal service activities
+            - 1837 #96.0 Other personal service activities
+            - 1838 #96.01 Washing and (dry-)cleaning of textile and fur products
+            - 1839 #96.02 Hairdressing and other beauty treatment
+            - 1840 #96.03 Funeral and related activities
+            - 1841 #96.04 Physical well-being activities
+            - 1842 #96.09 Other personal service activities n.e.c.
+            - 1843 #T Activities of households as employers; undifferentiated goods- and services-producing activities of households for own use
+            - 1844 #97 Activities of households as employers of domestic personnel
+            - 1845 #97.0 Activities of households as employers of domestic personnel
+            - 1846 #97.00 Activities of households as employers of domestic personnel
+            - 1847 #98 Undifferentiated goods- and services-producing activities of private households for own use
+            - 1848 #98.1 Undifferentiated goods-producing activities of private households for own use
+            - 1849 #98.10 Undifferentiated goods-producing activities of private households for own use
+            - 1850 #98.2 Undifferentiated service-producing activities of private households for own use
+            - 1851 #98.20 Undifferentiated service-producing activities of private households for own use
+            - 1852 #U Activities of extraterritorial organisations and bodies
+            - 1853 #99 Activities of extraterritorial organisations and bodies
+            - 1854 #99.0 Activities of extraterritorial organisations and bodies
+            - 1855 #99.00 Activities of extraterritorial organisations and bodies
+        verificationstatus:
+          type: integer
+          format: int32
+          description: 0 - not verified, 1 - valid, 2 - invalid
+          enum: [0,1,2]
+          example: 123
+        wr_description:
+          type: string
+          example: "Moved a big rock up the hill, but it fell back. Will continue rolling also tomorrow."
+        systemreport:
+          type: integer
+          format: int32
+          description: 0 - normal report, 1 - system report
+          enum: [0,1]
+        wr_activity_name:
+          type: string
+          description: title of work report - activity summary 
+          example: "Rock moving" 
+        wr_hours:
+          type: number
+          format: float
+          description: time in hours
+          example: 2.5
+        wr_web_address:
+          type: string
+          description: URL of a proof for the work performed
+          example: https://nabezky.sk/node/3883
+        parent_project_nid:
+          type: integer
+          format: int64
+          description: parent project node ID
+          example: 28388348
