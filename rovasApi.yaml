@@ -1,7 +1,7 @@
 openapi: 3.0.1
 info:
   title: Rovas API
-  description: 'Rovas is an application that allows participation in NEO - a community economic system, based on the **Merit economy** principles. See the [Merit economy white paper](https://papers.ssrn.com/abstract=2933031) for more info.'
+  description: 'Rovas is application that allows participation in NEO - a community economic system, based on the **Merit economy** principles. See the [Merit economy white paper](https://papers.ssrn.com/abstract=2933031) for more info.'
   termsOfService: https://merit.world/terms/
   contact:
     email: rovas@merit.world
@@ -16,6 +16,29 @@ servers:
 - url: https://dev.merit.world/
 - url: https://rovas.merit.world/
 paths:
+  /rovas/rules/rules_create_user:
+    post:
+      tags:
+      - rule
+      summary: Create a new user in Rovas and/or retrieve login keys
+      requestBody:
+        description: The checks if an user already exists with the supplied email address. If not, a new one is created, API key and token are generated and returned in a response together with the new user Rovas id. If user with the supplied email is found, access keys are generated and hybridauth access profile are created (if they do not exist already).
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NewUser'
+          application/xml:
+            schema:
+              $ref: '#/components/schemas/NewUser'
+        required: true
+      responses:
+        '200':
+          description: returns API key, token and the user's Rovas ID
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NewUserResponse'
+
   /rovas/rules/rules_proxy_create_new_project:
     post:
       tags:
@@ -66,6 +89,51 @@ paths:
                 example: 2344443
 components:
   schemas:
+    NewUser:
+      required:
+      - user_name
+      - user_id
+      - user_email
+      - user_country
+      - user_language
+      - server_url
+      type: object
+      properties:
+        user_name:
+          type: string
+          example: dumbo
+        user_id:
+          type: integer
+          format: int64
+          example: 123
+        user_email:
+          type: string
+          example: dumbo@some.domain
+        user_country:
+          type: string
+          description: ISOxxx formated string representing a country 
+          example: SK
+        user_language:
+          type: string
+          description: ISOyyy language code in lower case!
+          example: sk
+        server_url:
+          type: string
+          description: server address, used to construct the OAuth (hybridauth) callback URL
+          example: "https://nabezky.sk/"
+    NewUserResponse:
+      type: object
+      properties:
+        rovas_uid:
+          type: integer
+          format: int64
+          example: 123
+        api_key:
+          type: string
+          example: dfxgWcoyTzOYn0SoAOA3CDYK5Dib96iLHP62Kf43he0
+        token:
+          type: string
+          example: zFXFb5LyIoGr9WdvtO4Hm13CD7Z1qJHb7SGdra8rqQ0
     NewProject:
       required:
       - project_name
@@ -1124,7 +1192,7 @@ components:
           example: 123
         wr_description:
           type: string
-          example: "Moved a big rock up the hill, but it fell back. Will continue rolling also tomorrow."
+          example: "Moved a big rock up the hill, but it fell back. Will continue rolling tomorrow."
         systemreport:
           type: integer
           format: int32
