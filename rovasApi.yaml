@@ -1310,7 +1310,7 @@ components:
         systemreport:
           type: integer
           format: int32
-          description: typically, WRs created by this call should set this value to 1; 0 - normal report, 1 - system report
+          description: "typically this should be set to 0; 0 - normal report, 1 - system report"
           enum: [0,1]
         wr_activity_name:
           type: string
@@ -1459,11 +1459,12 @@ components:
       properties:
         total_chrons:
           type: number
-          description: "1 for OK; -1 for no user found with the credentials; -2 no enough funds to buy the product; -3 the amount paid is 0 (no purchase was made)"
+          description: "The total Chrons ballance."
           format: float
           example: 2.3
         chrons_available:
           type: number
-          description: "1 for OK; -1 for no user found with the credentials; -2 no enough funds to buy the product; -3 the amount paid is 0 (no purchase was made)"
+          description: "The total Chrons balance minus all commitments for the user's work reports rewards"
           format: float
           example: 1.7
+
