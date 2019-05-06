@@ -20,7 +20,7 @@ paths:
     post:
       tags:
       - rule
-      summary: Create a new user in Rovas and/or retrieve login keys
+      summary: Create an user and/or retrieve login keys
       requestBody:
         description: The checks if an user already exists with the supplied email address. If not, a new one is created, API key and token are generated and returned in a response together with the new user Rovas id. If user with the supplied email is found, access keys are generated and hybridauth access profile are created (if they do not exist already).
         content:
@@ -38,12 +38,11 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/NewUserResponse'
-
   /rovas/rules/rules_proxy_create_new_project:
     post:
       tags:
       - rule
-      summary: Create a new project in Rovas
+      summary: Create a project
       requestBody:
         description: Once a project is created, Rovas automatically creates also a new merit allocation document for the project owner.
         content:
@@ -67,9 +66,9 @@ paths:
     post:
       tags:
       - rule
-      summary: Create a new work report in Rovas
+      summary: Create a work report in Rovas.
       requestBody:
-        description: tbd.
+        description: Only the parent project owner can create work reports. This limitation does not exist in Rovas, where WRs can be created by all project shareholders.
         content:
           application/json:
             schema:
@@ -87,6 +86,95 @@ paths:
                 type: integer
                 format: int.64
                 example: 2344443
+  /rovas/rules/rules_proxy_work_report_verifiability:
+    post:
+      tags:
+      - rule
+      summary: Finds out if work report is verifiable by an user
+      requestBody:
+        description: "The call finds out if report is verifiable and sets an environmental variable in Rovas that locks one of two/three verifiacation slots for 10 minutes."
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VerifyWorkReport'
+          application/xml:
+            schema:
+              $ref: '#/components/schemas/VerifyWorkReport'
+        required: true
+      responses:
+        '200':
+          description: "returns 1 or 0"
+          content:
+            application/json:
+              schema:
+                type: boolean
+                example: 1
+  /rovas/rules/rules_create_verification:
+    post:
+      tags:
+      - rule
+      summary: Create a verification record
+      requestBody:
+        description: ""
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateVerification'
+          application/xml:
+            schema:
+              $ref: '#/components/schemas/CreateVerification'
+        required: true
+      responses:
+        '200':
+          description: "returns verification record ID if successful, -1 otherwise"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VerificationResponse'
+  /rovas/rules/rules_proxy_purchase_product:
+    post:
+      tags:
+      - rule
+      summary: Process purchase of a product.
+      requestBody:
+        description: Creates purchase receipts, proceses Chron transactions, distributes Merits to shareholders.
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NewPurchase'
+          application/xml:
+            schema:
+              $ref: '#/components/schemas/NewPurchase'
+        required: true
+      responses:
+        '200':
+          description: "returns an integer indicating the operation outcome"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PurchaseResponse'
+  /rovas/rules/rules_users_chrons:
+    post:
+      tags:
+      - rule
+      summary: Retrieves user's Chron balances.
+      requestBody:
+        description: "Returns both - 'total', as well as 'available' user's Chron balances."
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UsersChrons'
+          application/xml:
+            schema:
+              $ref: '#/components/schemas/UsersChrons'
+        required: true
+      responses:
+        '200':
+          description: "returns total and available user's chron balances"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UsersChronsResponse'
 components:
   schemas:
     NewUser:
@@ -111,15 +199,15 @@ components:
           example: dumbo@some.domain
         user_country:
           type: string
-          description: ISOxxx formated string representing a country 
+          description: ISO 3166-1 alpha-2 formated string representing a country 
           example: SK
         user_language:
           type: string
-          description: ISOyyy language code in lower case!
+          description: ISO 639-1 language code in lower case!
           example: sk
         server_url:
           type: string
-          description: server address, used to construct the OAuth (hybridauth) callback URL
+          description: server address, used as a base for the user profile URL at the identity server
           example: "https://nabezky.sk/"
     NewUserResponse:
       type: object
@@ -136,6 +224,8 @@ components:
           example: zFXFb5LyIoGr9WdvtO4Hm13CD7Z1qJHb7SGdra8rqQ0
     NewProject:
       required:
+      - api_key
+      - token
       - project_name
       - project_author_uid
       - project_status
@@ -143,6 +233,14 @@ components:
       - system_project
       type: object
       properties:
+        api_key:
+          type: string
+          description: api key of the project owner. Generated in Rovas when user is created
+          example: "HL1M7Kb7lWVMbGz9stnRf4JWRvt-Qkn3uDDFIw0einQ"
+        token:
+          type: string
+          description: token of the project owner. Generated in Rovas when user is created
+          example: "c_91eswpx2Vjx7yidRJH6QF02jkcP6h0dcfinnUTGSU"
         project_name:
           type: string
           example: Test project title
@@ -174,13 +272,29 @@ components:
           enum: [0,1]
     NewWorkReport:
       required:
+      - language
+      - api_key
+      - token
       - wr_classification
       - verificationstatus
       - systemreport
       - wr_activity_name
       - wr_hours
+      - verify_reward
       type: object
       properties:
+        language:
+          type: string
+          description: ISO 639-1 language code in lower case
+          example: "de"
+        api_key:
+          type: string
+          description: api key of the work report owner. Generated in Rovas when user is created
+          example: "HL1M7Kb7lWVMbGz9stnRf4JWRvt-Qkn3uDDFIw0einQ"
+        token:
+          type: string
+          description: token of the work report owner. Generated in Rovas when user is created
+          example: "c_91eswpx2Vjx7yidRJH6QF02jkcP6h0dcfinnUTGSU"
         wr_classification:
           type: integer
           format: int32
@@ -1187,7 +1301,7 @@ components:
         verificationstatus:
           type: integer
           format: int32
-          description: 0 - not verified, 1 - valid, 2 - invalid
+          description: "labor time verification status of the report; 0 - not verified, 1 - valid, 2 - invalid"
           enum: [0,1,2]
           example: 123
         wr_description:
@@ -1196,7 +1310,7 @@ components:
         systemreport:
           type: integer
           format: int32
-          description: 0 - normal report, 1 - system report
+          description: typically, WRs created by this call should set this value to 1; 0 - normal report, 1 - system report
           enum: [0,1]
         wr_activity_name:
           type: string
@@ -1216,3 +1330,140 @@ components:
           format: int64
           description: parent project node ID
           example: 28388348
+        verify_reward:
+          type: number
+          format: float
+          description: value in chrons
+          example: 0.5
+    VerifyWorkReport:
+      required:
+      - api_key
+      - token
+      - wr_id
+      type: object
+      properties:
+        api_key:
+          type: string
+          description: api key of the user who wants to verify the report. Generated in Rovas when user is created
+          example: "HL1M7Kb7lWVMbGz9stnRf4JWRvt-Qkn3uDDFIw0einQ"
+        token:
+          type: string
+          description: token of the user who wants to verify the report. Generated in Rovas when user is created
+          example: "c_91eswpx2Vjx7yidRJH6QF02jkcP6h0dcfinnUTGSU"
+        wr_id:
+          type: integer
+          format: int64
+          example: 123
+    CreateVerification:
+      required:
+      - api_key
+      - token
+      - wr_id
+      - verif_title
+      - verdict
+      - verif_source
+      type: object
+      properties:
+        api_key:
+          type: string
+          description: api key of the user who is verifying the report. Generated in Rovas when user is created
+          example: "HL1M7Kb7lWVMbGz9stnRf4JWRvt-Qkn3uDDFIw0einQ"
+        token:
+          type: string
+          description: token of the user who is verifying the report. Generated in Rovas when user is created
+          example: "c_91eswpx2Vjx7yidRJH6QF02jkcP6h0dcfinnUTGSU"
+        verif_title:
+          type: string
+          description: "Name for the verification record. No restrictions as to uniqueness or length."
+          example: "Verification by <REST client app name> user"
+        wr_id:
+          type: integer
+          format: int64
+          example: 123
+        verdict:
+          type: integer
+          format: int32
+          description: verification result; 0 - rejected, 1 - approved
+          example: 1
+        verif_source:
+          type: integer
+          format: int32
+          description: "this param. must be set to 1"
+          example: 1
+    VerificationResponse:
+      type: object
+      properties:
+        verification_id:
+          type: integer
+          format: int64
+          example: 2930
+    NewPurchase:
+      required:
+      - api_key
+      - token
+      - product_id
+      - amount_paid
+      - note
+      type: object
+      properties:
+        api_key:
+          type: string
+          description: api key of the buyer. Generated in Rovas when user is created
+          example: "HL1M7Kb7lWVMbGz9stnRf4JWRvt-Qkn3uDDFIw0einQ"
+        token:
+          type: string
+          description: token of the buyer. Generated in Rovas when user is created
+          example: "c_91eswpx2Vjx7yidRJH6QF02jkcP6h0dcfinnUTGSU"
+        product_id:
+          type: integer
+          description: "Rovas product ID"
+          format: int64
+          example: 123
+        amount_paid:
+          type: number
+          format: float
+          example: 2.3
+        note:
+          type: string
+          description: "Any note related to purchase"
+          example: "Purchase made by <REST client app name> user"
+    PurchaseResponse:
+      type: object
+      properties:
+        result:
+          type: integer
+          format: int32
+          description: "1 for OK; -1 for no user found with the credentials; -2 no enough funds to buy the product; -3 the amount paid is 0 (no purchase was made)"
+          enum:
+            - 1
+            - -1
+            - -2
+            - -3
+          example: 1
+    UsersChrons:
+      required:
+      - api_key
+      - token
+      type: object
+      properties:
+        api_key:
+          type: string
+          description: api key of the user. Generated in Rovas when user is created
+          example: "HL1M7Kb7lWVMbGz9stnRf4JWRvt-Qkn3uDDFIw0einQ"
+        token:
+          type: string
+          description: token of the user. Generated in Rovas when user is created
+          example: "c_91eswpx2Vjx7yidRJH6QF02jkcP6h0dcfinnUTGSU"
+    UsersChronsResponse:
+      type: object
+      properties:
+        total_chrons:
+          type: number
+          description: "1 for OK; -1 for no user found with the credentials; -2 no enough funds to buy the product; -3 the amount paid is 0 (no purchase was made)"
+          format: float
+          example: 2.3
+        chrons_available:
+          type: number
+          description: "1 for OK; -1 for no user found with the credentials; -2 no enough funds to buy the product; -3 the amount paid is 0 (no purchase was made)"
+          format: float
+          example: 1.7
