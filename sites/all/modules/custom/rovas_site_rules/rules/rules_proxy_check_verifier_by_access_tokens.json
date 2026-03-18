@@ -1,0 +1,34 @@
+{ "rules_proxy_check_verifier_by_access_tokens" : {
+    "LABEL" : "Proxy - check verifier by access tokens",
+    "PLUGIN" : "rule",
+    "OWNER" : "rules",
+    "REQUIRES" : [ "rules" ],
+    "USES VARIABLES" : {
+      "verify_allow" : {
+        "label" : "Verification allowed",
+        "type" : "boolean",
+        "parameter" : false
+      },
+      "uid" : { "label" : "User token", "type" : "integer" },
+      "access_token" : { "label" : "Content access token", "type" : "text" }
+    },
+    "IF" : [
+      { "data_is" : { "data" : [ "uid" ], "op" : "\u003E", "value" : "0" } },
+      { "NOT data_is_empty" : { "data" : [ "access-token" ] } }
+    ],
+    "DO" : [
+      { "component_rules_check_verifier_by_access_tokens" : {
+          "USING" : { "access_token" : [ "access_token" ], "uid" : [ "uid" ] },
+          "PROVIDE" : {
+            "verify_allow" : { "verification" : "Verification" },
+            "verifier_obj" : { "verifier_obj" : "Verifier object" },
+            "wr_obj" : { "wr_obj" : "Work report object" },
+            "slot_object" : { "slot_object" : "Verification slot object" }
+          }
+        }
+      },
+      { "data_set" : { "data" : [ "verify-allow" ], "value" : [ "verification" ] } }
+    ],
+    "PROVIDES VARIABLES" : [ "verify_allow" ]
+  }
+}

@@ -1,0 +1,4 @@
+name = Rovas work report Merger
+description = Provides functions for merging work reports sent in a single day by a particular user of a certain category
+core = 7.x
+package = Rovas

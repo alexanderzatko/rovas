@@ -1,0 +1,76 @@
+{ "rules_make_money_transfer" : {
+    "LABEL" : "make money transfer",
+    "PLUGIN" : "rule",
+    "OWNER" : "rules",
+    "TAGS" : [ "transfer" ],
+    "REQUIRES" : [ "php", "rules", "rules_conditional", "rovas_base" ],
+    "USES VARIABLES" : {
+      "sender" : { "label" : "Sender", "type" : "user" },
+      "recipient" : { "label" : "Recipient", "type" : "user" },
+      "amount" : { "label" : "Amount", "type" : "decimal" },
+      "note" : { "label" : "Note", "type" : "text", "allow null" : true },
+      "skip_charge" : { "label" : "skip charge", "type" : "boolean", "allow null" : true },
+      "money_transfer_object" : {
+        "label" : "money transfer object",
+        "type" : "node",
+        "parameter" : false
+      }
+    },
+    "DO" : [
+      { "variable_add" : {
+          "USING" : {
+            "type" : "text",
+            "value" : "\u003C?php \r\nif ($sender-\u003Euid \u003E 0 \u0026\u0026 !$skip_charge)\r\necho 1;\r\nelse\r\necho 0;\r\n?\u003E"
+          },
+          "PROVIDE" : { "variable_added" : { "charge_sender" : "charge sender" } }
+        }
+      },
+      { "CONDITIONAL" : [
+          {
+            "IF" : { "data_is" : { "data" : [ "charge-sender" ], "value" : "1" } },
+            "DO" : [
+              { "component_rules_update_user_chron_account" : {
+                  "user_object" : [ "sender" ],
+                  "chrons_to_add" : { "select" : "amount", "php" : { "code" : "return -1 * $value;" } },
+                  "fxsp_id" : {
+                    "select" : "site:current-user:uid",
+                    "php" : { "code" : "return NULL;" }
+                  }
+                }
+              }
+            ]
+          }
+        ]
+      },
+      { "component_rules_update_user_chron_account" : {
+          "user_object" : [ "recipient" ],
+          "chrons_to_add" : [ "amount" ],
+          "fxsp_id" : {
+            "select" : "site:current-user:uid",
+            "php" : { "code" : "return NULL;" }
+          }
+        }
+      },
+      { "entity_create" : {
+          "USING" : {
+            "type" : "node",
+            "param_type" : "money_transfer",
+            "param_title" : "rimburs-[sender:name]-[recipient:name]-[site:current-date]",
+            "param_author" : [ "sender" ]
+          },
+          "PROVIDE" : { "entity_created" : { "created_transfer" : "Created transfer" } }
+        }
+      },
+      { "data_set" : {
+          "data" : [ "created-transfer:field-recipient" ],
+          "value" : [ "recipient" ]
+        }
+      },
+      { "data_set" : { "data" : [ "created-transfer:field-amount" ], "value" : [ "amount" ] } },
+      { "data_set" : { "data" : [ "created-transfer:body:value" ], "value" : [ "note" ] } },
+      { "data_set" : { "data" : [ "money-transfer-object" ], "value" : [ "created-transfer" ] } },
+      { "rules_set_fresh_timestamps" : { "node" : [ "created-transfer" ] } }
+    ],
+    "PROVIDES VARIABLES" : [ "money_transfer_object" ]
+  }
+}

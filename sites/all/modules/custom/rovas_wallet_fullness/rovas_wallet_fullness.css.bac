@@ -1,0 +1,152 @@
+/**
+ * @file
+ * CSS styles for wallet fullness vertical gauge.
+ */
+
+.wallet-fullness-container.vertical {
+  display: flex;
+  flex-direction: column;
+	margin-top: 12px;
+	margin-bottom: 10px;
+}
+
+/* Percentage display */
+.wallet-percentage-display {
+  font-size: 18px;
+  font-weight: bold;
+  text-align: center;
+  margin-bottom: 10px;
+  color: #444;
+}
+
+.wallet-gauge-wrapper.vertical {
+  display: flex;
+  width: 100%;
+}
+
+.wallet-gauge-values {
+  padding-left: 5px;
+  position: relative;
+}
+
+.wallet-threshold-value, .wallet-current-value {
+  font-size: 14px;
+  color: #555;
+  white-space: nowrap;
+}
+
+/* Position adjustments for label alignment */
+.wallet-threshold-value:before, .wallet-current-value:before {
+  content: '';
+  position: absolute;
+  right: 100%;
+  top: 50%;
+  width: 5px;
+  height: 1px;
+  background-color: #aaa;
+  margin-right: 3px;
+}
+
+/* Special styling when value is 0 */
+.wallet-current-value:contains("0.00") {
+  color: #d32f2f;
+  font-weight: bold;
+}
+
+/* Vertical gauge container */
+.wallet-gauge-bar-container.vertical {
+  height: 100px;
+  width: 30px;
+  background-color: #f0f0f0;
+  border-radius: 15px;
+  border: 1px solid #ddd;
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.1);
+  position: relative;
+  overflow: hidden;
+}
+
+/* Vertical fill - starts from bottom */
+.wallet-gauge-fill {
+  width: 100%;
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  transition: height 0.5s ease-in-out;
+  border-radius: 0 0 15px 15px;
+  min-height: 5px; /* Ensure bar is visible even at 0% */
+}
+
+/* Color schemes */
+.wallet-gauge-default {
+  background: linear-gradient(to top, #2196F3, #64b5f6);
+}
+
+.wallet-gauge-green {
+  background: linear-gradient(to top, #4CAF50, #81c784);
+}
+
+.wallet-gauge-red {
+  background: linear-gradient(to top, #f44336, #ef5350);
+}
+
+.wallet-gauge-yellow {
+  background: linear-gradient(to top, #FFC107, #ffca28);
+}
+
+/* Current level indicator - triangle pointer */
+.wallet-gauge-indicator {
+  position: absolute;
+  right: -8px;
+  width: 0;
+  height: 0;
+  border-top: 8px solid transparent;
+  border-bottom: 8px solid transparent;
+  border-left: 8px solid #e53935; /* Red color for indicator */
+  transition: bottom 0.5s ease-in-out;
+  z-index: 10;
+}
+
+/* Percentage markers */
+.wallet-gauge-markers {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  right: -35px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  font-size: 11px;
+  color: #777;
+}
+
+.wallet-gauge-marker {
+  position: absolute;
+  right: 0;
+  transform: translateY(50%);
+}
+
+/* Add horizontal lines for markers */
+.wallet-gauge-marker:before {
+  content: '';
+  position: absolute;
+  right: 25px;
+  top: 50%;
+  width: 15px;
+  height: 1px;
+  background-color: #bbb;
+}
+
+/* Responsive adjustments */
+@media (max-width: 480px) {
+  
+  .wallet-gauge-values {
+    margin-right: 0;
+    margin-bottom: 15px;
+    width: 100%;
+    top: 4px;
+  }
+  
+  .wallet-gauge-bar-container.vertical {
+    margin-left: 0;
+  }
+}

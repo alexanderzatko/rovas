@@ -1,0 +1,53 @@
+{ "rules_calculate_total_shares" : {
+    "LABEL" : "calculate total shares",
+    "PLUGIN" : "rule",
+    "OWNER" : "rules",
+    "REQUIRES" : [ "rules", "views_bulk_operations", "rules_conditional" ],
+    "USES VARIABLES" : {
+      "share_count" : { "label" : "share count", "type" : "decimal", "parameter" : false },
+      "project_id" : { "label" : "project ID", "type" : "integer" }
+    },
+    "DO" : [
+      { "data_set" : { "data" : [ "share-count" ], "value" : "0" } },
+      { "views_bulk_operations_action_load_list" : {
+          "USING" : {
+            "view" : "project_user_shareholder|block_1",
+            "args" : "[project-id:value]"
+          },
+          "PROVIDE" : { "entity_list" : { "list_of_allocations" : "list of allocations" } }
+        }
+      },
+      { "LOOP" : {
+          "USING" : { "list" : [ "list-of-allocations" ] },
+          "ITEM" : { "allocation" : "allocation" },
+          "DO" : [
+            { "entity_fetch" : {
+                "USING" : { "type" : "node", "id" : [ "allocation:nid" ], "revision_id" : "0" },
+                "PROVIDE" : { "entity_fetched" : { "wma" : "wma" } }
+              }
+            },
+            { "CONDITIONAL" : [
+                {
+                  "IF" : { "entity_has_field" : { "entity" : [ "wma" ], "field" : "field_merit_allocation" } },
+                  "DO" : [
+                    { "data_calc" : {
+                        "USING" : {
+                          "input_1" : [ "share-count" ],
+                          "op" : "+",
+                          "input_2" : [ "wma:field-merit-allocation" ]
+                        },
+                        "PROVIDE" : { "result" : { "result" : "Calculation result" } }
+                      }
+                    },
+                    { "data_set" : { "data" : [ "share-count" ], "value" : [ "result" ] } }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      }
+    ],
+    "PROVIDES VARIABLES" : [ "share_count" ]
+  }
+}

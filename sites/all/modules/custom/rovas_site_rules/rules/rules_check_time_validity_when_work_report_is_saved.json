@@ -1,0 +1,47 @@
+{ "rules_check_time_validity_when_work_report_is_saved" : {
+    "LABEL" : "Check time validity when Work report is saved",
+    "PLUGIN" : "rule",
+    "OWNER" : "rules",
+    "TAGS" : [ "work report" ],
+    "REQUIRES" : [ "rules", "rules_conditional" ],
+    "USES VARIABLES" : {
+      "work_report" : { "label" : "work report", "type" : "node" },
+      "wr_hours" : { "label" : "WR hours", "type" : "decimal" }
+    },
+    "IF" : [
+      { "entity_is_of_bundle" : {
+          "entity" : [ "work-report" ],
+          "type" : "node",
+          "bundle" : { "value" : { "work_report" : "work_report" } }
+        }
+      }
+    ],
+    "DO" : [
+      { "CONDITIONAL" : [
+          {
+            "IF" : { "data_is" : { "data" : [ "wr-hours" ], "op" : "\u003E", "value" : "23.99" } },
+            "DO" : [
+              { "data_set" : { "data" : [ "work-report:field-hours-worked" ], "value" : "0" } },
+              { "entity_save" : { "data" : [ "work-report" ], "immediate" : "1" } },
+              { "drupal_message" : {
+                  "message" : "The number of hours you entered into work report caused the average number of hours worked since you created your account to exceed 24 hours a day ([wr-hours:value] h\/day). As a consequence, the number of work hours was set to 0 in the work report.",
+                  "type" : "error"
+                }
+              }
+            ]
+          },
+          {
+            "ELSE IF" : { "data_is" : { "data" : [ "wr-hours" ], "op" : "\u003E", "value" : "8" } },
+            "DO" : [
+              { "drupal_message" : {
+                  "message" : "The daily average number of hours (since you opened your account) is [wr-hours:value] hours per day, which might attract scrutiny from other NEO participants as being unrealistic. Please check that you have not mistakenly entered an incorrect value into the work report.",
+                  "type" : "error"
+                }
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -1,0 +1,49 @@
+{ "rules_proxy_create_new_project" : {
+    "LABEL" : "proxy - create new project",
+    "PLUGIN" : "rule",
+    "OWNER" : "rules",
+    "TAGS" : [ "api", "project", "proxy" ],
+    "REQUIRES" : [ "rules" ],
+    "USES VARIABLES" : {
+      "project_status" : { "label" : "Status", "type" : "integer" },
+      "project_description" : { "label" : "Description", "type" : "text" },
+      "project_participation" : { "label" : "Participation", "type" : "integer" },
+      "created_project_nid" : {
+        "label" : "Created Project NID",
+        "type" : "integer",
+        "parameter" : false
+      },
+      "project_name" : { "label" : "Name", "type" : "text" },
+      "project_price" : { "label" : "Price", "type" : "decimal", "allow null" : true },
+      "project_url" : { "label" : "Web address", "type" : "text", "allow null" : true }
+    },
+    "DO" : [
+      { "component_rules_retrieve_user_id_from_api_key_and_token" : { "USING" : {}, "PROVIDE" : { "uid" : { "user_id_int" : "user id int" } } } },
+      { "entity_fetch" : {
+          "USING" : { "type" : "user", "id" : [ "user-id-int" ] },
+          "PROVIDE" : { "entity_fetched" : { "author_uid" : "author uid" } }
+        }
+      },
+      { "component_rules_create_project" : {
+          "USING" : {
+            "project_name" : [ "project_name" ],
+            "project_author" : [ "author-uid" ],
+            "project_url" : [ "project_url" ],
+            "project_price" : [ "project_price" ],
+            "project_status" : [ "project_status" ],
+            "project_participation" : [ "project_participation" ],
+            "project_description" : [ "project_description" ],
+            "system_project" : "0"
+          },
+          "PROVIDE" : { "created_project" : { "created_project" : "Created Project" } }
+        }
+      },
+      { "data_set" : {
+          "data" : [ "created-project-nid" ],
+          "value" : [ "created-project:nid" ]
+        }
+      }
+    ],
+    "PROVIDES VARIABLES" : [ "created_project_nid" ]
+  }
+}

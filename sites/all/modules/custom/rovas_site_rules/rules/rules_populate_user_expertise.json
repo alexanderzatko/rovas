@@ -1,0 +1,94 @@
+{ "rules_populate_user_expertise" : {
+    "LABEL" : "populate user expertise",
+    "PLUGIN" : "rule",
+    "OWNER" : "rules",
+    "REQUIRES" : [ "php", "rules", "rules_data_transforms", "rules_conditional" ],
+    "DO" : [
+      { "variable_add" : {
+          "USING" : {
+            "type" : "text",
+            "value" : "\u003C?php \r\n$result = db_query(\u0022SELECT node.nid AS nid\r\nFROM {node} node\r\nWHERE node.status = \u00271\u0027\r\nAND node.type = \u0027merits_disbursement\u0027\r\nAND nid \u003E 62851\r\nORDER BY nid ASC\r\nLIMIT 5000\u0022);\r\n\r\n$nids = \u0027\u0027;\r\nforeach ($result as $row) {\r\n$nids .= $row-\u003Enid . \u0027,\u0027;\r\n}\r\necho $nids;\r\n?\u003E"
+          },
+          "PROVIDE" : { "variable_added" : { "nids_text" : "nids text" } }
+        }
+      },
+      { "explode" : {
+          "USING" : { "input_text" : [ "nids-text" ], "delimiter" : "," },
+          "PROVIDE" : { "output_list" : { "node_list" : "node list" } }
+        }
+      },
+      { "LOOP" : {
+          "USING" : { "list" : [ "node-list" ] },
+          "ITEM" : { "item" : "item" },
+          "DO" : [
+            { "data_convert" : {
+                "USING" : { "type" : "integer", "value" : [ "item" ] },
+                "PROVIDE" : { "conversion_result" : { "nid" : "nid" } }
+              }
+            },
+            { "CONDITIONAL" : [
+                {
+                  "IF" : { "data_is" : { "data" : [ "nid" ], "op" : "\u003E", "value" : "0" } },
+                  "DO" : [
+                    { "entity_fetch" : {
+                        "USING" : { "type" : "node", "id" : [ "nid" ] },
+                        "PROVIDE" : { "entity_fetched" : { "disb" : "disb" } }
+                      }
+                    },
+                    { "CONDITIONAL" : [
+                        {
+                          "IF" : { "entity_is_of_bundle" : {
+                              "entity" : [ "disb" ],
+                              "type" : "node",
+                              "bundle" : { "value" : { "merits_disbursement" : "merits_disbursement" } }
+                            }
+                          },
+                          "DO" : [
+                            { "variable_add" : {
+                                "USING" : { "type" : "decimal", "value" : [ "disb:field-reward-amount" ] },
+                                "PROVIDE" : { "variable_added" : { "merits" : "merits" } }
+                              }
+                            },
+                            { "variable_add" : {
+                                "USING" : { "type" : "integer", "value" : [ "disb:field-reward-recipient:uid" ] },
+                                "PROVIDE" : { "variable_added" : { "userid" : "user id" } }
+                              }
+                            },
+                            { "entity_fetch" : {
+                                "USING" : { "type" : "node", "id" : [ "disb:field-parent-purchase-receipt:nid" ] },
+                                "PROVIDE" : { "entity_fetched" : { "receipt" : "Receipt" } }
+                              }
+                            },
+                            { "CONDITIONAL" : [
+                                {
+                                  "IF" : { "entity_is_of_bundle" : {
+                                      "entity" : [ "receipt" ],
+                                      "type" : "node",
+                                      "bundle" : { "value" : { "purchase_receipt" : "purchase_receipt" } }
+                                    }
+                                  },
+                                  "DO" : [
+                                    { "variable_add" : {
+                                        "USING" : { "type" : "integer", "value" : [ "receipt:field-receipt-project:nid" ] },
+                                        "PROVIDE" : { "variable_added" : { "recipient_project" : "recipient project" } }
+                                      }
+                                    },
+                                    { "php_eval" : { "code" : "\/\/variable_set(\u0027rules_populate_user_expertise__counter\u0027,$nid);\r\nif (!function_exists(\u0027labor_merit_rewarder\u0027)) {\r\n\tfunction labor_merit_rewarder($purchased_product_id,$userid,$merits) {\r\n\t\r\n\t\t\t$user = user_load($userid);\r\n\t\t\t$roles = $user-\u003Eroles;\r\n\t\t\t$arkeys = array_keys($roles);\r\n\t\t\t\r\n\t\t\t\/\/do not process banned users\r\n\t\t\tif (in_array(5,$arkeys)) {\r\n\t\t\t\treturn;\r\n\t\t\t}\r\n\t\r\n\t\t\t$result = db_query(\u0022SELECT DISTINCT c.field_classification_tid AS cat, SUM(h.field_hours_worked_value) AS hours\r\n\t\t\tFROM {node} node\r\n\t\t\tLEFT JOIN {field_data_field_project} p ON node.nid = p.entity_id AND (p.entity_type = \u0027node\u0027 AND p.deleted = \u00270\u0027)\r\n\t\t\tLEFT JOIN {field_data_field_classification} c ON node.nid = c.entity_id AND (c.entity_type = \u0027node\u0027 AND c.deleted = \u00270\u0027)\r\n\t\t\tLEFT JOIN {field_data_field_hours_worked} h ON node.nid = h.entity_id AND (h.entity_type = \u0027node\u0027 AND h.deleted = \u00270\u0027)\r\n\t\t\tWHERE p.field_project_target_id = :prid\r\n\t\t\tAND c.delta = 0\r\n\t\t\tAND node.uid = :uid \r\n\t\t\tAND node.status = \u00271\u0027\r\n\t\t\tAND node.type IN  (\u0027work_report\u0027)\r\n\t\t\tGROUP BY c.field_classification_tid\u0022, array(\u0027:prid\u0027 =\u003E $purchased_product_id, \u0027:uid\u0027 =\u003E $userid));\r\n\t\t\t$resarray = $result-\u003EfetchAll();\r\n\r\n\t\t\t$total_time = 0;\r\n\t\t\tforeach ($resarray as $row) {\r\n\t\t\t\t$total_time += $row-\u003Ehours;\r\n\t\t\t}\r\n\t\t\tif ($total_time \u003E 0) {\r\n\t\t\t\tforeach ($resarray as $row) {\r\n\t\t\r\n\t\t\t\t\t\/\/load the expert table node corresponding to the current category in order to find its existing Merit value\r\n\t\t\t\t\t$result = db_query(\u0022SELECT node.nid AS nid, m.field_merits_value AS merits\r\n\t\t\t\t\tFROM {node} node\r\n\t\t\t\t\tLEFT JOIN {field_data_field_expert} x ON node.nid = x.entity_id AND (x.entity_type = \u0027node\u0027 AND x.deleted = \u00270\u0027)\r\n\t\t\t\t\tLEFT JOIN {field_data_field_category} c ON node.nid = c.entity_id AND (c.entity_type = \u0027node\u0027 AND c.deleted = \u00270\u0027)\r\n\t\t\t\t\tLEFT JOIN {field_data_field_merits} m ON node.nid = m.entity_id AND (m.entity_type = \u0027node\u0027 AND m.deleted = \u00270\u0027)\r\n\t\t\t\t\tWHERE node.type = \u0027user_expertise\u0027\r\n\t\t\t\t\tAND field_expert_target_id = :uid\r\n\t\t\t\t\tAND c.field_category_tid = :cat\r\n\t\t\t\t\t\u0022, array(\u0027:uid\u0027 =\u003E $userid, \u0027:cat\u0027 =\u003E $row-\u003Ecat));\r\n\r\n\t\t\t\t\t$record = $result-\u003EfetchAssoc();\r\n\t\t\t\t\t\/\/for some users and category IDs we will have to create a new user_expertise node\t\t\t\r\n\t\t\t\t\tif (empty($record)) {\r\n\t\t\t\t\t\t$node = new stdClass();\r\n\t\t\t\t\t\t$node-\u003Etype = \u0027user_expertise\u0027;\r\n\t\t\t\t\t\t$node-\u003Etitle = \u0027UX-\u0027 . $userid . \u0027-\u0027 . $row-\u003Ecat;\r\n\t\t\t\t\t\t$node-\u003Elanguage = LANGUAGE_NONE;\r\n\t\t\t\t\t\tnode_object_prepare($node);\r\n\t\t\t\t\t\t$node-\u003Euid = $userid;\r\n\r\n\t\t\t\t\t\t$now = time();\r\n\r\n\t\t\t\t\t\t$node-\u003Ecreated = $now;\r\n\t\t\t\t\t\t$node-\u003Echanged = $now;\r\n\r\n\t\t\t\t\t\t$node-\u003Efield_expert[LANGUAGE_NONE][0][\u0027target_id\u0027] = $userid;\r\n\t\t\t\t\t\t$node-\u003Efield_category[LANGUAGE_NONE][0][\u0027tid\u0027] = $row-\u003Ecat;\r\n\r\n\t\t\t\t\t\t$old_merits = 0;\r\n\t\t\t\t\t\t$node-\u003Efield_merits[LANGUAGE_NONE][0][\u0027value\u0027] = $old_merits;\r\n\r\n\t\t\t\t\t\t$node = node_submit($node);\r\n\t\t\t\t\t\tnode_save($node);\r\n\t\t\t\t\t\t$nid = $node-\u003Enid;\r\n\r\n\t\t\t\t\t}\r\n\t\t\t\t\telse {\r\n\t\t\t\t\t\t$old_merits = $record[\u0027merits\u0027];\r\n\t\t\t\t\t\t$nid = $record[\u0027nid\u0027];\r\n\t\t\t\t\t}\r\n\r\n\t\t\t\t\t$this_ratio = $row-\u003Ehours \/ $total_time;\r\n\t\t\t\t\t$merits2add = $this_ratio * $merits;\r\n\t\t\t\r\n\t\t\t\t\t$cur_merits = $old_merits + $merits2add;\r\n\r\n\t\t\t\t\t\/\/updating the node with new merit value\r\n\t\t\t\t\t$node = node_load($nid);\r\n\t\t\t\t\t$node-\u003Echanged = time(); \/\/ Force timestamp\r\n\t\t\t\t\t$xobject = entity_metadata_wrapper(\u0027node\u0027, $node);\r\n\t\t\t\t\t$xobject-\u003Efield_merits = $cur_merits;\r\n\t\t\t\t\t$xobject-\u003Esave();\r\n\r\n\t\t\t\t}\r\n\t\t\t}\r\n\t}\r\n}\r\n\r\nlabor_merit_rewarder($recipient_project,$userid,$merits);" } }
+                                  ]
+                                }
+                              ]
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      }
+    ]
+  }
+}

@@ -1,0 +1,160 @@
+{ "rules_calculate_forex_transaction_params" : {
+    "LABEL" : "calculate forex transaction params",
+    "PLUGIN" : "rule",
+    "OWNER" : "rules",
+    "REQUIRES" : [
+      "rules_variable_get",
+      "rules_conditional",
+      "php",
+      "rules",
+      "rules_i18n"
+    ],
+    "USES VARIABLES" : {
+      "transact_type" : { "label" : "transaction type", "type" : "text" },
+      "input" : { "label" : "transaction input", "type" : "decimal" },
+      "eur_basket" : { "label" : "euro basket", "type" : "decimal", "parameter" : false },
+      "chr_basket" : { "label" : "chrons basket", "type" : "decimal", "parameter" : false },
+      "xfee" : { "label" : "transaction fee", "type" : "decimal", "parameter" : false },
+      "output" : {
+        "label" : "transaction output",
+        "type" : "decimal",
+        "parameter" : false
+      },
+      "fixed_fee" : { "label" : "fixed fee", "type" : "decimal", "parameter" : false }
+    },
+    "DO" : [
+      { "rules_variable_get_action_get_system_array_variable" : {
+          "USING" : { "variable" : "forex_baskets" },
+          "PROVIDE" : { "variable_added" : { "fb" : "forex baskets" } }
+        }
+      },
+      { "CONDITIONAL" : [
+          {
+            "IF" : { "data_is_empty" : { "data" : [ "fb" ] } },
+            "DO" : [
+              { "php_eval" : { "code" : "\/\/initial endowments for the baskets\r\n$ch_basket_init = variable_get(\u0027ch_basket_init\u0027);\r\n$eur_basket_init = variable_get(\u0027eu_basket_init\u0027);\r\n\t\r\n$forex_baskets = array(\u0027ch_basket\u0027 =\u003E $ch_basket_init, \u0027eur_basket\u0027 =\u003E $eur_basket_init);\r\nvariable_set(\u0027forex_baskets\u0027,$forex_baskets);\r\n\t\t" } }
+            ]
+          }
+        ]
+      },
+      { "variable_add" : {
+          "USING" : { "type" : "user", "value" : [ "site:current-user" ] },
+          "PROVIDE" : { "variable_added" : { "user" : "user" } }
+        }
+      },
+      { "variable_add" : {
+          "USING" : {
+            "type" : "text",
+            "value" : "\u003C?php \r\n\r\n$forex_baskets = variable_get(\u0027forex_baskets\u0027);\r\n$forex_baskets_temp = variable_get(\u0027forex_baskets_temp\u0027);\r\n\r\n$lock_ts = variable_get(\u0027forex_lock\u0027);\r\n$time_remaining = $lock_ts ? $lock_ts[\u0027time\u0027] - (time() - 5*60) : -1;\r\n$lock_user = $lock_ts[\u0027uid\u0027];\r\n\t\r\n\/\/lock is active - using the active value for the forex baskets\r\nif ($time_remaining \u003E 0 \u0026\u0026 $lock_user != $user-\u003Euid) {\r\n\t$ch_basket = $forex_baskets_temp[\u0027ch_basket\u0027];\r\n}\r\nelse {\r\n\t$ch_basket = $forex_baskets[\u0027ch_basket\u0027];\r\n}\r\n\r\necho $ch_basket;\r\n\r\n?\u003E"
+          },
+          "PROVIDE" : { "variable_added" : { "chr_basket_txt" : "chron basket text" } }
+        }
+      },
+      { "data_convert" : {
+          "USING" : { "type" : "decimal", "value" : [ "chr-basket-txt" ] },
+          "PROVIDE" : { "conversion_result" : { "chr_basket_int" : "chr basket int" } }
+        }
+      },
+      { "data_set" : { "data" : [ "chr-basket" ], "value" : [ "chr-basket-int" ] } },
+      { "variable_add" : {
+          "USING" : {
+            "type" : "text",
+            "value" : "\u003C?php \r\n\r\n$forex_baskets = variable_get(\u0027forex_baskets\u0027);\r\n$forex_baskets_temp = variable_get(\u0027forex_baskets_temp\u0027);\r\n\r\n$lock_ts = variable_get(\u0027forex_lock\u0027);\r\n$time_remaining = $lock_ts ? $lock_ts[\u0027time\u0027] - (time() - 5*60) : -1;\r\n$lock_user = $lock_ts[\u0027uid\u0027];\r\n\r\n\/\/lock is active - using the active value for the forex baskets\r\nif ($time_remaining \u003E 0 \u0026\u0026 $lock_user != $user-\u003Euid) {\r\n\t$eur_basket = $forex_baskets_temp[\u0027eur_basket\u0027];\r\n}\r\nelse {\r\n\t$eur_basket = $forex_baskets[\u0027eur_basket\u0027];\r\n}\r\n\r\necho $eur_basket;\r\n\r\n?\u003E"
+          },
+          "PROVIDE" : { "variable_added" : { "eur_basket_txt" : "euro basket text" } }
+        }
+      },
+      { "data_convert" : {
+          "USING" : { "type" : "decimal", "value" : [ "eur-basket-txt" ] },
+          "PROVIDE" : { "conversion_result" : { "eur_basket_int" : "eur basket int" } }
+        }
+      },
+      { "data_set" : { "data" : [ "eur-basket" ], "value" : [ "eur-basket-int" ] } },
+      { "SWITCH" : {
+          "USING" : { "data" : [ "transact-type" ] },
+          "DO" : [
+            { "CASE" : {
+                "USING" : { "value" : "chr_to_eur" },
+                "DO" : [
+                  { "variable_add" : {
+                      "USING" : {
+                        "type" : "text",
+                        "value" : {
+                          "select" : "input",
+                          "php" : { "code" : "$forex_baskets = variable_get(\u0027forex_baskets\u0027);\r\n$forex_baskets_temp = variable_get(\u0027forex_baskets_temp\u0027);\r\n\r\n$lock_ts = variable_get(\u0027forex_lock\u0027);\r\n$time_remaining = $lock_ts ? $lock_ts[\u0027time\u0027] - (time() - 5*60) : -1;\r\n\r\nif ($time_remaining \u003C= 0) {\r\n\t$ch_basket = $forex_baskets[\u0027ch_basket\u0027];\r\n\t$eur_basket = $forex_baskets[\u0027eur_basket\u0027];\r\n}\r\nelse {\r\n\t$ch_basket = $forex_baskets_temp[\u0027ch_basket\u0027];\r\n\t$eur_basket = $forex_baskets_temp[\u0027eur_basket\u0027];\r\n}\r\n\r\n$fee = variable_get(\u0027buy_eur_fee\u0027);\r\n$eur_result_ary = forex($value,$ch_basket,$eur_basket,$fee);\r\n\r\nreturn $eur_result_ary[\u0027output\u0027];" }
+                        }
+                      },
+                      "PROVIDE" : { "variable_added" : { "output_text" : "output text" } }
+                    }
+                  },
+                  { "variable_add" : {
+                      "USING" : {
+                        "type" : "text",
+                        "value" : "\u003C?php \r\n\r\n$fee = variable_get(\u0027buy_eur_fee\u0027);\r\n\r\necho $fee;\r\n\r\n?\u003E"
+                      },
+                      "PROVIDE" : { "variable_added" : { "fee_text" : "fee text" } }
+                    }
+                  },
+                  { "variable_add" : {
+                      "USING" : { "type" : "text", "value" : "0" },
+                      "PROVIDE" : { "variable_added" : { "fixd_fee" : "fixd fee" } }
+                    }
+                  }
+                ]
+              }
+            },
+            { "DEFAULT CASE" : [
+                { "variable_add" : {
+                    "USING" : {
+                      "type" : "text",
+                      "value" : "\u003C?php \r\n\r\n$fee = variable_get(\u0027buy_ch_fee\u0027);\r\n\r\necho $fee;\r\n\r\n?\u003E"
+                    },
+                    "PROVIDE" : { "variable_added" : { "fee_text" : "fee text" } }
+                  }
+                },
+                { "variable_add" : {
+                    "USING" : {
+                      "type" : "text",
+                      "value" : {
+                        "select" : "input",
+                        "php" : { "code" : "$forex_baskets = variable_get(\u0027forex_baskets\u0027);\r\n$forex_baskets_temp = variable_get(\u0027forex_baskets_temp\u0027);\r\n\r\n$lock_ts = variable_get(\u0027forex_lock\u0027);\r\n$time_remaining = $lock_ts ? $lock_ts[\u0027time\u0027] - (time() - 5*60) : -1;\r\n\r\nif ($time_remaining \u003C= 0) {\r\n\t$ch_basket = $forex_baskets[\u0027ch_basket\u0027];\r\n\t$eur_basket = $forex_baskets[\u0027eur_basket\u0027];\r\n}\r\nelse {\r\n\t$ch_basket = $forex_baskets_temp[\u0027ch_basket\u0027];\r\n\t$eur_basket = $forex_baskets_temp[\u0027eur_basket\u0027];\r\n}\r\n\r\n$fee = variable_get(\u0027buy_ch_fee\u0027);\r\n$buy_ch_fixed_fee = variable_get(\u0027buy_ch_fixed_fee\u0027);\r\n\r\n$eur_result_ary = forex($value,$eur_basket,$ch_basket,$fee,$buy_ch_fixed_fee);\r\n\r\nreturn $eur_result_ary[\u0027output\u0027];" }
+                      }
+                    },
+                    "PROVIDE" : { "variable_added" : { "output_text" : "output text" } }
+                  }
+                },
+                { "variable_add" : {
+                    "USING" : {
+                      "type" : "text",
+                      "value" : "\u003C?php \r\n\r\n$fee = variable_get(\u0027buy_ch_fixed_fee\u0027);\r\n\r\necho $fee;\r\n\r\n?\u003E"
+                    },
+                    "PROVIDE" : { "variable_added" : { "fixd_fee" : "fixd fee" } }
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      },
+      { "data_convert" : {
+          "USING" : { "type" : "decimal", "value" : [ "fee-text" ] },
+          "PROVIDE" : { "conversion_result" : { "fee_int" : "fee int" } }
+        }
+      },
+      { "data_convert" : {
+          "USING" : { "type" : "decimal", "value" : [ "fixd-fee" ] },
+          "PROVIDE" : { "conversion_result" : { "fixd_fee_dec" : "fixd fee dec" } }
+        }
+      },
+      { "data_set" : { "data" : [ "xfee" ], "value" : [ "fee-int" ] } },
+      { "data_convert" : {
+          "USING" : { "type" : "decimal", "value" : [ "output-text" ] },
+          "PROVIDE" : { "conversion_result" : { "output_decimal" : "output decimal" } }
+        }
+      },
+      { "data_set" : { "data" : [ "output" ], "value" : [ "output-decimal" ] } },
+      { "data_set" : { "data" : [ "fixed-fee" ], "value" : [ "fixd-fee-dec" ] } }
+    ],
+    "PROVIDES VARIABLES" : [ "eur_basket", "chr_basket", "xfee", "output", "fixed_fee" ]
+  }
+}

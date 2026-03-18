@@ -1,0 +1,25 @@
+diff --git a/i18n_field/i18n_field.module b/i18n_field/i18n_field.module
+index 73749ef..dde4573 100644
+--- a/i18n_field/i18n_field.module
++++ b/i18n_field/i18n_field.module
+@@ -395,12 +395,16 @@ function i18n_field_instance_update_strings($instance) {
+  *   (number or text), values of the array are the display labels.
+  */
+ function i18n_field_translate_allowed_values($field, $langcode = NULL) {
+-  if (!empty($field['settings']['allowed_values'])) {
+-    return i18n_string_translate(array('field', $field['field_name'], '#allowed_values'), $field['settings']['allowed_values'], array('langcode' => $langcode, 'sanitize' => FALSE));
+-  }
+-  else {
++  $allowed_values = list_allowed_values($field);
++  if (!$allowed_values) {
+     return array();
+   }
++  // Do not attempt to translate options from a callback.
++  $function = $field['settings']['allowed_values_function'];
++  if (!empty($function) && function_exists($function)) {
++    return $allowed_values;
++  }
++  return i18n_string_translate(array('field', $field['field_name'], '#allowed_values'), $allowed_values, array('langcode' => $langcode, 'sanitize' => FALSE));
+ }
+ 
+ /**

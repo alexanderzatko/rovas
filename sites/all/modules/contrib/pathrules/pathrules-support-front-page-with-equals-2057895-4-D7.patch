@@ -1,0 +1,23 @@
+diff --git a/pathrules.module b/pathrules.module
+index 043689e..7860e39 100644
+--- a/pathrules.module
++++ b/pathrules.module
+@@ -18,7 +18,7 @@ function pathrules_rules_condition_info() {
+         'path' => array(
+           'type' => 'text',
+           'label' => t('Path to check'),
+-          'description' => t('The path that is check against the URL. Beginning and trailing spaces will be stripped.'),
++          'description' => t('The path to check against the URL. Beginning and trailing spaces will be stripped. Use <front>, with an "equals" operation, to signify the front page.'),
+         ),
+         'operation' => array(
+           'type' => 'text',
+@@ -48,6 +48,9 @@ function pathrules_data_text_comparison_operation_list() {
+ function pathrules_checkpath($path, $op = 'contains') {
+   $current_uri = request_path();
+   if ($op == 'equals') {
++    if ($path === '<front>') {
++      return drupal_is_front_page();
++    }
+     return $current_uri == $path;
+   }
+   // Just call the rules text comparison function.

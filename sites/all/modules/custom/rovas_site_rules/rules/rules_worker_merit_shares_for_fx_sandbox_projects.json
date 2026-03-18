@@ -1,0 +1,85 @@
+{ "rules_worker_merit_shares_for_fx_sandbox_projects" : {
+    "LABEL" : "Worker merit shares for fx-sandbox projects",
+    "PLUGIN" : "rule",
+    "OWNER" : "rules",
+    "REQUIRES" : [ "rules", "views_bulk_operations", "rules_conditional" ],
+    "USES VARIABLES" : {
+      "user_object" : { "label" : "user object", "type" : "user" },
+      "fxr_wallocs" : {
+        "label" : "fx rates and worker allocations",
+        "type" : "list\u003Ctext\u003E",
+        "parameter" : false
+      },
+      "chrons" : { "label" : "sum of chrons", "type" : "decimal", "parameter" : false }
+    },
+    "IF" : [
+      { "entity_is_of_type" : { "entity" : [ "user-object" ], "type" : "user" } }
+    ],
+    "DO" : [
+      { "data_set" : { "data" : [ "chrons" ], "value" : "0" } },
+      { "data_set" : { "data" : [ "fxr-wallocs" ], "value" : { "value" : [] } } },
+      { "views_bulk_operations_action_load_list" : {
+          "USING" : {
+            "view" : "worker_merit_allocations_for_project|block_1",
+            "args" : "all\r\n[user-object:uid]"
+          },
+          "PROVIDE" : { "entity_list" : { "list_of_wma" : "list of wma" } }
+        }
+      },
+      { "LOOP" : {
+          "USING" : { "list" : [ "list-of-wma" ] },
+          "ITEM" : { "wma" : "wma" },
+          "DO" : [
+            { "CONDITIONAL" : [
+                {
+                  "IF" : { "entity_is_of_bundle" : {
+                      "entity" : [ "wma" ],
+                      "type" : "node",
+                      "bundle" : { "value" : { "co_worker_merit_allocation" : "co_worker_merit_allocation" } }
+                    }
+                  },
+                  "DO" : [
+                    { "variable_add" : {
+                        "USING" : { "type" : "node", "value" : [ "wma:field-project" ] },
+                        "PROVIDE" : { "variable_added" : { "project" : "project" } }
+                      }
+                    },
+                    { "CONDITIONAL" : [
+                        {
+                          "IF" : { "entity_is_of_bundle" : {
+                              "entity" : [ "project" ],
+                              "type" : "node",
+                              "bundle" : { "value" : { "project" : "project" } }
+                            }
+                          },
+                          "DO" : [
+                            { "list_add" : {
+                                "list" : [ "fxr-wallocs" ],
+                                "item" : "[wma:nid]-[wma:field-project-chrons]-[project:nid]-[project:field-project-exchange-rate]"
+                              }
+                            },
+                            { "data_calc" : {
+                                "USING" : {
+                                  "input_1" : [ "chrons" ],
+                                  "op" : "+",
+                                  "input_2" : [ "wma:field-project-chrons" ]
+                                },
+                                "PROVIDE" : { "result" : { "temp_balance" : "temp balance" } }
+                              }
+                            },
+                            { "data_set" : { "data" : [ "chrons" ], "value" : [ "temp-balance" ] } }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      }
+    ],
+    "PROVIDES VARIABLES" : [ "fxr_wallocs", "chrons" ]
+  }
+}

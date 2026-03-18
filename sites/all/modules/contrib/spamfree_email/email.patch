@@ -1,0 +1,11 @@
+diff --git a/spamfree_email.module b/spamfree_email.module
+index 98adcf5..5c1b450 100644
+--- a/spamfree_email.module
++++ b/spamfree_email.module
+@@ -65,7 +65,7 @@ function spamfree_email_obfuscate($string) {
+     }
+   }
+   // Pattern matching for email addresses and replacing with callback function.
+-  return preg_replace_callback('/[\w-\.]+@([\w-]+\.)+[\w-]{2,4}/', 'spamfree_email_process_email', $string);
++  return preg_replace_callback('/[\w-\.]+@([\w-]+\.)+[\w-]{2,63}/', 'spamfree_email_process_email', $string);
+ }

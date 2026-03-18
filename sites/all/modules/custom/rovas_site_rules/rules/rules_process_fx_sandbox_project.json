@@ -1,0 +1,121 @@
+{ "rules_process_fx_sandbox_project" : {
+    "LABEL" : "process FX sandbox project",
+    "PLUGIN" : "rule",
+    "OWNER" : "rules",
+    "TAGS" : [ "custom", "forex" ],
+    "REQUIRES" : [ "rules", "views_bulk_operations", "rules_conditional" ],
+    "USES VARIABLES" : {
+      "project" : { "label" : "project", "type" : "node" },
+      "work_report" : { "label" : "work report", "type" : "node" }
+    },
+    "IF" : [
+      { "entity_is_of_bundle" : {
+          "entity" : [ "work-report" ],
+          "type" : "node",
+          "bundle" : { "value" : { "work_report" : "work_report" } }
+        }
+      },
+      { "entity_is_of_bundle" : {
+          "entity" : [ "project" ],
+          "type" : "node",
+          "bundle" : { "value" : { "project" : "project" } }
+        }
+      },
+      { "data_is" : { "data" : [ "project:field-reward-target" ], "value" : "2" } }
+    ],
+    "DO" : [
+      { "variable_add" : {
+          "USING" : { "type" : "decimal", "value" : "0" },
+          "PROVIDE" : { "variable_added" : { "chr_basket" : "chr basket" } }
+        }
+      },
+      { "views_bulk_operations_action_load_list" : {
+          "USING" : {
+            "view" : "worker_merit_allocations_for_project|default",
+            "args" : "[project:nid]\r\n[work-report:author:uid]"
+          },
+          "PROVIDE" : { "entity_list" : { "merit_allocation" : "merit allocation" } }
+        }
+      },
+      { "LOOP" : {
+          "USING" : { "list" : [ "merit-allocation" ] },
+          "ITEM" : { "project_child" : "project child" },
+          "DO" : [
+            { "CONDITIONAL" : [
+                {
+                  "IF" : { "entity_is_of_bundle" : {
+                      "entity" : [ "project-child" ],
+                      "type" : "node",
+                      "bundle" : { "value" : { "co_worker_merit_allocation" : "co_worker_merit_allocation" } }
+                    }
+                  },
+                  "DO" : [
+                    { "CONDITIONAL" : [
+                        {
+                          "IF" : { "data_is_empty" : { "data" : [ "project-child:field-project-chrons" ] } },
+                          "DO" : [
+                            { "variable_add" : {
+                                "USING" : { "type" : "decimal", "value" : "0" },
+                                "PROVIDE" : { "variable_added" : { "user_project_chrons" : "user project chrons" } }
+                              }
+                            }
+                          ]
+                        },
+                        { "ELSE" : [
+                            { "variable_add" : {
+                                "USING" : { "type" : "decimal", "value" : [ "project-child:field-project-chrons" ] },
+                                "PROVIDE" : { "variable_added" : { "user_project_chrons" : "user project chrons" } }
+                              }
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    { "CONDITIONAL" : [
+                        {
+                          "IF" : { "data_is" : {
+                              "data" : [ "project-child:field-coworker" ],
+                              "value" : [ "work-report:author" ]
+                            }
+                          },
+                          "DO" : [
+                            { "data_calc" : {
+                                "USING" : {
+                                  "input_1" : [ "user-project-chrons" ],
+                                  "op" : "+",
+                                  "input_2" : [ "work-report:field-chrons-to-grant" ]
+                                },
+                                "PROVIDE" : { "result" : { "new_balance" : "new balance" } }
+                              }
+                            },
+                            { "data_set" : {
+                                "data" : [ "project-child:field-project-chrons" ],
+                                "value" : [ "new-balance" ]
+                              }
+                            },
+                            { "data_set" : { "data" : [ "user-project-chrons" ], "value" : [ "new-balance" ] } }
+                          ]
+                        }
+                      ]
+                    },
+                    { "data_calc" : {
+                        "USING" : {
+                          "input_1" : [ "chr-basket" ],
+                          "op" : "+",
+                          "input_2" : [ "user-project-chrons" ]
+                        },
+                        "PROVIDE" : { "result" : { "result" : "Calculation result" } }
+                      }
+                    },
+                    { "data_set" : { "data" : [ "chr-basket" ], "value" : [ "result" ] } }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      },
+      { "data_set" : { "data" : [ "project:field-chron-basket" ], "value" : [ "chr-basket" ] } }
+    ]
+  }
+}

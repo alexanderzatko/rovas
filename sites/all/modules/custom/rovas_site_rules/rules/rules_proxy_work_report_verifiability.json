@@ -1,0 +1,56 @@
+{ "rules_proxy_work_report_verifiability" : {
+    "LABEL" : "proxy work report verifiability",
+    "PLUGIN" : "rule",
+    "OWNER" : "rules",
+    "TAGS" : [ "api", "work report" ],
+    "REQUIRES" : [ "rules", "rules_conditional" ],
+    "USES VARIABLES" : {
+      "wr_id" : { "label" : "work report ID", "type" : "integer" },
+      "verifiable" : { "label" : "verifiable", "type" : "boolean", "parameter" : false },
+      "reason" : { "label" : "reason", "type" : "integer", "parameter" : false }
+    },
+    "DO" : [
+      { "entity_fetch" : {
+          "USING" : { "type" : "node", "id" : [ "wr-id" ] },
+          "PROVIDE" : { "entity_fetched" : { "wr_object" : "work report object" } }
+        }
+      },
+      { "CONDITIONAL" : [
+          {
+            "IF" : { "entity_is_of_bundle" : {
+                "entity" : [ "wr-object" ],
+                "type" : "node",
+                "bundle" : { "value" : { "work_report" : "work_report" } }
+              }
+            },
+            "DO" : [
+              { "component_rules_retrieve_user_id_from_api_key_and_token" : { "USING" : {}, "PROVIDE" : { "uid" : { "verif_uid" : "verifier uid" } } } },
+              { "entity_fetch" : {
+                  "USING" : { "type" : "user", "id" : [ "verif-uid" ] },
+                  "PROVIDE" : { "entity_fetched" : { "verifier_object" : "verifier object" } }
+                }
+              },
+              { "component_rules_verifiability" : {
+                  "USING" : {
+                    "wr_object" : [ "wr-object" ],
+                    "user_object" : [ "verifier-object" ],
+                    "create_lock" : "1"
+                  },
+                  "PROVIDE" : { "verifiable" : { "check_result" : "check result" } }
+                }
+              },
+              { "data_set" : { "data" : [ "verifiable" ], "value" : [ "check-result" ] } },
+              { "data_set" : { "data" : [ "reason" ], "value" : "1" } }
+            ]
+          },
+          { "ELSE" : [
+              { "data_set" : { "data" : [ "verifiable" ], "value" : "0" } },
+              { "data_set" : { "data" : [ "reason" ], "value" : "-1" } }
+            ]
+          }
+        ]
+      }
+    ],
+    "PROVIDES VARIABLES" : [ "verifiable", "reason" ]
+  }
+}

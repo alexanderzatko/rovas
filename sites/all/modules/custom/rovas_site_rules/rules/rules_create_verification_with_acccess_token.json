@@ -1,0 +1,91 @@
+{ "rules_create_verification_with_acccess_token" : {
+    "LABEL" : "Create verification with acccess token",
+    "PLUGIN" : "rule",
+    "OWNER" : "rules",
+    "REQUIRES" : [ "rules_conditional", "rules", "commerce" ],
+    "USES VARIABLES" : {
+      "uid" : { "label" : "User token", "type" : "integer" },
+      "access_token" : { "label" : "Content access token", "type" : "text" },
+      "verification_id" : { "label" : "verification id", "type" : "integer", "parameter" : false },
+      "wr_id" : { "label" : "work report ID", "type" : "integer" },
+      "verdict" : { "label" : "verdict", "type" : "boolean" }
+    },
+    "DO" : [
+      { "CONDITIONAL" : [
+          {
+            "IF" : { "entity_exists" : { "type" : "user", "property" : "uid", "value" : [ "uid" ] } },
+            "DO" : [
+              { "CONDITIONAL" : [
+                  {
+                    "IF" : { "entity_exists" : {
+                        "type" : "node",
+                        "property" : "field_content_access_token",
+                        "value" : [ "access-token" ]
+                      }
+                    },
+                    "DO" : [
+                      { "component_rules_check_verifier_by_access_tokens" : {
+                          "USING" : { "access_token" : [ "access_token" ], "uid" : [ "uid" ] },
+                          "PROVIDE" : {
+                            "verify_allow" : { "verify_allow" : "Verification allowed" },
+                            "verifier_obj" : { "verifier_obj" : "Verifier object" },
+                            "wr_obj" : { "wr_obj" : "Work report object" },
+                            "slot_object" : { "slot_object" : "Verification slot object" }
+                          }
+                        }
+                      },
+                      { "CONDITIONAL" : [
+                          {
+                            "IF" : { "data_is" : { "data" : [ "wr-id" ], "value" : [ "wr-obj:nid" ] } },
+                            "DO" : [
+                              { "entity_create" : {
+                                  "USING" : {
+                                    "type" : "node",
+                                    "param_type" : "verification",
+                                    "param_title" : "placeholder",
+                                    "param_author" : [ "verifier-obj" ]
+                                  },
+                                  "PROVIDE" : { "entity_created" : { "new_verification" : "the new verification" } }
+                                }
+                              },
+                              { "entity_modify" : {
+                                  "entity" : [ "new-verification" ],
+                                  "properties" : { "value" : {
+                                      "field_work_report" : "field_work_report",
+                                      "field_verifier" : "field_verifier",
+                                      "field_verdict" : "field_verdict",
+                                      "field_verification_source" : "field_verification_source"
+                                    }
+                                  },
+                                  "param_field_work_report" : [ "wr-obj" ],
+                                  "param_field_verifier" : [ "verifier-obj" ],
+                                  "param_field_verdict" : [ "verdict" ],
+                                  "param_field_verification_source" : "1"
+                                }
+                              },
+                              { "entity_save" : { "data" : [ "new-verification" ], "immediate" : "1" } },
+                              { "data_set" : {
+                                  "data" : [ "new-verification:title" ],
+                                  "value" : "vrf-[verifier-obj:name]-[site:current-date:raw]"
+                                }
+                              },
+                              { "data_set" : { "data" : [ "verification-id" ], "value" : [ "new-verification:nid" ] } }
+                            ]
+                          },
+                          { "ELSE" : [ { "data_set" : { "data" : [ "verification-id" ], "value" : "-3" } } ] }
+                        ]
+                      }
+                    ]
+                  },
+                  { "ELSE" : [ { "data_set" : { "data" : [ "verification-id" ], "value" : "-2" } } ] }
+                ]
+              }
+            ]
+          },
+          { "ELSE" : [ { "data_set" : { "data" : [ "verification-id" ], "value" : "-1" } } ] }
+        ]
+      }
+    ],
+    "PROVIDES VARIABLES" : [ "verification_id" ]
+  }
+}

@@ -1,0 +1,586 @@
+diff --git a/composer.json b/composer.json
+new file mode 100644
+index 0000000..eec375a
+--- /dev/null
++++ b/composer.json
+@@ -0,0 +1,9 @@
++{
++  "name": "drupal/hybridauth",
++  "description": "",
++  "type": "drupal-module",
++  "license": "GPL-2.0+",
++  "require": {
++    "hybridauth/hybridauth": "^3.6"
++  }
++}
+diff --git a/hybridauth.api.php b/hybridauth.api.php
+index bddc002..e8d489c 100644
+--- a/hybridauth.api.php
++++ b/hybridauth.api.php
+@@ -70,7 +70,7 @@ function hook_hybridauth_registration_form($data) {
+  *   HybridAuth identity data.
+  */
+ function hook_hybridauth_registration_block($data) {
+-  
++
+ }
+ 
+ /**
+@@ -150,21 +150,3 @@ function hook_hybridauth_user_blocked($account, $data) {
+ function hook_hybridauth_forms_list_alter(&$forms) {
+ 
+ }
+-
+-/**
+- * Allow modules to alter additional options of the redirect URL.
+- * @param array $destination_options
+- *   An associative array of additional options. For more info see url().
+- */
+-function hook_hybridauth_destination_options_alter(&$destination_options) {
+-
+-}
+-
+-/**
+- * Allow modules to alter additional options of the redirect error URL.
+- * @param array $destination_error_options
+- *   An associative array of additional options. For more info see url().
+- */
+-function hook_hybridauth_destination_error_options_alter(&$destination_error_options) {
+-
+-}
+diff --git a/hybridauth.info b/hybridauth.info
+index 415f064..bf07e54 100644
+--- a/hybridauth.info
++++ b/hybridauth.info
+@@ -3,4 +3,6 @@ description = "Provides HybridAuth social sign-on."
+ core = 7.x
+ package = "HybridAuth"
+ configure = admin/config/people/hybridauth
++
+ dependencies[] = ctools
++dependencies[] = composer_manager
+diff --git a/hybridauth.install b/hybridauth.install
+index 55e79f0..9a5bf39 100644
+--- a/hybridauth.install
++++ b/hybridauth.install
+@@ -59,45 +59,6 @@ function hybridauth_uninstall() {
+   variable_del('hybridauth_window_type');
+ }
+ 
+-/**
+- * Implements hook_requirements().
+- */
+-function hybridauth_requirements($phase) {
+-  module_load_include('module', 'hybridauth');
+-  $requirements = array();
+-  // Ensure translations don't break at install time.
+-  $t = get_t();
+-
+-  if ($phase == 'install' || $phase == 'runtime') {
+-    if ($lib_path = _hybridauth_library_path()) {
+-      try {
+-        require_once $lib_path . '/Hybrid/Auth.php';
+-        $requirements['hybridauth'] = array(
+-          'title' => $t('HybridAuth library'),
+-          'value' => Hybrid_Auth::$version,
+-          'severity' => REQUIREMENT_OK,
+-        );
+-      }
+-      catch(Exception $e) {
+-        $requirements['hybridauth'] = array(
+-          'title' => $t('HybridAuth library'),
+-          'description' => $e->getMessage(),
+-          'severity' => REQUIREMENT_ERROR,
+-        );
+-      }
+-    }
+-    else {
+-      $requirements['hybridauth'] = array(
+-        'title' => $t('HybridAuth library'),
+-        'description' => $t('HybridAuth library is missing'),
+-        'severity' => REQUIREMENT_ERROR,
+-      );
+-    }
+-  }
+-
+-  return $requirements;
+-}
+-
+ /**
+  * Implements hook_schema().
+  */
+diff --git a/hybridauth.make b/hybridauth.make
+deleted file mode 100644
+index 460c4f0..0000000
+--- a/hybridauth.make
++++ /dev/null
+@@ -1,9 +0,0 @@
+-; Download HybridAuth library.
+-core = 7.x
+-api = 2
+-
+-libraries[hybridauth][type] = "libraries"
+-libraries[hybridauth][download][type] = "file"
+-libraries[hybridauth][download][url] = "https://codeload.github.com/hybridauth/hybridauth/legacy.tar.gz/v2"
+-libraries[hybridauth][directory_name] = "hybridauth"
+-libraries[hybridauth][destination] = "libraries"
+diff --git a/hybridauth.module b/hybridauth.module
+index 0d3e689..f5187d1 100644
+--- a/hybridauth.module
++++ b/hybridauth.module
+@@ -24,8 +24,6 @@ function hybridauth_hook_info() {
+     'hybridauth_user_login',
+     'hybridauth_user_blocked',
+     'hybridauth_forms_list_alter',
+-    'hybridauth_destination_options_alter',
+-    'hybridauth_destination_error_options_alter',
+   );
+ 
+   return array_fill_keys($hooks, array('group' => 'hybridauth'));
+@@ -175,16 +173,15 @@ function hybridauth_block_view($delta = '') {
+ function hybridauth_user_login(&$edit, $account) {
+   if ($hybridauth_session_data = _hybridauth_session_load_by_uid($account->uid)) {
+     if ($hybridauth = hybridauth_get_instance()) {
+-      if (is_object($hybridauth)) {
+-        $hybridauth_session_data = $hybridauth_session_data['data'];
+-        $hybridauth_session_data_current = unserialize($hybridauth->getSessionData());
+-        if (is_array($hybridauth_session_data_current)) {
+-          $hybridauth_session_data = serialize(array_merge(unserialize($hybridauth_session_data), $hybridauth_session_data_current));
+-        }
+-        // Call Hybrid_Auth::restoreSessionData() to set stored data.
+-        $hybridauth->restoreSessionData($hybridauth_session_data);
+-        _hybridauth_session_save($hybridauth_session_data, $account->uid);
++      $hybridauth_session_data = unserialize($hybridauth_session_data['data']);
++      $hybridauth_session_data = is_array($hybridauth_session_data) ? $hybridauth_session_data : array();
++      if (array_key_exists('HYBRIDAUTH::STORAGE', $_SESSION)) {
++        $hybridauth_session_data_current = $_SESSION['HYBRIDAUTH::STORAGE'];
++        $hybridauth_session_data = array_merge($hybridauth_session_data, $hybridauth_session_data_current);
+       }
++      // Call Hybrid_Auth::restoreSessionData() to set stored data.
++      $_SESSION['HYBRIDAUTH::STORAGE'] = $hybridauth_session_data;
++      _hybridauth_session_save(serialize($hybridauth_session_data), $account->uid);
+     }
+   }
+ }
+@@ -195,11 +192,9 @@ function hybridauth_user_login(&$edit, $account) {
+ function hybridauth_user_logout($account) {
+   // Try to get HybridAuth instance.
+   if ($hybridauth = hybridauth_get_instance()) {
+-    if (is_object($hybridauth)) {
+-      // Call Hybrid_Auth::getSessionData() to get stored data.
+-      if ($hybridauth_session_data = $hybridauth->getSessionData()) {
+-        _hybridauth_session_save($hybridauth_session_data, $account->uid);
+-      }
++    // Call Hybrid_Auth::getSessionData() to get stored data.
++    if (array_key_exists('HYBRIDAUTH::STORAGE', $_SESSION)) {
++      _hybridauth_session_save(serialize($_SESSION['HYBRIDAUTH::STORAGE']), $account->uid);
+     }
+   }
+ }
+@@ -697,50 +692,9 @@ function hybridauth_providers_list($reset = FALSE) {
+   $providers = &drupal_static(__FUNCTION__, NULL);
+ 
+   if (!isset($providers)) {
+-    $raw_providers = array(
+-      // Core providers.
+-      'AOL' => t('AOL'),
+-      'Facebook' => t('Facebook'),
+-      'Foursquare' => t('Foursquare'),
+-      'Google' => t('Google'),
+-      'LinkedIn' => t('LinkedIn'),
+-      'Live' => t('Windows Live'),
+-      'MySpace' => t('MySpace'),
+-      'OpenID' => t('OpenID'),
+-      'Twitter' => t('Twitter'),
+-      'Yahoo' => t('Yahoo'),
+-      // Additional providers.
+-      'px500' => t('500px'),
+-      'Disqus' => t('Disqus'),
+-      'FamilySearch' => t('FamilySearch'),
+-      'Geni' => t('Geni'),
+-      'GitHub' => t('GitHub'),
+-      'Goodreads' => t('Goodreads'),
+-      'HumanitarianId' => t('Humanitarian ID'),
+-      'Identica' => t('Identica'),
+-      'Instagram' => t('Instagram'),
+-      'LastFM' => t('LastFM'),
+-      'Mailru' => t('Mail.ru'),
+-      'Murmur' => t('Murmur'),
+-      'MyHeritage' => t('MyHeritage'),
+-      'Odnoklassniki' => t('Odnoklassniki'),
+-      'Pixnet' => t('Pixnet'),
+-      'Plurk' => t('Plurk'),
+-      'QQ' => t('QQ'),
+-      'Sina' => t('Sina'),
+-      'Skyrock' => t('Skyrock'),
+-      'Steam' => t('Steam'),
+-      'Tumblr' => t('Tumblr'),
+-      'TwitchTV' => t('Twitch.tv'),
+-      'Viadeo' => t('Viadeo'),
+-      'Vimeo' => t('Vimeo'),
+-      'Vkontakte' => t('VKontakte'),
+-      'Yandex' => t('Yandex'),
+-    );
++    $raw_providers = array();
+     foreach (hybridauth_providers_files($reset) as $name => $file) {
+-      if (!array_key_exists($name, $raw_providers)) {
+-        $raw_providers[$name] = t($name);
+-      }
++      $raw_providers[$name] = t($name);
+     }
+ 
+     $providers = array();
+@@ -768,7 +722,7 @@ function hybridauth_providers_files($reset = FALSE) {
+ 
+   // Scan Providers directory if $reset == TRUE or there was no cached value.
+   if (empty($files)) {
+-    $files = file_scan_directory(_hybridauth_library_path() . '/Hybrid/Providers', '/\.php$/', array('key' => 'name'));
++    $files = file_scan_directory(composer_manager_vendor_dir() . '/hybridauth/hybridauth/src/Provider', '/\.php$/', array('key' => 'name'));
+     cache_set('hybridauth_providers_files', $files, 'cache', CACHE_TEMPORARY);
+   }
+   return $files;
+@@ -848,34 +802,45 @@ function hybridauth_get_enabled_providers() {
+  * Returns HybridAuth object or exception code.
+  */
+ function hybridauth_get_instance() {
+-  $controller = &drupal_static(__FUNCTION__, NULL);
++  $controller = &drupal_static(__FUNCTION__);
+ 
+   if (!isset($controller)) {
+     $controller = FALSE;
+ 
+-    if ($lib_path = _hybridauth_library_path()) {
+-      // If Composer install was executed in the Hybridauth library use that
+-      // autoloader.
+-      if (file_exists($lib_path . '/../vendor/autoload.php')) {
+-        require_once $lib_path . '/../vendor/autoload.php';
+-      }
+-      else {
+-        require_once $lib_path . '/Hybrid/Auth.php';
+-      }
+-      $config = hybridauth_get_config();
+-      try {
+-        $controller = new Hybrid_Auth($config);
+-      }
+-      catch(Exception $e) {
+-        watchdog_exception('hybridauth', $e);
+-        $controller = $e->getCode();
+-      }
++    $config = hybridauth_get_config();
++    try {
++      $controller = new Hybridauth\Hybridauth($config);
++    }
++    catch(Exception $e) {
++      watchdog_exception('hybridauth', $e);
++      $controller = $e->getCode();
+     }
+   }
+ 
+   return $controller;
+ }
+ 
++/**
++ * Returns HybridAuth storage.
++ */
++function hybridauth_get_storage() {
++  $storage = &drupal_static(__FUNCTION__);
++
++  if (!isset($storage)) {
++    $storage = FALSE;
++
++    try {
++      $storage = new Hybridauth\Storage\Session();
++    }
++    catch(Exception $e) {
++      watchdog_exception('hybridauth', $e);
++      $storage = $e->getCode();
++    }
++  }
++
++  return $storage;
++}
++
+ /**
+  * Returns HybridAuth config.
+  */
+@@ -891,18 +856,12 @@ function hybridauth_get_config() {
+     }
+ 
+     $config = array(
+-      'base_url' => url('hybridauth/endpoint', array('absolute' => TRUE, 'language' => _hybridauth_language_default())),
++      'callback' => url('hybridauth/endpoint', array('absolute' => TRUE, 'language' => _hybridauth_language_default())),
+       'providers' => array(),
+       'debug_mode' => $hybridauth_debug,
+       'debug_file' => $logfile,
+     );
+ 
+-    // Special case Facebook: we need to provide a language-aware base URL
+-    // because otherwise there is a redirect_uri mismatch in the Facebook SDK.
+-    if ($_GET['q'] === 'hybridauth/window/Facebook') {
+-      $config['base_url'] = url('hybridauth/endpoint', array('absolute' => TRUE));
+-    }
+-
+     if ($proxy = variable_get('hybridauth_proxy', NULL)) {
+       $config['proxy'] = $proxy;
+     }
+@@ -964,45 +923,6 @@ function hybridauth_get_connected_providers() {
+   return $connected_providers;
+ }
+ 
+-/**
+- * Returns the path to the HybridAuth library.
+- */
+-function _hybridauth_library_path() {
+-  $library_path = &drupal_static(__FUNCTION__, NULL);
+-
+-  if (!isset($library_path)) {
+-    // Check if the variable is set.
+-    $library_path = variable_get('hybridauth_library_path', '');
+-
+-    if (empty($library_path)) {
+-      // Use libraries module or profile directory, fallback to standard directory.
+-      if (module_exists('libraries')) {
+-        $library_path = libraries_get_path('hybridauth');
+-      }
+-      else {
+-        $profile = drupal_get_path('profile', drupal_get_profile());
+-        $library_path = $profile . '/libraries/hybridauth';
+-        if (!file_exists($library_path)) {
+-          $library_path = 'sites/all/libraries/hybridauth';
+-        }
+-      }
+-    }
+-
+-    // Check for the /Hybrid/Auth.php file.
+-    if (file_exists($library_path . '/Hybrid/Auth.php')) {
+-    }
+-    elseif (file_exists($library_path . '/hybridauth/Hybrid/Auth.php')) {
+-      $library_path .= '/hybridauth';
+-    }
+-    else {
+-      watchdog('hybridauth', 'HybridAuth library is missing.', array(), WATCHDOG_ERROR);
+-      $library_path = FALSE;
+-    }
+-  }
+-
+-  return $library_path;
+-}
+-
+ function _hybridauth_add_icon_pack_files($name, &$element) {
+   $done = &drupal_static(__FUNCTION__, NULL);
+   if (!isset($done[$name])) {
+diff --git a/hybridauth.pages.inc b/hybridauth.pages.inc
+index 1ec0987..af283ee 100644
+--- a/hybridauth.pages.inc
++++ b/hybridauth.pages.inc
+@@ -5,24 +5,9 @@
+  */
+ 
+ function hybridauth_endpoint() {
+-  // Make sure the session is started, HybridAuth library needs it.
+-  hybridauth_session_start();
+-
+-  if ($lib_path = _hybridauth_library_path()) {
+-    try {
+-      // If Composer install was executed in the Hybridauth library use that
+-      // autoloader.
+-      if (file_exists($lib_path . '/../vendor/autoload.php')) {
+-        require_once $lib_path . '/../vendor/autoload.php';
+-      }
+-      require_once $lib_path . '/index.php';
+-    }
+-    catch(Exception $e) {
+-      watchdog_exception('hybridauth', $e);
+-    }
++  if ($storage = hybridauth_get_storage()) {
++    hybridauth_window_start($storage->get('provider'));
+   }
+-
+-  return MENU_ACCESS_DENIED;
+ }
+ 
+ /**
+@@ -97,28 +82,14 @@ function _hybridauth_window_close($redirect = TRUE) {
+   // Prevent devel module from spewing.
+   $GLOBALS['devel_shutdown'] = FALSE;
+ 
+-  $destination = drupal_get_destination();
+-  $destination = $destination['destination'];
++  $destination = variable_get('hybridauth_destination', 'user');
++  $destination_error = !empty($_GET['destination_error']) ? $_GET['destination_error'] : variable_get('hybridauth_destination_error', 'user');
+   // Check if token replacements are allowed for the destination string.
+-  if (_hybridauth_allow_token_replace($destination)) {
+-    $destination = token_replace($destination, array('user' => $user), array('clear' => TRUE));
+-  }
+-  $destination_error = !empty($_GET['destination_error']) ? $_GET['destination_error'] : variable_get('hybridauth_destination_error', '');
+-
+-  $base_options = array(
+-    'absolute' => TRUE,
+-    // The redirect target must never be an external URL to prevent open
+-    // redirect vulnerabilities.
+-    'external' => FALSE,
+-  );
+-  $destination_options = drupal_parse_url($destination) + $base_options;
+-  $destination_error_options = drupal_parse_url($destination_error) + $base_options;
++  $destination = token_replace($destination, array('user' => $user), array('clear' => TRUE));
++  $destination_error = token_replace($destination_error, array('user' => $user), array('clear' => TRUE));
+ 
+-  drupal_alter('hybridauth_destination_options', $destination_options);
+-  drupal_alter('hybridauth_destination_error_options', $destination_error_options);
+-
+-  $destination = url($destination_options['path'], $destination_options);
+-  $destination_error = url($destination_error_options['path'], $destination_error_options);
++  $destination = url($destination);
++  $destination_error = url($destination_error);
+ 
+   drupal_add_js(array(
+     'hybridauth'=> array(
+@@ -145,17 +116,16 @@ function _hybridauth_window_close($redirect = TRUE) {
+ function _hybridauth_window_auth($hybridauth, $provider_id) {
+   $error_code = NULL;
+   if (is_object($hybridauth)) {
+-    $params = array(
+-      'hauth_return_to' => url('hybridauth/window/' . $provider_id, array('absolute' => TRUE, 'query' => drupal_get_query_parameters())),
+-    );
+-    if (isset($_GET['openid_identifier'])) {
+-      $params['openid_identifier'] = $_GET['openid_identifier'];
++    // Set provider for hybridauth.
++    if ($storage = hybridauth_get_storage()) {
++      $storage->set('provider', $provider_id);
+     }
++
+     try {
+-      $adapter = $hybridauth->authenticate($provider_id, $params);
++      $adapter = $hybridauth->authenticate($provider_id);
+       $profile = (array) ($adapter->getUserProfile());
+     }
+-    catch(Exception $e) {
++    catch (Exception $e) {
+       watchdog_exception('hybridauth', $e);
+       $error_code = $e->getCode();
+     }
+@@ -171,7 +141,7 @@ function _hybridauth_window_auth($hybridauth, $provider_id) {
+       // Delete session only if it contains just HybridAuth data.
+       $delete_session = TRUE;
+       foreach ($_SESSION as $key => $value) {
+-        if (substr($key, 0, 4) != 'HA::') {
++        if ($key !== 'HYBRIDAUTH::STORAGE') {
+           $delete_session = FALSE;
+         }
+       }
+@@ -844,7 +814,7 @@ function hybridauth_user_identity_delete_submit($form, &$form_state) {
+   if ($hybridauth = hybridauth_get_instance()) {
+     if (is_object($hybridauth)) {
+       $adapter = $hybridauth->getAdapter($del_identity['provider']);
+-      $adapter->logout();
++      $adapter->disconnect();
+     }
+   }
+ 
+diff --git a/plugins/icon_pack/hybridauth_32/hybridauth_32.css b/plugins/icon_pack/hybridauth_32/hybridauth_32.css
+index 1cac9da..648a5ad 100644
+--- a/plugins/icon_pack/hybridauth_32/hybridauth_32.css
++++ b/plugins/icon_pack/hybridauth_32/hybridauth_32.css
+@@ -31,6 +31,9 @@
+ .hybridauth-live-hybridauth-32 {
+   background: transparent url(icons/live.png) 0px 0px no-repeat;
+ }
++.hybridauth-microsoftgraph-hybridauth-32 {
++  background: transparent url(icons/microsoftgraph.png) 0px 0px no-repeat;
++}
+ .hybridauth-myspace-hybridauth-32 {
+   background: transparent url(icons/myspace.png) 0px 0px no-repeat;
+ }
+diff --git a/plugins/provider/DigitalOcean/DigitalOcean.inc b/plugins/provider/DigitalOcean/DigitalOcean.inc
+index e2b6421..4582dae 100644
+--- a/plugins/provider/DigitalOcean/DigitalOcean.inc
++++ b/plugins/provider/DigitalOcean/DigitalOcean.inc
+@@ -19,7 +19,7 @@ function hybridauth_provider_digitalocean_configuration_form_callback(&$form, $p
+     . 'On the server you must set the <strong>Redirect URI</strong> of the client to:<br/>'
+     . '<strong>%redirect_uri</strong></p>',
+     array(
+-      '%redirect_uri' => url('hybridauth/endpoint', array('absolute' => TRUE, 'query' => array('hauth.done' => 'DigitalOcean'), 'language' => _hybridauth_language_default())),
++      '%redirect_uri' => url('hybridauth/endpoint', array('absolute' => TRUE, 'language' => _hybridauth_language_default())),
+     )
+   );
+ 
+diff --git a/plugins/provider/Disqus/Disqus.inc b/plugins/provider/Disqus/Disqus.inc
+index 58d505d..4a6cd05 100644
+--- a/plugins/provider/Disqus/Disqus.inc
++++ b/plugins/provider/Disqus/Disqus.inc
+@@ -20,7 +20,7 @@ function hybridauth_provider_disqus_configuration_form_callback(&$form, $provide
+     . '<p>You must set <strong>CallBack URL</strong> to <strong>%redirect_uri</strong>.</p>',
+     array(
+       '!apps_uri' => 'https://disqus.com/api/applications/',
+-      '%redirect_uri' => url('hybridauth/endpoint', array('absolute' => TRUE, 'query' => array('hauth.done' => 'Discus'), 'language' => _hybridauth_language_default())),
++      '%redirect_uri' => url('hybridauth/endpoint', array('absolute' => TRUE, 'language' => _hybridauth_language_default())),
+     )
+   );
+ }
+diff --git a/plugins/provider/DrupalOAuth2/DrupalOAuth2.inc b/plugins/provider/DrupalOAuth2/DrupalOAuth2.inc
+index c8f2423..40bafbc 100644
+--- a/plugins/provider/DrupalOAuth2/DrupalOAuth2.inc
++++ b/plugins/provider/DrupalOAuth2/DrupalOAuth2.inc
+@@ -19,7 +19,7 @@ function hybridauth_provider_drupaloauth2_configuration_form_callback(&$form, $p
+     . 'On the server you must set the <strong>Redirect URI</strong> of the client to:<br/>'
+     . '<strong>%redirect_uri</strong></p>',
+     array(
+-      '%redirect_uri' => url('hybridauth/endpoint', array('absolute' => TRUE, 'query' => array('hauth.done' => 'DrupalOAuth2'), 'language' => _hybridauth_language_default())),
++      '%redirect_uri' => url('hybridauth/endpoint', array('absolute' => TRUE, 'language' => _hybridauth_language_default())),
+     )
+   );
+ 
+diff --git a/plugins/provider/Google/Google.inc b/plugins/provider/Google/Google.inc
+index 385e055..2283ff5 100644
+--- a/plugins/provider/Google/Google.inc
++++ b/plugins/provider/Google/Google.inc
+@@ -26,7 +26,7 @@ function hybridauth_provider_google_configuration_form_callback(&$form, $provide
+     . '<p>You must enable <strong>Contacts API</strong> and <strong>Google+ API</strong> for your project at <a href="!apps_uri">!apps_uri</a> under APIs & auth -> APIs.</p>',
+     array(
+       '!apps_uri' => 'https://console.developers.google.com',
+-      '%redirect_uri' => url('hybridauth/endpoint', array('absolute' => TRUE, 'query' => array('hauth.done' => 'Google'), 'language' => _hybridauth_language_default())),
++      '%redirect_uri' => url('hybridauth/endpoint', array('absolute' => TRUE, 'language' => _hybridauth_language_default())),
+       '%origin_uri' => $origin_uri_parts['scheme'] . '://' . $origin_uri_parts['host'],
+     )
+   );
+diff --git a/plugins/provider/MicrosoftGraph/MicrosoftGraph.inc b/plugins/provider/MicrosoftGraph/MicrosoftGraph.inc
+new file mode 100644
+index 0000000..b1dcc26
+--- /dev/null
++++ b/plugins/provider/MicrosoftGraph/MicrosoftGraph.inc
+@@ -0,0 +1,22 @@
++<?php
++
++/**
++ * @file
++ * HybridAuth Microsoft Graph specific settings.
++ */
++
++/**
++ * Plugin declaration.
++ */
++$plugin = array(
++  'configuration_callback' => 'hybridauth_provider_microsoftgraph_configuration_callback',
++  'configuration_form_callback' => 'hybridauth_provider_microsoftgraph_configuration_form_callback',
++);
++
++function hybridauth_provider_microsoftgraph_configuration_callback(&$config, $provider_id) {
++  $config['scope'] = 'User.Read';
++}
++
++function hybridauth_provider_microsoftgraph_configuration_form_callback(&$form, $provider_id) {
++  unset($form['vtabs']['application']['hybridauth_provider_' . $provider_id . '_keys_key']);
++}
+diff --git a/plugins/provider/Twitter/Twitter.inc b/plugins/provider/Twitter/Twitter.inc
+index 03b4a5d..31e07db 100644
+--- a/plugins/provider/Twitter/Twitter.inc
++++ b/plugins/provider/Twitter/Twitter.inc
+@@ -19,7 +19,7 @@ function hybridauth_provider_twitter_configuration_form_callback(&$form, $provid
+     . '<p>You must set <strong>Callback URL</strong> to <strong>%callback_uri</strong>.</p>',
+     array(
+       '!apps_uri' => 'https://dev.twitter.com/apps',
+-      '%callback_uri' => url('hybridauth/endpoint', array('absolute' => TRUE, 'query' => array('hauth.done' => 'Twitter'), 'language' => _hybridauth_language_default())),
++      '%callback_uri' => url('hybridauth/endpoint', array('absolute' => TRUE, 'language' => _hybridauth_language_default())),
+     )
+   );
+   $form['vtabs']['advanced'] = array(

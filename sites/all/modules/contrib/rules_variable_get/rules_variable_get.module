@@ -1,0 +1,70 @@
+<?php
+/**
+* @file
+* Main functions for exposing system variables to rules actions.
+*/
+
+/**
+ * Implements hook_rules_actions_info().
+ *
+ * Declares metadata about actions to Rules.
+ */
+function rules_variable_get_rules_action_info() {
+  foreach (array('text', 'integer', 'array', 'object', 'unknown') as $type) {
+    $actions["rules_variable_get_action_get_system_{$type}_variable"] = array(
+      'label' => t("Get system variable of type '!type'", array('!type' => $type)),
+      'group' => t('System'),
+      'parameter' => array(
+        'variable' => array(
+          'type' => 'text',
+          'label' => t('Variable'),
+          'description' => t('Select the variable name. Unknown type variables might need to be converted to the appropriate data-type.'),
+        ),
+      ),
+      'base' => "rules_variable_get_action_get_system_{$type}_variable",
+      'provides' => array(
+        'variable_added' => array(
+          'type' => $type,
+          'label' => t('Added variable'),
+        ),
+      ),
+    );
+  }
+  return $actions;
+}
+
+
+/**
+ * Fetch variable of type text.
+ */
+function rules_variable_get_action_get_system_text_variable($variable) {
+  return array('variable_added' => (string) variable_get($variable));
+}
+
+/**
+ * Fetch variable of type int.
+ */
+function rules_variable_get_action_get_system_integer_variable($variable) {
+  return array('variable_added' => (int) variable_get($variable));
+}
+
+/**
+ * Fetch variable of type array.
+ */
+function rules_variable_get_action_get_system_array_variable($variable) {
+  return array('variable_added' => (array) variable_get($variable));
+}
+
+/**
+ * Fetch variable of type object.
+ */
+function rules_variable_get_action_get_system_object_variable($variable) {
+  return array('variable_added' => (object) variable_get($variable));
+}
+
+/**
+ * Fetch variable of unknown type.
+ */
+function rules_variable_get_action_get_system_unknown_variable($variable) {
+  return array('variable_added' => variable_get($variable));
+}

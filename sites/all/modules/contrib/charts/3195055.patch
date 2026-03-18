@@ -1,0 +1,49 @@
+diff --git a/modules/charts_google/charts_google.inc b/modules/charts_google/charts_google.inc
+index 4630559..d7a0c4b 100644
+--- a/modules/charts_google/charts_google.inc
++++ b/modules/charts_google/charts_google.inc
+@@ -57,7 +57,7 @@ function _charts_google_visualization_type($renderable_type) {
+  * Utility to populate main chart options.
+  */
+ function _charts_google_populate_chart_options($chart, $chart_definition) {
+-  $chart_definition['options']['title'] = $chart['#title'] ? $chart['#title'] : NULL;
++  $chart_definition['options']['title'] = $chart['#title'] ? t($chart['#title']) : NULL;
+   $chart_definition['options']['titleTextStyle']['color'] = $chart['#title_color'];
+   $chart_definition['options']['titleTextStyle']['bold'] = $chart['#title_font_weight'] === 'bold' ? TRUE : FALSE;
+   $chart_definition['options']['titleTextStyle']['italic'] = $chart['#title_font_style'] === 'italic' ? TRUE : FALSE;
+@@ -76,7 +76,7 @@ function _charts_google_populate_chart_options($chart, $chart_definition) {
+   $chart_definition['options']['interpolateNulls'] = TRUE;
+ 
+   // TODO: Legend title (and thus these properties) not supported by Google.
+-  $chart_definition['options']['legend']['title'] = $chart['#legend_title'];
++  $chart_definition['options']['legend']['title'] = t($chart['#legend_title']);
+   $chart_definition['options']['legend']['titleTextStyle']['bold'] = $chart['#legend_title_font_weight'] === 'bold' ? TRUE : FALSE;
+   $chart_definition['options']['legend']['titleTextStyle']['italic'] = $chart['#legend_title_font_style'] === 'italic' ? TRUE : FALSE;
+   $chart_definition['options']['legend']['titleTextStyle']['fontSize'] = $chart['#legend_title_font_size'];
+@@ -111,7 +111,7 @@ function _charts_google_populate_chart_axes($chart, $chart_definition) {
+ 
+       // Populate the chart data.
+       $axis = array();
+-      $axis['title'] = $chart[$key]['#title'] ? $chart[$key]['#title'] : '';
++      $axis['title'] = $chart[$key]['#title'] ? t($chart[$key]['#title']) : '';
+       $axis['titleTextStyle']['color'] = $chart[$key]['#title_color'];
+       $axis['titleTextStyle']['bold'] = $chart[$key]['#title_font_weight'] === 'bold' ? TRUE : FALSE;
+       $axis['titleTextStyle']['italic'] = $chart[$key]['#title_font_style'] === 'italic' ? TRUE : FALSE;
+@@ -200,7 +200,7 @@ function _charts_google_populate_chart_data(&$chart, $chart_definition) {
+       }
+ 
+       if ($chart[$key]['#title']) {
+-        $chart_definition['data'][0][$series_number + 1] = $chart[$key]['#title'];
++        $chart_definition['data'][0][$series_number + 1] = t($chart[$key]['#title']);
+       }
+       foreach ($chart[$key]['#data'] as $index => $data_value) {
+         // Nested array values typically used for scatter charts. This weird
+@@ -280,7 +280,7 @@ function _charts_google_populate_chart_data(&$chart, $chart_definition) {
+           // These data properties are manually applied to cells in JS.
+           // Color role not yet supported. See https://code.google.com/p/google-visualization-api-issues/issues/detail?id=1267
+           $chart_definition['_data'][$sub_key + 1][$series_number + 1]['color'] = $data_item['#color'];
+-          $chart_definition['_data'][$sub_key + 1][$series_number + 1]['tooltip'] = $data_item['#title'];
++          $chart_definition['_data'][$sub_key + 1][$series_number + 1]['tooltip'] = t($data_item['#title']);
+ 
+           // Merge in data point raw options.
+           if (isset($data_item['#raw_options'])) {

@@ -1,0 +1,28 @@
+{ "rules_adjust_fx_project_hourly_rate" : {
+    "LABEL" : "adjust fx project hourly rate",
+    "PLUGIN" : "reaction rule",
+    "OWNER" : "rules",
+    "REQUIRES" : [ "rules", "php" ],
+    "ON" : { "node_update--project" : { "bundle" : "project" } },
+    "IF" : [
+      { "NOT data_is_empty" : { "data" : [ "node-unchanged" ] } },
+      { "NOT data_is_empty" : { "data" : [ "node:field-maximum-hourly-rate" ] } },
+      { "OR" : [
+          { "NOT data_is" : {
+              "data" : [ "node-unchanged:field-chron-basket" ],
+              "value" : [ "node:field-chron-basket" ]
+            }
+          },
+          { "NOT data_is" : {
+              "data" : [ "node-unchanged:field-euro-basket" ],
+              "value" : [ "node:field-euro-basket" ]
+            }
+          }
+        ]
+      }
+    ],
+    "DO" : [
+      { "php_eval" : { "code" : "$node_obj = entity_metadata_wrapper(\u0027node\u0027, $node);\r\n\r\n$max_hourly_rate = $node_obj-\u003Efield_maximum_hourly_rate-\u003Evalue(); \/\/ EUR\/hour\r\n\r\n$eur_basket = $node_obj-\u003Efield_euro_basket-\u003Evalue();\r\n$chr_basket = $node_obj-\u003Efield_chron_basket-\u003Evalue();\r\n$old_cache_val = $node_obj-\u003Efield_chron_basket_cache-\u003Evalue() != NULL ? $node_obj-\u003Efield_chron_basket_cache-\u003Evalue() : 0;\r\n$comp_max_hourly_rate = $chr_basket \u003E 0 ? $eur_basket \/ ($chr_basket\/10) : 0;\r\n\r\n\r\n\/\/calculate the number of (negative) chrons we need to add to the cache\r\n$diff = ($eur_basket * 10)\/$max_hourly_rate - $chr_basket;\r\n\r\nif ($comp_max_hourly_rate \u003E $max_hourly_rate) {\r\n\r\n\t\/\/add some chrons from cache to the basket, to enforce the max. hourly rate\r\n\t$new_cache_val = $old_cache_val - $diff;\r\n\t$node_obj-\u003Efield_chron_basket_cache-\u003Eset($new_cache_val);\r\n\r\n\t$new_chr_basket = $chr_basket + $diff;\r\n\t$node_obj-\u003Efield_chron_basket-\u003Eset($new_chr_basket);\r\n\r\n\t$node_obj-\u003Esave();\r\n}\r\nelse if ($old_cache_val \u003C 0 \u0026\u0026 $comp_max_hourly_rate \u003C $max_hourly_rate) {\r\n\r\n\tif (abs($diff) \u003C abs($old_cache_val)) {\r\n\t\t$node_obj-\u003Efield_chron_basket-\u003Eset($chr_basket + $diff);\r\n\t\t$node_obj-\u003Efield_chron_basket_cache-\u003Eset($old_cache_val - $diff);\r\n\t}\r\n\telse {\r\n\t\t$node_obj-\u003Efield_chron_basket-\u003Eset($chr_basket + $old_cache_val);\r\n\t\t$node_obj-\u003Efield_chron_basket_cache-\u003Eset(0);\r\n\t}\r\n\t$node_obj-\u003Esave();\r\n}" } }
+    ]
+  }
+}

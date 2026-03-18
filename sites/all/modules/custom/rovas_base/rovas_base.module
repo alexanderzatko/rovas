@@ -1,0 +1,592 @@
+<?php
+
+
+/* 
+* Rules acxtion for setting new node timestamps to now.
+* This is to address problem https://github.com/alexanderzatko/rovas/issues/203
+*/
+function rovas_base_rules_action_info() {
+  return array(
+    'rules_set_fresh_timestamps' => array(
+      'label' => t('Set node created and changed time to now'),
+      'group' => t('Rovas'),
+      'parameter' => array(
+        'node' => array(
+          'type' => 'node',
+          'label' => t('Node'),
+        ),
+      ),
+      'base' => 'rovas_base_rules_set_fresh_timestamps',
+    ),
+  );
+}
+
+function rovas_base_rules_set_fresh_timestamps($node) {
+  $now = time();
+  $node->created = $now;
+  $node->changed = $now;
+}
+
+/*
+* recursively calculate total time for a project and its children
+* params:
+* @project_id - the project nid
+* @types  - an array of content types to get the times from
+	- possible values: 'co_worker_merit_allocation','timeshare_merit_allocation','project_merit_allocation'
+	@sum is the hours worked - used for recursion
+	@$breadcrumb holds a list of all visited project nodes - used to prevent an infinite loop
+*/
+function _rovas_base_calc_project_time ($project_id,$types=NULL,$sum=0,&$breadcrumb=array()) {
+
+	//do not process if the supplied ID does not belong to a project node
+	$project_node = node_load($project_id);
+	if ($project_node->type != 'project') {
+		return;
+	}
+
+	$proj_sum = 0;
+
+	if (in_array($project_id,$breadcrumb)) {
+		return;
+	}
+	else {
+		$breadcrumb[]=$project_id;
+
+		//process only worker merit allocations if no types were supplied
+		if (!$types) {
+			$types = array('co_worker_merit_allocation');
+		}
+
+		//exclude project merit allocation type - we wil process those separately
+		$pma_key = array_search('project_merit_allocation',$types);
+		$sub_types = $types;
+		unset($sub_types[$pma_key]);
+
+		if (count($sub_types) > 0) {
+			$result = db_query("SELECT SUM(field_total_hours_worked_value) AS sum
+			FROM {node} node
+			LEFT JOIN {field_data_field_project} p ON node.nid = p.entity_id 
+			LEFT JOIN {field_data_field_total_hours_worked} h ON node.nid = h.entity_id 
+			AND p.entity_type = 'node' 
+			AND h.entity_type = 'node' 
+			AND p.deleted = '0'
+			AND h.deleted = '0'
+			WHERE p.field_project_target_id = :node
+			AND node.status = '1'
+			AND node.type IN  (:types)", array(':node' => $project_id,':types' => $sub_types));
+
+			$resarray = $result->fetchAll();
+			$proj_sum += $resarray[0]->sum;
+			$sum += $proj_sum;
+		}
+
+		$proj_sum -= $sum;
+
+		//find all "time-sharing" projects and call the _rovas_base_calc_project_time function recursively
+		if (in_array('project_merit_allocation',$types)) {
+			$result = db_query("SELECT shproj.nid AS nid, node.nid AS manid
+			FROM {node} node
+			LEFT JOIN {field_data_field_shareholder_project} fshp ON node.nid = fshp.entity_id AND (fshp.entity_type = 'node' AND fshp.deleted = '0')
+			LEFT JOIN {node} shproj ON fshp.field_shareholder_project_target_id = shproj.nid
+			LEFT JOIN {field_data_field_project} fproj ON node.nid = fproj.entity_id AND (fproj.entity_type = 'node' AND fproj.deleted = '0')
+			LEFT JOIN {node} project ON fproj.field_project_target_id = project.nid
+			INNER JOIN {field_data_field_share_project_time} prtime ON node.nid = prtime.entity_id AND (prtime.entity_type = 'node' AND prtime.deleted = '0')
+			WHERE node.status = '1'
+			AND node.type = 'project_merit_allocation'
+			AND prtime.field_share_project_time_value = '1'
+			AND project.nid = :pnid", array(':pnid' => $project_id));
+			$resarray = $result->fetchAll();
+			foreach ($resarray as $row) {
+				$ma_sum = _rovas_base_calc_project_time ($row->nid,$types,0,$breadcrumb);
+				$sum += $ma_sum;
+				
+				//update the merit allocation
+				$meritalloc_wrp = entity_metadata_wrapper('node',$row->manid);
+				$meritalloc_wrp->field_total_hours_worked->set($ma_sum);
+				$meritalloc_wrp->save();
+			}
+		}
+			$proj_sum += $sum;
+
+		//update the project node
+		$project_node->field_project_total_hours[LANGUAGE_NONE][0]['value'] = $proj_sum;
+		node_save($project_node);
+		return $sum;
+	}
+}
+
+/*
+* walk up the ancestor part of the graph from a given node 
+* two modes, depending on the @lbrtime sign:
+	- positive - a new project @nid was addded as a shareholder to some project. 
+	- negative - a project was removed as a shareholder. We assume @nid is the paren project from which the project was removed
+* update all of the unique, ancestor projects and their merit allocations with @lbrtime
+* @nid -> the node ID of the start node whose ancestors the function works with;
+* @lbrtime - the time amount we are adding/subtracting; equals the @nid total labor time
+* @procesdp - ensures all and only unique nodes are updated
+*/
+function _rb_projects_update_time($nid,$lbrtime,$replace1st=1,&$procesdp=array()) {
+
+	if (!$lbrtime) {
+		return;
+	}
+
+	$project_wrp = entity_metadata_wrapper('node', $nid);
+	$old_ptime = $project_wrp->field_project_total_hours->value();
+	if ($replace1st && !count($procesdp)) {
+		$newtime = $lbrtime;
+	}
+	else {
+		$newtime = $old_ptime + $lbrtime;
+	}
+	$project_wrp->field_project_total_hours->set($newtime);
+	$project_wrp->save();
+
+
+	$procesdp[]=$nid;
+
+	$results = db_query("SELECT node.nid AS nid
+	FROM {node} node
+	LEFT JOIN {field_data_field_shareholder_project} shp ON node.nid = shp.entity_id AND shp.entity_type = 'node' AND shp.deleted = '0'
+	LEFT JOIN {field_data_field_share_project_time} tme ON node.nid = tme.entity_id AND tme.entity_type = 'node' AND tme.deleted = '0'
+	WHERE shp.field_shareholder_project_target_id = :prid
+	AND tme.field_share_project_time_value = 1
+	AND node.status = '1'
+	AND node.type = 'project_merit_allocation'",array(':prid' => $nid));
+	$pmshares = $results->fetchAll();
+
+	//iterating over all ancestor "arcs" incoming to the current node
+	foreach ($pmshares as $pmshare) {
+		$meritalloc_wrp = entity_metadata_wrapper('node', $pmshare->nid);
+		$old_time = $meritalloc_wrp->field_total_hours_worked->value();
+		$new_time = $old_time + $lbrtime;
+		$meritalloc_wrp->field_total_hours_worked->set($new_time);
+		$meritalloc_wrp->save();
+	
+		//find the project owning the merit allocation
+		$nid = $meritalloc_wrp->field_project->nid->value();
+	
+		//process the project
+		_rb_projects_update_time($nid,$lbrtime,$replace1st,$procesdp);
+	}
+
+}
+
+//walk the graph from a given node IN BOTH DIRECTIONS to find a duplicate of the @project_id node
+//if a duplicate exists, the returned array contains 'DUPE"
+function _rb_check4loop ($nid,$project_id,&$procesdp=array()) {
+
+	//get the existing part of the graph
+	_rb_graph_matrix_up ($nid,$procesdp1);
+
+	//get the part of the graph we are appending
+	_rb_graph_matrix_down ($project_id,$procesdp2);
+
+	$combo = array_intersect($procesdp1,$procesdp2);
+	$dupe = reset($combo);
+	if ($dupe) {
+		return $dupe;
+	}
+	else {
+		return;
+	}
+
+}
+
+//walk UP the graph from a given node to buld a graph matrix
+function _rb_graph_matrix_up ($nid,&$procesdp=array()) {
+
+	$procesdp[]=$nid;
+
+	$results = db_query("SELECT node.nid AS nid
+	FROM {node} node
+	LEFT JOIN {field_data_field_shareholder_project} shp ON node.nid = shp.entity_id AND shp.entity_type = 'node' AND shp.deleted = '0'
+	WHERE shp.field_shareholder_project_target_id = :prid
+	AND node.status = '1'
+	AND node.type = 'project_merit_allocation'",array(':prid' => $nid));
+	$pmshares = $results->fetchAll();
+
+	//iterating over all ancestor "arcs" incoming to the current node
+	foreach ($pmshares as $pmshare) {
+
+		$meritalloc_wrp = entity_metadata_wrapper('node', $pmshare->nid);
+
+		//find the project owning the merit allocation
+		$nid = $meritalloc_wrp->field_project->nid->value();
+
+		//process the project
+		_rb_graph_matrix_up ($nid,$procesdp);
+	}
+
+}
+
+//walk DOWN the graph from a given node to buld a graph matrix
+function _rb_graph_matrix_down ($nid,&$procesdp=array()) {
+
+	$procesdp[]=$nid;
+
+	$result = db_query("SELECT p.entity_id AS nid
+	FROM {field_data_field_project} p , {node} n
+	WHERE p.bundle IN ('project_merit_allocation')
+	AND n.status = 1
+	AND n.nid = p.field_project_target_id
+	AND p.field_project_target_id = :prid
+	ORDER BY p.bundle ASC", array(':prid' => $nid));
+
+	$resarray = $result->fetchAll();
+
+	//loop through all shareholders (all types)
+	foreach ($resarray as $row) {
+		$meritalloc_wrp = entity_metadata_wrapper('node', $row->nid);
+
+		//find the project shareholder
+		$nid = $meritalloc_wrp->field_shareholder_project->nid->value();
+
+		//process the project
+		_rb_graph_matrix_down ($nid,$procesdp);
+	}
+
+}
+
+//returns the sum of share hours for a particular @userid and a given @purchased_product_id (project)
+function rovas_purchase_shares_project_share_hours ($purchased_product_id,$userid=NULL) {
+	$result = db_query("SELECT DISTINCT c.field_category_tid AS cat, SUM(h.field_hours_purchased_value) AS hours
+	FROM {node} node
+	LEFT JOIN {field_data_field_project} p ON node.nid = p.entity_id AND (p.entity_type = 'node' AND p.deleted = '0')
+	LEFT JOIN {field_data_field_category} c ON node.nid = c.entity_id AND (c.entity_type = 'node' AND c.deleted = '0')
+	LEFT JOIN {field_data_field_hours_purchased} h ON node.nid = h.entity_id AND (h.entity_type = 'node' AND h.deleted = '0')
+	WHERE p.field_project_target_id = :prid
+	AND c.delta = 0
+	AND IF (:uid > 0, node.uid = :uid ,1=1)
+	AND node.status = '1'
+	AND node.type IN  ('time_share')
+	GROUP BY c.field_category_tid", array(':prid' => $purchased_product_id, ':uid' => $userid));
+	$resarray = $result->fetchAll();
+
+return $resarray;
+}
+
+//render badge next to user name
+function render_merit_badge($user) {
+
+	if (!isset($user->uid) || $user->uid < 1) {
+		return '';
+	}
+
+	global $base_url;
+
+	$uid = $user->uid;
+	$whole_merits = userpoints_get_current_points($uid);
+
+	$decimal_merits = $user->field_merit_decimal_part[LANGUAGE_NONE][0]['value'];
+	$merits = $whole_merits+$decimal_merits;
+	$merits_formated = number_format($merits,0,',',' ');
+
+	$rank_stats = _base_user_me_rank($uid);
+	
+	switch (TRUE) {
+		case $rank_stats['position'] < 11:
+			$rank_color = 'top';
+			break;
+		case $rank_stats['position'] < 101:
+			$rank_color = 'great';
+			break;
+		case $rank_stats['position'] < 1000:
+			$rank_color = 'good';
+			break;
+		default:
+			$rank_color = 'base';
+	}
+
+	$esvidzi = file_get_contents($base_url . "/sites/default/files/pictures/meritIcon_white.svg"); 
+
+	$snip = '<div class="merit-badge '.$rank_color.'">';
+//	$snip .= '<img class="mbadge" src="/sites/default/files/pictures/meritIcon_white.svg">';
+	$snip .= $esvidzi;
+	$snip .= '<span class="merit">';
+	$snip .= $merits_formated;
+	$snip .=	'</span>';
+	$snip .= '</div>';
+	
+	$start_date_y = date('Y',$user->created);
+	$start_date = t('since @years',array('@years' => $start_date_y));
+
+	$created = _rb_format_merits_to_time ($merits);
+
+	if ($merits > 0) {
+		$earnd = t('@merits ME',array('@merits' => $merits_formated));
+	}
+	else {
+		$earnd = '';
+	}
+
+	$popup = '<div class="merits_popup">';
+	$popup .= '<div class="user">';
+	$popup .= '<a href="/user/'.$uid.'">';
+	$popup .= htmlentities($user->name, ENT_QUOTES);
+//	$popup .= urlencode($user->name);
+	$popup .= '</a>';
+	$popup .= '</div>';
+	$popup .= '<div class="start-date">';
+	$popup .= $start_date;
+	$popup .= '</div>';
+
+if ($earnd) {
+	$popup .= '<div class="created">';
+	$popup .= t('Merit score',array(),array('context' => 'merit badge'));
+	$popup .=	'<div class="merit-equiv">';
+	$popup .= $earnd;
+	$popup .=	'</div>';
+	if ($created) {
+		$popup .=	'<div class="time-label">';
+		$popup .=	t('Time equivalent');
+		$popup .=	'</div>';
+		$popup .=	'<div class="time-value">';
+		$popup .= $created;
+		$popup .=	'</div>';
+	}
+	$popup .= '</div>';
+}
+	$popup .= '<div class="merit-rank">';
+	$popup .= '<div class="lbl">';
+	$popup .= $rank_stats['position'];
+	$popup .= '<div class="total-rank">';
+	$popup .= ' ' . t('of',array(),array('context' => 'merit badge')) . ' ';
+	$popup .= $rank_stats['total'];
+	$popup .= '</div>';
+	$popup .= '</div>';
+	$popup .= '</div>';
+	
+	
+	return "&nbsp;<a 
+		tabindex='0'
+		role='button'
+		data-content='<div>".$popup."</div>'
+		data-toggle='popover'
+		data-placement='top'
+		data-trigger='click'
+		data-html='true'>$snip</a>";
+}
+
+//render badge next to project name
+//@project can be the project ID, or the project object
+function render_project_merit_badge($project,$merits=NULL) {
+
+	global $base_url;
+
+	if (!$merits) {
+		if (is_numeric($project)) {
+			$project_wrp = entity_metadata_wrapper('node',$project);
+			$typ = $project_wrp->getBundle();
+			if ($typ == 'project') {
+				$merits = $project_wrp->field_merit_reward->value();
+			}
+			else {
+				return;
+			}
+		}
+		else if (isset($project->nid) && $project->type == 'project') {
+			$merits = $project->field_merit_reward[LANGUAGE_NONE][0]['value'];
+		}
+		else {
+			return;
+		}
+	}
+
+	$merits = round($merits,2);
+
+	$esvidzi = file_get_contents($base_url . "/sites/default/files/pictures/meritIcon_white.svg"); 
+
+	$snip = '<div class="merit-badge project">';
+	$snip .= $esvidzi;
+	$snip .= '<span class="merit">';
+	$snip .= $merits;
+	$snip .=	'</span>';
+	$snip .= '</div>';
+
+	if ($merits > 0) {
+		$earnd = t('Rewarded with <strong>@merits ME</strong>',array('@merits' => $merits));
+	}
+	else {
+		$earnd = '';
+	}
+
+	$popup = '<div class="merits_popup">';
+	$popup .= '<div class="earnd">';
+	$popup .= $earnd;
+	$popup .= '</div>';
+	$popup .= '</div>';
+	
+	
+	return "&nbsp;<a 
+		tabindex='0'
+		role='button'
+		data-content='<div>".$popup."</div>'
+		data-toggle='popover'
+		data-placement='top'
+		data-trigger='click'
+		data-html='true'>$snip</a>";
+}
+
+//returns user's merit rank
+function _base_user_me_rank ($uid) {
+
+	$result = db_query("SELECT u.uid AS uid, (IFNULL(pt.points,0) + d.field_merit_decimal_part_value) AS merits
+	FROM {users} u
+	LEFT JOIN {userpoints_total} pt ON u.uid = pt.uid
+	LEFT JOIN {field_data_field_merit_decimal_part} d ON u.uid = d.entity_id
+	WHERE u.status <> '0'
+	AND u.uid <> 1
+	ORDER BY merits DESC");
+
+	$resarray = $result->fetchAll();
+	$merits = 0;
+	$total = sizeof($resarray);
+	$position = 0;
+
+	if ($total > 0) {
+		foreach ($resarray as $row) {
+			$position += 1;
+			if ($uid == $row->uid) {
+				$merits = round($row->merits,2);
+			break;
+			}
+		}
+	}
+
+	return array('total' => $total,'position' => $position,'merits' => $merits);
+}
+
+/*
+* formats a number into human readable time period
+*/
+function _rb_format_merits_to_time ($merits) {
+	$raw_hours = $merits / 10;
+
+	$years = $raw_hours >= 365*24 ? floor($raw_hours / (365*24)) : 0;
+	$days  = $raw_hours >= 24     ? floor(($raw_hours - ($years * 365 * 24))  / 24)  : 0;
+	$hours = $raw_hours >= 1 ? $raw_hours % 24 : 0;
+
+	$h = format_plural($hours, '1 hour', '@count hours');
+	$d = format_plural($days, '1 day', '@count days');
+	$y = format_plural($years, '1 year', '@count years');
+
+	$created = '';
+	
+	if ($years) {
+		$created .= $y;
+	}
+
+	if ($days && $years) {
+		$created .= ', ' . $d;
+	}
+	else if ($days) {
+		$created .= $d;
+	}
+
+	if ($hours && ($days || $years)) {
+		$created .= ', ' . $h;
+	}
+	else if ($hours) {
+		$created .= $h;
+	}
+
+	return $created;
+}
+
+
+/*
+The function updates time and project chrons in a project share for a given project and user
+@nid - the project node ID
+@uid - the user whose project share we are modifying
+@ltime - the time to add or substract to/from the share
+@pchrons - the number of project chrons to add or substract. If value is 0, reset the value to 0
+*/
+function _rb_update_project_worker_share ($nid,$uid,$ltime,$pchrons = NULL) {
+
+	$result = db_query("SELECT p.entity_id
+	FROM {field_data_field_project} p, {field_data_field_coworker} c
+	WHERE field_project_target_id = :proj
+	AND p.entity_id = c.entity_id
+	AND p.bundle = 'co_worker_merit_allocation'
+	AND c.field_coworker_target_id = :usrid", array(':proj' => $nid, ':usrid' => $uid));
+
+	foreach ($result as $row) {
+		$obj = entity_metadata_wrapper('node', $row->entity_id);
+		$oldlabor = $obj->field_total_hours_worked->value();
+		$obj->field_total_hours_worked->set($oldlabor + $ltime);
+		
+		if (is_numeric($pchrons) && $pchrons != 0) {
+			$oldchr = $obj->field_project_chrons->value();
+			$obj->field_project_chrons->set($oldchr + $pchrons);
+		}
+		else if (is_numeric($pchrons) && $pchrons === 0) {
+			$obj->field_project_chrons->set(0);
+		}
+
+		$obj->save(); 
+	}
+}
+
+/*
+Searches through all of the given user's work reports and returns the sum of labor time grouped by each NACE category
+*/
+function _rb_user_time_in_nace_codes ($uid) {
+	$result = db_query("SELECT nace.field_classification_tid AS ntid, SUM(wtime.field_hours_worked_value) AS worktime
+	FROM {node} node
+	LEFT JOIN {field_data_field_classification} nace ON node.nid = nace.entity_id AND (nace.entity_type = 'node' AND nace.deleted = '0')
+	LEFT JOIN {field_data_field_hours_worked} wtime ON node.nid = wtime.entity_id AND (wtime.entity_type = 'node' AND wtime.deleted = '0')
+	WHERE node.uid = :uid
+	AND node.status = '1'
+	AND node.type = 'work_report'
+	AND nace.delta = '0'
+	GROUP BY ntid
+	ORDER BY worktime DESC", array(":uid" => $uid));
+
+	$all = $result->fetchAll();
+
+	$sumtotal = 0;
+	foreach ($all as $row) {
+		$sumtotal += $row->worktime;
+	}
+
+	$resarray = [];
+	foreach ($all as $row) {
+		$resarray[$row->ntid] = ['hours' => $row->worktime,'percent' => round($row->worktime/$sumtotal,2)];
+	}
+
+	return $resarray;
+}
+
+//translate a term to a different language
+function _rb_translate_term($tid, $language_code) {
+
+	$term = taxonomy_term_load($tid);
+	$translated_term = i18n_taxonomy_term_name($term, $language_code);
+
+	return $translated_term;
+}
+
+//maps a language code to a Rovas-supported language code
+function _rovas_base_map_lang_code($lang_code) {
+    // Get enabled language codes from Drupal
+    $enabled_languages = locale_language_list('language', FALSE);
+    $supported_languages = array_keys($enabled_languages);
+    
+    $language_mapped = 'en';
+    
+    if ($lang_code == 'sk') {
+			$language_mapped = 'sk';
+    }
+    elseif ($lang_code == 'cz' && !in_array('cz', $supported_languages)) {
+			$language_mapped = 'sk';
+    }
+    elseif ($lang_code != 'sk' && $lang_code != 'cz' && !in_array($lang_code, $supported_languages)) {
+			$language_mapped = 'en';
+    }
+    else {
+			$language_mapped = $lang_code;
+    }
+    
+    return $language_mapped;
+}

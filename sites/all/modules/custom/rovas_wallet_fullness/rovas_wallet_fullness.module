@@ -1,0 +1,394 @@
+<?php
+/**
+ * @file
+ * Module for displaying wallet fullness as a visual indicator.
+ */
+
+/**
+ * Implements hook_field_formatter_info().
+ */
+function rovas_wallet_fullness_field_formatter_info() {
+  return array(
+    'rovas_wallet_fullness_gauge' => array(
+      'label' => t('Wallet Fullness Gauge'),
+      'field types' => array('number_integer', 'number_decimal', 'number_float'),
+      'settings' => array(
+        'threshold_field' => '',
+        'gauge_height_field' => '',
+        'allocation_percentage_field' => '',
+        'display_values' => TRUE,
+        'color_scheme' => 'default',
+      ),
+    ),
+  );
+}
+
+/**
+ * Implements hook_init().
+ */
+function rovas_wallet_fullness_init() {
+  // Add translatable strings to JavaScript for dynamic use
+  $strings = array(
+    'current_label' => t('Allocated: €@amount'),
+    'fixed_label' => t('Fixed allocation: €@amount'), 
+    'variable_label' => t('Variable allocation: €@amount'),
+    'max_label' => t('Total income: €@amount'),
+  );
+  
+  drupal_add_js(array('rovas_wallet_fullness' => array('strings' => $strings)), 'setting');
+}
+
+/**
+ * Implements hook_field_formatter_settings_form().
+ */
+function rovas_wallet_fullness_field_formatter_settings_form($field, $instance, $view_mode, $form, &$form_state) {
+  $display = $instance['display'][$view_mode];
+  $settings = $display['settings'];
+  $element = array();
+
+  // Get all number fields available in this entity type
+  $fields = field_info_fields();
+  $threshold_options = array('' => t('- None -'));
+  
+  foreach ($fields as $field_name => $field_info) {
+    if (in_array($field_info['type'], array('number_integer', 'number_decimal', 'number_float'))) {
+      $threshold_options[$field_name] = $field_name;
+    }
+  }
+  
+  $element['threshold_field'] = array(
+    '#type' => 'select',
+    '#title' => t('Threshold Field'),
+    '#options' => $threshold_options,
+    '#default_value' => $settings['threshold_field'],
+    '#description' => t('Select the field that contains the threshold value.'),
+    '#required' => TRUE,
+  );
+  
+  $element['gauge_height_field'] = array(
+    '#type' => 'select',
+    '#title' => t('Gauge Height Field'),
+    '#options' => $threshold_options,
+    '#default_value' => $settings['gauge_height_field'],
+    '#description' => t('Select the field that determines the base value for gauge scaling (e.g., field_running_total).'),
+    '#required' => TRUE,
+  );
+  
+  $element['allocation_percentage_field'] = array(
+    '#type' => 'select',
+    '#title' => t('Allocation Percentage Field'),
+    '#options' => $threshold_options,
+    '#default_value' => $settings['allocation_percentage_field'],
+    '#description' => t('Select the field that contains the allocation percentage (e.g., "20" for 20%). If not set, assumes 100%.'),
+    '#required' => FALSE,
+  );
+  
+  $element['display_values'] = array(
+    '#type' => 'checkbox',
+    '#title' => t('Display numeric values on gauge'),
+    '#default_value' => $settings['display_values'],
+    '#description' => t('Enable to show actual values on the gauge.'),
+  );
+  
+  $element['color_scheme'] = array(
+    '#type' => 'select',
+    '#title' => t('Color Scheme'),
+    '#options' => array(
+      'default' => t('Default (Blue)'),
+      'green' => t('Green'),
+      'red' => t('Red-Yellow-Green'),
+    ),
+    '#default_value' => $settings['color_scheme'],
+    '#description' => t('Choose a color scheme for the gauge.'),
+  );
+  
+  return $element;
+}
+
+/**
+ * Implements hook_field_formatter_settings_summary().
+ */
+function rovas_wallet_fullness_field_formatter_settings_summary($field, $instance, $view_mode) {
+  $display = $instance['display'][$view_mode];
+  $settings = $display['settings'];
+  
+  $summary = array();
+  
+  if (!empty($settings['threshold_field'])) {
+    $summary[] = t('Threshold field: @field', array('@field' => $settings['threshold_field']));
+  }
+  else {
+    $summary[] = t('No threshold field selected');
+  }
+  
+  if (!empty($settings['gauge_height_field'])) {
+    $summary[] = t('Gauge height field: @field', array('@field' => $settings['gauge_height_field']));
+  }
+  else {
+    $summary[] = t('No gauge height field selected');
+  }
+  
+  if (!empty($settings['allocation_percentage_field'])) {
+    $summary[] = t('Allocation percentage field: @field', array('@field' => $settings['allocation_percentage_field']));
+  }
+  else {
+    $summary[] = t('Allocation percentage: 100% (default)');
+  }
+  
+  $summary[] = $settings['display_values'] ? t('Show values on gauge: Yes') : t('Show values on gauge: No');
+  
+  $color_schemes = array(
+    'default' => t('Default (Blue)'),
+    'green' => t('Green'),
+    'red' => t('Red-Yellow-Green'),
+  );
+  $summary[] = t('Color scheme: @scheme', array('@scheme' => $color_schemes[$settings['color_scheme']]));
+  
+  return implode('<br />', $summary);
+}
+
+/**
+ * Implements hook_field_formatter_view().
+ */
+function rovas_wallet_fullness_field_formatter_view($entity_type, $entity, $field, $instance, $langcode, $items, $display) {
+
+  $element = array();
+  $settings = $display['settings'];
+
+//	watchdog('rovas_wallet_fullness_module','items: <pre>' . print_r($items,1) . '</pre>');
+
+  // Check if required fields are set
+  if (empty($settings['threshold_field']) || empty($settings['gauge_height_field'])) {
+    return $element;
+  }  
+  // Get threshold field value
+  $threshold_field = $settings['threshold_field'];
+  $threshold_items = field_get_items($entity_type, $entity, $threshold_field);
+  
+  if (!$threshold_items || empty($threshold_items[0]['value'])) {
+    return $element;
+  }
+  
+  // Get gauge height field value
+  $gauge_height_field = $settings['gauge_height_field'];
+  $gauge_height_items = field_get_items($entity_type, $entity, $gauge_height_field);
+  
+  if (!$gauge_height_items || empty($gauge_height_items[0]['value'])) {
+    return $element;
+  }
+  
+  $threshold_value = $threshold_items[0]['value'];
+  $running_total_value = $gauge_height_items[0]['value'];
+  
+  // Get allocation percentage field value (optional)
+  $allocation_percentage = 100; // Default to 100%
+  if (!empty($settings['allocation_percentage_field'])) {
+    $allocation_field = $settings['allocation_percentage_field'];
+    $allocation_items = field_get_items($entity_type, $entity, $allocation_field);
+    
+    if ($allocation_items && !empty($allocation_items[0]['value'])) {
+      $allocation_percentage = (float)$allocation_items[0]['value'];
+    }
+  }
+  
+  // Calculate the allocated amount from running total
+  $allocated_max_value = $running_total_value * ($allocation_percentage / 100);
+  
+  // Gauge height is the higher of Running Total or Threshold Field
+  $gauge_max_value = max($running_total_value, $threshold_value);
+  
+  // Add JS and CSS
+  drupal_add_js(drupal_get_path('module', 'rovas_wallet_fullness') . '/rovas_wallet_fullness.js');
+  drupal_add_css(drupal_get_path('module', 'rovas_wallet_fullness') . '/rovas_wallet_fullness.css');
+
+  // Generate a unique ID for this gauge
+  $gauge_id = 'wallet-gauge-' . $field['field_name'] . '-' . $entity->nid;
+  
+  foreach ($items as $delta => $item) {
+    $current_value = $item['value'];
+    
+    // Use the calculated gauge max value (base value * allocation percentage)
+    $max_display_value = $gauge_max_value;
+    
+    // Calculate percentages
+    $fill_percentage = ($max_display_value > 0) ? min(100, ($current_value / $max_display_value) * 100) : 0;
+    $threshold_percentage = ($max_display_value > 0) ? ($threshold_value / $max_display_value) * 100 : 100;
+    
+    // Set color class based on relationship to threshold
+    $color_class = 'default';
+    if ($settings['color_scheme'] == 'green') {
+      $color_class = 'green';
+    }
+    elseif ($settings['color_scheme'] == 'red') {
+      $ratio_to_threshold = ($threshold_value > 0) ? $current_value / $threshold_value : 0;
+      if ($ratio_to_threshold < 0.33) {
+        $color_class = 'red';
+      }
+      elseif ($ratio_to_threshold < 0.66) {
+        $color_class = 'yellow';
+      }
+      else {
+        $color_class = 'green';
+      }
+    }
+    
+    // If current value exceeds threshold, use a different color to indicate overflow
+    if ($current_value > $threshold_value) {
+      $color_class .= ' overflow';
+    }
+
+    $element[$delta] = array(
+      '#type' => 'markup',
+      '#markup' => theme('rovas_wallet_fullness_gauge', array(
+        'current_value' => $current_value,
+        'threshold_value' => $threshold_value,
+        'fill_percentage' => $fill_percentage,
+        'threshold_percentage' => $threshold_percentage,
+        'max_display_value' => $max_display_value,
+        'gauge_max_value' => $gauge_max_value,
+        'running_total_value' => $running_total_value,
+        'allocated_max_value' => $allocated_max_value,
+        'allocation_percentage' => $allocation_percentage,
+        'settings' => $settings,
+        'display_values' => $settings['display_values'],
+        'gauge_id' => $gauge_id,
+        'color_class' => $color_class,
+      )),
+    );
+  }
+
+//  watchdog('rovas_wallet_fullness_module','element <pre>' . print_r($element,1) . '</pre>');
+
+  return $element;
+}
+
+/**
+ * Implements hook_theme().
+ */
+function rovas_wallet_fullness_theme() {
+  return array(
+    'rovas_wallet_fullness_gauge' => array(
+      'variables' => array(
+        'current_value' => 0,
+        'threshold_value' => 100,
+        'fill_percentage' => 0,
+        'threshold_percentage' => 100,
+        'max_display_value' => 150,
+        'gauge_max_value' => 150,
+        'running_total_value' => 150,
+        'allocated_max_value' => 150,
+        'allocation_percentage' => 100,
+        'settings' => array(),
+        'display_values' => TRUE,
+        'gauge_id' => '',
+        'color_class' => 'default',
+      ),
+    ),
+  );
+}
+
+/**
+ * Theme function for wallet fullness gauge - vertical version with threshold indicator.
+ * This function is part of the rovas_wallet_fullness.module file.
+ */
+function theme_rovas_wallet_fullness_gauge($variables) {
+  $current_value = $variables['current_value'];
+  $threshold_value = $variables['threshold_value'];
+  $fill_percentage = $variables['fill_percentage'];
+  $threshold_percentage = $variables['threshold_percentage'];
+  $max_display_value = $variables['max_display_value'];
+  $gauge_max_value = $variables['gauge_max_value'];
+  $running_total_value = $variables['running_total_value'];
+  $allocated_max_value = $variables['allocated_max_value'];
+  $allocation_percentage = $variables['allocation_percentage'];
+  $settings = $variables['settings'];
+  $display_values = $variables['display_values'];
+  $gauge_id = $variables['gauge_id'];
+  $color_class = $variables['color_class'];
+  
+  $output = '<div class="wallet-fullness-container vertical" id="' . $gauge_id . '" data-allocation="' . $allocation_percentage . '">';
+  
+  $output .= '<div class="wallet-gauge-wrapper vertical">';
+  
+  // Create vertical gauge (only contains the visual gauge elements)
+  $output .= '<div class="wallet-gauge-bar-container vertical">';
+  
+  $output .= '<div class="wallet-gauge-fill wallet-gauge-' . $color_class . '" style="height: ' . $fill_percentage . '%"></div>';
+  
+  // Add internal gauge markers at 25%, 50%, 75%, 100% with data-percentage attributes
+  $output .= '<div class="wallet-gauge-internal-marker" style="bottom: 25%" data-percentage=""></div>';
+  $output .= '<div class="wallet-gauge-internal-marker" style="bottom: 50%" data-percentage=""></div>';
+  $output .= '<div class="wallet-gauge-internal-marker" style="bottom: 75%" data-percentage=""></div>';
+//  $output .= '<div class="wallet-gauge-internal-marker" style="bottom: 100%" data-percentage=""></div>';
+  
+  // Add threshold indicator line
+  $output .= '<div class="wallet-gauge-threshold-line" style="bottom: ' . $threshold_percentage . '%"></div>';
+  
+  // Add allocation limit indicator if it's different from gauge max and running total
+  if ($allocation_percentage < 100 && $allocated_max_value < $gauge_max_value) {
+    $allocation_limit_percentage = ($gauge_max_value > 0) ? ($allocated_max_value / $gauge_max_value) * 100 : 100;
+    $output .= '<div class="wallet-gauge-allocation-line" style="bottom: ' . $allocation_limit_percentage . '%"></div>';
+  }
+  
+  // Add indicator for current level
+  $output .= '<div class="wallet-gauge-indicator" style="bottom: ' . $fill_percentage . '%"></div>';
+  
+  $output .= '</div>'; // End of gauge-bar-container
+  
+  // Move labels outside the gauge container (positioned relative to the wrapper)
+  $output .= '<div class="wallet-gauge-labels">';
+
+  // Always show current value label
+  $output .= '<div class="wallet-gauge-label current" style="bottom: ' . $fill_percentage . '%" data-value="' . $current_value . '">' . t('Allocated: @amount €', array('@amount' => number_format($current_value, 2))) . '</div>';
+  
+  // Always show fixed threshold label
+  $output .= '<div class="wallet-gauge-label fixed" style="bottom: ' . $threshold_percentage . '%" data-value="' . $threshold_value . '">' . t('Fixed allocation: @amount €', array('@amount' => number_format($threshold_value, 2))) . '</div>';
+  
+  // Show variable allocation label if configured and different from threshold
+  if (!empty($settings['allocation_percentage_field']) && $allocation_percentage < 100 && $allocated_max_value != $threshold_value) {
+    $variable_percentage = ($gauge_max_value > 0) ? ($allocated_max_value / $gauge_max_value) * 100 : 100;
+    $output .= '<div class="wallet-gauge-label variable" style="bottom: ' . $variable_percentage . '%" data-value="' . $allocated_max_value . '">' . t('Variable allocation: @amount €', array('@amount' => number_format($allocated_max_value, 2))) . '</div>';
+  }
+  
+	// Calculate the correct position for the total income label
+	$running_total_percentage = ($gauge_max_value > 0) ? ($running_total_value / $gauge_max_value) * 100 : 0;
+	
+	// Always show the total income label at its correct position
+	$output .= '<div class="wallet-gauge-label max" style="bottom: ' . $running_total_percentage . '%" data-value="' . $running_total_value . '">' . t('Total income: @amount €', array('@amount' => number_format($running_total_value, 2))) . '</div>';
+  
+  $output .= '</div>'; // End of gauge-labels
+  
+	// These now only show as visual line indicators - values are shown in labels
+	$output .= '<div class="wallet-gauge-markers">';
+	$output .= '<div class="wallet-gauge-marker" style="bottom: 0%" data-value="0"></div>';
+	
+	// Add marker for current value
+	$output .= '<div class="wallet-gauge-marker current-marker" style="bottom: ' . $fill_percentage . '%" data-value="' . $current_value . '"></div>';
+	
+	// Add marker for total income (running total) - NEW
+	$running_total_percentage = ($gauge_max_value > 0) ? ($running_total_value / $gauge_max_value) * 100 : 0;
+	$output .= '<div class="wallet-gauge-marker max-marker" style="bottom: ' . $running_total_percentage . '%" data-value="' . $running_total_value . '"></div>';
+	
+	// Show allocation limit marker if different from gauge max
+	if ($allocation_percentage < 100 && $allocated_max_value < $gauge_max_value) {
+		$allocation_limit_percentage = ($gauge_max_value > 0) ? ($allocated_max_value / $gauge_max_value) * 100 : 100;
+		$output .= '<div class="wallet-gauge-marker variable-marker" style="bottom: ' . $allocation_limit_percentage . '%" data-value="' . $allocated_max_value . '"></div>';
+	}
+	
+	// Show threshold value as a marker
+	$output .= '<div class="wallet-gauge-marker fixed-marker" style="bottom: ' . $threshold_percentage . '%" data-value="' . $threshold_value . '"></div>';
+	
+	// Add max value marker (higher of running total or threshold) - only if different from both running total AND threshold
+	if ($gauge_max_value != $running_total_value && $gauge_max_value != $threshold_value) {
+		$output .= '<div class="wallet-gauge-marker" style="bottom: 100%" data-value="' . $gauge_max_value . '"></div>';
+	}
+	
+	$output .= '</div>'; // End of gauge-markers
+
+  // Simple value display removed - now using labels instead
+  
+  $output .= '</div>'; // End of gauge-wrapper
+  $output .= '</div>'; // End of fullness-container
+  
+  return $output;
+}

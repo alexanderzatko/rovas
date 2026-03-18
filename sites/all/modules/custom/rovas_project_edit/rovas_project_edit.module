@@ -1,0 +1,687 @@
+<?php
+
+
+/**
+* Implements hook_field_group_pre_render_alter.
+* adding fields to a field group
+* removing fields from the outside of the group
+
+* ---> this hook fires AFTER the form alter hook below
+
+*/
+function rovas_project_edit_field_group_pre_render_alter(&$element, $group, &$form) {
+
+	if ($group->group_name == 'group_purchasing_shares') {
+
+		$element['share'] = $form['share'];
+
+		$element['share']['time_hours'] = $form['share']['time_hours'];
+		$element['share']['time_minutes'] = $form['share']['time_minutes'];
+
+		unset($form['share']);
+
+		$element['field_minimum_time']['#access'] = FALSE;
+	}
+}
+
+
+// instance of the hook_form_FORM_ID_alter(&$form, &$form_state, $form_id) function
+
+function rovas_project_edit_form_project_node_form_alter(&$form, &$form_state, $form_id) {
+
+//dsm($form,'start');
+
+	//remove the "Public - dependent on parent project" option
+	unset($form['field_participation']['und']['#options'][2]);
+
+  // Grant privileged users access to all fields that the owner has access to
+  global $user;
+  $entity = $form['#entity'];
+  
+	$obj = entity_metadata_wrapper('node', $form['#entity']);
+	$participation = $obj->field_participation->value();
+	$projnid = $obj->getIdentifier();
+	$projowner = $obj->author->getIdentifier();
+
+	array_unshift($form['actions']['submit']['#submit'],'_rve_modify_submitted');
+
+  // reward share slider
+  $form['field_reward_merit_allocation'][LANGUAGE_NONE]['value']['#ajax'] = [
+    'callback' => '_rpe_meritsh_choice_callback',
+    'effect' => 'fade',
+  ];
+
+  // --- HIDE other reward fields if slider == 100% ---
+  $slider_selector = ':input[name="field_reward_merit_allocation[und][value][value]"]';
+
+  $form['field_reward_target'][LANGUAGE_NONE]['#states'] = [
+    'invisible' => [
+      $slider_selector => ['value' => '100'],
+    ],
+  ];
+  $form['field_chron_beneficiary'][LANGUAGE_NONE][0]['target_id']['#states'] = [
+    'invisible' => [
+      $slider_selector => ['value' => '100'],
+    ],
+  ];
+  $form['field_get_euros'][LANGUAGE_NONE]['#states'] = [
+    'invisible' => [
+      $slider_selector => ['value' => '100'],
+    ],
+  ];
+  $form['field_maximum_hourly_rate'][LANGUAGE_NONE][0]['value']['#states'] = [
+    'invisible' => [
+      $slider_selector => ['value' => '100'],
+    ],
+  ];
+  $form['field_euro_basket'][LANGUAGE_NONE][0]['value']['#states'] = [
+    'invisible' => [
+      $slider_selector => ['value' => '100'],
+    ],
+  ];
+  $form['field_webhook_url'][LANGUAGE_NONE][0]['value']['#states'] = [
+    'invisible' => [
+      $slider_selector => ['value' => '100'],
+    ],
+  ];
+
+	if ($form['field_reward_target'][LANGUAGE_NONE]['#default_value'] == NULL) {
+		$form['field_reward_target'][LANGUAGE_NONE]['#default_value'] = 1;
+	}
+
+	$form['field_chron_beneficiary'][LANGUAGE_NONE][0]['target_id']['#states'] = array(
+		'visible' => array(
+			':input[name="field_reward_target[und]"]' => array('value' => '1'),
+		),
+	);
+	
+	$js = "
+	(function ($) {
+		Drupal.behaviors.chronBeneficiaryVisibility = {
+			attach: function (context, settings) {
+				var updateVisibility = function() {
+					var thresholdField = $('input[name=\"field_preferred_allocation_thres[und][0][value]\"]');
+					var thresholdValue = parseFloat(thresholdField.val()) || 0;
+					var rewardTarget = $('input[name=\"field_reward_target[und]\"]:checked').val();
+					var beneficiaryField = $('#edit-field-chron-beneficiary');
+					var beneficiaryInput = beneficiaryField.find('.form-item');
+					var variableAllocationField = $('#edit-field-variable-allocation');
+					var variableAllocationInput = variableAllocationField.find('.form-item');
+					
+					if (rewardTarget == '1' || (thresholdValue > 0)) {
+						beneficiaryField.show();
+						beneficiaryInput.show();
+					} else {
+						beneficiaryField.hide();
+						beneficiaryInput.hide();
+					}
+					
+					// field_variable_allocation follows field_preferred_allocation_thres visibility
+					// (hidden when reward target is 'Individual' (1), visible otherwise)
+					if (rewardTarget == '1') {
+						variableAllocationField.hide();
+						variableAllocationInput.hide();
+					} else {
+						variableAllocationField.show();
+						variableAllocationInput.show();
+					}
+				};
+				
+				// Initial state
+				$(document).ready(function() {
+					updateVisibility();
+				});
+				
+				// On change
+				$('input[name=\"field_preferred_allocation_thres[und][0][value]\"]', context).on('change keyup', updateVisibility);
+				$('input[name=\"field_reward_target[und]\"]', context).on('change', updateVisibility);
+			}
+		};
+	})(jQuery);";
+	
+	$form['#attached']['js'][] = array(
+		'type' => 'inline',
+		'data' => $js,
+		'scope' => 'footer',
+	);
+
+	$form['field_get_euros'][LANGUAGE_NONE]['#states'] = array(
+		'visible' => array(
+		':input[name="field_reward_target[und]"]' => array('value' => '1'),
+		),
+	);
+	
+	$form['field_maximum_hourly_rate']['#states'] = array(
+		'visible' => array(
+		':input[name="field_reward_target[und]"]' => array('value' => '2'),
+		),
+	);
+	
+	// Hide the field_preferred_allocation_thres when reward target is set to "Individual" (1)
+	$form['field_preferred_allocation_thres']['#states'] = array(
+		'invisible' => array(
+		':input[name="field_reward_target[und]"]' => array('value' => '1'),
+		),
+	);
+	
+	$allocation = $form['field_reward_merit_allocation'][LANGUAGE_NONE]['value']['#default_value'];
+	$recipient = $form['field_reward_target'][LANGUAGE_NONE]['#default_value'];
+
+	unset($form['field_reward_target'][LANGUAGE_NONE]['#options']['_none']);
+
+	if (!isset($form_state['input']['field_rate']) || empty($form_state['input']['field_rate'])) {
+		$chr = $form['field_rate'][LANGUAGE_NONE][0]['value']['#default_value'];
+	}
+	else {
+		$chr = $form_state['input']['field_rate'][LANGUAGE_NONE][0]['value'];
+	}
+
+	$fex = calculate_forex_transaction_params('chr_to_eur',$chr);
+	$euro = round($fex['output'],2);
+
+	$description = $form['field_rate'][LANGUAGE_NONE][0]['value']['#description'];
+
+	$form['field_rate'][LANGUAGE_NONE][0]['value']['#description'] = '';
+
+	//recalculate icon
+	$form['field_rate']['recalc'] = array(
+		'#type' => 'button',
+		'#name' => 'rate_recalc',
+		'#attributes' => ['class' => ['recalc-button glyphicon glyphicon-refresh']],
+		'#button_type' => 'button',
+		'#value' => '',
+		"#submit" => array(),
+		'#ajax' => array(
+			'callback' => '_rpe_convert_chr_eur',
+			'effect' => 'fade',
+			),
+		);
+		
+	$form['field_rate']['rate_euro'] = array(
+		'#markup' => '<strong>' . t('@euro €/hour',array('@euro' => $euro)) . '</strong>',
+		'#suffix' => '<div class="help-block">'.$description.'</div>',
+	);
+
+	//format the minimum time widget to a more human-friendly shape
+	$lang = $form['field_minimum_time']['#language'];
+	$default_old = $form['field_minimum_time'][$lang][0]['value']['#default_value'];
+	$time_old = $default_old ? $default_old : 0;
+
+	$hrs_old = floor($time_old);
+	$hrs_old = $hrs_old > 0 ? $hrs_old : NULL;
+	$mds = ($time_old - $hrs_old) * 60;
+	$mins_old = round($mds,0);
+	$mins_old = $mins_old > 0 ? $mins_old : NULL;
+	
+	$form['share'] = [
+		'#type' => 'fieldset',
+		'#title' => t('Smallest share'), 
+		'#collapsible' => FALSE,
+		'#collapsed' => FALSE,
+		'#description' => t('Enter the <strong>smallest time share</strong> that can be purchased. Leave blank for no minimum.'),
+		'#weight' => 31,
+		'#states' => [
+			'visible' => [
+				':input[id="edit-field-allow-purchasing-shares-und"]' => ['checked' => TRUE]
+			]
+		],
+	];
+    
+	$form['share']['time_hours'] = array(
+		'#type' => 'textfield',
+		'#title' => t('Hours') . ':',
+		'#default_value' => $hrs_old, 
+	);
+
+	$form['share']['time_minutes'] = array(
+		'#type' => 'textfield', 
+		'#title' => t('Minutes') . ':', 
+		'#default_value' => $mins_old, 
+	);
+
+	//hide all options for the project status field except "unfinished" and "for sale"
+	if ($user->uid != 1) {
+		$form['field_status'][LANGUAGE_NONE][2] = array('#access' => FALSE);
+		$form['field_status'][LANGUAGE_NONE][3] = array('#access' => FALSE);
+	}
+
+	//do not allow changing project type from public to private when work reports are present from non-owner workers
+	$query = new EntityFieldQuery();
+	$query->entityCondition('entity_type', 'node')
+	  ->entityCondition('bundle', 'work_report')
+	  ->fieldCondition('field_project','target_id',arg(1), '=')
+	  ->propertyCondition('status', NODE_PUBLISHED)
+	  ->propertyCondition('uid', $user->uid, '<>');
+
+	$result = $query->execute();
+
+	if ($user->uid != 1 && $participation == 1 && count($result) != 0) {
+		$form['field_participation'][LANGUAGE_NONE][0] = array('#disabled' => TRUE);
+	}
+
+	$form['field_parent_project']['#weight'] = 7;
+	$form['field_status']['#weight'] = 8;
+	
+	//widgets for changing project ownership
+
+	$sql = "SELECT node.nid AS nid, user.uid AS uid, user.name AS name
+	FROM {node} node
+	LEFT JOIN {field_data_field_project} proj ON node.nid = proj.entity_id AND (proj.entity_type = 'node' AND proj.deleted = '0')
+	LEFT JOIN {field_data_field_coworker} worker ON node.nid = worker.entity_id AND (worker.entity_type = 'node' AND worker.deleted = '0')
+	LEFT JOIN {users} user ON worker.field_coworker_target_id = user.uid
+	WHERE proj.field_project_target_id = :projnid
+	AND worker.field_coworker_target_id != :excluid OR worker.field_coworker_target_id IS NULL
+	AND node.status = '1'
+	AND node.type = 'co_worker_merit_allocation'
+	ORDER BY user.name ASC";
+
+	$result = db_query($sql, array(':projnid' => $projnid, ':excluid' => $projowner));
+	$shareholders = [];
+	foreach ($result as $row) {
+		$shareholders[$row->uid] = $row->name . ' (' . $row->uid . ')';
+	}
+  
+	$form['ownership_details'] = [
+			'#type' => 'fieldset',
+			'#title' => t('Project ownership'),
+			'#collapsible' => TRUE,
+			'#collapsed' => TRUE, // Collapsed by default
+			'#weight' => 28, // Adjust weight as needed
+		'#attributes' => ['class' => ['field-group-fieldset']],
+	];
+	
+	$form['ownership_details']['change-owner'] = [
+			'#type' => 'checkbox', 
+			'#title' => t('Change the project owner'),
+			'#description' => t('Check if you want to transfer this project to a new owner'),
+	];
+	
+	$form['ownership_details']['select-owner'] = [
+			'#type' => 'select',
+			'#title' => t('Select a new project owner'),
+			'#options' => $shareholders,
+			'#states' => [
+					'visible' => [
+							':input[id="edit-change-owner"]' => ['checked' => TRUE]
+					]
+			],
+			'#description' => t('Select the user you want to transfer ownership of this project to. If you do not see the desired user you have to make them a shareholder in this project first.'),
+	];
+	
+	$form['ownership_details']['field_privileged_users'] = $form['field_privileged_users'];
+	$form['ownership_details']['field_privileged_users']['#weight'] = 29;
+
+	$form['field_privileged_users']['#access'] = FALSE;
+
+  // Check if current user should have privileged access
+  if (_rovas_project_edit_check_privileged_user_access($entity, $user) && $user->uid != $entity->uid && $user->uid != 1) {
+    
+    // Prevent privileged users from changing node ownership
+    _rovas_project_edit_restrict_ownership_change($form, $user);
+    
+    // Get the node owner account
+    $owner = user_load($entity->uid);
+    
+    // Get all field instances for this content type
+    $instances = field_info_instances('node', $entity->type);
+    
+    foreach ($instances as $field_name => $instance) {
+      // Skip if field doesn't exist in form
+      if (!isset($form[$field_name])) {
+        continue;
+      }
+
+			//exclude certain sensitive fields
+			$excluded_fields = ['field_privileged_users']; // Add fields to exclude
+			if (in_array($field_name, $excluded_fields)) {
+					continue;
+			}
+
+      // Check if owner has access to this field by simulating field access
+      $field_info = field_info_field($field_name);
+      $owner_has_access = field_access('edit', $field_info, 'node', $entity, $owner);
+      
+      if ($owner_has_access) {
+        // Grant access to the privileged user
+        _rovas_project_edit_grant_field_access($form, $field_name);
+      }
+    }
+  }
+  
+	//make field time share costs required
+	$allowed = isset($form_state['values']['field_allow_purchasing_shares']) ? $form_state['values']['field_allow_purchasing_shares'] : $form['field_allow_purchasing_shares'][LANGUAGE_NONE]['#default_value'] ;
+	if ($allowed) {
+		$form['field_time_share_cost_euros'][LANGUAGE_NONE][0]['value']['#required'] = 1;
+		$form['field_rate'][LANGUAGE_NONE][0]['value']['#required'] = 1;
+	}
+	
+	//dsm($form,'end');
+
+}
+
+
+//callback to recalculate EUR -> CH conversion rate
+function _rpe_convert_chr_eur($form, $form_state) {
+//watchdog('module','rovas_project_edit hit');
+	return array(
+		'#type' => 'ajax',
+		'#commands' => array(
+			ajax_command_replace(".field-name-field-rate", render($form['field_rate'])),
+		)
+	);
+}
+
+//callback for merit reward allocation slider
+function _rpe_meritsh_choice_callback ($form, $form_state) {
+
+//	watchdog('rovas_project_edit','slider moved <pre>' . print_r($form_state['values'],1) . '</pre>');
+
+    $slidval = isset($form_state['values']['field_reward_merit_allocation'][LANGUAGE_NONE]['item']['value']) ? $form_state['values']['field_reward_merit_allocation'][LANGUAGE_NONE]['item']['value'] : 100;
+    $revard_target = isset($form_state['values']['field_reward_target'][LANGUAGE_NONE][0]['value']) ? $form_state['values']['field_reward_target'][LANGUAGE_NONE][0]['value'] : 1;
+
+//	watchdog('rovas_project_edit','revard_target is <pre>' . $revard_target . '</pre>');
+
+	if ($slidval == 100) {
+		$css = 'none';
+		$css_maxrate = 'none';
+	}
+	else {
+		$css = 'block';
+		if ((float)$revard_target == 1) {
+			$css_maxrate = 'none';
+		}
+		else {
+			$css_maxrate = 'block';
+		}
+	}
+
+	return array(
+		'#type' => 'ajax',
+		'#commands' => array(
+			ajax_command_css("#edit-field-reward-target", ['display' => $css]),
+			ajax_command_css("#edit-field-chron-beneficiary", ['display' => $css]),
+			ajax_command_css("#edit-field-get-euros", ['display' => $css]),
+			ajax_command_css("#edit-field-maximum-hourly-rate", ['display' => $css_maxrate]),
+		)
+	);  
+}
+
+//manipulate the submitted values before the main submission function kicks in
+function _rve_modify_submitted($form, &$form_state) {
+
+//	dsm($form_state['values'],'1');
+
+	// Get the value of the preferred allocation threshold field
+	$preferred_threshold_value = !empty($form_state['values']['field_preferred_allocation_thres'][LANGUAGE_NONE][0]['value']) 
+															? $form_state['values']['field_preferred_allocation_thres'][LANGUAGE_NONE][0]['value'] 
+															: NULL;
+
+	// Check if we should reset fields based on conditions
+	if ($form_state['values']['field_reward_merit_allocation'][LANGUAGE_NONE]['item']['value'] == 100) {
+		// If merit allocation is 100%, reset all fields regardless of threshold value
+		$form_state['values']['field_reward_target'][LANGUAGE_NONE][0]['value'] = '';
+		$form_state['values']['field_chron_beneficiary'][LANGUAGE_NONE][0]['target_id'] = NULL;
+		$form_state['values']['field_get_euros'][LANGUAGE_NONE][0]['value'] = 0;
+	}
+	else if ($form_state['values']['field_reward_target'][LANGUAGE_NONE][0]['value'] == 2) {
+		// If reward target is "This project" (2), reset beneficiary fields
+		// But only clear the chron_beneficiary if there's no preferred threshold value
+		if (empty($preferred_threshold_value) || $preferred_threshold_value <= 0) {
+			$form_state['values']['field_chron_beneficiary'][LANGUAGE_NONE][0]['target_id'] = NULL;
+		}
+		$form_state['values']['field_get_euros'][LANGUAGE_NONE][0]['value'] = 0;
+	}
+	else if ($form_state['values']['field_reward_target'][LANGUAGE_NONE][0]['value'] == 1) {
+		// If reward target is "Individual" (1), reset maximum hourly rate
+		$form_state['values']['field_maximum_hourly_rate'][LANGUAGE_NONE][0]['value'] = NULL;
+	}
+	
+	// If preferred threshold has no value or is 0 or less, clear the chron_beneficiary field
+	if ((empty($preferred_threshold_value) || $preferred_threshold_value <= 0) && 
+			$form_state['values']['field_reward_target'][LANGUAGE_NONE][0]['value'] != 1) {
+		$form_state['values']['field_chron_beneficiary'][LANGUAGE_NONE][0]['target_id'] = NULL;
+	}
+	
+	//change the project owner if a new one is set
+	if ($form_state['values']['change-owner'] === 1 && !empty($form_state['values']['select-owner'])) {
+	
+		$user = user_load($form_state['values']['select-owner']);
+
+		$form_state['values']['uid'] = $user->uid;
+		$form_state['values']['name'] = $user->name;
+
+		$msg = t('The project owner was successfully changed');
+		drupal_set_message($msg);
+
+	}
+
+	//combine the hours and times of the minimum length of the time share into the desired decimal representation
+	$hours = (int)$form_state['values']['time_hours'];
+	$minutes = (int)$form_state['values']['time_minutes']/60;
+
+	$form_state['values']['field_minimum_time'][LANGUAGE_NONE][0]['value'] = $hours + $minutes;
+		
+//	dsm($form_state['values'],'2');
+}
+
+//allow project privileged users to edit 
+function rovas_project_edit_node_access ($node, $op, $account) {
+  if ($op == 'update' && is_object($node) && $node->type == 'project') {
+
+    $field_name = 'field_privileged_users';
+    $wrapper = entity_metadata_wrapper('node', $node);
+    
+    try {
+      $privileged_users = $wrapper->{$field_name}->value();
+      
+      if (!empty($privileged_users)) {
+        foreach ($privileged_users as $user) {
+          if (is_object($user) && $user->uid == $account->uid) {
+            return NODE_ACCESS_ALLOW;
+          } elseif (is_numeric($user) && $user == $account->uid) {
+            return NODE_ACCESS_ALLOW;
+          }
+        }
+      }
+    } catch (Exception $e) {
+      // Log error and continue
+      watchdog('rovas_project_edit', 'Error checking privileged users: @error', array('@error' => $e->getMessage()));
+    }
+  }
+  
+  return NODE_ACCESS_IGNORE;
+}
+
+
+ 
+/**
+ * Check if user has privileges to edit this project.
+ */
+function _rovas_project_edit_check_privileged_user_access ($entity, $account) {
+  // Node author always has access
+  if ($entity->uid == $account->uid) {
+    return TRUE;
+  }
+  
+  // Admin always has access
+  if (user_access('administer nodes', $account)) {
+    return TRUE;
+  }
+  
+  // Check privileged users field using Entity API wrapper
+  try {
+    $wrapper = entity_metadata_wrapper('node', $entity);
+    $privileged_users = $wrapper->field_privileged_users->value();
+    
+    if (!empty($privileged_users)) {
+      foreach ($privileged_users as $user) {
+        if (is_object($user) && $user->uid == $account->uid) {
+          return TRUE;
+        }
+      }
+    }
+  } catch (Exception $e) {
+    watchdog('rovas_project_edit', 'Error checking field access: @error', array('@error' => $e->getMessage()));
+  }
+  
+  return FALSE;
+}
+
+/**
+ * Helper function to grant access to a field and all its child elements
+ */
+function _rovas_project_edit_grant_field_access(&$form, $field_name) {
+  if (!isset($form[$field_name])) {
+    return;
+  }
+  
+  // Grant access to the main field
+  $form[$field_name]['#access'] = TRUE;
+  
+  // Get the language of the field
+  $lang = isset($form[$field_name]['#language']) ? $form[$field_name]['#language'] : LANGUAGE_NONE;
+  
+  // Grant access to language-specific elements
+  if (isset($form[$field_name][$lang])) {
+    $form[$field_name][$lang]['#access'] = TRUE;
+    
+    // Handle different field structures
+    if (is_array($form[$field_name][$lang])) {
+      foreach ($form[$field_name][$lang] as $key => &$element) {
+        if (is_numeric($key) && is_array($element)) {
+          // This is a field item (0, 1, 2, etc.)
+          $element['#access'] = TRUE;
+          
+          // Grant access to common field sub-elements
+          $common_elements = ['value', 'target_id', 'url', 'title', 'alt', 'format', 'summary'];
+          foreach ($common_elements as $sub_element) {
+            if (isset($element[$sub_element])) {
+              $element[$sub_element]['#access'] = TRUE;
+            }
+          }
+          
+          // Handle text fields with format
+          if (isset($element['format'])) {
+            $element['format']['#access'] = TRUE;
+          }
+        }
+      }
+    }
+  }
+  
+  // Handle special cases for specific field types
+  _rovas_project_edit_handle_special_field_types($form, $field_name);
+}
+
+/**
+ * Handle special field types that might need additional access grants
+ */
+function _rovas_project_edit_handle_special_field_types(&$form, $field_name) {
+  if (!isset($form[$field_name])) {
+    return;
+  }
+  
+  $field_info = field_info_field($field_name);
+  
+  switch ($field_info['type']) {
+    case 'image':
+    case 'file':
+      // Handle file/image upload buttons and related elements
+      $lang = isset($form[$field_name]['#language']) ? $form[$field_name]['#language'] : LANGUAGE_NONE;
+      if (isset($form[$field_name][$lang])) {
+        foreach ($form[$field_name][$lang] as $key => &$element) {
+          if (is_numeric($key) && is_array($element)) {
+            // Grant access to upload/remove buttons
+            if (isset($element['upload_button'])) {
+              $element['upload_button']['#access'] = TRUE;
+            }
+            if (isset($element['remove_button'])) {
+              $element['remove_button']['#access'] = TRUE;
+            }
+          }
+        }
+      }
+      break;
+      
+    case 'entityreference':
+      // Handle entity reference autocomplete
+      $lang = isset($form[$field_name]['#language']) ? $form[$field_name]['#language'] : LANGUAGE_NONE;
+      if (isset($form[$field_name][$lang])) {
+        foreach ($form[$field_name][$lang] as $key => &$element) {
+          if (is_numeric($key) && isset($element['target_id'])) {
+            $element['target_id']['#access'] = TRUE;
+          }
+        }
+      }
+      break;
+  }
+}
+
+/**
+ * Restrict privileged users from changing node ownership
+ */
+function _rovas_project_edit_restrict_ownership_change(&$form, $account) {
+
+//dsm($form);
+
+  // Hide/disable the authoring information section
+  if (isset($form['author'])) {
+    $form['author']['#access'] = FALSE;
+  }
+  
+  // Hide/disable individual author fields if they exist at root level
+  if (isset($form['name'])) {
+    $form['name']['#access'] = FALSE;
+  }
+  
+  if (isset($form['uid'])) {
+    $form['uid']['#access'] = FALSE;
+  }
+  
+  // Disable custom ownership change widgets
+  if (isset($form['ownership_details']['change-owner'])) {
+    $form['ownership_details']['change-owner']['#disabled'] = TRUE;
+    $form['ownership_details']['change-owner']['#description'] = t('Only the project owner can change ownership or add privileged users.');
+  }
+  
+  if (isset($form['ownership_details']['select-owner'])) {
+    $form['ownership_details']['select-owner']['#disabled'] = TRUE;
+  }
+  
+  //prevent any direct manipulation of uid in submission
+  array_unshift($form['#submit'], '_rovas_project_edit_prevent_ownership_change_submit');
+
+}
+
+
+function _rovas_project_edit_prevent_ownership_change_submit($form, &$form_state) {
+  global $user;
+  $entity = $form['#entity'];
+  
+  // Only apply this restriction to privileged users (not the actual owner or the superuser)
+  if (_rovas_project_edit_check_privileged_user_access($entity, $user) && $user->uid != $entity->uid && $user->uid != 1) {
+    
+    // Reset any ownership change attempts
+    if (isset($form_state['values']['change-owner'])) {
+      $form_state['values']['change-owner'] = 0;
+    }
+    
+    if (isset($form_state['values']['select-owner'])) {
+      unset($form_state['values']['select-owner']);
+    }
+    
+    // Ensure uid stays the same
+    if (isset($form_state['values']['uid']) && $form_state['values']['uid'] != $entity->uid) {
+      $form_state['values']['uid'] = $entity->uid;
+      watchdog('rovas_project_edit', 'Prevented ownership change attempt by privileged user %uid', [
+        '%uid' => $user->uid,
+      ]);
+    }
+    
+    // Ensure name stays the same
+    if (isset($form_state['values']['name']) && $form_state['values']['name'] != $entity->name) {
+      $original_owner = user_load($entity->uid);
+      $form_state['values']['name'] = $original_owner->name;
+    }
+  }
+}

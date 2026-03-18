@@ -1,0 +1,101 @@
+{ "rules_notify_about_new_work_report" : {
+    "LABEL" : "Notify about new work report",
+    "PLUGIN" : "reaction rule",
+    "OWNER" : "rules",
+    "TAGS" : [ "email", "work report" ],
+    "REQUIRES" : [ "rules", "rules_conditional", "php", "rules_i18n" ],
+    "ON" : { "node_insert--work_report" : { "bundle" : "work_report" } },
+    "DO" : [
+      { "variable_add" : {
+          "USING" : { "type" : "boolean", "value" : "0" },
+          "PROVIDE" : { "variable_added" : { "send_email" : "send email" } }
+        }
+      },
+      { "entity_query" : {
+          "USING" : {
+            "type" : "user",
+            "property" : "field_work_report_notify",
+            "value" : "1",
+            "limit" : "100000000000000"
+          },
+          "PROVIDE" : { "entity_fetched" : { "users_fetched" : "Fetched users" } }
+        }
+      },
+      { "CONDITIONAL" : [
+          {
+            "IF" : { "NOT data_is_empty" : { "data" : [ "users-fetched:0" ] } },
+            "DO" : [
+              { "LOOP" : {
+                  "USING" : { "list" : [ "users-fetched" ] },
+                  "ITEM" : { "current_user" : "Current user" },
+                  "DO" : [
+                    { "CONDITIONAL" : [
+                        {
+                          "IF" : { "NOT data_is" : { "data" : [ "node:author:uid" ], "value" : [ "current-user:uid" ] } },
+                          "DO" : [
+                            { "CONDITIONAL" : [
+                                {
+                                  "IF" : { "list_count_is" : {
+                                      "list" : [ "current-user:field-classification" ],
+                                      "op" : "\u003E",
+                                      "value" : "0"
+                                    }
+                                  },
+                                  "DO" : [
+                                    { "variable_add" : {
+                                        "USING" : {
+                                          "type" : "list\u003Ctaxonomy_term\u003E",
+                                          "value" : [ "current-user:field-classification" ]
+                                        },
+                                        "PROVIDE" : { "variable_added" : { "user_cats" : "user cats" } }
+                                      }
+                                    },
+                                    { "variable_add" : {
+                                        "USING" : {
+                                          "type" : "list\u003Ctaxonomy_term\u003E",
+                                          "value" : [ "node:field-classification" ]
+                                        },
+                                        "PROVIDE" : { "variable_added" : { "node_cats" : "node cats" } }
+                                      }
+                                    },
+                                    { "CONDITIONAL" : [
+                                        {
+                                          "IF" : { "php_eval" : { "code" : "$node_tids = array();\r\nforeach ($node_cats as $cat) {\r\n\tif ($cat-\u003Etid != 1856) {\r\n\t\t$node_tids[] = $cat-\u003Etid;\r\n\t}\r\n}\r\n\r\n$user_tids = array();\r\nforeach ($user_cats as $cat) {\r\n\tif ($cat-\u003Etid != 1856) {\r\n\t$user_tids[] = $cat-\u003Etid;\r\n\t}\r\n}\r\n\r\n\/\/watchdog(\u0027rule\u0027,\u0027rules_notify_about_new_work_report \u0027 . print_r($node_tids,TRUE) . \u0027 dva: \u0027 . print_r($user_tids,TRUE));\r\n\r\nreturn count(array_intersect($node_tids, $user_tids)) \u003E 0;" } },
+                                          "DO" : [ { "data_set" : { "data" : [ "send-email" ], "value" : "1" } } ]
+                                        }
+                                      ]
+                                    }
+                                  ]
+                                },
+                                { "ELSE" : [ { "data_set" : { "data" : [ "send-email" ], "value" : "1" } } ] }
+                              ]
+                            },
+                            { "CONDITIONAL" : [
+                                {
+                                  "IF" : { "data_is" : { "data" : [ "send-email" ], "value" : "1" } },
+                                  "DO" : [
+                                    { "mail" : {
+                                        "to" : [ "current-user:mail" ],
+                                        "subject" : "New work report published on Rovas",
+                                        "message" : "User [node:author] published a new work report \u003Ca href=\u0022[node:url]\u0022\u003E[node:title]\u003C\/a\u003E. \r\n\u003Cbr\u003EThe category provided is: \u003C?php \r\n$language_code = $current_user-\u003Elanguage;\r\n$term = taxonomy_term_load($node-\u003Efield_classification[LANGUAGE_NONE][0][\u0027tid\u0027]);\r\necho i18n_taxonomy_term_name($term, $language_code);\r\n?\u003E\r\n\u003Cbr\u003E\u003Cbr\u003E\r\nYou can turn off these notifications in your \u003Ca href=\u0022[current-user:edit-url]\u0022\u003Euser profile\u003C\/a\u003E.",
+                                        "language" : [ "current-user:language" ]
+                                      }
+                                    }
+                                  ]
+                                }
+                              ]
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

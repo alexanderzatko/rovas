@@ -1,0 +1,52 @@
+{ "rules_delete_voluntary_verification_slips" : {
+    "LABEL" : "delete voluntary verification slips",
+    "PLUGIN" : "rule",
+    "OWNER" : "rules",
+    "REQUIRES" : [ "rules", "rules_conditional" ],
+    "USES VARIABLES" : { "work_report" : { "label" : "work report", "type" : "node" } },
+    "DO" : [
+      { "variable_add" : {
+          "USING" : { "type" : "integer" },
+          "PROVIDE" : { "variable_added" : { "uid" : "user id" } }
+        }
+      },
+      { "entity_query" : {
+          "USING" : {
+            "type" : "node",
+            "property" : "field_report_to_verify",
+            "value" : [ "work-report" ],
+            "limit" : "1000000"
+          },
+          "PROVIDE" : { "entity_fetched" : { "slips" : "slips" } }
+        }
+      },
+      { "LOOP" : {
+          "USING" : { "list" : [ "slips" ] },
+          "ITEM" : { "slip" : "slip" },
+          "DO" : [
+            { "CONDITIONAL" : [
+                {
+                  "IF" : { "entity_is_of_bundle" : {
+                      "entity" : [ "slip" ],
+                      "type" : "node",
+                      "bundle" : { "value" : { "verification_slot" : "verification_slot" } }
+                    }
+                  },
+                  "DO" : [
+                    { "CONDITIONAL" : [
+                        {
+                          "IF" : { "data_is" : { "data" : [ "slip:field-voluntary" ], "value" : "1" } },
+                          "DO" : [ { "entity_delete" : { "data" : [ "slip" ] } } ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      }
+    ]
+  }
+}

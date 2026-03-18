@@ -1,0 +1,48 @@
+<?php
+
+// implements the hook_form_FORM_ID_alter function
+
+function rovas_project_edit_form_services_auth_apikeys_user_form_alter(&$form, &$form_state, $form_id) {
+
+	global $user;
+	
+	if ($user->uid != 1) {
+
+		$markup = '<strong>';
+		$markup .= t('Click below to reveal your authentication keys for the <a href="@apiurl" target="_blank">Rovas API</a>', array('@apiurl' => 'https://neofund.sk/rovas-api'));
+		$markup .= '</strong><br>';
+		$markup .= '<div class="api-warning">';
+		$markup .= t('Please keep this information confidential, similar to your passwords');
+		$markup .= '</div>';
+		
+		$form['description'] = array(
+			'#type' => 'item',
+			'#markup' => $markup,
+			'#weight' => -1
+		);
+
+		$form['rovas_endpoint']['current_api_key']['#title'] = t('API key');
+		$form['rovas_endpoint']['current_token']['#title'] = t('Token');
+
+		$form['rovas_endpoint']['#title'] = t('API credentials');
+		$form['rovas_endpoint']['#collapsible'] = TRUE;
+		$form['rovas_endpoint']['#collapsed'] = TRUE;
+
+
+		$form['rovas_endpoint']['apikeys_age']['#access'] = FALSE;
+		$form['rovas_endpoint']['warning']['#access'] = FALSE;
+		$form['rovas_endpoint']['action_check']['#access'] = FALSE;
+		$form['rovas_endpoint']['delete']['#access'] = FALSE;
+		$form['rovas_endpoint']['edit_check']['#access'] = FALSE;
+		$form['rovas_endpoint']['edit']['#access'] = FALSE;
+
+	}
+}
+
+// implements the hook_menu_alter function
+
+function rovas_user_apikeys_menu_alter(&$items) {
+
+	$items['user/%user/services-apikeys']['title'] = t('Rovas API');
+
+}

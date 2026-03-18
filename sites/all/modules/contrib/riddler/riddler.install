@@ -1,0 +1,78 @@
+<?php
+
+/**
+ * @file
+ * Install, update and uninstall functions for the Riddler module.
+ */
+
+/**
+ * Implementation of hook_install().
+ */
+function riddler_install() {
+  // Set default riddle.
+  $insert = db_insert('riddler_questions')->fields(array('question', 'answer'));
+  $data = array('question' => 'Do you like SPAM?', 'answer' => 'No');
+  $insert->values($data)->execute();
+}
+
+/**
+ * Implementation of hook_uninstall().
+ */
+function riddler_uninstall() {
+  db_query("DELETE FROM {variable} WHERE name LIKE 'riddler_%'");
+  cache_clear_all('variables', 'cache');
+}
+
+/**
+ * Implementation of hook_schema().
+ */
+function riddler_schema() {
+  // Table for positions and types of the challenges.
+  $schema['riddler_questions'] = array(
+    'description' => 'This table stores questions and answers for the riddler module.',
+    'fields' => array(
+      'qid' => array(
+        'description' => 'Question ID.',
+        'type' => 'serial',
+        'not null' => TRUE,
+      ),
+      'question' => array(
+        'description' => 'The question.',
+        'type' => 'varchar',
+        'length' => 255,
+      ),
+      'answer' => array(
+        'description' => 'The answer',
+        'type' => 'varchar',
+        'length' => 255,
+      ),
+    ),
+    'primary key' => array('qid'),
+  );
+  return $schema;
+}
+
+/**
+ * Create new table for questions and copy variable content to it.
+ */
+function riddler_update_7000() {
+  drupal_install_schema('riddler');
+  $query = db_query("SELECT name, value FROM {variable} WHERE name LIKE 'riddler_question%'");
+  $query->execute();
+  $insert = db_insert('riddler_questions')->fields(array('question', 'answer'));
+  $numberOfQuestions = $query->rowCount();
+  if ($numberOfQuestions > 0) {
+    for ($i = 0; $i < $numberOfQuestions; $i++) {
+      $question = variable_get('riddler_question_' . $i);
+      $answer = variable_get('riddler_answer_' . $i);
+      if (!empty($question)) {
+        $data = array('question' => $question, 'answer' => $answer);
+        $insert->values($data)->execute();
+      }
+    }
+  }
+  else {
+    $data = array('question' => 'Do you like SPAM?', 'answer' => 'No');
+    $insert->values($data)->execute();
+  }
+}

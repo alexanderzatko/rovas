@@ -1,0 +1,81 @@
+/**
+ * @file
+ * JavaScript functionality for the wallet fullness vertical gauge.
+ */
+
+(function ($) {
+  Drupal.behaviors.walletFullnessGauge = {
+    attach: function (context, settings) {
+      $('.wallet-gauge-wrapper.vertical', context).once('wallet-gauge').each(function() {
+        var $wrapper = $(this);
+        var $fill = $wrapper.find('.wallet-gauge-fill');
+        var $gaugeContainer = $wrapper.find('.wallet-gauge-bar-container.vertical');
+        var $valueContainer = $wrapper.find('.wallet-gauge-values');
+        var $currentValue = $wrapper.find('.wallet-current-value');
+        var $thresholdValue = $wrapper.find('.wallet-threshold-value');
+        
+        // Get gauge height for calculations
+        var gaugeHeight = $gaugeContainer.height();
+        
+        // Text vertical offset (to align text baseline with indicators)
+        var textOffset = -12; // Adjust this value as needed to fine-tune alignment
+        
+        // Position the threshold value at the top with offset
+        $thresholdValue.css({
+          'position': 'absolute',
+          'top': textOffset + 'px'
+        });
+        
+        // Calculate and position the current value
+        var currentValueAmount = parseFloat($currentValue.text().replace(/[^\d.-]/g, ''));
+        var thresholdValueAmount = parseFloat($thresholdValue.text().replace(/[^\d.-]/g, ''));
+        
+        if (thresholdValueAmount > 0) {
+          // Calculate position percentage (from top)
+          var fillPercentage = currentValueAmount / thresholdValueAmount;
+          var fillHeight = fillPercentage * gaugeHeight;
+          var currentValuePosition = gaugeHeight - fillHeight;
+          
+          // Position current value to align with the top of the fill (with offset)
+          $currentValue.css({
+            'position': 'absolute',
+            'top': (currentValuePosition + textOffset) + 'px'
+          });
+        }
+        
+        // Make the values container match the gauge height
+        $valueContainer.css({
+          'position': 'relative',
+          'height': gaugeHeight + 'px',
+          'display': 'block'
+        });
+        
+        // Highlight current value if it's zero
+        var currentText = $currentValue.text();
+        if (currentText.indexOf('0.00') !== -1) {
+          $currentValue.addClass('empty-wallet');
+        }
+        
+        // Add animation effect on page load
+        var originalHeight = $fill.css('height');
+        $fill.css('height', '0').animate({
+          height: originalHeight
+        }, 1000);
+        
+        // Animate the indicator as well
+        var $indicator = $wrapper.find('.wallet-gauge-indicator');
+        var originalBottom = $indicator.css('bottom');
+        $indicator.css('bottom', '0').animate({
+          bottom: originalBottom
+        }, 1000);
+        
+        // Also animate the current value position during load
+        if (thresholdValueAmount > 0) {
+          $currentValue.css('top', gaugeHeight + textOffset + 'px').animate({
+            top: (gaugeHeight - fillHeight + textOffset) + 'px'
+          }, 1000);
+        }
+      });
+    }
+  };
+})(jQuery);

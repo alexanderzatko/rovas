@@ -1,0 +1,88 @@
+{ "rules_merit_allocation_deleted_send_email" : {
+    "LABEL" : "Merit allocation deleted - send email",
+    "PLUGIN" : "rule",
+    "OWNER" : "rules",
+    "TAGS" : [ "logic" ],
+    "REQUIRES" : [ "rules", "commerce", "rules_conditional" ],
+    "USES VARIABLES" : { "deleted_ma" : { "label" : "Deleted Merit allocation", "type" : "node" } },
+    "IF" : [
+      { "entity_is_of_bundle" : {
+          "entity" : [ "deleted-ma" ],
+          "type" : "node",
+          "bundle" : { "value" : { "co_worker_merit_allocation" : "co_worker_merit_allocation" } }
+        }
+      },
+      { "entity_exists" : {
+          "type" : "node",
+          "property" : "nid",
+          "value" : [ "deleted-ma:field-project:nid" ]
+        }
+      },
+      { "NOT data_is" : {
+          "data" : [ "deleted-ma:field-project:author" ],
+          "value" : [ "deleted-ma:field-coworker" ]
+        }
+      }
+    ],
+    "DO" : [
+      { "variable_add" : {
+          "USING" : { "type" : "text", "value" : [ "deleted-ma:field-coworker:mail" ] },
+          "PROVIDE" : { "variable_added" : { "worker_email" : "worker email" } }
+        }
+      },
+      { "CONDITIONAL" : [
+          {
+            "IF" : { "NOT data_is_empty" : { "data" : [ "deleted-ma:field-merit-allocation" ] } },
+            "DO" : [
+              { "variable_add" : {
+                  "USING" : { "type" : "decimal", "value" : [ "deleted-ma:field-merit-allocation" ] },
+                  "PROVIDE" : { "variable_added" : { "merit_share" : "merit share" } }
+                }
+              },
+              { "variable_add" : {
+                  "USING" : { "type" : "text", "value" : [ "deleted-ma:field-project:author:name" ] },
+                  "PROVIDE" : { "variable_added" : { "proj_owner_full_name" : "project owner full name" } }
+                }
+              },
+              { "variable_add" : {
+                  "USING" : { "type" : "text", "value" : [ "deleted-ma:field-project:author:mail" ] },
+                  "PROVIDE" : { "variable_added" : { "proj_owner_email" : "project owner email" } }
+                }
+              },
+              { "variable_add" : {
+                  "USING" : { "type" : "text", "value" : [ "deleted-ma:field-project:title" ] },
+                  "PROVIDE" : { "variable_added" : { "project_name" : "project name" } }
+                }
+              },
+              { "variable_add" : {
+                  "USING" : { "type" : "integer", "value" : [ "deleted-ma:field-project:nid" ] },
+                  "PROVIDE" : { "variable_added" : { "project_id" : "project id" } }
+                }
+              },
+              { "variable_add" : {
+                  "USING" : {
+                    "type" : "decimal",
+                    "value" : [ "deleted-ma:field-total-hours-worked" ]
+                  },
+                  "PROVIDE" : { "variable_added" : { "total_number_of_hours" : "total number of hours" } }
+                }
+              },
+              { "variable_add" : {
+                  "USING" : { "type" : "text", "value" : [ "site:url" ] },
+                  "PROVIDE" : { "variable_added" : { "site_url" : "site url" } }
+                }
+              },
+              { "mail" : {
+                  "to" : [ "deleted-ma:author:mail" ],
+                  "subject" : "Your share in project [project-name:value] was deleted",
+                  "message" : "User [proj-owner-full-name:value] deleted your share in the project: \u003Ca href=\u0022[site:url]node\/[project-id:value]\u0022 \u003E[project-name:value]\u003C\/a\u003E\r\nThe share was: [merit-share:value] %.\r\nThe total number of hours you worked on this project is [total-number-of-hours:value].\r\nIf you did not anticipate this action, please contact the project owner to find out the reason for and optionally seek a remedy of this action.\r\nThe project owner\u0027s email address is [proj-owner-email:value]",
+                  "language" : [ "deleted-ma:author:language" ]
+                }
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

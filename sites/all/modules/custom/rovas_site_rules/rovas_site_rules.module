@@ -1,0 +1,18 @@
+<?php
+/**
+ * @file
+ * Rovas Site Rules module.
+ *
+ * Provides default Rules configurations via hook_default_rules_configuration()
+ * in rovas_site_rules.rules_defaults.inc. Rule definitions are stored as JSON
+ * in the rules/ subdirectory.
+ */
+
+/**
+ * Implements hook_init().
+ */
+function rovas_site_rules_init() {
+  if (arg(0) === 'batch') {
+    module_load_include('inc', 'rovas_site_rules', 'rovas_site_rules.migration');
+  }
+}

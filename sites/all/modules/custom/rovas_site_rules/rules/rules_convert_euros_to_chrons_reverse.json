@@ -1,0 +1,30 @@
+{ "rules_convert_euros_to_chrons_reverse" : {
+    "LABEL" : "Convert Euros to Chrons reverse",
+    "PLUGIN" : "rule",
+    "OWNER" : "rules",
+    "TAGS" : [ "api", "chrons", "forex" ],
+    "REQUIRES" : [ "rules", "php" ],
+    "USES VARIABLES" : {
+      "euros" : { "label" : "euros to convert", "type" : "decimal" },
+      "chrons" : { "label" : "resulting chrons", "type" : "decimal", "parameter" : false }
+    },
+    "DO" : [
+      { "component_rules_retrieve_user_id_from_api_key_and_token" : { "USING" : {}, "PROVIDE" : { "uid" : { "uid" : "user id" } } } },
+      { "variable_add" : {
+          "USING" : {
+            "type" : "text",
+            "value" : "\u003C?php\r\n\r\n$forex_baskets = variable_get(\u0027forex_baskets\u0027);\r\n$forex_baskets_temp = variable_get(\u0027forex_baskets_temp\u0027);\r\n\r\n$lock_ts = variable_get(\u0027forex_lock\u0027);\r\n$time_remaining = $lock_ts ? $lock_ts[\u0027time\u0027] - (time() - 5*60) : -1;\r\n\r\nif ($time_remaining \u003C= 0) {\r\n\t$ch_basket = $forex_baskets[\u0027ch_basket\u0027];\r\n\t$eur_basket = $forex_baskets[\u0027eur_basket\u0027];\r\n}\r\nelse {\r\n\t$ch_basket = $forex_baskets_temp[\u0027ch_basket\u0027];\r\n\t$eur_basket = $forex_baskets_temp[\u0027eur_basket\u0027];\r\n}\r\n$input = abs($euros);\r\n$buy_ch_fee = variable_get(\u0027buy_ch_fee\u0027);\r\n\r\n$eur_result_ary = forex_reverse($input,$eur_basket,$ch_basket,$buy_ch_fee);\r\necho $eur_result_ary[\u0027output\u0027];\r\n\r\n?\u003E"
+          },
+          "PROVIDE" : { "variable_added" : { "chrons_text" : "chrons text" } }
+        }
+      },
+      { "data_convert" : {
+          "USING" : { "type" : "decimal", "value" : [ "chrons-text" ] },
+          "PROVIDE" : { "conversion_result" : { "chrons_dec" : "chrons decimal" } }
+        }
+      },
+      { "data_set" : { "data" : [ "chrons" ], "value" : [ "chrons-dec" ] } }
+    ],
+    "PROVIDES VARIABLES" : [ "chrons" ]
+  }
+}

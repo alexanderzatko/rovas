@@ -1,0 +1,13 @@
+diff --git a/commerce_bank_transfer.module b/commerce_bank_transfer.module
+index 91cd988..f9ea521 100755
+--- a/commerce_bank_transfer.module
++++ b/commerce_bank_transfer.module
+@@ -231,7 +231,7 @@ function commerce_bank_transfer_bank_details($oid, $pm) {
+     isset($bank_info) ? ($bank_info[] = '<br />' . t('Reason for payment') . ': ' . t('order number') . ' ' . $oid) : ($bank_info[] = t('Reason for payment') . ': ' . t('order number') . ' ' . $oid);
+   }
+   if (!empty($pm['settings']['policy'])) {
+-    isset($bank_info) ? ($bank_info[] = '<br />' . $pm['settings']['policy']) : ($bank_info[] = $pm['settings']['policy']);
++    isset($bank_info) ? ($bank_info[] = '<br />' . t($pm['settings']['policy'])) : ($bank_info[] = t($pm['settings']['policy']));
+   }
+ 
+   isset($bank_info) ? ($bank_details = implode('<br />', $bank_info)) : ($bank_details = '');

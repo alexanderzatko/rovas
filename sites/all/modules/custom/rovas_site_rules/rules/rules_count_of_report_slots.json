@@ -1,0 +1,55 @@
+{ "rules_count_of_report_slots" : {
+    "LABEL" : "count of report slots",
+    "PLUGIN" : "rule",
+    "OWNER" : "rules",
+    "TAGS" : [ "work report" ],
+    "REQUIRES" : [ "rules", "rules_conditional" ],
+    "USES VARIABLES" : {
+      "report_nid" : { "label" : "report nid", "type" : "integer" },
+      "count" : { "label" : "count", "type" : "integer", "parameter" : false }
+    },
+    "DO" : [
+      { "data_set" : { "data" : [ "count" ], "value" : "0" } },
+      { "entity_fetch" : {
+          "USING" : { "type" : "node", "id" : [ "report-nid" ] },
+          "PROVIDE" : { "entity_fetched" : { "the_repoort" : "the repoort" } }
+        }
+      },
+      { "entity_query" : {
+          "USING" : {
+            "type" : "node",
+            "property" : "field_report_to_verify",
+            "value" : [ "the-repoort" ]
+          },
+          "PROVIDE" : { "entity_fetched" : { "slots" : "slots" } }
+        }
+      },
+      { "LOOP" : {
+          "USING" : { "list" : [ "slots" ] },
+          "ITEM" : { "slot" : "slot" },
+          "DO" : [
+            { "CONDITIONAL" : [
+                {
+                  "IF" : { "entity_is_of_bundle" : {
+                      "entity" : [ "slot" ],
+                      "type" : "node",
+                      "bundle" : { "value" : { "verification_slot" : "verification_slot" } }
+                    }
+                  },
+                  "DO" : [
+                    { "data_set" : {
+                        "data" : [ "count" ],
+                        "value" : { "select" : "count", "num_offset" : { "value" : "1" } }
+                      }
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      }
+    ],
+    "PROVIDES VARIABLES" : [ "count" ]
+  }
+}

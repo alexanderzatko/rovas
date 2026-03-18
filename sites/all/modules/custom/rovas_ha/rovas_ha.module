@@ -1,0 +1,73 @@
+<?php
+
+/**
+ * Alter HybridAuth provider configuration.
+ * @param $config
+ * @param $provider_id
+ */
+ 
+/* default config
+config Array (
+	[enabled] => 1
+	[keys] => Array (
+		[id] => hydra
+		[key] =>
+		[secret] => riecna
+	)
+	[scope] =>
+	[display] =>
+	[hauth_return_to] => https://dev.merit.world/hybridauth/endpoint
+	[oauth2_server] => https://dev.nabezky.sk
+	[skip_ssl] =>
+	[http_proxy] =>
+)
+*/
+
+function rovas_ha_hybridauth_provider_config_alter(&$config, $provider_id) {
+	if($provider_id == 'DrupalOAuth2' || $provider_id == 'Nabezky') {
+		$config['scope'] = 'openid email profile address';
+	}
+}
+
+/**
+ * Implements hook_ctools_plugin_directory().
+*/
+function rovas_ha_ctools_plugin_directory($module, $type) {
+  if ($module == 'hybridauth' && $type == 'icon_pack') {
+    return 'plugins/icon_pack';
+  }
+}
+
+
+/**
+ * Alter the values returned by HybridAuth library.
+ * @param array $profile
+ */
+function rovas_ha_hybridauth_profile_alter(&$profile) {
+//	watchdog('module','profile ' . print_r($profile,TRUE));
+}
+
+/**
+ * Alter the user info for the user being created by HybridAuth.
+ * @param array $userinfo
+ *   Information to create a new user.
+ * @param array $data
+ *   HybridAuth identity data.
+ */
+function rovas_ha_hybridauth_userinfo_alter(&$userinfo, $data) {
+//	watchdog('module','userinfo ' . print_r($userinfo,TRUE));
+//	watchdog('module','data ' . print_r($data,TRUE));
+}
+
+/**
+ * Invoked when a new user account is about to be created through HybridAuth.
+ * @param object $account
+ *   User account object.
+ * @param array $data
+ *   HybridAuth identity data.
+ */
+function rovas_ha_hybridauth_user_preinsert($account, $data) {
+//	$data['profileURL'] = 'https://nabezky.sk/user/' . $data['identifier'];
+//	watchdog('module','preinsert/accnt ' . print_r($account,TRUE) . ' preinsert/data ' . print_r($data,TRUE));
+}
+

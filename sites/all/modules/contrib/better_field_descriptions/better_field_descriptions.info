@@ -1,0 +1,11 @@
+name = Better field descriptions
+description = Allows users with certain roles to add themeable descriptions to fields in forms
+core = 7.x
+configure = admin/config/content/better_field_descriptions
+
+; Information added by Drupal.org packaging script on 2017-05-08
+version = "7.x-1.1"
+core = "7.x"
+project = "better_field_descriptions"
+datestamp = "1494241988"
+

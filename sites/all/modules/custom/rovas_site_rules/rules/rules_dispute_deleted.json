@@ -1,0 +1,63 @@
+{ "rules_dispute_deleted" : {
+    "LABEL" : "Dispute deleted",
+    "PLUGIN" : "reaction rule",
+    "OWNER" : "rules",
+    "TAGS" : [ "dispute" ],
+    "REQUIRES" : [ "rules", "rules_conditional", "privatemsg_rules", "php" ],
+    "ON" : { "node_delete--dispute" : { "bundle" : "dispute" } },
+    "DO" : [
+      { "entity_query" : {
+          "USING" : { "type" : "node", "property" : "field_dispute", "value" : [ "node" ] },
+          "PROVIDE" : { "entity_fetched" : { "dispute_parties" : "Dispute parties" } }
+        }
+      },
+      { "LOOP" : {
+          "USING" : { "list" : [ "dispute-parties" ] },
+          "ITEM" : { "dispute_party" : "Dispute party" },
+          "DO" : [
+            { "variable_add" : {
+                "USING" : { "type" : "node", "value" : [ "dispute-party" ] },
+                "PROVIDE" : { "variable_added" : { "this_party" : "This party" } }
+              }
+            },
+            { "entity_delete" : { "data" : [ "this-party" ] } }
+          ]
+        }
+      },
+      { "component_rules_set_role_for_the_accused" : { "affected_dispute" : [ "node" ], "role_to_set" : { "value" : [ "4" ] } } },
+      { "data_set" : { "data" : [ "node:field-accused:field-dispute-notify" ], "value" : "0" } },
+      { "variable_add" : {
+          "USING" : {
+            "type" : "integer",
+            "value" : [ "node:field-accused:field-verification-score" ]
+          },
+          "PROVIDE" : { "variable_added" : { "verification_score" : "accuseds verification score" } }
+        }
+      },
+      { "data_set" : {
+          "data" : [ "node:field-accused:field-verification-score" ],
+          "value" : { "select" : "verification-score", "num_offset" : { "value" : "1" } }
+        }
+      },
+      { "CONDITIONAL" : [
+          {
+            "IF" : { "php_eval" : { "code" : "$dispwrp = entity_metadata_wrapper(\u0027node\u0027, $node);\r\nif ($dispwrp-\u003Efield_accused-\u003EgetIdentifier())\r\nreturn 1;\r\nelse\r\nreturn 0;" } },
+            "DO" : [
+              { "privatemsg_rules_new" : {
+                  "USING" : {
+                    "recipient" : [ "node:field-accused" ],
+                    "author" : "1",
+                    "subject" : "Rovas application - Dispute notification",
+                    "body" : "The Dispute \u003Ca href=\u0022[node:url]\u0022\u003E[node:title]\u003C\/a\u003E where you were the accused party has been deleted by the Complainant.\r\n\r\nPlease do not respond to this message, as the sender account is not monitored."
+                  },
+                  "PROVIDE" : { "thread_id" : { "thread_id" : "ID of new thread" } }
+                }
+              }
+            ]
+          }
+        ]
+      },
+      { "redirect" : { "url" : "disputes" } }
+    ]
+  }
+}

@@ -1,0 +1,36 @@
+diff --git a/geofield.widgets.openlayers.inc b/geofield.widgets.openlayers.inc
+index 5447d5d..13b1a34 100644
+--- a/geofield.widgets.openlayers.inc
++++ b/geofield.widgets.openlayers.inc
+@@ -274,15 +274,22 @@ function openlayers_field_widget_form(&$form, &$form_state, $field, $instance, $
+  * Callback for afterbuild for widget for js addition to
+  */
+ function openlayers_geofield_widget_afterbuild($element, &$form_state) {
+-  $defaults = array();
+-  $element['geofield_openlayers_map'] = array(
+-    '#markup' => '<div class="form-item geofield-openlayers-map" style="display:block">'
+-                   . openlayers_geofield_form_latlon_map(array(), $element['#openlayers_mapname'])
+-                   . '</div>');
+-
+-  $element['geofield_openlayers_map_desc'] = array(
+-    '#markup' => '<div class="description geofield-help">' . t('Use the icons to select what type of feature to draw. Each map can contain one simple feature. Pan and zoom with arrows and the zoom bar.') . '</div>'
+-  );
++
++  $markup = '<div class="form-item geofield-openlayers-map" style="display:block">';
++  if (isset($element['#title'])) {
++    $markup .= '<label>'.$element['#title'].'</label>';
++  }
++  if (isset($element['#description']) && !empty($element['#description'])) {
++    $markup .= '<div class="description geofield-help">' . $element['#description'] . '</div>';
++  }
++  else {
++    $markup .= '<div class="description geofield-help">' . t('Use the icons to select the type of feature to draw. Each map can contain one simple feature. Pan and zoom with arrows and the zoom bar.') . '</div>';
++  }
++  $markup .= openlayers_geofield_form_latlon_map(array(), $element['#openlayers_mapname']);
++  $markup .= '</div>';
++  
++  $element['geofield_openlayers_map'] = array('#markup' => $markup);
++
+ 
+   drupal_add_js(
+     array(

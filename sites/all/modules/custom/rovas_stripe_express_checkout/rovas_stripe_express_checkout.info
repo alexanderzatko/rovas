@@ -1,0 +1,12 @@
+name = Rovas Stripe Express Checkout
+description = Adds Stripe Express Checkout (Apple Pay, Google Pay) to cart.
+core = 7.x
+package = Rovas
+dependencies[] = commerce
+dependencies[] = encrypt
+dependencies[] = encryptfapi
+dependencies[] = rovas_project_reward
+dependencies[] = rovas_forex
+
+
+stylesheets[all][] = rovas_stripe_express_checkout.css

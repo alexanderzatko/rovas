@@ -1,0 +1,15 @@
+--- a/entity.module
++++ b/entity.module
+@@ -1033,6 +1033,11 @@ function _entity_defaults_rebuild($entity_type) {
+     // Invoke the hook and collect default entities.
+     $entities = array();
+     foreach (module_implements($hook) as $module) {
+       foreach ((array) module_invoke($module, $hook) as $name => $entity) {
++        // Skip non-objects to avoid "Creating default object from empty value"
++        // and broken INSERTs (e.g. rules_config missing plugin/data).
++        if (!is_object($entity)) {
++          continue;
++        }
+         $entity->{$keys['name']} = $name;
+         $entity->{$keys['module']} = $module;
+         $entities[$name] = $entity;

@@ -1,0 +1,51 @@
+{ "rules_proxy_report_editability" : {
+    "LABEL" : "proxy - report editability",
+    "PLUGIN" : "rule",
+    "OWNER" : "rules",
+    "TAGS" : [ "api", "work report" ],
+    "REQUIRES" : [ "rules", "rules_conditional" ],
+    "USES VARIABLES" : {
+      "result" : { "label" : "result", "type" : "integer", "parameter" : false },
+      "wr_id" : { "label" : "work report ID", "type" : "integer" }
+    },
+    "DO" : [
+      { "component_rules_retrieve_user_id_from_api_key_and_token" : { "USING" : {}, "PROVIDE" : { "uid" : { "uid" : "user id" } } } },
+      { "entity_fetch" : {
+          "USING" : { "type" : "user", "id" : [ "uid" ] },
+          "PROVIDE" : { "entity_fetched" : { "user_fetched" : "Fetched user" } }
+        }
+      },
+      { "entity_fetch" : {
+          "USING" : { "type" : "node", "id" : [ "wr-id" ] },
+          "PROVIDE" : { "entity_fetched" : { "wr_object" : "Fetched work report" } }
+        }
+      },
+      { "CONDITIONAL" : [
+          {
+            "IF" : { "entity_is_of_bundle" : {
+                "entity" : [ "wr-object" ],
+                "type" : "node",
+                "bundle" : { "value" : { "work_report" : "work_report" } }
+              }
+            },
+            "DO" : [
+              { "component_rules_work_report_editability" : {
+                  "USING" : { "wr_object" : [ "wr_object" ], "user_object" : [ "user-fetched" ] },
+                  "PROVIDE" : { "editable" : { "editable" : "editable" } }
+                }
+              },
+              { "data_convert" : {
+                  "USING" : { "type" : "integer", "value" : [ "editable" ] },
+                  "PROVIDE" : { "conversion_result" : { "conversion_result" : "Conversion result" } }
+                }
+              },
+              { "data_set" : { "data" : [ "result" ], "value" : [ "conversion-result" ] } }
+            ]
+          },
+          { "ELSE" : [ { "data_set" : { "data" : [ "result" ], "value" : "-1" } } ] }
+        ]
+      }
+    ],
+    "PROVIDES VARIABLES" : [ "result" ]
+  }
+}

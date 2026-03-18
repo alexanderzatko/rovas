@@ -1,0 +1,201 @@
+{ "rules_reward_work_report" : {
+    "LABEL" : "reward work report",
+    "PLUGIN" : "rule",
+    "OWNER" : "rules",
+    "REQUIRES" : [ "rules", "rules_conditional", "php" ],
+    "USES VARIABLES" : {
+      "buyer_id" : { "label" : "buyer ID", "type" : "integer" },
+      "wreport_id" : { "label" : "work report ID", "type" : "integer" },
+      "reward_amnt" : { "label" : "reward amount", "type" : "decimal" },
+      "description" : { "label" : "description", "type" : "text" },
+      "payment_currency" : { "label" : "payment currency", "type" : "text", "allow null" : true },
+      "outcome" : { "label" : "outcome", "type" : "integer", "parameter" : false },
+      "reason" : { "label" : "outcome-reason", "type" : "text", "parameter" : false }
+    },
+    "DO" : [
+      { "entity_fetch" : {
+          "USING" : { "type" : "node", "id" : [ "wreport-id" ] },
+          "PROVIDE" : { "entity_fetched" : { "work_report" : "work report" } }
+        }
+      },
+      { "CONDITIONAL" : [
+          {
+            "IF" : { "entity_is_of_bundle" : {
+                "entity" : [ "work-report" ],
+                "type" : "node",
+                "bundle" : { "value" : { "work_report" : "work_report" } }
+              }
+            },
+            "DO" : [
+              { "CONDITIONAL" : [
+                  {
+                    "IF" : { "NOT data_is" : { "data" : [ "buyer-id" ], "value" : [ "work-report:author:uid" ] } },
+                    "DO" : [
+                      { "variable_add" : {
+                          "USING" : { "type" : "decimal", "value" : "0" },
+                          "PROVIDE" : { "variable_added" : { "old_report_me_reward" : "old report me reward" } }
+                        }
+                      },
+                      { "CONDITIONAL" : [
+                          {
+                            "IF" : { "NOT data_is_empty" : { "data" : [ "work-report:field-merit-reward" ] } },
+                            "DO" : [
+                              { "data_set" : {
+                                  "data" : [ "old-report-me-reward" ],
+                                  "value" : [ "work-report:field-merit-reward" ]
+                                }
+                              }
+                            ]
+                          }
+                        ]
+                      },
+                      { "data_calc" : {
+                          "USING" : {
+                            "input_1" : [ "old-report-me-reward" ],
+                            "op" : "+",
+                            "input_2" : [ "reward-amnt" ]
+                          },
+                          "PROVIDE" : { "result" : { "new_report_me_reward" : "new report me reward" } }
+                        }
+                      },
+                      { "data_set" : {
+                          "data" : [ "work-report:field-merit-reward" ],
+                          "value" : [ "new-report-me-reward" ]
+                        }
+                      },
+                      { "variable_add" : {
+                          "USING" : { "type" : "integer", "value" : [ "work-report:field-project:nid" ] },
+                          "PROVIDE" : { "variable_added" : { "project_id" : "project ID" } }
+                        }
+                      },
+                      { "component_rules_create_purchase_receipt" : {
+                          "USING" : {
+                            "buyer_uid" : [ "buyer-id" ],
+                            "product_id" : [ "project-id" ],
+                            "total_reward" : [ "reward-amnt" ],
+                            "description" : [ "description" ],
+                            "wreport_id" : [ "wreport_id" ]
+                          },
+                          "PROVIDE" : { "receipt_id" : { "receipt_id" : "receipt id" } }
+                        }
+                      },
+                      { "component_rules_create_merit_disbursement" : {
+                          "USING" : {
+                            "receipt_id" : [ "receipt_id" ],
+                            "rewarded_uid" : [ "work-report:author:uid" ],
+                            "reward_amt" : [ "reward-amnt" ]
+                          },
+                          "PROVIDE" : { "disburs_id" : { "disburs_id" : "disbursement id" } }
+                        }
+                      },
+                      { "CONDITIONAL" : [
+                          {
+                            "IF" : { "text_matches" : {
+                                "text" : [ "payment-currency" ],
+                                "match" : "CHR",
+                                "operation" : "starts"
+                              }
+                            },
+                            "DO" : [
+                              { "entity_fetch" : {
+                                  "USING" : { "type" : "user", "id" : [ "buyer-id" ] },
+                                  "PROVIDE" : { "entity_fetched" : { "buyer" : "buyer" } }
+                                }
+                              },
+                              { "component_rules_update_user_chron_account" : {
+                                  "user_object" : [ "buyer" ],
+                                  "chrons_to_add" : { "select" : "reward-amnt", "php" : { "code" : "return -1*$value;" } },
+                                  "fxsp_id" : {
+                                    "select" : "site:current-user:uid",
+                                    "php" : { "code" : "return NULL;" }
+                                  }
+                                }
+                              }
+                            ]
+                          }
+                        ]
+                      },
+                      { "component_rules_give_merits_to_user" : {
+                          "user_object" : [ "work-report:author" ],
+                          "merits_given" : [ "reward-amnt" ],
+                          "reward_entity" : [ "work-report" ],
+                          "description" : [ "description" ],
+                          "operation" : "addition"
+                        }
+                      },
+                      { "entity_fetch" : {
+                          "USING" : { "type" : "node", "id" : [ "project-id" ] },
+                          "PROVIDE" : { "entity_fetched" : { "project" : "project" } }
+                        }
+                      },
+                      { "CONDITIONAL" : [
+                          {
+                            "IF" : { "entity_is_of_bundle" : {
+                                "entity" : [ "project" ],
+                                "type" : "node",
+                                "bundle" : { "value" : { "project" : "project" } }
+                              }
+                            },
+                            "DO" : [
+                              { "variable_add" : {
+                                  "USING" : { "type" : "decimal", "value" : [ "project:field-merit-reward" ] },
+                                  "PROVIDE" : { "variable_added" : { "project_merits" : "project merits" } }
+                                }
+                              },
+                              { "data_calc" : {
+                                  "USING" : {
+                                    "input_1" : [ "project-merits" ],
+                                    "op" : "+",
+                                    "input_2" : [ "reward-amnt" ]
+                                  },
+                                  "PROVIDE" : { "result" : { "new_project_balance" : "new project balance" } }
+                                }
+                              },
+                              { "data_set" : {
+                                  "data" : [ "project:field-merit-reward" ],
+                                  "value" : [ "new-project-balance" ]
+                                }
+                              }
+                            ]
+                          }
+                        ]
+                      },
+                      { "component_rules_update_user_expertise" : {
+                          "time_share" : "1",
+                          "merit_reward" : [ "reward-amnt" ],
+                          "classification" : [ "work-report:field-classification:0:tid" ],
+                          "rewardee_uid" : [ "work-report:author:uid" ]
+                        }
+                      },
+                      { "data_set" : { "data" : [ "outcome" ], "value" : "1" } },
+                      { "data_set" : { "data" : [ "reason" ], "value" : "Success" } }
+                    ]
+                  },
+                  { "ELSE" : [
+                      { "data_set" : { "data" : [ "outcome" ], "value" : "0" } },
+                      { "data_set" : {
+                          "data" : [ "reason" ],
+                          "value" : "Buyer is the same as the work report author"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          },
+          { "ELSE" : [
+              { "data_set" : { "data" : [ "outcome" ], "value" : "0" } },
+              { "data_set" : {
+                  "data" : [ "reason" ],
+                  "value" : "The object ID supplied does not belong to a work report"
+                }
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "PROVIDES VARIABLES" : [ "outcome", "reason" ]
+  }
+}

@@ -1,0 +1,20 @@
+{ "rules_dispute_notification_sent" : {
+    "LABEL" : "Dispute notification sent",
+    "PLUGIN" : "reaction rule",
+    "OWNER" : "rules",
+    "TAGS" : [ "dispute" ],
+    "REQUIRES" : [ "rules", "php" ],
+    "ON" : { "node_view" : [] },
+    "IF" : [
+      { "user_has_role" : {
+          "account" : [ "site:current-user" ],
+          "roles" : { "value" : { "6" : "6" } }
+        }
+      },
+      { "data_is" : { "data" : [ "site:current-user:field-dispute-notify" ], "value" : "1" } }
+    ],
+    "DO" : [
+      { "php_eval" : { "code" : "function simple_modal_overlay_rovas() {\r\n\r\n  simple_modal_overlay_show(\r\n    t(\u0022Important Notice\u0022),\r\n    array(\r\n      \u0027#type\u0027   =\u003E \u0027fieldset\u0027,\r\n      \u0027#title\u0027  =\u003E \u0027\u0027,\r\n      \u0027#collapsible\u0027 =\u003E FALSE,\r\n      \u0027#collapsed\u0027 =\u003E FALSE,\r\n\r\n      \u0027content\u0027 =\u003E array(\r\n        \u0027#type\u0027 =\u003E \u0027markup\u0027,\r\n        \u0027#markup\u0027 =\u003E t(\u0027You are the accused in a new Dispute.\u0027) . \u0027 \u0027 . t(\u0027To take actions for dismissing the case or to defend your position, please first read the rules governing Disputes.\u0027) . \u0027 \u0027 . t(\u0027The rules and link to the Dispute can be found on the Disputes page.\u0027) . \u0027\u003Cbr\/\u003E\u003Cbr\/\u003E\u003Cbr\/\u003E\u003Cbr\/\u003E\u0027 . \r\n        \u0027\u003Cdiv style=\u0022text-align: center;\u0022\u003E\u003Ca  class=\u0022btn btn-default\u0022 role=\u0022button\u0022 href=\u0022\/dismiss_notify\u0022\u003E\u0027 . t(\u0027OK\u0027) . \u0027\u003C\/a\u003E\u003C\/div\u003E\u0027,\r\n      )\r\n    ),\r\n    $dismissible = FALSE\r\n    );\r\n}\r\n\r\nreturn simple_modal_overlay_rovas();\r\n" } }
+    ]
+  }
+}

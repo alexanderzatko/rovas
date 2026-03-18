@@ -1,0 +1,6 @@
+name = Rules variable_get
+description = Exposes system variables to be used in Rules actions.
+core = 7.x
+package = Rules
+
+dependencies[] = rules

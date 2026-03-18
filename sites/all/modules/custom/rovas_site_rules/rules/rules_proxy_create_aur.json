@@ -1,0 +1,73 @@
+{ "rules_proxy_create_aur" : {
+    "LABEL" : "Proxy create aur",
+    "PLUGIN" : "rule",
+    "OWNER" : "rules",
+    "TAGS" : [ "api" ],
+    "REQUIRES" : [ "commerce", "rules", "rules_conditional" ],
+    "USES VARIABLES" : {
+      "project_id" : { "label" : "project ID", "type" : "integer" },
+      "note" : { "label" : "note", "type" : "text", "allow null" : true },
+      "result" : { "label" : "result", "type" : "integer", "parameter" : false },
+      "usage_fee" : { "label" : "usage fee", "type" : "decimal" },
+      "wr_id" : { "label" : "work report ID", "type" : "integer", "allow null" : true }
+    },
+    "IF" : [
+      { "entity_exists" : { "type" : "node", "property" : "nid", "value" : [ "project-id" ] } },
+      { "NOT data_is_empty" : { "data" : [ "usage-fee" ] } }
+    ],
+    "DO" : [
+      { "component_rules_retrieve_user_id_from_api_key_and_token" : { "USING" : {}, "PROVIDE" : { "uid" : { "uid" : "user id" } } } },
+      { "entity_fetch" : {
+          "USING" : { "type" : "user", "id" : [ "uid" ] },
+          "PROVIDE" : { "entity_fetched" : { "consumer" : "consumer" } }
+        }
+      },
+      { "entity_fetch" : {
+          "USING" : { "type" : "node", "id" : [ "project-id" ], "revision_id" : "0" },
+          "PROVIDE" : { "entity_fetched" : { "project" : "project" } }
+        }
+      },
+      { "CONDITIONAL" : [
+          {
+            "IF" : { "data_is_empty" : { "data" : [ "wr-id" ] } },
+            "DO" : [
+              { "component_rules_create_aur" : {
+                  "USING" : {
+                    "owner_project" : [ "project" ],
+                    "usage_fee" : [ "usage_fee" ],
+                    "consumer" : [ "consumer" ],
+                    "note" : [ "note" ],
+                    "work_report" : "0"
+                  },
+                  "PROVIDE" : { "result" : { "subresult1" : "subresult 1" } }
+                }
+              },
+              { "data_set" : { "data" : [ "result" ], "value" : [ "subresult1" ] } }
+            ]
+          },
+          { "ELSE" : [
+              { "entity_fetch" : {
+                  "USING" : { "type" : "node", "id" : [ "wr-id" ], "revision_id" : "0" },
+                  "PROVIDE" : { "entity_fetched" : { "wr_object" : "wr object" } }
+                }
+              },
+              { "component_rules_create_aur" : {
+                  "USING" : {
+                    "owner_project" : [ "project" ],
+                    "usage_fee" : [ "usage_fee" ],
+                    "consumer" : [ "consumer" ],
+                    "note" : [ "note" ],
+                    "work_report" : [ "wr-object" ]
+                  },
+                  "PROVIDE" : { "result" : { "subresult" : "subresult" } }
+                }
+              },
+              { "data_set" : { "data" : [ "result" ], "value" : [ "subresult" ] } }
+            ]
+          }
+        ]
+      }
+    ],
+    "PROVIDES VARIABLES" : [ "result" ]
+  }
+}

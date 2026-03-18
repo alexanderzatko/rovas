@@ -1,0 +1,60 @@
+{ "rules_recalculate_shares_time_in_a_project" : {
+    "LABEL" : "recalculate shares time in a project",
+    "PLUGIN" : "rule",
+    "OWNER" : "rules",
+    "TAGS" : [ "project" ],
+    "REQUIRES" : [ "rules", "rules_conditional" ],
+    "USES VARIABLES" : {
+      "project_nid" : { "label" : "project id", "type" : "integer" },
+      "hours" : { "label" : "hours", "type" : "decimal", "parameter" : false }
+    },
+    "DO" : [
+      { "data_set" : { "data" : [ "hours" ], "value" : "0" } },
+      { "entity_fetch" : {
+          "USING" : { "type" : "node", "id" : [ "project-nid" ], "revision_id" : "0" },
+          "PROVIDE" : { "entity_fetched" : { "project" : "project" } }
+        }
+      },
+      { "entity_query" : {
+          "USING" : { "type" : "node", "property" : "field_project", "value" : [ "project" ] },
+          "PROVIDE" : { "entity_fetched" : { "shareholders" : "shareholders" } }
+        }
+      },
+      { "LOOP" : {
+          "USING" : { "list" : [ "shareholders" ] },
+          "ITEM" : { "shareholder" : "shareholder" },
+          "DO" : [
+            { "CONDITIONAL" : [
+                {
+                  "IF" : { "entity_is_of_bundle" : {
+                      "entity" : [ "shareholder" ],
+                      "type" : "node",
+                      "bundle" : { "value" : { "co_worker_merit_allocation" : "co_worker_merit_allocation" } }
+                    }
+                  },
+                  "DO" : [
+                    { "component_rules_recalculate_user_project_time" : {
+                        "USING" : {
+                          "uid" : [ "shareholder:field-coworker:uid" ],
+                          "project_nid" : [ "project_nid" ]
+                        },
+                        "PROVIDE" : { "hours" : { "user_hours" : "user hours" } }
+                      }
+                    },
+                    { "data_calc" : {
+                        "USING" : { "input_1" : [ "user-hours" ], "op" : "+", "input_2" : [ "hours" ] },
+                        "PROVIDE" : { "result" : { "new_hours" : "new hours" } }
+                      }
+                    },
+                    { "data_set" : { "data" : [ "hours" ], "value" : [ "new-hours" ] } }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      }
+    ],
+    "PROVIDES VARIABLES" : [ "hours" ]
+  }
+}

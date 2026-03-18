@@ -1,0 +1,16 @@
+diff --git a/entity_translation.admin.inc b/entity_translation.admin.inc
+index 3bdf410..a305cdc 100644
+--- a/entity_translation.admin.inc
++++ b/entity_translation.admin.inc
+@@ -659,6 +659,11 @@ function entity_translation_translatable_batch($translatable, $field_name, $copy
+   }
+ 
+   $context['finished'] = $context['sandbox']['progress'] / $context['sandbox']['max'];
++  
++  // If no progress was made then set as finished to avoid infinite loop.
++  if ($offset == $context['sandbox']['progress']) {
++    $context['finished'] = 1;
++  }
+ }
+ 
+ /**

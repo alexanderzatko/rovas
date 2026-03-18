@@ -1,0 +1,4 @@
+name = Rovas shopping cart form
+description = Does not allow submitting cart with item count > 1
+core = 7.x
+package = Rovas

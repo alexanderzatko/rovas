@@ -1,0 +1,113 @@
+{ "rules_proxy_check_or_add_project_shareholder" : {
+    "LABEL" : "Proxy check or add project shareholder",
+    "PLUGIN" : "rule",
+    "OWNER" : "rules",
+    "TAGS" : [ "merit allocation", "project merit allocation" ],
+    "REQUIRES" : [ "rules", "rules_conditional", "php" ],
+    "USES VARIABLES" : {
+      "time_based" : { "label" : "time based", "type" : "boolean", "allow null" : true },
+      "shareholder_proj_nid" : { "label" : "shareholder project id", "type" : "integer" },
+      "project_nid" : { "label" : "project id", "type" : "integer" },
+      "merit_share" : { "label" : "merit share", "type" : "decimal", "allow null" : true },
+      "share_id" : { "label" : "share id", "type" : "integer", "parameter" : false }
+    },
+    "IF" : [
+      { "OR" : [
+          { "AND" : [
+              { "data_is_empty" : { "data" : [ "merit-share" ] } },
+              { "data_is" : { "data" : [ "time-based" ], "value" : "1" } }
+            ]
+          },
+          { "AND" : [
+              { "data_is" : { "data" : [ "merit-share" ], "op" : "\u003E", "value" : "0" } },
+              { "data_is" : { "data" : [ "time-based" ], "value" : "0" } }
+            ]
+          }
+        ]
+      }
+    ],
+    "DO" : [
+      { "component_rules_retrieve_user_id_from_api_key_and_token" : { "USING" : {}, "PROVIDE" : { "uid" : { "uid" : "user id" } } } },
+      { "entity_fetch" : {
+          "USING" : { "type" : "node", "id" : [ "project-nid" ], "revision_id" : "0" },
+          "PROVIDE" : { "entity_fetched" : { "project" : "project" } }
+        }
+      },
+      { "CONDITIONAL" : [
+          {
+            "IF" : { "data_is" : { "data" : [ "project:author:uid" ], "value" : [ "uid" ] } },
+            "DO" : [
+              { "entity_fetch" : {
+                  "USING" : {
+                    "type" : "node",
+                    "id" : [ "shareholder-proj-nid" ],
+                    "revision_id" : "0"
+                  },
+                  "PROVIDE" : { "entity_fetched" : { "shareholder_project" : "shareholder project" } }
+                }
+              },
+              { "CONDITIONAL" : [
+                  {
+                    "IF" : { "entity_is_of_bundle" : {
+                        "entity" : [ "project" ],
+                        "type" : "node",
+                        "bundle" : { "value" : { "project" : "project" } }
+                      }
+                    },
+                    "DO" : [
+                      { "CONDITIONAL" : [
+                          {
+                            "IF" : { "entity_is_of_bundle" : {
+                                "entity" : [ "shareholder-project" ],
+                                "type" : "node",
+                                "bundle" : { "value" : { "project" : "project" } }
+                              }
+                            },
+                            "DO" : [
+                              { "variable_add" : {
+                                  "USING" : {
+                                    "type" : "text",
+                                    "value" : "\u003C?php\r\n$res = db_query(\u0022SELECT ma.field_merit_allocation_value AS shares, sn.nid as shpr\r\nFROM {node} node\r\nLEFT JOIN {field_data_field_project} fpr ON node.nid = fpr.entity_id AND (fpr.entity_type = \u0027node\u0027 AND fpr.deleted = \u00270\u0027)\r\nLEFT JOIN {node} n ON fpr.field_project_target_id = n.nid\r\nLEFT JOIN {field_data_field_merit_allocation} ma ON node.nid = ma.entity_id AND (ma.entity_type = \u0027node\u0027 AND ma.deleted = \u00270\u0027)\r\nLEFT JOIN {field_data_field_shareholder_project} shpr ON node.nid = shpr.entity_id AND (shpr.entity_type = \u0027node\u0027 AND shpr.deleted = \u00270\u0027)\r\nLEFT JOIN {node} sn ON shpr.field_shareholder_project_target_id = sn.nid\r\nWHERE n.nid = :prid\r\nAND node.status = \u00271\u0027\r\nAND node.type IN (\u0027project_merit_allocation\u0027, \u0027co_worker_merit_allocation\u0027)\r\n\u0022, array(\u0027:prid\u0027 =\u003E $project-\u003Enid));\r\n\r\n$sumarray = $res-\u003EfetchAll();\r\n\r\n$total_shares = 0;\r\n$dupe = 0;\r\n\r\nforeach ($sumarray AS $share) {\r\n\t$total_shares += $share-\u003Eshares;\r\n\tif ($share-\u003Eshpr == $shareholder_project-\u003Enid) {\r\n\t\t$dupe = 1;\r\n\t\tbreak;\r\n\t}\r\n}\r\n\r\n\/*\r\n* make sure that:\r\n- the project being added isn\u0027t already a shareholder\r\n- for share-based projects, the total shares does not exceed 100% after the new share is added\r\n*\/\r\n\r\n$result = !$time_based ? ($merit_share + $total_shares) \u003C= 100 : 1;\r\n\r\necho !$dupe \u0026\u0026 $result;\r\n\r\n?\u003E"
+                                  },
+                                  "PROVIDE" : { "variable_added" : { "total_shares_ok" : "total shares ok" } }
+                                }
+                              },
+                              { "CONDITIONAL" : [
+                                  {
+                                    "IF" : { "data_is" : { "data" : [ "total-shares-ok" ], "value" : "1" } },
+                                    "DO" : [
+                                      { "component_rules_check_or_add_project_shareholder_core" : {
+                                          "USING" : {
+                                            "time_based" : [ "time_based" ],
+                                            "merit_share" : [ "merit_share" ],
+                                            "shareholder_project" : [ "shareholder_project" ],
+                                            "project" : [ "project" ]
+                                          },
+                                          "PROVIDE" : { "result" : { "result" : "result" } }
+                                        }
+                                      },
+                                      { "data_set" : { "data" : [ "share-id" ], "value" : [ "result" ] } }
+                                    ]
+                                  },
+                                  { "ELSE" : [ { "data_set" : { "data" : [ "share-id" ], "value" : "-4" } } ] }
+                                ]
+                              }
+                            ]
+                          },
+                          { "ELSE" : [ { "data_set" : { "data" : [ "share-id" ], "value" : "-3" } } ] }
+                        ]
+                      }
+                    ]
+                  },
+                  { "ELSE" : [ { "data_set" : { "data" : [ "share-id" ], "value" : "-2" } } ] }
+                ]
+              }
+            ]
+          },
+          { "ELSE" : [ { "data_set" : { "data" : [ "share-id" ], "value" : "-1" } } ] }
+        ]
+      }
+    ],
+    "PROVIDES VARIABLES" : [ "share_id" ]
+  }
+}

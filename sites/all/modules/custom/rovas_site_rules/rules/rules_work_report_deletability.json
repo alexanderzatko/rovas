@@ -1,0 +1,63 @@
+{ "rules_work_report_deletability" : {
+    "LABEL" : "Work report deletability",
+    "PLUGIN" : "action set",
+    "OWNER" : "rules",
+    "TAGS" : [ "work report" ],
+    "REQUIRES" : [ "rules", "rules_conditional" ],
+    "USES VARIABLES" : {
+      "wr_object" : { "label" : "work report", "type" : "node" },
+      "user_object" : { "label" : "user to check", "type" : "user" },
+      "deletable" : { "label" : "deletable", "type" : "boolean", "parameter" : false }
+    },
+    "ACTION SET" : [
+      { "data_set" : { "data" : [ "deletable" ], "value" : "0" } },
+      { "CONDITIONAL" : [
+          {
+            "IF" : { "data_is" : { "data" : [ "user-object" ], "value" : [ "wr-object:author" ] } },
+            "DO" : [
+              { "CONDITIONAL" : [
+                  {
+                    "IF" : { "entity_is_of_bundle" : {
+                        "entity" : [ "wr-object" ],
+                        "type" : "node",
+                        "bundle" : { "value" : { "work_report" : "work_report" } }
+                      }
+                    },
+                    "DO" : [
+                      { "CONDITIONAL" : [
+                          {
+                            "IF" : { "entity_is_of_bundle" : {
+                                "entity" : [ "wr-object:field-project" ],
+                                "type" : "node",
+                                "bundle" : { "value" : { "project" : "project" } }
+                              }
+                            },
+                            "DO" : [
+                              { "CONDITIONAL" : [
+                                  {
+                                    "IF" : { "data_is" : {
+                                        "data" : [ "wr-object:field-project:field-status" ],
+                                        "op" : "IN",
+                                        "value" : { "value" : [ "0", "1" ] }
+                                      }
+                                    },
+                                    "DO" : [ { "data_set" : { "data" : [ "deletable" ], "value" : "1" } } ]
+                                  }
+                                ]
+                              }
+                            ]
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "PROVIDES VARIABLES" : [ "deletable" ]
+  }
+}

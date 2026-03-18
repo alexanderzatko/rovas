@@ -1,0 +1,97 @@
+{ "rules_chrons_actually_available" : {
+    "LABEL" : "Chrons actually available",
+    "PLUGIN" : "rule",
+    "OWNER" : "rules",
+    "TAGS" : [ "chrons" ],
+    "REQUIRES" : [ "rules", "php", "rules_conditional", "rules_data_transforms" ],
+    "USES VARIABLES" : {
+      "user_object" : { "label" : "User object", "type" : "user" },
+      "chrons_available" : { "label" : "Chrons available", "type" : "decimal", "parameter" : false }
+    },
+    "IF" : [
+      { "entity_is_of_bundle" : {
+          "entity" : [ "user-object" ],
+          "type" : "user",
+          "bundle" : { "value" : { "user" : "user" } }
+        }
+      }
+    ],
+    "DO" : [
+      { "data_set" : {
+          "data" : [ "chrons-available" ],
+          "value" : [ "user-object:field-chrons-balance" ]
+        }
+      },
+      { "variable_add" : {
+          "USING" : {
+            "type" : "text",
+            "value" : "\u003C?php \r\n$aur_nid = variable_get(\u0027last_aur\u0027);\r\n\r\nif (isset($aur_nid))\r\n\techo $aur_nid;\r\nelse\r\n\techo 1;\r\n?\u003E"
+          },
+          "PROVIDE" : { "variable_added" : { "last_aur_nid" : "last aur nid" } }
+        }
+      },
+      { "variable_add" : {
+          "USING" : {
+            "type" : "text",
+            "value" : "\u003C?php \r\n$uid = $user_object-\u003Euid;\r\n\r\n$result = db_query(\u0022SELECT n.nid AS nid\r\nFROM {node} n\r\nLEFT JOIN {field_data_field_usager} usr ON n.nid = usr.entity_id AND usr.entity_type = \u0027node\u0027\r\nWHERE usr.field_usager_target_id = :uid\r\nAND n.nid \u003E :lastnid\r\nAND n.status = 1\r\nAND n.type = \u0027asset_usage_record\u0027\u0022, array(\u0027:uid\u0027 =\u003E $uid, \u0027:lastnid\u0027 =\u003E $last_aur_nid));\r\n\r\n$i=\u0027\u0027;\r\nforeach ($result as $row) {\r\n\tif ($i != \u0027\u0027)\r\n\t\t$i = $i . \u0027,\u0027 . $row-\u003Enid;\r\n\telse\r\n\t\t$i = $row-\u003Enid;\r\n}\r\n\/\/watchdog(\u0027rules\u0027,\u0027[\u0027 . $i . \u0027]\u0027);\r\necho $i;\r\n?\u003E"
+          },
+          "PROVIDE" : { "variable_added" : { "aur_nids_string" : "aur nids string" } }
+        }
+      },
+      { "CONDITIONAL" : [
+          {
+            "IF" : { "NOT data_is_empty" : { "data" : [ "aur-nids-string" ] } },
+            "DO" : [
+              { "explode" : {
+                  "USING" : { "input_text" : [ "aur-nids-string" ], "delimiter" : "," },
+                  "PROVIDE" : { "output_list" : { "aur_list" : "aur list" } }
+                }
+              },
+              { "LOOP" : {
+                  "USING" : { "list" : [ "aur-list" ] },
+                  "ITEM" : { "current_aur" : "Current aur" },
+                  "DO" : [
+                    { "data_convert" : {
+                        "USING" : { "type" : "integer", "value" : [ "current-aur" ] },
+                        "PROVIDE" : { "conversion_result" : { "aur_nid" : "aur nid" } }
+                      }
+                    },
+                    { "entity_fetch" : {
+                        "USING" : { "type" : "node", "id" : [ "aur-nid" ] },
+                        "PROVIDE" : { "entity_fetched" : { "aur_object" : "aur object" } }
+                      }
+                    },
+                    { "CONDITIONAL" : [
+                        {
+                          "IF" : { "entity_is_of_bundle" : {
+                              "entity" : [ "aur-object" ],
+                              "type" : "node",
+                              "bundle" : { "value" : { "asset_usage_record" : "asset_usage_record" } }
+                            }
+                          },
+                          "DO" : [
+                            { "data_calc" : {
+                                "USING" : {
+                                  "input_1" : [ "chrons-available" ],
+                                  "op" : "-",
+                                  "input_2" : [ "aur-object:field-asset-usage-fee" ]
+                                },
+                                "PROVIDE" : { "result" : { "running_total" : "running total" } }
+                              }
+                            },
+                            { "data_set" : { "data" : [ "chrons-available" ], "value" : [ "running-total" ] } }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "PROVIDES VARIABLES" : [ "chrons_available" ]
+  }
+}

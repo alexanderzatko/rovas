@@ -1,0 +1,46 @@
+diff --git a/modules/events.inc b/modules/events.inc
+index 04e43ee..3805002 100644
+--- a/modules/events.inc
++++ b/modules/events.inc
+@@ -166,6 +166,13 @@ function rules_entity_delete($entity, $type) {
+ }
+ 
+ /**
++ * Implements hook_node_prepare().
++ */
++function rules_node_prepare($node) {
++  rules_invoke_event('node_prepare', $node);
++}
++
++/**
+  * Implements hook_user_login().
+  */
+ function rules_user_login(&$edit, $account) {
+diff --git a/modules/node.rules.inc b/modules/node.rules.inc
+index 40e4bb3..7891bb9 100644
+--- a/modules/node.rules.inc
++++ b/modules/node.rules.inc
+@@ -40,6 +40,12 @@ function rules_node_event_info() {
+       'access callback' => 'rules_node_integration_access',
+       'class' => 'RulesNodeEventHandler',
+     ),
++    'node_prepare' => array(
++      'label' => t('Before passing content to the add/edit form'),
++      'group' => t('Node'),
++      'variables' => rules_events_node_variables(t('edited content'), TRUE),
++      'access callback' => 'rules_node_integration_access',
++    ),
+     'node_update' => array(
+       'label' => t('After updating existing content'),
+       'category' => 'node',
+@@ -80,6 +86,10 @@ function rules_node_event_info() {
+   );
+   // Specify that on presave the node is saved anyway.
+   $items['node_presave']['variables']['node']['skip save'] = TRUE;
++  // Don't save the node, because we're just preparing it for the form. Any
++  // changes made here may be overridden by the user before the form is
++  // submitted.
++  $items['node_prepare']['variables']['node']['skip save'] = TRUE;
+   return $items;
+ }
+ 

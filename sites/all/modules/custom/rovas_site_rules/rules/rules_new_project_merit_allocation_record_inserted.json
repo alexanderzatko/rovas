@@ -1,0 +1,59 @@
+{ "rules_new_project_merit_allocation_record_inserted" : {
+    "LABEL" : "Project Merit allocation record inserted",
+    "PLUGIN" : "reaction rule",
+    "OWNER" : "rules",
+    "TAGS" : [ "project merit allocation" ],
+    "REQUIRES" : [ "php", "rules", "rules_conditional" ],
+    "ON" : { "node_insert--project_merit_allocation" : { "bundle" : "project_merit_allocation" } },
+    "IF" : [
+      { "php_eval" : { "code" : "return is_numeric(arg(3));" } },
+      { "entity_is_of_bundle" : {
+          "entity" : [ "node:field-shareholder-project" ],
+          "type" : "node",
+          "bundle" : { "value" : { "project" : "project" } }
+        }
+      }
+    ],
+    "DO" : [
+      { "data_set" : {
+          "data" : [ "node:field-merits-earned" ],
+          "value" : [ "node:field-shareholder-project:field-merit-reward" ]
+        }
+      },
+      { "CONDITIONAL" : [
+          {
+            "IF" : { "data_is" : { "data" : [ "node:field-share-project-time" ], "value" : "1" } },
+            "DO" : [
+              { "variable_add" : {
+                  "USING" : {
+                    "type" : "integer",
+                    "value" : [ "node:field-shareholder-project:field-project-id" ]
+                  },
+                  "PROVIDE" : { "variable_added" : { "project_id" : "project ID" } }
+                }
+              },
+              { "php_eval" : { "code" : "$types = array(\u0027co_worker_merit_allocation\u0027,\u0027timeshare_merit_allocation\u0027,\u0027project_merit_allocation\u0027);\r\n$lbrtime = _rovas_base_calc_project_time ($project_id,$types);\r\n\r\n\/\/update all of the ancestors of the added project with its total labor time\r\n_rb_projects_update_time($project_id,$lbrtime);" } },
+              { "data_set" : {
+                  "data" : [ "node:field-total-hours-worked" ],
+                  "value" : [ "node:field-shareholder-project:field-project-total-hours" ]
+                }
+              }
+            ]
+          }
+        ]
+      },
+      { "variable_add" : {
+          "USING" : { "type" : "integer", "value" : [ "node:field-project:nid" ] },
+          "PROVIDE" : { "variable_added" : { "project_id" : "project id" } }
+        }
+      },
+      { "component_rules_recalculate_total_project_shares" : {
+          "USING" : { "project_id" : [ "project_id" ] },
+          "PROVIDE" : { "total_project_shares" : { "total_project_shares" : "Total project shares" } }
+        }
+      },
+      { "php_eval" : { "code" : "\/\/watchdog(\u0027debug\u0027,\u0027total_project_shares \u0027 . $total_project_shares);\r\n$newshares = $total_project_shares;\r\n\r\n$prnode = node_load($project_id);\r\n$wrapper = entity_metadata_wrapper(\u0027node\u0027, $prnode);\r\n$wrapper-\u003Efield_total_shares = $newshares;\r\n\/\/reset field \u0022status\u0022 to \u0022not ready for purchase\u0022\r\nif($total_project_shares \u003E 100) {\r\n$wrapper-\u003Efield_status = 0;\r\n}\r\n$wrapper-\u003Esave(); " } },
+      { "redirect" : { "url" : "\u003C?php\r\nreturn \u0027\/node\/\u0027. arg(3);\r\n?\u003E" } }
+    ]
+  }
+}

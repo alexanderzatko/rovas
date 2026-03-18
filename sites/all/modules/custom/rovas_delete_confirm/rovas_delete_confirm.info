@@ -1,0 +1,4 @@
+name = Rovas Delete Confirm
+description = Modifies the Delete confirmation page to suit Rovas needs
+core = 7.x
+package = Rovas

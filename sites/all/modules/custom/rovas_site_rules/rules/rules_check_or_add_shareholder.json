@@ -1,0 +1,64 @@
+{ "rules_check_or_add_shareholder" : {
+    "LABEL" : "Check or add shareholder",
+    "PLUGIN" : "rule",
+    "OWNER" : "rules",
+    "TAGS" : [ "api", "merit allocation" ],
+    "REQUIRES" : [ "rules_conditional", "rules", "commerce" ],
+    "USES VARIABLES" : {
+      "user_id" : { "label" : "user ID", "type" : "integer" },
+      "project_id" : { "label" : "project ID", "type" : "integer" },
+      "result" : { "label" : "result", "type" : "integer", "parameter" : false }
+    },
+    "DO" : [
+      { "CONDITIONAL" : [
+          {
+            "IF" : { "entity_exists" : { "type" : "node", "property" : "nid", "value" : [ "project-id" ] } },
+            "DO" : [
+              { "entity_fetch" : {
+                  "USING" : { "type" : "node", "id" : [ "project-id" ], "revision_id" : "0" },
+                  "PROVIDE" : { "entity_fetched" : { "project" : "project" } }
+                }
+              },
+              { "CONDITIONAL" : [
+                  {
+                    "IF" : { "entity_is_of_bundle" : {
+                        "entity" : [ "project" ],
+                        "type" : "node",
+                        "bundle" : { "value" : { "project" : "project" } }
+                      }
+                    },
+                    "DO" : [
+                      { "CONDITIONAL" : [
+                          {
+                            "IF" : { "entity_exists" : { "type" : "user", "property" : "uid", "value" : [ "user-id" ] } },
+                            "DO" : [
+                              { "entity_fetch" : {
+                                  "USING" : { "type" : "user", "id" : [ "user-id" ] },
+                                  "PROVIDE" : { "entity_fetched" : { "user" : "user" } }
+                                }
+                              },
+                              { "component_rules_check_or_add_shareholder_core" : {
+                                  "USING" : { "user" : [ "user" ], "project" : [ "project" ] },
+                                  "PROVIDE" : { "result" : { "subresult" : "subresult" } }
+                                }
+                              },
+                              { "data_set" : { "data" : [ "result" ], "value" : [ "subresult" ] } }
+                            ]
+                          },
+                          { "ELSE" : [ { "data_set" : { "data" : [ "result" ], "value" : "-2" } } ] }
+                        ]
+                      }
+                    ]
+                  },
+                  { "ELSE" : [ { "data_set" : { "data" : [ "result" ], "value" : "-1" } } ] }
+                ]
+              }
+            ]
+          },
+          { "ELSE" : [ { "data_set" : { "data" : [ "result" ], "value" : "-1" } } ] }
+        ]
+      }
+    ],
+    "PROVIDES VARIABLES" : [ "result" ]
+  }
+}

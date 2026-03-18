@@ -1,0 +1,283 @@
+<?php
+
+/*
+* implements hook_form_alter()
+*/
+function rovas_report_form_form_work_report_node_form_alter(&$form, &$form_state, $form_id) {
+
+//dsm($form_state);
+
+	if (!in_array('_recalc_time',$form['#validate'])) {
+
+		array_unshift($form['#validate'], '_recalc_time');
+
+		$form['field_web_address'][LANGUAGE_NONE][0]['#element_validate'][] = '_rrf_validate_www';
+		$form['field_photos'][LANGUAGE_NONE][0]['#element_validate'][] = '_rrf_validate_pic';
+		$form['field_location'][LANGUAGE_NONE]['#element_validate'][] = '_rrf_validate_loc';
+		$form['field_rovas_report'][LANGUAGE_NONE]['#element_validate'][] = '_rrf_validate_rovrep';
+
+		$form['field_address'][LANGUAGE_NONE][0]['field_country'][LANGUAGE_NONE]['#element_validate'][] = '_rrf_validate_adr_cntry';
+		$form['field_address'][LANGUAGE_NONE][0]['field_address_1'][LANGUAGE_NONE]['#element_validate'][] = '_rrf_validate_adr_adr1';
+		$form['field_address'][LANGUAGE_NONE][0]['field_city'][LANGUAGE_NONE]['#element_validate'][] = '_rrf_validate_adr_city';
+		$form['field_address'][LANGUAGE_NONE][0]['field_postal_code'][LANGUAGE_NONE]['#element_validate'][] = '_rrf_validate_adr_zip';
+
+	}
+
+	$form['field_date']['und'][0]['#element_validate'][] = '_wr_date_check';
+
+	$lang = $form['field_work_evidence']['#language'];
+	$fhsname1 = 'field_work_evidence['.$lang.'][1]';
+	$fhsname2 = 'field_work_evidence['.$lang.'][2]';
+	$fhsname3 = 'field_work_evidence['.$lang.'][3]';
+	$fhsname4 = 'field_work_evidence['.$lang.'][4]';
+	$fhsname5 = 'field_work_evidence['.$lang.'][5]';
+
+	//shows and makes required the particular proof type section depending on the choices made in the field_work_evidence
+	$form['field_web_address']['#states'] = array(
+		'visible' => array(
+				':input[name="'. $fhsname1 .'"]' => array('checked' => TRUE),
+			),
+		'required' => array(
+				':input[name="'. $fhsname1 .'"]' => array('checked' => TRUE),
+			),
+		);
+
+	$form['field_address']['#states'] = array(
+		'visible' => array(
+				':input[name="'. $fhsname2 .'"]' => array('checked' => TRUE),
+			),
+		);
+
+	$form['field_address'][LANGUAGE_NONE][0]['field_country']['#states'] = array(
+		'required' => array(
+				':input[name="'. $fhsname2 .'"]' => array('checked' => TRUE),
+			),
+		);
+
+	$form['field_address'][LANGUAGE_NONE][0]['field_address_1']['#states'] = array(
+		'required' => array(
+				':input[name="'. $fhsname2 .'"]' => array('checked' => TRUE),
+			),
+		);
+
+	$form['field_address'][LANGUAGE_NONE][0]['field_city']['#states'] = array(
+		'required' => array(
+				':input[name="'. $fhsname2 .'"]' => array('checked' => TRUE),
+			),
+		);
+
+	$form['field_address'][LANGUAGE_NONE][0]['field_postal_code']['#states'] = array(
+		'required' => array(
+				':input[name="'. $fhsname2 .'"]' => array('checked' => TRUE),
+			),
+		);
+
+	$form['locgroup'] = array(
+		'#type' => 'fieldset',
+		'#title' => t('Show the map'),
+		'#weight' => 11,
+		'#collapsible' => TRUE, 
+		'#collapsed' => TRUE,
+		'#states' => array(
+			'visible' => array(
+				':input[name="'. $fhsname3 .'"]' => array('checked' => TRUE),
+			),
+		),
+	);
+	
+	$form['locgroup']['field_location'] = $form['field_location'];
+	
+	unset($form['field_location']);
+	$form['field_location']['#language'] = LANGUAGE_NONE;
+
+	$form['locgroup']['field_location']['#states'] = array(
+		'required' => array(
+				':input[name="'. $fhsname3 .'"]' => array('checked' => TRUE),
+			),
+		);
+
+	$form['field_photos']['#states'] = array(
+		'visible' => array(
+				':input[name="'. $fhsname4 .'"]' => array('checked' => TRUE),
+			),
+		'required' => array(
+				':input[name="'. $fhsname4 .'"]' => array('checked' => TRUE),
+			),
+		);
+
+	$form['field_photos']['#weight'] = 13;
+	$form['field_rovas_report']['#weight'] = 14;
+	$form['field_classification']['#weight'] = 15;
+	$form['body']['#weight'] = 16;
+	
+	$form['field_rovas_report']['#states'] = array(
+		'visible' => array(
+				':input[name="'. $fhsname5 .'"]' => array('checked' => TRUE),
+			),
+		'required' => array(
+				':input[name="'. $fhsname5 .'"]' => array('checked' => TRUE),
+			),
+		);
+
+	$lang = $form['field_hours_worked']['#language'];
+	$default_old = $form['field_hours_worked'][$lang][0]['value']['#default_value'];
+	$time_old = $default_old ? $default_old : 0;
+
+	$hrs_old = floor($time_old);
+	$hrs_old = $hrs_old > 0 ? $hrs_old : '';
+	$mds = ($time_old - $hrs_old) * 60;
+	$mins_old = round($mds,0);
+	$mins_old = $mins_old > 0 ? $mins_old : '';
+
+	$form['labor_time'] = array(
+		'#type' => 'fieldset',
+		'#description' => t('Enter the time spent performing the reported activity'),
+		'#title' => t('Time worked') . ' *',
+		'#weight' => 3,
+		'#element_validate' => array('_validate_labor_time'),
+		'#attributes' => array('class' => array('labrtime')),
+		'#collapsible' => FALSE,
+//			'#collapsed' => FALSE,
+		);
+
+	$form['labor_time']['hours'] = array(
+		'#type' => 'textfield', 
+		'#title' => t('Hours'), 
+		'#default_value' => $hrs_old, 
+		'#size' => 6, 
+//			'#parents' => array('hours'), 
+		'#maxlength' => 128, 
+	);
+
+	$form['labor_time']['minutes'] = array(
+		'#type' => 'textfield', 
+		'#title' => t('Minutes'), 
+		'#default_value' => $mins_old, 
+		'#size' => 4, 
+//			'#parents' => array('minutes'), 
+		'#maxlength' => 128, 
+	);
+		
+//uggly hack to have the title and description of the Location fields translated
+	if (isset($form['locgroup']['field_location'][LANGUAGE_NONE][0]['#title']) && !empty($form['locgroup']['field_location'][LANGUAGE_NONE][0]['#title'])) {
+		$form['locgroup']['field_location'][LANGUAGE_NONE][0]['#title'] = t($form['locgroup']['field_location'][LANGUAGE_NONE][0]['#title']);
+	}
+	if (isset($form['locgroup']['field_location'][LANGUAGE_NONE][0]['#description']) && !empty($form['locgroup']['field_location'][LANGUAGE_NONE][0]['#description'])) {
+		$form['locgroup']['field_location'][LANGUAGE_NONE][0]['#description'] = t($form['locgroup']['field_location'][LANGUAGE_NONE][0]['#description']);
+	}
+
+//dsm($form);
+//$vals = isset($form_state['values']) ? $form_state['values'] : array();
+//watchdog('module','rovas_report_form ' . print_r($vals,1));
+}
+
+/*
+* the form validation function
+*/
+
+function _recalc_time($form, &$form_state) {
+
+	//combine the hours and minutes into decimal hours
+
+	$hrs = isset($form_state['values']['hours']) ? $form_state['values']['hours'] : 0;
+	$min = isset($form_state['values']['minutes']) ? ($form_state['values']['minutes']/60) : 0;
+
+	$form_state['values']['hrs'] = $hrs;
+	$form_state['values']['min'] = $min;
+
+ 	$new_time = $hrs + $min;
+	$form_state['values']['field_hours_worked'][LANGUAGE_NONE][0]['value'] = $new_time;
+
+}
+
+function _wr_date_check($element, &$form_state, $form) {
+
+	$date = strtotime($form_state['values']['field_date'][LANGUAGE_NONE][0]['value']) + $form_state['values']['field_date'][LANGUAGE_NONE][0]['offset'];
+	global $user;
+	$formdate = format_date($user->created,'custom','d M Y h:i:s');
+
+	if ($date > 0 && $user->created > $date) {
+		form_error($element, t('Only work performed after you registered (@regdate) can be rewarded.',array('@regdate' => $formdate)));
+	}
+}
+
+/*
+* make sure at least one of the two fields - minutes or hours contain a value 
+*/
+
+function _validate_labor_time($element, &$form_state, $form) {
+	$hrs = isset($form_state['values']['hours']) ? $form_state['values']['hours'] : 0;
+	$min = isset($form_state['values']['minutes']) ? ($form_state['values']['minutes']/60) : 0;
+
+ 	$new_time = $hrs + $min;
+
+//	watchdog('module','rrf v ' . print_r($form_state['values'],1));
+//	watchdog('module','rrf e ' . print_r($element,1));
+
+	if ($new_time <= 0) {
+//		watchdog('module','rrf e1 ' . print_r($element,1));
+//		$element = array('#parents' => array('field_work_evidence'));
+//		watchdog('module','rrf e2 ' . print_r($element,1));
+		form_error($element, t('The Time worked must be greater than 0'));
+	}
+}
+
+function _rrf_validate_www($element, &$form_state, $form) {
+	$lang = $form['field_work_evidence']['#language'];
+	if ($form_state['input']['field_work_evidence'][$lang][1] == 1 && empty($form_state['input']['field_web_address'][LANGUAGE_NONE][0]['value'])) {
+		form_error($element, t('The Web address field must contain a valid address'));
+	}
+}
+
+function _rrf_validate_loc($element, &$form_state, $form) {
+//	watchdog('module','rrf v ' . print_r($form,1));
+	$lang = $form['field_work_evidence']['#language'];
+	if ($form_state['input']['field_work_evidence'][$lang][3] == 3 && empty($form_state['input']['field_location'][$lang][0]['geom'])) {
+		form_error($element, t('Use the tools in the map to mark the place of the reported work'));
+//		form_set_error('locgroup][field_location', t('Use the tools in the map to mark the place of the reported work'));
+	}
+}
+
+function _rrf_validate_adr_cntry($element, &$form_state, $form) {
+	$lang = $form['field_work_evidence']['#language'];
+	if  ($form_state['input']['field_work_evidence'][$lang][2] == 2 && empty($form_state['values']['field_address'][LANGUAGE_NONE][0]['field_country'][LANGUAGE_NONE][0]['iso2'])) {
+		form_error($element, t('The <strong>Country</strong> field must have a value'));
+	}
+}
+
+function _rrf_validate_adr_adr1($element, &$form_state, $form) {
+	$lang = $form['field_work_evidence']['#language'];
+	if  ($form_state['input']['field_work_evidence'][$lang][2] == 2 && empty($form_state['values']['field_address'][LANGUAGE_NONE][0]['field_address_1'][LANGUAGE_NONE][0]['value'])) {
+		form_error($element, t('The <strong>Address 1</strong> field must have a value'));
+	}
+}
+
+function _rrf_validate_adr_city($element, &$form_state, $form) {
+	$lang = $form['field_work_evidence']['#language'];
+	if  ($form_state['input']['field_work_evidence'][$lang][2] == 2 && empty($form_state['values']['field_address'][LANGUAGE_NONE][0]['field_city'][LANGUAGE_NONE][0]['value'])) {
+		form_error($element, t('The <strong>City</strong> field must have a value'));
+	}
+}
+
+function _rrf_validate_adr_zip($element, &$form_state, $form) {
+	$lang = $form['field_work_evidence']['#language'];
+	if  ($form_state['input']['field_work_evidence'][$lang][2] == 2 && empty($form_state['input']['field_address'][LANGUAGE_NONE][0]['field_postal_code'][LANGUAGE_NONE][0]['value'])) {
+		form_error($element, t('The <strong>Postal code</strong> field must have a value'));
+	}
+}
+
+
+function _rrf_validate_pic($element, &$form_state, $form) {
+	$lang = $form['field_work_evidence']['#language'];
+	if ($form_state['input']['field_work_evidence'][$lang][4] == 4 && empty($form_state['values']['field_photos'][LANGUAGE_NONE][0]['fid'])) {
+		form_error($element, t('Upload some photos of your work into the Photos field'));
+	}
+}
+
+function _rrf_validate_rovrep($element, &$form_state, $form) {
+	$lang = $form['field_work_evidence']['#language'];
+//	watchdog('module','rrf e ' . print_r($form_state['values'],1));
+	if ($form_state['input']['field_work_evidence'][$lang][5] == 5 && empty($form_state['values']['field_rovas_report'][LANGUAGE_NONE][0]['target_id'])) {
+		form_error($element, t('Slect appropriate work report in the Rovas report field'));
+	}
+}

@@ -1,0 +1,21 @@
+{ "rules_proxy_check_or_add_shareholder" : {
+    "LABEL" : "Proxy check or add shareholder",
+    "PLUGIN" : "rule",
+    "OWNER" : "rules",
+    "REQUIRES" : [ "rules" ],
+    "USES VARIABLES" : {
+      "project_id" : { "label" : "Project ID", "type" : "integer" },
+      "result" : { "label" : "result", "type" : "integer", "parameter" : false }
+    },
+    "DO" : [
+      { "component_rules_retrieve_user_id_from_api_key_and_token" : { "USING" : {}, "PROVIDE" : { "uid" : { "uid" : "user id" } } } },
+      { "component_rules_check_or_add_shareholder" : {
+          "USING" : { "user_id" : [ "uid" ], "project_id" : [ "project_id" ] },
+          "PROVIDE" : { "result" : { "fetched_result" : "fetched result" } }
+        }
+      },
+      { "data_set" : { "data" : [ "result" ], "value" : [ "fetched-result" ] } }
+    ],
+    "PROVIDES VARIABLES" : [ "result" ]
+  }
+}

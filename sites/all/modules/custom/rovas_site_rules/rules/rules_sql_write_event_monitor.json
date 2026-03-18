@@ -1,0 +1,26 @@
+{ "rules_sql_write_event_monitor" : {
+    "LABEL" : "sql write event monitor",
+    "PLUGIN" : "reaction rule",
+    "OWNER" : "rules",
+    "REQUIRES" : [ "rules", "php" ],
+    "ON" : { "node_insert" : [], "node_update" : [] },
+    "IF" : [
+      { "entity_is_of_bundle" : {
+          "entity" : [ "node" ],
+          "type" : "node",
+          "bundle" : { "value" : { "project" : "project" } }
+        }
+      },
+      { "php_eval" : { "code" : "$result = db_query(\u0027SELECT n.nid FROM {field_data_body} b\r\nLEFT JOIN {node} n on b.entity_id = n.nid\r\nWHERE b.bundle \u003C\u003E n.type\u0027);\r\n\r\n$result2 = db_query(\u0027SELECT * \r\nFROM field_data_body \r\nWHERE entity_id NOT IN (SELECT nid FROM node)\r\n\u0027);\r\n\r\n$resarray = $result-\u003EfetchAll();\r\n$resarray2 = $result2-\u003EfetchAll();\r\n\r\nforeach ($resarray2 AS $node) {\r\n\t$result = db_query(\u0027DELETE FROM {field_data_body} WHERE entity_id = :nid\u0027, array(\u0027:nid\u0027 =\u003E $node-\u003Eentity_id));\r\n\t$result = db_query(\u0027DELETE FROM {field_revision_body} WHERE entity_id = :nid\u0027, array(\u0027:nid\u0027 =\u003E $node-\u003Eentity_id));\r\n}\r\n\r\nreturn count($resarray) \u003E 0 || count($resarray2) \u003E 0;" } }
+    ],
+    "DO" : [
+      { "mail" : {
+          "to" : "sano@strings.net",
+          "subject" : "problematicky zaznam v tabulke",
+          "message" : "rules_sql_write_event_monitor: V tabulke field_data_body bol urobeny zaznam ktory tam nepatri. Stalo sa to prave teraz, pri zapisovani nodu \u003C?php echo $node-\u003Enid; ?\u003E.",
+          "language" : [ "" ]
+        }
+      }
+    ]
+  }
+}

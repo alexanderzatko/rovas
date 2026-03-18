@@ -1,0 +1,29 @@
+{ "rules_after_login_redirect_to_dash" : {
+    "LABEL" : "After login redirect to dash",
+    "PLUGIN" : "reaction rule",
+    "OWNER" : "rules",
+    "TAGS" : [ "user" ],
+    "REQUIRES" : [ "pathrules", "php", "rules", "rules_conditional" ],
+    "ON" : { "user_login" : [] },
+    "IF" : [ { "NOT pathrules_checkpath" : { "path" : "user\/reset\/" } } ],
+    "DO" : [
+      { "variable_add" : {
+          "USING" : {
+            "type" : "text",
+            "value" : "\u003C?php \r\necho $_SERVER[\u0027QUERY_STRING\u0027];\r\n?\u003E"
+          },
+          "PROVIDE" : { "variable_added" : { "params" : "params" } }
+        }
+      },
+      { "CONDITIONAL" : [
+          {
+            "IF" : { "php_eval" : { "code" : "\/\/if  the destination_error is present in among the url params we assume the user logged in via hybridauth.\r\n\/\/then we do not redirect, as hybridauth seems to have its own redirect mechanism\r\n$res = stripos($params,\u0027destination_error=\u0027);\r\n\r\nreturn $res === FALSE;" } },
+            "DO" : [
+              { "redirect" : { "url" : "\u003C?php \r\n$res = stripos($params,\u0027destination=\u0027);\r\nif ($res === 0) {\r\necho urldecode(substr($params,12));\r\n}\r\nelse {\r\necho \u0027rules\u0027;\r\n}\r\n?\u003E" } }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

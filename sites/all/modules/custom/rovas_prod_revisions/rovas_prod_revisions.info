@@ -1,0 +1,5 @@
+name = Disable Commerce product revisions
+description = Disables revisions that are made whenever a product is saved
+core = 7.x
+package = Rovas
+dependencies[] = commerce

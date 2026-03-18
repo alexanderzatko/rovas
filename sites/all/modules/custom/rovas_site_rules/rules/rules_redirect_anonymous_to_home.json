@@ -1,0 +1,18 @@
+{ "rules_redirect_anonymous_to_home" : {
+    "LABEL" : "redirect anonymous to home",
+    "PLUGIN" : "reaction rule",
+    "OWNER" : "rules",
+    "TAGS" : [ "anonym" ],
+    "REQUIRES" : [ "rules" ],
+    "ON" : { "node_view" : [] },
+    "IF" : [
+      { "data_is" : { "data" : [ "node:nid" ], "value" : "8" } },
+      { "user_has_role" : {
+          "account" : [ "site:current-user" ],
+          "roles" : { "value" : { "1" : "1" } }
+        }
+      }
+    ],
+    "DO" : [ { "redirect" : { "url" : "\u003Cfront\u003E" } } ]
+  }
+}

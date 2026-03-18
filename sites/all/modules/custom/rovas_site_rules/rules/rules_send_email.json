@@ -1,0 +1,22 @@
+{ "rules_send_email" : {
+    "LABEL" : "send email",
+    "PLUGIN" : "rule",
+    "OWNER" : "rules",
+    "REQUIRES" : [ "rules" ],
+    "USES VARIABLES" : {
+      "recipient" : { "label" : "recipient email", "type" : "text" },
+      "subject" : { "label" : "subject", "type" : "text" },
+      "message" : { "label" : "message", "type" : "text" },
+      "language" : { "label" : "mail language", "type" : "token" }
+    },
+    "DO" : [
+      { "mail" : {
+          "to" : "alexanderz@neofund.sk",
+          "subject" : [ "subject" ],
+          "message" : [ "message" ],
+          "language" : [ "language" ]
+        }
+      }
+    ]
+  }
+}

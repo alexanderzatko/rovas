@@ -1,0 +1,4 @@
+name = Custom My Account menu item
+description = Adds user image and submenu listing account actions
+core = 7.x
+package = Rovas

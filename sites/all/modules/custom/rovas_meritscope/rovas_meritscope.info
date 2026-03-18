@@ -1,0 +1,6 @@
+name = The Meritscope module
+description = All functions necessary to render Meritscope
+core = 7.x
+package = Rovas
+
+stylesheets[all][] = rovas_meritscope.css

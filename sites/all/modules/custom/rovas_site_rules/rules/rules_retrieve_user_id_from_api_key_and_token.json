@@ -1,0 +1,55 @@
+{ "rules_retrieve_user_id_from_api_key_and_token" : {
+    "LABEL" : "retrieve user ID from API key and token",
+    "PLUGIN" : "action set",
+    "OWNER" : "rules",
+    "TAGS" : [ "api", "user" ],
+    "REQUIRES" : [ "php", "rules", "rules_conditional" ],
+    "USES VARIABLES" : { "uid" : { "label" : "user id", "type" : "integer", "parameter" : false } },
+    "ACTION SET" : [
+      { "variable_add" : {
+          "USING" : {
+            "type" : "text",
+            "value" : "\u003C?php\r\n$head = getallheaders();\r\necho $head[\u0027API-KEY\u0027];\r\n?\u003E"
+          },
+          "PROVIDE" : { "variable_added" : { "api_key" : "api key" } }
+        }
+      },
+      { "variable_add" : {
+          "USING" : {
+            "type" : "text",
+            "value" : "\u003C?php \r\n$head = getallheaders();\r\necho $head[\u0027TOKEN\u0027];\r\n?\u003E"
+          },
+          "PROVIDE" : { "variable_added" : { "token" : "token" } }
+        }
+      },
+      { "variable_add" : {
+          "USING" : {
+            "type" : "text",
+            "value" : "\u003C?php \r\n\r\n$apikeys = array(\r\n\t\u0027api_key\u0027 =\u003E $api_key,\r\n\t\u0027token\u0027 =\u003E $token,\r\n);\r\n\r\nif (module_exists(\u0027services_auth_apikeys\u0027)) {\r\n\techo services_auth_apikeys_load_by_apikeys($apikeys,\u0027rovas_endpoint\u0027,TRUE);\r\n}\r\nelse {\r\n\techo -1;\r\nwatchdog(\u0027rule\u0027, \u0027ERROR in rule \u0022rules_retrieve_user_id_from_api_key_and_token\u0022: the required module  \u0022services_auth_apikeys\u0022 is not installed\u0027 );\r\n}\r\n\r\n?\u003E"
+          },
+          "PROVIDE" : { "variable_added" : { "user_id_string" : "user id string" } }
+        }
+      },
+      { "CONDITIONAL" : [
+          {
+            "IF" : { "NOT data_is_empty" : { "data" : [ "user-id-string" ] } },
+            "DO" : [
+              { "data_convert" : {
+                  "USING" : { "type" : "integer", "value" : [ "user-id-string" ] },
+                  "PROVIDE" : { "conversion_result" : { "user_id_int" : "user id int" } }
+                }
+              },
+              { "data_set" : { "data" : [ "uid" ], "value" : [ "user-id-int" ] } }
+            ]
+          },
+          { "ELSE" : [
+              { "data_set" : { "data" : [ "uid" ], "value" : "-1" } },
+              { "php_eval" : { "code" : "watchdog(\u0027rule\u0027, \u0027WARNING. In rule \u0022rules_retrieve_user_id_from_api_key_and_token\u0022 no user was found for API key \u0027 . $api_key . \u0027 and token \u0027 . $token);" } }
+            ]
+          }
+        ]
+      }
+    ],
+    "PROVIDES VARIABLES" : [ "uid" ]
+  }
+}

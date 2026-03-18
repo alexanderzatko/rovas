@@ -1,0 +1,41 @@
+{ "rules_send_welcome_email" : {
+    "LABEL" : "send welcome email",
+    "PLUGIN" : "rule",
+    "OWNER" : "rules",
+    "TAGS" : [ "user" ],
+    "REQUIRES" : [ "rules", "rules_conditional", "php" ],
+    "USES VARIABLES" : { "user_object" : { "label" : "user", "type" : "user" } },
+    "DO" : [
+      { "component_rules_find_system_project_for_user" : {
+          "USING" : { "user_object" : [ "user_object" ] },
+          "PROVIDE" : { "system_project" : { "system_project" : "The system project" } }
+        }
+      },
+      { "CONDITIONAL" : [
+          {
+            "IF" : { "php_eval" : { "code" : "return isset($user_object-\u003Edata[\u0027hybridauth\u0027][\u0027provider\u0027]) \u0026\u0026 $user_object-\u003Edata[\u0027hybridauth\u0027][\u0027provider\u0027] == \u0027Nabezky\u0027;" } },
+            "DO" : [
+              { "mail" : {
+                  "to" : [ "user-object:mail" ],
+                  "subject" : "Welcome to Rovas",
+                  "message" : "Hello [user-object:name],\r\n\r\nWelcome to Rovas, an application that enables participation in the community economic system NEO.\r\n\r\nAccording to the \u003Ca href=\u0022[site:url]rules\u0022\u003ENEO rules\u003C\/a\u003E, your time worked on any projects serving others, can be rewarded with the community currency chron.\r\n\r\nTo claim your first chrons for registering in Rovas, you might want to create a \u003Ca href=\u0022[site:url]node\/add\/work-report\/[system-project:nid]\u0022\u003Ereport\u003C\/a\u003E in a special project, we created for you. \r\n\r\nTo log into Rovas, click the Na bezky icon \u003Cimg src=\u0022\/sites\/all\/modules\/rovas_ha\/plugins\/icon_pack\/hybridauth_32\/icons\/nabezky.svg\u0022 \/\u003E you can find in the login block.\r\n\r\nYou can also buy (or sell) chrons, on the \u003Ca href=\u0022[site:url]forex\u0022\u003EForex page\u003C\/a\u003E.",
+                  "language" : [ "user-object:language" ]
+                }
+              }
+            ]
+          },
+          { "ELSE" : [
+              { "mail" : {
+                  "to" : [ "user-object:mail" ],
+                  "subject" : "Welcome to Rovas",
+                  "message" : "Hello [user-object:name],\r\n\r\nWelcome to Rovas, an application that enables participation in the community economic system NEO.\r\n\r\nAccording to the \u003Ca href=\u0022[site:url]rules\u0022\u003ENEO rules\u003C\/a\u003E, your time worked on any projects serving others, can be rewarded with the community currency chron.\r\n\r\nTo claim your first chrons for registering in Rovas, you might want to create a \u003Ca href=\u0022[site:url]node\/add\/work-report\/[system-project:nid]\u0022\u003Ereport\u003C\/a\u003E in a special project, we created for you. \r\n\r\nYou can also buy (or sell) chrons, on the \u003Ca href=\u0022[site:url]forex\u0022\u003EForex page\u003C\/a\u003E.",
+                  "language" : [ "user-object:language" ]
+                }
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

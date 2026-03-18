@@ -1,0 +1,26 @@
+{ "rules_recalculate_total_project_shares" : {
+    "LABEL" : "Recalculate total project shares",
+    "PLUGIN" : "rule",
+    "OWNER" : "rules",
+    "REQUIRES" : [ "php", "rules" ],
+    "USES VARIABLES" : {
+      "project_id" : { "label" : "Project ID", "type" : "integer" },
+      "total_project_shares" : {
+        "label" : "Total project shares",
+        "type" : "decimal",
+        "parameter" : false
+      }
+    },
+    "DO" : [
+      { "data_set" : {
+          "data" : [ "total-project-shares" ],
+          "value" : {
+            "select" : "project-id",
+            "php" : { "code" : "\/\/recalculate total shares for the project\r\n\r\n\/\/watchdog(\u0027debug\u0027,\u0027STEP 1 project_id = \u0027 . $value);\r\n\r\n$result = db_query(\u0022SELECT SUM(field_merit_allocation_value) AS allocval \r\nFROM {field_data_field_merit_allocation}\r\nWHERE bundle IN (\u0027co_worker_merit_allocation\u0027,\u0027project_merit_allocation\u0027)\r\nAND entity_id in (\r\nSELECT entity_id \r\nFROM {field_data_field_project}\r\nWHERE bundle IN (\u0027co_worker_merit_allocation\u0027,\u0027project_merit_allocation\u0027)\r\nAND field_project_target_id = :projecid\r\n)\u0022, array(\u0027:projecid\u0027 =\u003E $value));\r\n\r\n$resarray = $result-\u003EfetchAll();\r\n$tshare = $resarray[0]-\u003Eallocval;\r\n\r\n\/\/watchdog(\u0027debug\u0027,\u0027STEP 2 $tshare = \u0027 . $tshare);\r\n\r\nif ($tshare != \u0027\u0027)\r\nreturn $tshare;\r\nelse\r\nreturn 0;" }
+          }
+        }
+      }
+    ],
+    "PROVIDES VARIABLES" : [ "total_project_shares" ]
+  }
+}

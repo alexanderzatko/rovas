@@ -1,0 +1,61 @@
+{ "rules_proxy_reward_work_report" : {
+    "LABEL" : "proxy - reward work report",
+    "PLUGIN" : "rule",
+    "OWNER" : "rules",
+    "REQUIRES" : [ "rules", "rules_conditional" ],
+    "USES VARIABLES" : {
+      "report_id" : { "label" : "work report ID", "type" : "integer" },
+      "reward_amount" : { "label" : "reward amount", "type" : "decimal" },
+      "description" : { "label" : "description", "type" : "text" },
+      "result" : { "label" : "result", "type" : "integer", "parameter" : false },
+      "result_explain" : { "label" : "result explanation", "type" : "text", "parameter" : false }
+    },
+    "DO" : [
+      { "component_rules_retrieve_user_id_from_api_key_and_token" : { "USING" : {}, "PROVIDE" : { "uid" : { "uid" : "user id" } } } },
+      { "entity_fetch" : {
+          "USING" : { "type" : "user", "id" : [ "uid" ] },
+          "PROVIDE" : { "entity_fetched" : { "user" : "user" } }
+        }
+      },
+      { "CONDITIONAL" : [
+          {
+            "IF" : { "data_is" : {
+                "data" : [ "user:field-chrons-balance" ],
+                "op" : "\u003E",
+                "value" : [ "reward-amount" ]
+              }
+            },
+            "DO" : [
+              { "component_rules_reward_work_report" : {
+                  "USING" : {
+                    "buyer_id" : [ "uid" ],
+                    "wreport_id" : [ "report-id" ],
+                    "reward_amnt" : [ "reward-amount" ],
+                    "description" : [ "description" ],
+                    "payment_currency" : "CHR"
+                  },
+                  "PROVIDE" : {
+                    "outcome" : { "outcome" : "outcome" },
+                    "reason" : { "reason" : "outcome-reason" }
+                  }
+                }
+              },
+              { "data_set" : { "data" : [ "result" ], "value" : [ "outcome" ] } },
+              { "data_set" : { "data" : [ "result-explain" ], "value" : [ "reason" ] } }
+            ]
+          },
+          { "ELSE" : [
+              { "data_set" : { "data" : [ "result" ], "value" : "0" } },
+              { "data_set" : {
+                  "data" : [ "result-explain" ],
+                  "value" : "Buyer has less Chrons than the reward amount"
+                }
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "PROVIDES VARIABLES" : [ "result", "result_explain" ]
+  }
+}

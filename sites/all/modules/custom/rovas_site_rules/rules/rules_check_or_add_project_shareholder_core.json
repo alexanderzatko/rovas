@@ -1,0 +1,116 @@
+{ "rules_check_or_add_project_shareholder_core" : {
+    "LABEL" : "Check or add project shareholder core",
+    "PLUGIN" : "rule",
+    "OWNER" : "rules",
+    "REQUIRES" : [ "rules", "php", "views_bulk_operations", "rules_conditional" ],
+    "USES VARIABLES" : {
+      "result" : { "label" : "result", "type" : "integer", "parameter" : false },
+      "time_based" : { "label" : "time based", "type" : "boolean", "allow null" : true },
+      "merit_share" : { "label" : "merit share", "type" : "decimal", "allow null" : true },
+      "shareholder_project" : { "label" : "shareholder project", "type" : "node" },
+      "project" : { "label" : "project", "type" : "node" }
+    },
+    "IF" : [
+      { "entity_is_of_bundle" : {
+          "entity" : [ "project" ],
+          "type" : "node",
+          "bundle" : { "value" : { "project" : "project" } }
+        }
+      },
+      { "entity_is_of_bundle" : {
+          "entity" : [ "shareholder-project" ],
+          "type" : "node",
+          "bundle" : { "value" : { "project" : "project" } }
+        }
+      }
+    ],
+    "DO" : [
+      { "variable_add" : {
+          "USING" : {
+            "type" : "text",
+            "value" : "\u003C?php \r\n\/\/recalculate the project time\r\n\/\/function defined in the rovas_base module\r\n$types = array(\u0027co_worker_merit_allocation\u0027,\u0027timeshare_merit_allocation\u0027,\u0027project_merit_allocation\u0027);\r\necho _rovas_base_calc_project_time ($shareholder_project-\u003Enid,$types);\r\n?\u003E"
+          },
+          "PROVIDE" : { "variable_added" : { "hours_text" : "hours text" } }
+        }
+      },
+      { "views_bulk_operations_action_load_list" : {
+          "USING" : {
+            "view" : "project_project_shareholder|default",
+            "args" : "[project:nid]\r\n[shareholder-project:nid]"
+          },
+          "PROVIDE" : { "entity_list" : { "entity_list" : "A list of entities" } }
+        }
+      },
+      { "CONDITIONAL" : [
+          {
+            "IF" : { "list_count_is" : { "list" : [ "entity-list" ], "op" : "\u003E", "value" : "0" } },
+            "DO" : [
+              { "data_set" : { "data" : [ "result" ], "value" : [ "entity-list:0:nid" ] } }
+            ]
+          },
+          { "ELSE" : [
+              { "entity_create" : {
+                  "USING" : {
+                    "type" : "node",
+                    "param_type" : "project_merit_allocation",
+                    "param_title" : "tbd",
+                    "param_author" : [ "project:author" ]
+                  },
+                  "PROVIDE" : { "entity_created" : { "pma" : "project merit allocation" } }
+                }
+              },
+              { "CONDITIONAL" : [
+                  {
+                    "IF" : { "data_is" : { "data" : [ "time-based" ], "value" : "1" } },
+                    "DO" : [
+                      { "entity_modify" : {
+                          "entity" : [ "pma" ],
+                          "properties" : { "value" : {
+                              "field_project" : "field_project",
+                              "field_total_hours_worked" : "field_total_hours_worked",
+                              "field_merits_earned" : "field_merits_earned",
+                              "field_shareholder_project" : "field_shareholder_project",
+                              "field_share_project_time" : "field_share_project_time"
+                            }
+                          },
+                          "param_field_project" : [ "project" ],
+                          "param_field_total_hours_worked" : "0",
+                          "param_field_shareholder_project" : [ "shareholder-project" ],
+                          "param_field_merits_earned" : [ "shareholder-project:field-merit-reward" ],
+                          "param_field_share_project_time" : [ "time-based" ]
+                        }
+                      },
+                      { "entity_save" : { "data" : [ "pma" ], "immediate" : "1" } },
+                      { "php_eval" : { "code" : "\/\/update the parent project time and its ancestors, if necessary\r\n\/\/function defined in the rovas_base module\r\n_rb_projects_update_time($shareholder_project-\u003Enid,$hours_text);" } }
+                    ]
+                  },
+                  { "ELSE" : [
+                      { "entity_modify" : {
+                          "entity" : [ "pma" ],
+                          "properties" : { "value" : {
+                              "field_merit_allocation" : "field_merit_allocation",
+                              "field_project" : "field_project",
+                              "field_shareholder_project" : "field_shareholder_project",
+                              "field_merits_earned" : "field_merits_earned"
+                            }
+                          },
+                          "param_field_merit_allocation" : [ "merit-share" ],
+                          "param_field_project" : [ "project" ],
+                          "param_field_shareholder_project" : [ "shareholder-project" ],
+                          "param_field_merits_earned" : [ "shareholder-project:field-merit-reward" ]
+                        }
+                      },
+                      { "entity_save" : { "data" : [ "pma" ], "immediate" : "1" } }
+                    ]
+                  }
+                ]
+              },
+              { "data_set" : { "data" : [ "result" ], "value" : [ "pma:nid" ] } }
+            ]
+          }
+        ]
+      }
+    ],
+    "PROVIDES VARIABLES" : [ "result" ]
+  }
+}

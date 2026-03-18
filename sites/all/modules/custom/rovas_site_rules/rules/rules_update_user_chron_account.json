@@ -1,0 +1,230 @@
+{ "rules_update_user_chron_account" : {
+    "LABEL" : "Update user Chron account",
+    "PLUGIN" : "rule",
+    "OWNER" : "rules",
+    "TAGS" : [ "logic" ],
+    "REQUIRES" : [
+      "rules",
+      "rules_conditional",
+      "views_bulk_operations",
+      "php",
+      "rules_i18n",
+      "rules_data_transforms"
+    ],
+    "USES VARIABLES" : {
+      "user_object" : { "label" : "user object", "type" : "user" },
+      "chrons_to_add" : { "label" : "Chrons to add or subtract", "type" : "decimal" },
+      "fxsp_id" : {
+        "label" : "sandbox project id",
+        "type" : "integer",
+        "allow null" : true
+      }
+    },
+    "IF" : [
+      { "entity_is_of_bundle" : {
+          "entity" : [ "user-object" ],
+          "type" : "user",
+          "bundle" : { "value" : { "user" : "user" } }
+        }
+      }
+    ],
+    "DO" : [
+      { "CONDITIONAL" : [
+          {
+            "IF" : { "data_is_empty" : { "data" : [ "user-object:field-chrons-balance" ] } },
+            "DO" : [
+              { "data_set" : {
+                  "data" : [ "user-object:field-chrons-balance" ],
+                  "value" : [ "chrons-to-add" ]
+                }
+              }
+            ]
+          },
+          { "ELSE" : [
+              { "data_calc" : {
+                  "USING" : {
+                    "input_1" : [ "chrons-to-add" ],
+                    "op" : "+",
+                    "input_2" : [ "user-object:field-chrons-balance" ]
+                  },
+                  "PROVIDE" : { "result" : { "new_chron_balance" : "new chron balance" } }
+                }
+              },
+              { "data_set" : {
+                  "data" : [ "user-object:field-chrons-balance" ],
+                  "value" : [ "new-chron-balance" ]
+                }
+              }
+            ]
+          }
+        ]
+      },
+      { "CONDITIONAL" : [
+          {
+            "IF" : { "data_is" : { "data" : [ "chrons-to-add" ], "op" : "\u003C", "value" : "0" } },
+            "DO" : [
+              { "CONDITIONAL" : [
+                  {
+                    "IF" : { "NOT data_is_empty" : { "data" : [ "fxsp-id" ] } },
+                    "DO" : [
+                      { "views_bulk_operations_action_load_list" : {
+                          "USING" : {
+                            "view" : "worker_merit_allocations_for_project|default",
+                            "args" : "[fxsp-id:value]\r\n[user-object:uid]"
+                          },
+                          "PROVIDE" : { "entity_list" : { "wma" : "wma" } }
+                        }
+                      },
+                      { "CONDITIONAL" : [
+                          {
+                            "IF" : { "entity_is_of_bundle" : {
+                                "entity" : [ "wma:0" ],
+                                "type" : "node",
+                                "bundle" : { "value" : { "co_worker_merit_allocation" : "co_worker_merit_allocation" } }
+                              }
+                            },
+                            "DO" : [
+                              { "data_calc" : {
+                                  "USING" : {
+                                    "input_1" : [ "wma:0:field-project-chrons" ],
+                                    "op" : "+",
+                                    "input_2" : [ "chrons-to-add" ]
+                                  },
+                                  "PROVIDE" : { "result" : { "new_balance" : "new balance" } }
+                                }
+                              },
+                              { "data_set" : { "data" : [ "wma:0:field-project-chrons" ], "value" : [ "new-balance" ] } }
+                            ]
+                          }
+                        ]
+                      },
+                      { "variable_add" : {
+                          "USING" : { "type" : "decimal", "value" : [ "user-object:field-chrons-balance" ] },
+                          "PROVIDE" : { "variable_added" : { "chrons" : "chrons" } }
+                        }
+                      }
+                    ]
+                  },
+                  { "ELSE" : [
+                      { "component_rules_worker_merit_shares_for_fx_sandbox_projects" : {
+                          "USING" : { "user_object" : [ "user_object" ] },
+                          "PROVIDE" : {
+                            "fxr_wallocs" : { "fxr_wallocs" : "fx rates and worker allocations" },
+                            "chrons" : { "chrons" : "sum of chrons" }
+                          }
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              { "data_calc" : {
+                  "USING" : {
+                    "input_1" : [ "user-object:field-chrons-balance" ],
+                    "op" : "-",
+                    "input_2" : [ "chrons" ]
+                  },
+                  "PROVIDE" : { "result" : { "account_surplus" : "account surplus" } }
+                }
+              },
+              { "CONDITIONAL" : [
+                  {
+                    "IF" : { "data_is" : { "data" : [ "account-surplus" ], "op" : "\u003C", "value" : "0" } },
+                    "DO" : [
+                      { "variable_add" : {
+                          "USING" : { "type" : "integer", "value" : "0" },
+                          "PROVIDE" : { "variable_added" : { "counter" : "counter" } }
+                        }
+                      },
+                      {
+                        "WHILE" : { "data_is" : { "data" : [ "account-surplus" ], "op" : "\u003C", "value" : "0" } },
+                        "DO" : [
+                          { "CONDITIONAL" : [
+                              {
+                                "IF" : { "list_count_is" : { "list" : [ "fxr-wallocs" ], "op" : "\u003E", "value" : [ "counter" ] } },
+                                "DO" : [
+                                  { "variable_add" : {
+                                      "USING" : {
+                                        "type" : "text",
+                                        "value" : "\u003C?php\r\necho $fxr_wallocs[$counter]; \r\n?\u003E"
+                                      },
+                                      "PROVIDE" : { "variable_added" : { "wma_text_item" : "wma text item" } }
+                                    }
+                                  },
+                                  { "explode" : {
+                                      "USING" : { "input_text" : [ "wma-text-item" ], "delimiter" : "-" },
+                                      "PROVIDE" : { "output_list" : { "wma_array" : "wma array" } }
+                                    }
+                                  },
+                                  { "data_convert" : {
+                                      "USING" : { "type" : "integer", "value" : [ "wma-array:0" ] },
+                                      "PROVIDE" : { "conversion_result" : { "wma_nid" : "wma nid" } }
+                                    }
+                                  },
+                                  { "entity_fetch" : {
+                                      "USING" : { "type" : "node", "id" : [ "wma-nid" ], "revision_id" : "0" },
+                                      "PROVIDE" : { "entity_fetched" : { "wma" : "wma" } }
+                                    }
+                                  },
+                                  { "CONDITIONAL" : [
+                                      {
+                                        "IF" : { "entity_is_of_bundle" : {
+                                            "entity" : [ "wma" ],
+                                            "type" : "node",
+                                            "bundle" : { "value" : { "co_worker_merit_allocation" : "co_worker_merit_allocation" } }
+                                          }
+                                        },
+                                        "DO" : [
+                                          { "data_calc" : {
+                                              "USING" : {
+                                                "input_1" : [ "wma:field-project-chrons" ],
+                                                "op" : "+",
+                                                "input_2" : [ "account-surplus" ]
+                                              },
+                                              "PROVIDE" : { "result" : { "chron_reminder" : "chron reminder" } }
+                                            }
+                                          },
+                                          { "CONDITIONAL" : [
+                                              {
+                                                "IF" : { "data_is" : { "data" : [ "chron-reminder" ], "op" : "\u003C", "value" : "0" } },
+                                                "DO" : [
+                                                  { "data_set" : { "data" : [ "wma:field-project-chrons" ], "value" : "0" } }
+                                                ]
+                                              },
+                                              { "ELSE" : [
+                                                  { "data_set" : {
+                                                      "data" : [ "wma:field-project-chrons" ],
+                                                      "value" : [ "chron-reminder" ]
+                                                    }
+                                                  }
+                                                ]
+                                              }
+                                            ]
+                                          }
+                                        ]
+                                      }
+                                    ]
+                                  }
+                                ]
+                              },
+                              { "ELSE" : [ { "data_set" : { "data" : [ "account-surplus" ], "value" : "3" } } ] }
+                            ]
+                          },
+                          { "data_set" : {
+                              "data" : [ "counter" ],
+                              "value" : { "select" : "counter", "num_offset" : { "value" : "1" } }
+                            }
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

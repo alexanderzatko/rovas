@@ -1,0 +1,16 @@
+{ "rules_update_user_s_labor_count_for_a_project_" : {
+    "LABEL" : "Update user\u0027s labor count for a project ",
+    "PLUGIN" : "rule",
+    "OWNER" : "rules",
+    "TAGS" : [ "logic" ],
+    "REQUIRES" : [ "php", "rules" ],
+    "USES VARIABLES" : {
+      "project_id" : { "label" : "project id", "type" : "integer" },
+      "user_obj" : { "label" : "user object", "type" : "user" },
+      "hours_delta" : { "label" : "hours to add or subtract", "type" : "decimal" }
+    },
+    "DO" : [
+      { "php_eval" : { "code" : "\/\/the functions are defined in the rovas_base module\r\n\r\n\/\/update the merit allocation record for given user and a project\r\n_rb_update_project_worker_share ($project_id,$user_obj-\u003Euid,$hours_delta);\r\n\r\n\/\/update the parent project time and its ancestors, if necessary\r\n_rb_projects_update_time($project_id,$hours_delta,0);" } }
+    ]
+  }
+}

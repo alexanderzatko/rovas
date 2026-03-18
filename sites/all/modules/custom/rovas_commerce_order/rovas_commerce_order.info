@@ -1,0 +1,4 @@
+name = Add template for the commerce orders page
+description = Allows theming the Order page accessible in the user profile
+core = 7.x
+package = Rovas

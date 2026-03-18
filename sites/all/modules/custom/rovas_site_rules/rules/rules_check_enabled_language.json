@@ -1,0 +1,31 @@
+{ "rules_check_enabled_language" : {
+    "LABEL" : "check enabled language",
+    "PLUGIN" : "rule",
+    "OWNER" : "rules",
+    "TAGS" : [ "api" ],
+    "REQUIRES" : [ "rules", "php", "rules_conditional" ],
+    "USES VARIABLES" : {
+      "input" : { "label" : "input string", "type" : "text" },
+      "output" : { "label" : "output", "type" : "boolean", "parameter" : false }
+    },
+    "DO" : [
+      { "data_set" : { "data" : [ "output" ], "value" : "0" } },
+      { "variable_add" : {
+          "USING" : {
+            "type" : "text",
+            "value" : "\u003C?php \r\n$thelist = language_list();\r\necho isset($thelist[$input]);\r\n?\u003E"
+          },
+          "PROVIDE" : { "variable_added" : { "result_text" : "result text" } }
+        }
+      },
+      { "CONDITIONAL" : [
+          {
+            "IF" : { "data_is" : { "data" : [ "result-text" ], "value" : "1" } },
+            "DO" : [ { "data_set" : { "data" : [ "output" ], "value" : "1" } } ]
+          }
+        ]
+      }
+    ],
+    "PROVIDES VARIABLES" : [ "output" ]
+  }
+}

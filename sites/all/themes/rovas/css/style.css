@@ -1,0 +1,2159 @@
+@media (min-width: 768px) {
+
+	header#navbar {
+		padding-left: unset;
+		border: unset;
+	}
+
+}
+
+/* login page */
+#edit-account input {
+    max-width: 350px;
+}
+
+.captcha input {
+    max-width: 350px;
+}
+
+#edit-field-country-und {
+    width: fit-content;
+}
+
+body {
+	/* content id colors */
+    --position-highlight: rgb(253 221 165);
+    --merit-badge-color-base: #d6d6d6;
+    --merit-badge-color-good: #e6e095;
+    --merit-badge-color-great: #f1b272;
+    --merit-badge-color-top: #de7f7f;
+    --merit-badge-color-project: #727b8f;
+}
+
+a span.glyphicon.glyphicon-list-alt {
+    margin-left: 10px;
+}
+
+span.wreport-type {
+    color: #007bfe;
+    font-weight: bold;
+}
+
+span.projct-type {
+    color: #07980d;
+    font-weight: bold;
+}
+
+h1, .h1 {
+    font-size: 25px;
+}
+
+h2, .h2 {
+    font-size: 20px;
+}
+
+.views-field-field-actually-available-chrons {
+    font-size: 30px;
+    font-weight: bold;
+}
+
+.view-merit-balance {
+    font-size: 30px;
+    font-weight: bold;
+}
+
+.view-merit-balance .view-empty {
+    font-size: 14px;
+    font-weight: normal;
+}
+
+.current-user {
+	background-color: var(--position-highlight) !important;
+}
+
+tr.current-user td.active {
+    background-color: var(--position-highlight) !important;
+}
+
+.field-name-field-buy-button, .field-name-field-work-report-buttons {
+    padding-bottom: 30px;
+    padding-top: 25px;
+}
+
+div.field-name-field-photos .field-item {
+    display: inline-block;
+}
+
+/* form styles */
+
+#project-node-form .form-radios {
+    position: relative;
+    left: 20px;
+}
+
+.field-widget-number input.form-control {
+    width: 100px;
+    display: inline-block;
+    margin-right: 5px;
+}
+
+input#edit-field-merit-allocation-und-0-value {
+    max-width: 100px;
+    display: inline-block;
+}
+
+input.sliderfield-field-adjust-field-price,
+input.sliderfield-field-adjust-field-price-in-eur,
+input.sliderfield-field-adjust-field-rate ,
+input.sliderfield-field-adjust-field-reward-merit-allocation,
+input.sliderfield-field-adjust-field-minimum {
+    width: 150px;
+    display: inline;
+}
+
+div.field-name-field-rate div {
+    display: inline-block;
+    margin-right: 5px;
+}
+
+button.recalc-button {
+    margin-right: 5px;
+    border: solid thin #ccc;
+    position: relative;
+    top: -2px;
+}
+
+.field-name-field-rate div.ajax-progress-throbber {
+    position: absolute;
+    top:-1px;
+    left:-2px;
+    margin-left:-20px;
+    background-color: white;
+}
+
+#edit-field-reward-merit-allocation-und-value .ajax-progress-throbber {
+    display: block;
+    position: absolute !important;
+    left: 50px !important;
+    top:0px !important;
+    z-index:2;
+}
+
+.sliderfield-event-field-container {
+    position: relative;
+}
+form#project-node-form,
+form#work-report-node-form,
+form#project-merit-allocation-node-form {
+    max-width: 650px;
+}
+
+header#navbar {
+    background-color: unset;
+}
+
+body.page-node-add-project ul.nav.nav-tabs.vertical-tabs-list {
+    float: unset;
+}
+
+body.page-node-add-project .vertical-tabs-panes.vertical-tabs-processed.tab-content {
+    border: unset;
+    padding: unset;
+}
+
+body.page-node-add-project  div#edit-path-body {
+    padding: unset;
+}
+
+body.page-node-add-project ul.nav.nav-tabs.vertical-tabs-list {
+    display: none;
+}
+
+table {
+	font-size: inherit;
+}
+
+#edit-uid-wrapper {
+    width: 300px;
+}
+
+div.view-dispute-parties th.views-field-field-full-name {
+	width: 50%;
+}
+
+div.view-dispute-parties th.views-field-php-1 {
+	text-align: center;
+}
+
+div.view-dispute-parties td.views-field-php-1 {
+	text-align: center;
+} 
+
+div.field-name-field-dispute-status {
+    margin-bottom: 15px;
+    font-size: 25px;
+    font-weight: bold;
+}
+
+/* sorting triangles on the dispute page */
+th.views-field a img {
+    display: inline;
+    padding-left: 5px;
+}
+
+#comment-body-add-more-wrapper .form-textarea-wrapper {
+    width: 50%;
+    min-width: 350px;
+}
+
+div.view-disputes .ctools-collapsible-handle {
+    font-weight: bold;
+    color: darkviolet;
+}
+
+li {
+    margin-bottom: 6px;
+}
+
+.form-actions {
+    margin-top: 20px;
+    }
+
+div.form-actions a#edit-cancel {
+    padding-right: 10px;
+}
+
+span.banned-note {
+    color: red;
+    font-weight: bold;
+    font-size: larger;
+    padding-bottom: 12px;
+    display: block;
+    }
+
+.see-rules {
+    margin-bottom: 20px;
+    display: block;
+    font-weight: bold;
+    color: red;
+}
+    
+.dispute-accused {
+	border: solid 4px red;
+}
+
+/* archive version of the dispute nodes */
+pre th.views-field-php-1 {
+    display: none;
+}
+
+pre td.views-field-php-1 {
+    display: none;
+}
+
+pre div.view-footer {
+    display: none;
+}
+
+/*simple modal overlay*/
+
+div.messages.simple-overlay > .message-inner {
+    color: black;
+}
+
+div.messages.simple-overlay .message-inner .title {
+    color: red;
+}
+
+div.comment > div.content {
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    margin-bottom: 10px;
+    max-width: 50%;
+    padding: 5px;
+}
+
+div.comment > div.submitted {
+    margin-bottom: 3px;
+    margin-top: 10px;
+}
+  
+div.profile h3 {
+	display: none;
+}
+
+.privatemsg-message-column {
+    width: unset;
+}
+
+.privatemsg-message img {
+    max-width: 50vw;
+}
+
+.form-instruct {
+    margin-bottom: 20px;
+}
+
+/*Chrons on user profile*/
+
+.legend-title {
+    font-weight: bold;
+    margin-bottom: 12px;
+}
+
+.ldgr-legend {
+    margin-bottom: 25px;
+    top: 5px;
+    position: relative;
+}
+
+div.ldgr-legend .label {
+    color: black;
+}
+
+div.ldgr-legend .color {
+    width: 22px;
+    display: inline-block;
+    border: solid 1px black;
+}
+
+.color.noop {
+    background-color: #a4b2f752 !important;
+}
+
+.debit {
+    background-color: rgba(128, 100, 0, 0.12) !important;
+}
+
+tr.noop {
+    background-color: #a4b2f7 !important;
+    opacity: 0.3;
+}
+
+div.view-money-transfers th.views-field-php-1,
+div.view-money-transfers td.views-field-php-1 {
+    text-align: right;
+}
+
+div.view-merit-history th.views-field-field-reward-amount,
+div.view-merit-history td.views-field-field-reward-amount {
+  text-align: right;
+}
+
+
+/* Top 10 workers in category */
+div.view-top-10-workers-in-a-category tr.current,
+div.view-taxonomy-term tr.current {
+    background-color: var(--position-highlight);
+}
+
+div.view-taxonomy-term tr.current td.views-field-field-merits.active {
+    background-color: var(--position-highlight);
+}
+
+.userpoints-myuserpoints-total {
+    display: none;
+}
+
+.userpoints-transactions-header-status {
+    display: none;
+}
+
+.userpoints-transactions-field-status {
+    display: none;
+}
+
+div.userpoints-view-transaction dt {
+    float: left;
+    padding-right: 5pt;
+}
+
+.userpoints-item-status {
+    display: none;
+}
+
+section#block-block-9 .block-title {
+    color: lightgray;
+    font-size: 12pt;
+    margin-bottom: -1pt;
+}
+
+section#block-views-chron-balance-block .block-title {
+    color: lightgray;
+    font-size: 12pt;
+    margin-bottom: -1pt;
+}
+
+section#block-views-chron-balance-block {
+    margin-top: -10pt;
+}
+
+.container .jumbotron, .container-fluid .jumbotron {
+	background-color: yellow;
+}
+
+dl {
+    margin: 0;
+    margin-bottom: unset;
+}
+
+fieldset#edit-comment-body-und-0-format {
+    width: 50%;
+    min-width: 370px;
+}
+
+h2.title.comment-form {
+    font-size: medium;
+}
+
+
+tr.wr-row-1 .views-field-php-1 {
+		color: lightgray;
+}
+
+div.view-wr-time-line div.views-row {
+    padding-top: 3px;
+    padding-bottom: 23px;
+}
+
+div.view-wr-time-line div.views-field-title {
+    font-size: large;
+    font-weight: bold;
+}
+
+div.view-wr-time-line div.views-field-name {
+    font-style: italic;
+}
+
+div.view-wr-time-line div.views-field-php-1 {
+    padding-bottom: 7px;
+    padding-top: 2px;
+    font-weight: bold;
+    font-size: large;
+}
+
+div.view-wr-time-line div.views-field-field-location {
+    display: inline-block;
+    padding-right: 5px;
+}
+
+div.view-wr-time-line div.views-field-php {
+    display: inline-block;
+}
+
+div.view-wr-time-line div.wrt-photos {
+    display: inline-block;
+    width: 60px;
+    margin-right: 5px;
+}
+
+div.view-wr-time-line div.web-address {
+    display: inline-block;
+}
+
+div.view-wr-time-line div.views-field-changed {
+    background-color: rgba(90, 119, 192, 0.16);
+    padding-left: 5px;
+}
+
+td.views-field-title-field-et a:first-child {
+    font-weight: bold;
+}
+
+div.view-wr-time-line td.views-field-changed {
+    white-space: nowrap;
+}
+
+div.view-wr-time-line th.views-field-field-verification-status {
+	white-space: nowrap;
+}
+
+div.view-wr-time-line td.views-field-title {
+	max-width: 400px;
+	min-width: 200px;
+}
+
+div.view-wr-time-line .views-widget-views_ef_fieldset,
+div.view-display-id-projectsxf .views-widget-views_ef_fieldset,
+div.view-disputes .views-widget-views_ef_fieldset {
+    margin-bottom: 30px;
+    width: 100%;
+}
+
+
+div.view-wr-time-line .panel-heading,
+div.view-display-id-projectsxf .panel-heading,
+div.view-disputes .panel-heading {
+    color: #000204;
+    background-color: #90cac2;
+}
+
+div.view-disputes .views-exposed-widget .btn {
+display: inline-block;
+}
+
+div.view-wr-time-line .views-exposed-widget {
+	float: unset;
+}
+
+/* additions for release 0.2 */
+
+div.field-name-field-verification-reward input {
+    width: 200px;
+    display: inline-block;
+}
+
+div.field-name-field-verification-reward label {
+
+    display: block;
+}
+
+div.view-wr-time-line th.views-field-php-1 {
+    white-space: nowrap;
+}
+
+.wr-row-0 .views-field-field-verification-status p, div.wr-row-0 .views-field-changed {
+	background-color: #a2cbff !important;
+	padding-left: 5px;
+	padding-right: 5px;
+	white-space: nowrap;
+	margin-bottom: 0px;
+}
+
+.wr-row-1 .views-field-field-verification-status p, div.wr-row-1 .views-field-changed {
+	background-color: #87ffb8 !important;
+	padding-left: 5px;
+	padding-right: 5px;
+	white-space: nowrap;
+	margin-bottom: 0px;
+}
+
+.wr-row-2 .views-field-field-verification-status p, div.wr-row-2 .views-field-changed {
+	background-color: #ffa4bc !important;
+	padding-left: 5px;
+	padding-right: 5px;
+	white-space: nowrap;
+	margin-bottom: 0px;
+}
+
+div.view-work-reports .views-field-php {
+    white-space: nowrap;
+}
+
+div.view-wr-time-line span.views-field-field-verification-status {
+	padding-left: 30px;
+}
+
+div.view-wr-time-line div#edit-field-verification-status-value-i18n-wrapper {
+    display: inline-block;
+    vertical-align: top;
+}
+
+div.view-wr-time-line div#edit-language-wrapper {
+    display: inline-block;
+    vertical-align: top;
+}
+
+div.view-wr-time-line div#edit-field-system-report-value-i18n-wrapper {
+    display: inline-block;
+    vertical-align: top;
+}
+
+div.view-wr-time-line div#edit-uid-wrapper {
+    display: inline-block;
+    vertical-align: top;
+    width: 190pt;
+}
+
+div.view-wr-time-line div#edit-title-wrapper {
+    display: inline-block;
+    vertical-align: top;
+    width: 190pt;
+}
+
+div.view-wr-time-line  div#edit-field-project-target-id-wrapper {
+    display: inline-block;
+    vertical-align: top;
+	width: 115px;
+}
+
+/* work report verification icons */
+
+div.view-wr-time-line .verf-icons-wrap {
+	font-size: x-large;
+}
+
+td.views-field-field-hours-worked {
+    white-space: nowrap;
+}
+
+span.unit:first-child {
+    margin-right: 3px;
+}
+
+td.views-field-field-hours-worked {
+    font-weight: bold;
+}
+
+div.view-work-reports .verf-icons-wrap {
+    font-size: large;
+    white-space: nowrap;
+}
+
+.verf-icon-ok {
+	color: green;
+}
+
+.verf-icon-bad {
+	color: red;
+}
+
+.verf-icon-undecided {
+	color: #b7b7b7;
+}
+
+/* work report list actions column */
+div.view-work-reports td.views-field-php a {
+	color: unset;
+}
+
+div.view-work-reports span.glyphicon-scale {
+	font-size: 12pt;
+	top: 3px;
+}
+
+.form-item-field-project-id-value {
+    width: 95px;
+}
+
+
+form.node-project-form div.form-item-language, form.node-work_report-form div.form-item-language {
+    display: none;
+}
+
+/* menu style */
+.nav > li > a > img {
+    max-width: none;
+    float: left;
+    border-radius: 15px;
+    position: relative;
+    top: -4px;
+}
+
+span.menu-account {
+    margin-left: 7px;
+}
+
+li.leaf.user-picture {
+    font-weight: bold;
+}
+
+ul.menu span.link-badge-text {
+    white-space: nowrap;
+}
+
+ul.menu li a,
+ul.dropdown-menu li a {
+    font-weight: bold;
+}
+
+/* hybridauth */
+
+.hybridauth-openstreetmap-hybridauth-16 {
+  background: transparent url(osm_logo.svg) 0px 0px no-repeat;
+  background-size: 100%;
+}
+
+div.hybridauth-widget-wrapper h3 {
+    font-size: unset;
+    font-weight: bold;
+}
+
+.hybridauth-icon-hybridauth-32 {
+    opacity: 1;
+    border-radius: 3px;
+}
+
+/* nabezky logo button */
+
+.nb-button-wrapper {
+    position: relative;
+}
+
+div.nb-button-wrapper button {
+    width: 32px;
+    position: relative;
+    top: -13px;
+    height: 32px;
+    left: -2px;
+    background-color: gold;
+    overflow: hidden;
+    border: unset;
+}
+
+img.nabezky-btn {
+    position: relative;
+    left: -12px;
+    top: -7px;
+    width: 42px;
+}
+
+section#block-openid-connect-openid-connect-login {
+	display:none;
+}
+
+/* Forex page START */
+
+.form-item-forex-rate {
+    margin-bottom: 30px;
+}
+
+div.form-item-forex-rate span.input-group-addon {
+	display:none;
+}
+
+.ch-balance-wrapper {
+    font-size: 30px;
+    font-weight: bold;
+    margin-bottom: 40px
+}
+
+.ch-balance-wrapper .title {
+    color: #858585;
+    font-size: 12pt;
+    margin-bottom: -1pt;
+}
+
+div.form-item-chart g:nth-child(2) text {
+  fill: #f28f43;
+}
+
+div.form-item-chart g:nth-child(3) text {
+  fill: #910000;
+}
+
+section#block-system-main {
+	margin-top: 40px;
+}
+
+.forex.subhead {
+    font-weight: bold;
+    margin-bottom: 10px;
+    font-size: 12pt;
+}
+
+body.page-forex .forex.subhead {
+	display: inline-block;
+}
+
+span.thead {
+    display: table-cell;
+    text-align: right;
+    padding-right: 10px;
+    font-size: 12pt;
+    border-bottom: solid thin #b1b1b1;
+}
+
+.forex.rates.head {
+    display: table-row;
+}
+
+.forex.rate {
+    display: table-row;
+}
+
+span.tbody {
+    display: table-cell;
+    text-align: right;
+    padding-right: 10px;
+}
+
+.forex.rates {
+    display: table;
+    margin-bottom: 10px;
+}
+
+.explain-char {
+    font-weight: bold;
+    color: #208961;
+    margin-bottom: 10px;
+}
+
+.explain-char strong {
+    color: #00a906;
+}
+
+.explain-char strong a.button {
+    color: white;
+    border: solid thin;
+    border-radius: 5px;
+    padding-left: 6px;
+    padding-right: 6px;
+    padding-top: 2px;
+    padding-bottom: 4px;
+    background-color: #00a906;
+}
+
+.explain-char strong a.link {
+    color: #00a906;
+}
+
+div#edit-slider-eu-ch {
+    display: inline-block;
+}
+
+div#eu-ch-converted, div#ch-eu-converted {
+    display: inline-block !important;
+    font-size: 30px;
+}
+
+.eu-ch-wrapper, .ch-eu-wrapper, .buy-merits-wrapper {
+    margin-bottom: 100px;
+    border: solid thin #ccc;
+    border-radius: 12px;
+    padding: 11px;
+    max-width: 540px;
+}
+
+div.eu-ch-wrapper button#edit-submit {
+    display: block;
+}
+
+.form-item.form-item-eu-ch-value.form-type-textfield.form-group, .form-item.form-item-ch-eu-value.form-type-textfield.form-group {
+    display: inline-block;
+    position: relative;
+    color: #999;
+    font-size: 20px;
+}
+
+.to-unit {
+    color: #999;
+    font-size: 20px;
+}
+
+input#edit-eu-ch-value, input#edit-ch-eu-value {
+    width: 100px;
+    height: 50px;
+    padding-left: 6px;
+    padding-right: 6px;
+    display: inline-block;
+    text-align: right;
+    font-size: 30px;
+    border: unset;
+    border-bottom: solid thin #ccc;
+    border-bottom-left-radius: unset;
+    border-bottom-right-radius: unset;
+}
+
+input#edit-eu-ch-value:focus, input#edit-ch-eu-value:focus {
+    outline: 0;
+    -webkit-box-shadow: unset;
+    box-shadow: unset;
+}
+
+button#edit-convert, button#edit-convert-ch-eu {
+    margin-left: 14px;
+    margin-right: 10px;
+    height: 33px;
+    position: relative;
+    top: -9px;
+    font-weight: bold;
+    font-size: 16px;
+}
+
+button#edit-convert:hover, button#edit-convert-ch-eu:hover {
+	background-color: unset;
+}
+
+form#rovas-forex-form div.ajax-progress-throbber {
+    display: inline-block;
+    position: absolute  ;
+    left:7px;
+    top:5px;
+    background-color: #ffffff;
+    padding-left: 5px;
+    padding-right: 5px;
+    font-size: 16px;
+}
+
+div.form-item-eu-ch-value label, div.form-item-ch-eu-value label {
+    display: block;
+    font-size: 16px;
+    font-weight: normal;
+    margin-bottom: -4px;
+}
+
+/* Page 2 - Preview order */
+
+div.preview.summary {
+		display: table;
+}
+
+div.summary .preview.paid, div.summary .preview.to_receive, div.summary .preview.fee {
+    display: table-row;
+}
+
+div.summary .preview.title {
+    font-size: larger;
+    margin-bottom: 10px;
+}
+
+div.summary span.label {
+    color: black;
+    font-size: unset;
+    display: table-cell;
+    text-align: left;
+}
+
+div.summary span.value {
+    display: table-cell;
+    text-align: right;
+}
+
+div.summary span.unit {
+    display: table-cell;
+    padding-left: 10px;
+}
+
+div#submit-explain {
+	display: inline-block;
+    margin-top: 10px;
+    margin-bottom: 10px;
+}
+
+div.order-explain {
+		margin-top: 20px;
+}
+
+div#buy-hrs-subbutton {
+    display: inline-block;
+}
+
+.preview-wrapper button#edit-cancel {
+    display: inline-block;
+    margin-top: 40px;
+}
+
+div.preview-wrapper #edit-refresh {
+		display: inline-block;
+		position: relative;
+		top: 20px;
+		margin-left: 15px;
+}
+
+.preview-wrapper button#edit-submit {
+    margin-top: 40px;
+    display: inline-block;
+    margin-left: 11px;
+}
+
+div.preview-wrapper .preview.note {
+    margin-top: 20px;
+}
+
+#continue-button {
+  display: inline-block;
+}
+
+div#payment-details {
+    margin-top: 20px;
+}
+
+div.commerce-credit-card-expiration div.form-type-select select {
+  max-width: 60px;
+  display: inline-block;
+  margin-right: 10px;
+}
+div.commerce-credit-card-expiration .control-label {
+  display: block;
+}
+
+span.commerce-month-year-divider {
+  margin: ;
+  margin-left: -3px;
+  margin-right: 7px;
+}
+
+#edit-commerce-payment-payment-details-credit-card-code {
+  width: 50px;
+}
+
+#edit-commerce-payment-payment-details-credit-card-type {
+  max-width: 200px;
+}
+
+#edit-commerce-payment-payment-details-credit-card-number {
+  max-width: 200px;
+}
+
+/* order checkout form  STOP */
+
+/* buy Merits */
+
+div#buy-merits-converted {
+    display: inline-block;
+    font-size: 30px;
+}
+
+div#buy-merits-subbutton {
+    display: inline-block;
+}
+
+/* buy Merits STOP */
+
+/* Forex page STOP */
+
+/* User profile START */
+
+.usr-pane-head {
+    font-weight: bold;
+    margin-bottom: 20px;
+    margin-top: 10px;
+    font-size: 14pt;
+}
+
+span.funds-main {
+    display: block;
+    font-weight: bold;
+    margin-top: 20px;
+    font-size: large;
+}
+
+span.funds-explain {
+    margin-bottom: 20px;
+    display: block;
+    color: #999;
+}
+
+th.views-field-product-count, th.views-field-order-total, td.views-field-product-count, td.views-field-order-total {
+    text-align: right;
+}
+
+div.view-money-transfers div.view-header p {
+    color: 
+    gray;
+    font-size: 16px;
+    margin-bottom: 0px;
+}
+
+.send-ch-text {
+    margin-top: -25px;
+    margin-bottom: 10px;
+}
+
+.send-ch-button {
+    margin-bottom: 20px;
+    border-bottom: solid thin;
+    padding-bottom: 20px;
+    margin-top: 15px;
+}
+
+td.views-field-php-1 {
+    white-space: nowrap;
+}
+
+td.views-field-created {
+    white-space: nowrap;
+}
+
+fieldset#edit-rovas-endpoint {
+    border: unset;
+}
+
+fieldset#edit-rovas-endpoint legend.panel-heading {
+    border: unset;
+    padding: unset;
+    font-weight: bold;
+}
+
+fieldset#edit-rovas-endpoint legend a:before {
+    content:"\e114";
+    font-family: 'Glyphicons Halflings';
+    font-size: 12px;
+    padding-right: 5px;
+}
+
+fieldset#edit-rovas-endpoint legend a.collapsed:before {
+    content: "\e080";
+    font-family: 'Glyphicons Halflings';
+    font-size: 12px;
+    padding-right: 5px;
+}
+
+.api-warning {
+    margin-top: 15px;
+    font-weight: bold;
+    color: red;
+}
+
+/* Telephone field */
+
+select#edit-field-phone-und-0-country-codes {
+    width: fit-content;
+}
+
+.form-item.form-item-field-phone-und-0-country-codes.form-type-select.form-group {
+    display: inline-block;
+    margin-right: 10px;
+}
+
+.form-item.form-item-field-phone-und-0-number.form-type-textfield.form-group {
+    display: inline-block;
+}
+
+
+/* User profile STOP */
+
+/* block on work report */
+p.reg-note {
+    position: relative;
+    left: 24px;
+    margin-top: 20px;
+}
+
+/* Commerce order styles  START */
+
+div.field-name-commerce-customer-billing {
+    margin-bottom: 30px;
+}
+
+.payment-info-label {
+    font-weight: bold;
+}
+
+.payment-info {
+    display: inline-block;
+}
+
+/* Commerce order styles  STOP */
+
+/* Verify report page START */
+
+section#block-block-12 {
+    padding: 15px;
+    border-radius: 12px;
+    margin-bottom: 30px;
+    background-color: rgb(255, 161, 8);
+    width: fit-content;
+}
+
+section#block-block-12 h2.block-title {
+    margin-top: unset;
+    margin-bottom: -9px;
+}
+
+fieldset#edit-about-author,
+fieldset#edit-report-info {
+	background-color: #d9edf7;
+}
+
+fieldset#edit-instructions {
+    background-color: #e1ffe8;
+}
+
+fieldset#edit-instructions legend.panel-heading {
+    background-color: #81deb7;
+}
+
+fieldset#edit-about-author legend.panel-heading,
+fieldset#edit-report-info legend.panel-heading {
+	background-color: #91cae6;
+}
+
+fieldset .panel-heading a.panel-title:focus {
+    text-decoration: none;
+}
+
+fieldset#edit-about-author legend.panel-heading a:before, 
+fieldset#edit-instructions legend.panel-heading a:before, 
+fieldset#edit-report-info legend.panel-heading a:before {
+	content: "\e080";
+	font-family: "Glyphicons Halflings";
+	position: relative;
+	top: 2px;
+	padding-right: 4px;
+}
+
+fieldset#edit-about-author legend.panel-heading a[aria-expanded="true"]:before,
+fieldset#edit-instructions legend.panel-heading a[aria-expanded="true"]:before,
+fieldset#edit-report-info legend.panel-heading a[aria-expanded="true"]:before {
+	content:"\e114";
+	font-family:"Glyphicons Halflings";
+	position: relative;
+	top: 2px;
+	padding-right: 4px;
+}
+
+a.panel-title.fieldset-legend {
+    display: inline-block !important;
+}
+
+.section-info.vrf_label, .section-info.report-info {
+  display: table;
+  margin-bottom: 25px;
+}
+
+.sec-field {
+  display: table-row;
+}
+
+.vrf_label {
+    display: table-cell;
+    font-weight: bold;
+    padding-right: 10px;
+    vertical-align: top;
+}
+
+.vrf_value {
+  display: table-cell;
+  font-weight: normal;
+}
+
+div.view-users-reports div.view-header p {
+    font-weight: bold;
+}
+
+p#notetext_1 {
+    font-weight: bold;
+    color: red;
+    font-size: 12pt;
+		margin-top: -10px;
+}
+
+p#notetext_0 {
+		margin-top: -10px;
+}
+
+span.vrf_label.proofs-provided {
+    padding-top: 10px;
+    padding-bottom: 5px;
+    font-size: 12pt;
+    color: #008ccc;
+}
+
+div.cant-verify {
+	font-weight: bold;
+	color: red;
+	font-size: larger;
+}
+
+div.field-collection-item-field-address div.field-label {
+    min-width: 110px;
+}
+
+#field-verification-note-add-more-wrapper textarea {
+    max-width: 600px;
+}
+
+/* Verify report page STOP */
+
+/* Work report form START */
+
+div.form-item-hours {
+    display: inline-block;
+    margin-right: 15px;
+}
+
+.form-item-minutes {
+    display: inline-block;
+}
+
+#field-attendees-values {
+    margin-bottom: 40px;
+}
+
+div.field-type-entityreference div.description {
+    color: #777777;
+    font-size: 12px;
+    margin: 5px 0 10px;
+    padding: 0;
+    position: relative;
+    top: 39px;
+}
+
+div#edit-title-field-value-wrapper .description {
+    color: #777777;
+    font-size: 12px;
+    margin: 5px 0 10px;
+    padding: 0;
+    position: relative;
+}
+
+div.field-name-field-attendees .clearfix {
+    position: relative;
+    top: -53px;
+}
+
+table#field-attendees-values--2 {
+    margin-bottom: 50px;
+}
+
+/* Work report form STOP */
+
+/* Work report node */
+
+div.field-name-field-work-evidence {
+    margin-top: 15px;
+}
+
+div.field-name-field-classification .field-label {
+    float: unset;
+}
+
+article.node-work-report div.field-name-field-attendees .field-items, 
+article.node-work-report div.field-name-field-verification-slip .field-items, 
+article.node-work-report div.reporter-slots .field-items,
+article.node-work-report div.field-name-field-classification .field-items,
+article.node-work-report div.field-name-field-rovas-report {
+    margin-left: 20px;
+}
+
+.node-buttons {
+    margin-bottom: 30px;
+    margin-top: 30px;
+}
+
+/* footer */
+
+section#block-block-8 p {
+    text-align: center;
+}
+
+/* Reward project START */
+
+form#commerce-checkout-form-checkout div.msg, form#commerce-checkout-form-review div.msg {
+    margin-bottom: 25px;
+}
+
+form#rovas-project-reward-form button#pay-choice {
+    margin-top: 20px;
+}
+
+div.neo-how {
+    margin-bottom: 25px;
+    max-width: 600px;
+    margin-top: 60px;
+    color: #909090;
+}
+
+body.page-anonpay-switch ul {
+    padding: unset;
+    margin-left: 15px;
+    margin-bottom: unset;
+}
+
+.body {
+    border-left: solid 2px #ffab2c;
+    padding: 0px 10px 0px 10px;
+}
+
+input#InputAmount, input.edit-payment {
+    width: 100px;
+    display: inline-block;
+}
+
+label.control-label {
+    display: block;
+}
+
+div.form-item-pprice {
+    margin-bottom: 40px;
+}
+
+.form-item-customer-profile-billing-profile-selection select {
+    width: fit-content;
+}
+
+input#edit-account-login-mail, 
+select#edit-customer-profile-billing-commerce-customer-address-und-0-country,
+input#edit-email {
+    max-width: 350px;
+}
+
+div#addressfield-wrapper input {
+    max-width: 350px;
+}
+
+.form-item-customer-profile-billing-commerce-customer-address-und-0-name-line {
+    width: 100%;
+}
+
+body.page-checkout fieldset {
+    border: unset !important;
+}
+
+.payment-xplain {
+    margin-top: 8px;
+    font-style: italic;
+}
+
+.payment-main {
+    font-size: larger;
+    margin-bottom: 10px;
+}
+
+div.custom-eur-amt {
+		margin-left: 40px;
+		margin-bottom: 15px;
+}
+
+.custom-eur-amt-noweb {
+    margin-top: 25px;
+    margin-bottom: 15px;
+}
+
+form#rovas-project-reward-form .text2 {
+    font-weight: bold;
+    margin-top: 30px;
+    margin-bottom: 15px;
+}
+
+.premium-note {
+    margin-top: 25px;
+    margin-bottom: 10px;
+    color: red;
+    width: 300px;
+    font-weight: 500;
+    padding: 10px 10px 2px 15px;
+    border: solid thin;
+    border-radius: 10px;
+}
+
+span.benefits-inst {
+    display: block;
+    font-size: larger;
+    margin-top: 10px;
+    margin-bottom: 10px;
+    font-weight: 900;
+}
+
+.register-link.btn {
+    margin-top: 25px;
+    margin-right: 10px;
+}
+
+.btn-credit-card.icon-before .icon:before {
+    content: "\e177";
+}
+
+div.form-item-payment-currency div.form-radios {
+    width: fit-content;
+}
+
+div#final_text {
+    margin-bottom: 20px;
+}
+
+/* Reward project STOP */
+
+/* Buy shares START */
+
+form#rovas-purchase-shares-form .note {
+    margin-bottom: 30px;
+}
+
+form#rovas-purchase-shares-form .note-strong {
+    margin-bottom: 15px;
+    font-weight: bold;
+}
+
+form#rovas-purchase-shares-form .note-strong a {
+    font-size: larger;
+}
+
+.buy-hrs-wrapper {
+    margin-bottom: 35px;
+    border: solid thin #ccc;
+    border-radius: 12px;
+    padding: 11px;
+    max-width: 540px;
+}
+
+.form-item-buy-amount {
+    display: inline-block;
+    position: relative;
+    color: #999;
+    font-size: 20px;
+}
+
+input.input {
+    width: 100px;
+    height: 50px;
+    padding-left: 6px;
+    padding-right: 6px;
+    display: inline-block;
+    text-align: right;
+    font-size: 30px;
+    border: unset;
+    border-bottom: solid thin #ccc;
+    border-bottom-left-radius: unset;
+    border-bottom-right-radius: unset;
+}
+
+input.input:focus {
+    box-shadow: unset;
+    outline: unset;
+    box-shadow: unset;
+    border-color: unset;
+}
+
+button#edit-button {
+    width: 40px;
+    display: inline-block;
+    position: relative;
+    left: 10px;
+    bottom: 5px;
+    margin-right: 25px;
+    font-size: 16px;
+}
+
+fieldset#edit-performance {
+    max-width: 540px;
+}
+
+fieldset#edit-performance .panel-heading:before {
+    font-family: 'Glyphicons Halflings';
+    float: left;
+    margin-right: 5px;
+    color: #656464;
+    content: "\e114";
+}
+
+fieldset#edit-performance.collapsed .panel-heading:before {
+    content:"\e080";
+}
+
+div.yield {
+    font-size: 17px;
+}
+
+span.yield-value {
+    font-weight: bold;
+		font-size: 24px;
+}
+
+div.form-item-rate label.field-label {
+    margin-right: 5px;
+}
+
+div.form-item-chart label.field-label {
+    margin-top: 20px;
+}
+
+fieldset#edit-performance.collapsed legend.panel-heading {
+    border-bottom: unset;
+}
+
+fieldset#edit-performance legend.panel-heading {
+    background-color: unset !important;
+}
+
+fieldset#edit-performance {
+    border-radius: 7px;
+    border: solid thin #ccc;
+}
+
+fieldset#edit-performance div.view-project-merit-rewards-chart {
+    max-width: 540px;
+    margin-bottom: 30px;
+}
+
+div.view-project-merit-rewards-chart .view-header {
+    display: none;
+}
+
+div.buy-shares {
+    margin-bottom: 10px;
+}
+
+fieldset#edit-chr {
+    border: unset;
+}
+
+.form-item-payment-choice {
+	margin-top: 5px;
+	margin-bottom: 8px;
+    display: inline-block;
+    margin-right: 10px;
+}
+
+div#edit-payment-choice {
+    margin-left: 15px;
+    margin-top: 10px;
+}
+
+div#edit-payment-choice div.ajax-progress-throbber {
+    display: none !important;
+}
+
+.buy-hrs-wrapper div.chron-balance {
+    display: none;
+}
+
+.buy-hrs-wrapper div.chron-balance h2 {
+    color: gray;
+    font-size: 11pt;
+    display: inline-block;
+    margin-left: 15px;
+}
+
+.buy-hrs-wrapper .chron-balance .available-chrons {
+    display: inline-block;
+    margin-left: 10px;
+    font-weight: bold;
+    font-size: 18px;
+}
+
+div#buy-hrs-converted {
+    display: inline-block;
+    font-size: 35px;
+}
+
+form#rovas-project-reward-shares-form .note {
+    margin-bottom: 30px;
+}
+
+div.form-item-field-rate-und-0-value input.ajax-processed,
+input#edit-field-minimum-und-0-value {
+    width: 150px;
+    display: inline;
+}
+
+form#project-node-form  div.ajax-progress-throbber {
+    position: relative;
+    left:7px;
+    margin-right: 10px;
+}
+
+form#rovas-project-reward-shares-form .note-strong {
+    margin-bottom: 10px;
+    font-size: 16px;
+    font-weight: bold;
+}
+
+form#rovas-purchase-shares-form div.ajax-progress-throbber {
+    position: relative;
+    left: -14px;
+    top: 1px;
+    padding: unset;
+    display: inline-block;
+    background-color: white;
+    font-size: 16px;
+}
+
+fieldset#edit-share {
+    border: unset;
+    margin-top: 25px;
+}
+
+fieldset#edit-share legend.panel-heading {
+    padding: unset;
+    border: unset;
+}
+
+fieldset#edit-share span.panel-title.fieldset-legend {
+    font-size: 14px;
+    font-weight: bold;
+}
+
+div#edit-share-body {
+    padding-top: 1px;
+}
+
+input#edit-time-hours, input#edit-time-minutes {
+    width: 65px;
+    display: inline-block;
+}
+
+.form-item-time-hours, .form-item-time-minutes {
+    display: inline-block;
+    margin-right: 15px;
+}
+
+.form-item-time-hours label, .form-item-time-minutes label {
+    position: relative;
+    display: inline-block;
+    margin-right: 2px;
+}
+
+/* Buy shares STOP */
+
+/* Investing START */
+
+body.page-invest .popover-content,
+body.page-find-project  .popover-content {
+    text-align: center;
+}
+
+div.view-investment .view-header {
+    margin-bottom: 25px;
+}
+
+div.view-investment thead th {
+    text-align: right;
+}
+
+div.view-investment tbody {
+    text-align: right;
+}
+
+div.view-investment th.views-field-name,
+div.view-investment td.views-field-name {
+    text-align: left;
+}
+
+div.view-investment th.views-field-php-2,
+div.view-investment td.views-field-php-2 {
+    font-weight: bold;
+    text-align: center;
+}
+
+div.view-investment th.views-field-title-field-et,
+div.view-investment td.views-field-title-field-et {
+    font-weight: bold;
+    text-align: left;
+}
+
+span.help-r {
+    color: #97bfe2;
+}
+
+div.view-investment i.glyphicon.glyphicon-cog {
+    font-size: 16px;
+}
+
+section#block-block-13,
+div#not-guaranteed-note {
+    margin-top: 80px;
+    font-size: 14px;
+    color: #ff0a0a;
+}
+
+/* Investing STOP */
+
+/* Project page START */
+
+body.page-node-edit fieldset a.panel-title.fieldset-legend {
+    color: #253a75;
+    font-weight: bold;
+}
+
+body.page-node-edit fieldset.field-group-fieldset,
+body.page-node-edit fieldset.field-group-fieldset.collapsed {
+    border-left: solid 4px #253a75 !important;
+}
+
+div.field-name-field-buy-shares-button {
+    margin-bottom: 20px;
+}
+
+div.field-name-field-merit-reward {
+    margin-top: 20px;
+    margin-bottom: 20px;
+    display: inline-block;
+    margin-right: 35px;
+}
+
+div.field-name-field-project-total-hours {
+    margin-top: 20px;
+    margin-bottom: 20px;
+    display: inline-block;
+    margin-right: 35px;
+}
+
+div.field-name-field-hours-worked {
+    margin-top: 20px;
+    margin-bottom: 20px;
+    display: inline-block;
+    margin-right: 35px;
+}
+
+div.field-name-field-reward-button {
+    margin-bottom: 25px;
+    margin-top: 20px;
+}
+
+div.field-name-field-merit-reward .field-items, 
+div.field-name-field-project-total-hours .field-items,
+div.field-name-field-hours-worked .field-items {
+    font-size: 35pt;
+    font-weight: bold;
+}
+
+div.field-name-field-merit-reward .field-label, 
+div.field-name-field-project-total-hours .field-label,
+div.field-name-field-hours-worked .field-label {
+    float: unset;
+    font-weight: unset;
+    margin-bottom: -10px;
+}
+
+div.field-name-field-merit-reward a {
+    font-size: 10pt;
+    display: inherit;
+    position: relative;
+    left: -10px;
+}
+
+div.field-name-field-merit-reward span.unit {
+    font-size: 75%;
+}
+
+div.field-name-field-project-total-hours span.unit,
+div.field-name-field-hours-worked span.unit {
+    font-size: 81%;
+}
+
+div.view-project-coworkers div.view-header a.btn {
+  display: block;
+  width: max-content;
+  margin-top: 20px;
+}
+
+div.field-name-field-worker-reports {
+    margin-top: 25px;
+}
+
+span.hours span.label {
+    color: unset;
+    padding-left: 7px;
+    padding-right: 15px;
+}
+
+span.minutes {
+    font-weight: 200;
+    font-size: 31px;
+}
+
+span.minutes span.label {
+    color: unset;
+    font-weight: 200;
+    padding-left: 7px;
+    padding-right: 15px;
+}
+
+div.form-item-field-chron-beneficiary-und-0-target-id div.input-group {
+    max-width: 350px;
+}
+
+#field-privileged-users-add-more-wrapper .description {
+    position: relative;
+    top: 0px;
+}
+
+.field-name-field-worker-reports a.add-report {
+    margin-top: 15px;
+}
+
+.render-buttons {
+    margin-top: 45px;
+}
+
+.field-name-field-project-exchange-rate {
+	position: relative;
+	margin-top: 10px;
+}
+.eurchr-value {
+	font-weight: bold;
+	font-size: 16px;
+}
+.field-name-field-project-exchange-rate .field-items {
+	position: relative;
+	left: 5px;
+	top: -2px;
+}
+
+.node-type-project .popover {
+    max-width: fit-content;
+}
+
+/* Project page STOP */
+
+/* User badge START */
+
+td.usr-merits > span {
+    display: none;
+}
+
+.merit-badge {
+    display: inline-block;
+    top: 0px;
+    position: relative;
+    transform: scale(0.8);
+    margin-left: -5px;
+}
+
+div.merit-badge svg {
+    width: 25px;
+    height: 18px;
+    top: 5px;
+    position: relative;
+    border-radius: 3px;
+    border-top-right-radius: unset;
+    border-bottom-right-radius: unset;
+    margin-right: -4px;
+}
+
+div.merit-badge.top svg {
+    border: solid 1px var(--merit-badge-color-top);
+}
+
+div.merit-badge.great svg {
+    border: solid 1px var(--merit-badge-color-great);
+}
+
+div.merit-badge.good svg {
+    border: solid 1px var(--merit-badge-color-good);
+}
+
+div.merit-badge.base svg {
+    border: solid 1px var(--merit-badge-color-base);
+}
+
+div.merit-badge.project svg {
+    border: solid 1px var(--merit-badge-color-project);
+}
+
+svg polyline.st2 {
+    stroke: #1f1f1f;
+}
+
+span.merit {
+    display: inline-block;
+    height: 18px;
+    min-width: 30px;
+    line-height: 16px;
+    font-size: 12px;
+    font-weight: bold;
+    text-align: center;
+    color: white;
+    padding-right: 2px;
+    padding-left: 1px;
+    border-radius: 3px;
+    border-bottom-left-radius: unset;
+    border-top-left-radius: unset;
+}
+
+.merit-badge.base span.merit {
+    background-color: var(--merit-badge-color-base);
+    border: solid 1px var(--merit-badge-color-base);
+}
+
+.merit-badge.good span.merit {
+    background-color: var(--merit-badge-color-good);
+    border: solid 1px var(--merit-badge-color-good);
+}
+
+.merit-badge.great span.merit {
+    background-color: var(--merit-badge-color-great);
+    border: solid 1px var(--merit-badge-color-great);
+}
+
+.merit-badge.top span.merit {
+    background-color: var(--merit-badge-color-top);
+    border: solid 1px var(--merit-badge-color-top);
+}
+
+.merit-badge.project span.merit {
+    background-color: var(--merit-badge-color-project);
+    border: solid 1px var(--merit-badge-color-project);
+}
+
+div.author .field-items,
+div.field-name-field-project-owner .field-items,
+div.field-name-field-chron-beneficiary .field-items {
+    top: -3px;
+    position: relative;
+}
+
+/* popup */
+
+.merits_popup {
+    text-align: center;
+}
+
+.merits_popup .created {
+    margin-top: 10px;
+    margin-bottom: 15px;
+}
+
+.merits_popup .user {
+    font-weight: bold;
+}
+
+.merits_popup .start-date {
+    margin-bottom: 5px;
+    font-style: italic;
+}
+
+.merits_popup .time-label {
+    margin-top: 5px;
+}
+
+.merits_popup .time-value {
+    font-weight: bold;
+}
+
+.merit-equiv {
+    font-weight: bold;
+    font-size: 12pt;
+}
+
+.merits_popup .lbl {margin-bottom: -4px;}
+
+.merit-rank {
+    margin-top: 5px;
+}
+
+div.merit-rank div.total-rank {
+    display: inline-block;
+    font-weight: initial;
+    font-size: 14px;
+    margin-left: 5px;
+}
+
+/* User badge STOP */
+
+/* Front page statistics blocks START */
+
+img.countryicon {
+    display: inline-block;
+}
+/* Front page statistics blocks STOP */
+
+
+/* MERIT INDEX START */
+
+body.page-users-merit-rank {
+    background-color: #f5f5f5;
+}
+
+img.meritlogo {
+    width: 90px;
+    margin-bottom: 16px;
+}
+
+.page-users-merit-rank h1.page-header {
+    text-align: center;
+    border: unset;
+    font-size: 35px;
+    font-weight: 800;
+    font-family: Roboto, Helvetica, Arial, sans-serif;
+}
+
+.view-users-merit-rank .views-field-field-country {
+    width: 89px;
+}
+
+.view-users-merit-rank .view-header {
+    text-align: center;
+}
+
+.view-users-merit-rank .views-exposed-widgets {
+		display: flex;
+		justify-content: center;
+		align-items: center;
+		gap: 15px;
+		flex-wrap: wrap;
+    margin-bottom: 35px;
+    margin-top: 20px;
+}
+
+.view-users-merit-rank select#edit-name-list {
+    max-width: 200px;
+}
+
+.view-users-merit-rank button#edit-submit-users-merit-rank {
+    margin-top: unset;
+}
+
+.view-users-merit-rank .table-responsive {
+    overflow-x: auto;
+    border-radius: 10px;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+    background-color: white;
+}
+
+.view-users-merit-rank td.views-field-counter {
+    text-align: center;
+}
+
+.view-users-merit-rank .country {
+  font-size: 0; /* Hides the text */
+  display: block;
+}
+
+.view-users-merit-rank .country img {
+  font-size: initial; /* Restores normal size for the image */
+}
+
+.view-users-merit-rank td.views-field-field-country {
+    width: 33px;
+    padding-top: 12px;
+}
+
+.view-users-merit-rank .views-field-name {
+    font-weight: 600;
+}
+
+.view-users-merit-rank th {
+  vertical-align: middle !important;
+  border-bottom: unset;
+}
+
+.view-users-merit-rank thead {
+    height: 60px;
+}
+
+.view-users-merit-rank thead tr {
+    background-color: #038c8c;
+    color: white;
+}
+
+.view-users-merit-rank th.views-field.views-field-counter {
+    text-align: center;
+}
+
+.view-users-merit-rank th a {
+	color: white;
+}
+
+.view-users-merit-rank td {
+  vertical-align: middle !important;
+  padding: 1rem;
+  border-bottom: 1px solid #f3f4f6;
+}
+
+.view-users-merit-rank .merit-score {
+    vertical-align: middle;
+}
+
+.view-users-merit-rank .merit-score span {
+		font-weight: 700;
+		color: #038c8c;
+		background: #c4f1f1;
+		padding: 0.25rem 0.75rem;
+		border-radius: 20px;
+		display: inline-block;
+}
+
+.view-users-merit-rank td.views-field.views-field-php-2 {
+    font-weight: 600;
+    color: #374151;
+    vertical-align: middle;
+}
+
+.view-users-merit-rank .table-striped > tbody > tr:nth-of-type(odd) {
+    background-color: unset;
+}
+
+.view-users-merit-rank .view-footer {
+    text-align: center;
+}
+
+/* Comment notify overrides START */
+
+#edit-notify-type .form-item-notify-type {
+    display: block;
+}
+/* Comment notify overrides STOP */

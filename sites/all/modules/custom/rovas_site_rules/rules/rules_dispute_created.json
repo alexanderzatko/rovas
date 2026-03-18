@@ -1,0 +1,136 @@
+{ "rules_dispute_created" : {
+    "LABEL" : "Dispute created",
+    "PLUGIN" : "reaction rule",
+    "OWNER" : "rules",
+    "TAGS" : [ "dispute" ],
+    "REQUIRES" : [ "rules", "rules_i18n", "rules_conditional", "php" ],
+    "ON" : { "node_insert--dispute" : { "bundle" : "dispute" } },
+    "DO" : [
+      { "variable_add" : {
+          "USING" : {
+            "type" : "text",
+            "value" : "Action failed. Please use only values provided in the drop-downs for the \u0022Accused\u0022 and the \u0022Object of complaint\u0022 and ensure the \u0022Accused\u0022 is the author of the \u0022Object of complaint.\u0022"
+          },
+          "PROVIDE" : { "variable_added" : { "error_message" : "error message" } }
+        }
+      },
+      { "rules_i18n_t" : {
+          "USING" : {
+            "text" : [ "error-message" ],
+            "language" : [ "node:field-accused:language" ]
+          },
+          "PROVIDE" : { "text" : { "error_message_translated" : "error message translated" } }
+        }
+      },
+      { "CONDITIONAL" : [
+          {
+            "IF" : { "php_eval" : { "code" : "$dispwrp = entity_metadata_wrapper(\u0027node\u0027, $node);\r\nif($dispwrp-\u003Efield_object_of_complaint-\u003EgetIdentifier()) {\r\n\t$oocauid = $dispwrp-\u003Efield_object_of_complaint-\u003Eauthor-\u003Euid-\u003Evalue();\r\n\tif($dispwrp-\u003Efield_accused-\u003EgetIdentifier()) {\r\n\t\t$accused = $dispwrp-\u003Efield_accused-\u003Euid-\u003Evalue();\r\n\t\treturn $oocauid == $accused;\r\n\t}\r\n\telse\r\n\t\treturn false;\r\n\t}\r\nelse\r\n\treturn false;" } },
+            "DO" : [
+              { "CONDITIONAL" : [
+                  {
+                    "IF" : { "NOT data_is" : { "data" : [ "node:field-accused:uid" ], "value" : "1" } },
+                    "DO" : [
+                      { "entity_create" : {
+                          "USING" : {
+                            "type" : "node",
+                            "param_type" : "dispute_party",
+                            "param_title" : "DP",
+                            "param_author" : [ "node:author" ]
+                          },
+                          "PROVIDE" : { "entity_created" : { "dispute_party_complainer" : "Dispute party - complainer" } }
+                        }
+                      },
+                      { "data_set" : {
+                          "data" : [ "dispute-party-complainer:field-dispute" ],
+                          "value" : [ "node" ]
+                        }
+                      },
+                      { "data_set" : { "data" : [ "dispute-party-complainer:field-position" ], "value" : "1" } },
+                      { "entity_create" : {
+                          "USING" : {
+                            "type" : "node",
+                            "param_type" : "dispute_party",
+                            "param_title" : "DP",
+                            "param_author" : [ "node:field-accused" ]
+                          },
+                          "PROVIDE" : { "entity_created" : { "dispute_party_accused" : "Dispute party - accused" } }
+                        }
+                      },
+                      { "data_set" : {
+                          "data" : [ "dispute-party-accused:field-dispute" ],
+                          "value" : [ "node" ]
+                        }
+                      },
+                      { "data_set" : { "data" : [ "dispute-party-accused:field-position" ], "value" : "2" } },
+                      { "data_set" : {
+                          "data" : [ "node:field-accused:roles" ],
+                          "value" : { "value" : { "6" : "6" } }
+                        }
+                      },
+                      { "rules_i18n_t" : {
+                          "USING" : {
+                            "text" : "Rovas application - Dispute notification",
+                            "language" : [ "node:field-accused:language" ]
+                          },
+                          "PROVIDE" : { "text" : { "subject_translated" : "subject translated" } }
+                        }
+                      },
+                      { "rules_i18n_t" : {
+                          "USING" : {
+                            "text" : "User [node:author] filed a dispute against you. You can see the dispute at this address: \r\n[node:url]\r\n\r\nPlease do not respond to this message, as the sender account is not monitored.",
+                            "language" : [ "node:field-accused:language" ]
+                          },
+                          "PROVIDE" : { "text" : { "translated_messsage" : "translated messsage" } }
+                        }
+                      },
+                      { "component_rules_send_email" : {
+                          "recipient" : [ "node:field-accused:mail" ],
+                          "subject" : [ "subject-translated" ],
+                          "message" : [ "translated-messsage" ],
+                          "language" : [ "node:field-accused:language" ]
+                        }
+                      },
+                      { "mail" : {
+                          "to" : [ "site:mail" ],
+                          "subject" : "Rovas application - Dispute was created",
+                          "message" : "User [node:author] filed a dispute against [node:field_accused]. \r\n\r\nYou can see the dispute at this address: \r\n[node:url]",
+                          "language" : "en"
+                        }
+                      },
+                      { "entity_fetch" : {
+                          "USING" : { "type" : "user", "id" : [ "dispute-party-accused:author:uid" ] },
+                          "PROVIDE" : { "entity_fetched" : { "accused" : "accused" } }
+                        }
+                      },
+                      { "data_set" : { "data" : [ "accused:field-dispute-notify" ], "value" : "1" } },
+                      { "variable_add" : {
+                          "USING" : { "type" : "integer", "value" : [ "accused:field-verification-score" ] },
+                          "PROVIDE" : { "variable_added" : { "verification_score" : "accuseds verification score" } }
+                        }
+                      },
+                      { "data_set" : {
+                          "data" : [ "accused:field-verification-score" ],
+                          "value" : { "select" : "verification-score", "num_offset" : { "value" : "-1" } }
+                        }
+                      }
+                    ]
+                  },
+                  { "ELSE" : [
+                      { "entity_delete" : { "data" : [ "node" ] } },
+                      { "drupal_message" : { "message" : [ "error-message" ], "type" : "error" } }
+                    ]
+                  }
+                ]
+              }
+            ]
+          },
+          { "ELSE" : [
+              { "entity_delete" : { "data" : [ "node" ] } },
+              { "drupal_message" : { "message" : [ "error-message-translated" ], "type" : "error" } }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

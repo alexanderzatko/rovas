@@ -1,0 +1,201 @@
+{ "rules_process_card_payment_orders" : {
+    "LABEL" : "process card payment orders",
+    "PLUGIN" : "reaction rule",
+    "OWNER" : "rules",
+    "REQUIRES" : [
+      "rules",
+      "commerce_payment",
+      "rovas_forex",
+      "commerce_invoice_receipt",
+      "rules_conditional",
+      "php",
+      "commerce_order"
+    ],
+    "ON" : { "commerce_payment_order_paid_in_full" : [] },
+    "IF" : [
+      { "entity_is_of_bundle" : {
+          "entity" : [ "commerce-order" ],
+          "type" : "commerce_order",
+          "bundle" : { "value" : { "commerce_order" : "commerce_order" } }
+        }
+      },
+      { "NOT data_is_empty" : { "data" : [ "commerce-order:field-payment-recipient" ] } },
+      { "NOT commerce_payment_selected_payment_method" : { "commerce_order" : [ "commerce_order" ], "method_id" : "bank_transfer" } }
+    ],
+    "DO" : [
+      { "variable_add" : {
+          "USING" : { "type" : "boolean", "value" : "1" },
+          "PROVIDE" : { "variable_added" : { "charge_fees" : "charge fees" } }
+        }
+      },
+      { "variable_add" : {
+          "USING" : {
+            "type" : "decimal",
+            "value" : [ "commerce-order:commerce-order-total:amount-decimal" ]
+          },
+          "PROVIDE" : { "variable_added" : { "order_total" : "order total" } }
+        }
+      },
+      { "variable_add" : {
+          "USING" : {
+            "type" : "decimal",
+            "value" : [ "commerce-order:commerce-order-total:amount-decimal" ]
+          },
+          "PROVIDE" : { "variable_added" : { "forex_tx_input" : "forex tx input" } }
+        }
+      },
+      { "rovas_forex_transaction_params" : {
+          "USING" : {
+            "transact_type" : "eur_to_chr",
+            "input" : [ "forex-tx-input" ],
+            "processor_fee" : "0",
+            "charge_fees" : [ "charge_fees" ]
+          },
+          "PROVIDE" : {
+            "eur_basket" : { "eur_basket" : "EUR basket amount" },
+            "chr_basket" : { "chr_basket" : "CHR basket amount" },
+            "variable_fee" : { "variable_fee" : "Variable fee percentage" },
+            "output_amount" : { "output_amount" : "Output amount" },
+            "fixed_fee_amount" : { "fixed_fee_amount" : "Fixed fee amount" },
+            "use_temp_baskets" : { "use_temp_baskets" : "Using temporary baskets" }
+          }
+        }
+      },
+      { "data_calc" : {
+          "USING" : {
+            "input_1" : [ "variable-fee" ],
+            "op" : "*",
+            "input_2" : [ "order-total" ]
+          },
+          "PROVIDE" : { "result" : { "partial_fee" : "partial fee" } }
+        }
+      },
+      { "data_calc" : {
+          "USING" : {
+            "input_1" : [ "partial-fee" ],
+            "op" : "+",
+            "input_2" : [ "fixed-fee-amount" ]
+          },
+          "PROVIDE" : { "result" : { "fee_amount" : "fee amount" } }
+        }
+      },
+      { "component_rules_process_forex_order" : {
+          "USING" : {
+            "order_id" : [ "commerce-order:order-id" ],
+            "payment_status" : "0",
+            "euro_basket" : [ "eur-basket" ],
+            "chron_basket" : [ "chr-basket" ],
+            "conv_type" : "euros_to_chrons",
+            "input_amt" : [ "forex-tx-input" ],
+            "output_amt" : [ "output-amount" ],
+            "fee" : [ "fee-amount" ],
+            "user_uid" : [ "commerce-order:uid" ]
+          },
+          "PROVIDE" : { "forex_nid" : { "forex_nid" : "forex node id" } }
+        }
+      },
+      { "commerce_invoice_receipt_action_mail" : {
+          "commerce_order" : [ "commerce_order" ],
+          "to" : "[commerce-order:owner] \u003C[commerce-order:mail]\u003E",
+          "subject" : "[site:name]: Order #[commerce-order:order-id]"
+        }
+      },
+      { "CONDITIONAL" : [
+          {
+            "IF" : { "commerce_order_contains_product" : {
+                "commerce_order" : [ "commerce_order" ],
+                "product_id" : "time-share",
+                "operator" : "\u003E=",
+                "value" : "1"
+              }
+            },
+            "DO" : [
+              { "component_rules_process_time_share_order" : { "order" : [ "commerce-order" ] } },
+              { "php_eval" : { "code" : "$new_universal_forex_baskets = [\r\n    \u0027ch_basket\u0027 =\u003E $chr_basket - $output_amount,\r\n    \u0027eur_basket\u0027 =\u003E $eur_basket + $order_total - ($fixed_fee_amount + $partial_fee)\r\n];\r\n\r\n$use_temp_baskets = !empty($use_temp_baskets) ? $use_temp_baskets : FALSE;\r\n\r\nif ($use_temp_baskets) {\r\n    variable_set(\u0027forex_baskets_temp\u0027, $new_universal_forex_baskets);\r\n}\r\nelse {\r\n    if (variable_get(\u0027forex_baskets_temp\u0027)) {\r\n        variable_del(\u0027forex_baskets_temp\u0027);\r\n    }\r\n    variable_set(\u0027forex_baskets\u0027, $new_universal_forex_baskets);\r\n}" } },
+              { "component_rules_process_recipient_order_core" : {
+                  "converted_chrons_paid" : [ "output-amount" ],
+                  "payment_status" : "1",
+                  "order" : [ "commerce-order" ]
+                }
+              }
+            ]
+          }
+        ]
+      },
+      { "SWITCH" : {
+          "USING" : { "data" : [ "commerce-order:field-payer-type" ] },
+          "DO" : [
+            { "CASE" : {
+                "USING" : { "value" : "project" },
+                "DO" : [
+                  { "variable_add" : {
+                      "USING" : { "type" : "text", "value" : [ "commerce-order:mail" ] },
+                      "PROVIDE" : { "variable_added" : { "email" : "email" } }
+                    }
+                  },
+                  { "entity_fetch" : {
+                      "USING" : {
+                        "type" : "node",
+                        "id" : [ "commerce-order:field-payment-recipient" ],
+                        "revision_id" : "0"
+                      },
+                      "PROVIDE" : { "entity_fetched" : { "rewarded_node" : "rewarded node" } }
+                    }
+                  },
+                  { "php_eval" : { "code" : "\/*\r\n* Calling \u0022purchase completed\u0022 redirects\r\n* Orders created by Express Checkout (ApplePay), call this function in the rovas_stripe_express_checkout_thanks() function\r\n*\/\r\nif (\r\n\t!isset($commerce_order-\u003Edata[\u0027stripe_pi\u0027][\u0027payment_intent\u0027][\u0027metadata\u0027][\u0027context\u0027]) ||\r\n\t$commerce_order-\u003Edata[\u0027stripe_pi\u0027][\u0027payment_intent\u0027][\u0027metadata\u0027][\u0027context\u0027] != \u0027express_checkout\u0027\r\n) {\r\n\trovas_project_reward_notify_purchase($rewarded_node,$order_total,\u0027EUR\u0027,$email);\r\n}" } }
+                ]
+              }
+            },
+            { "CASE" : {
+                "USING" : { "value" : "report" },
+                "DO" : [
+                  { "drupal_message" : { "message" : "The reward was successfully processed", "repeat" : "0" } }
+                ]
+              }
+            },
+            { "CASE" : {
+                "USING" : { "value" : "user" },
+                "DO" : [
+                  { "CONDITIONAL" : [
+                      {
+                        "IF" : { "commerce_order_contains_product" : {
+                            "commerce_order" : [ "commerce_order" ],
+                            "product_id" : "merits",
+                            "operator" : "\u003E=",
+                            "value" : "1"
+                          }
+                        },
+                        "DO" : [
+                          { "variable_add" : {
+                              "USING" : {
+                                "type" : "decimal",
+                                "value" : [ "commerce-order:commerce-line-items:0:quantity" ]
+                              },
+                              "PROVIDE" : { "variable_added" : { "merits_purchased" : "merits purchased" } }
+                            }
+                          },
+                          { "drupal_message" : {
+                              "message" : "The purchase of [merits-purchased:value] Merits for [commerce-order:commerce_order_total] Euros was completed",
+                              "repeat" : "0"
+                            }
+                          },
+                          { "php_eval" : { "code" : "$new_universal_forex_baskets = [\r\n    \u0027ch_basket\u0027 =\u003E $chr_basket - $output_amount,\r\n    \u0027eur_basket\u0027 =\u003E $eur_basket + $order_total - ($order_total * $variable_fee + $fixed_fee_amount)\r\n];\r\n\r\n$use_temp_baskets = !empty($use_temp_baskets) ? $use_temp_baskets : FALSE;\r\n\r\nif ($use_temp_baskets) {\r\n    variable_set(\u0027forex_baskets_temp\u0027, $new_universal_forex_baskets);\r\n}\r\nelse {\r\n    if (variable_get(\u0027forex_baskets_temp\u0027)) {\r\n        variable_del(\u0027forex_baskets_temp\u0027);\r\n    }\r\n    variable_set(\u0027forex_baskets\u0027, $new_universal_forex_baskets);\r\n}" } },
+                          { "component_rules_process_recipient_order_core" : {
+                              "converted_chrons_paid" : [ "output-amount" ],
+                              "payment_status" : "1",
+                              "order" : [ "commerce-order" ]
+                            }
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      }
+    ]
+  }
+}

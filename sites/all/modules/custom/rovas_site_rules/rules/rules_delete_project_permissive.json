@@ -1,0 +1,46 @@
+{ "rules_delete_project_permissive" : {
+    "LABEL" : "Deleting project allowed",
+    "PLUGIN" : "rule condition set",
+    "OWNER" : "rules",
+    "TAGS" : [ "logic" ],
+    "REQUIRES" : [ "rules_conditional", "rules", "views_bulk_operations", "commerce" ],
+    "USES VARIABLES" : {
+      "user_checked" : { "label" : "User checked", "type" : "user" },
+      "node_checked" : { "label" : "Node checked", "type" : "node" }
+    },
+    "RESULT" : [
+      { "entity_is_of_bundle" : {
+          "entity" : [ "node-checked" ],
+          "type" : "node",
+          "bundle" : { "value" : { "project" : "project" } }
+        }
+      },
+      { "data_is" : { "data" : [ "node-checked:author" ], "value" : [ "user-checked" ] } },
+      { "data_is" : {
+          "data" : [ "node-checked:field-status" ],
+          "op" : "IN",
+          "value" : { "value" : [ "0", "1" ] }
+        }
+      },
+      { "OR" : [
+          { "NOT views_bulk_operations_condition_result_count" : {
+              "view" : "other_workers_work_reports|default",
+              "args" : "[node-checked:nid]\r\n[user-checked:uid]",
+              "minimum" : "1"
+            }
+          },
+          { "AND" : [
+              { "entity_exists" : {
+                  "type" : "node",
+                  "property" : "field_object_of_complaint",
+                  "value" : [ "node-checked:nid" ]
+                }
+              },
+              { "user_has_role" : { "account" : [ "user-checked" ], "roles" : { "value" : { "6" : "6" } } } }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

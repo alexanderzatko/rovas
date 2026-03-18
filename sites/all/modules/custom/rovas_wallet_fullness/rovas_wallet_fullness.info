@@ -1,0 +1,7 @@
+name = Wallet Fullness Gauge
+description = Provides a visual gauge formatter for displaying wallet fullness levels.
+package = Rovas
+core = 7.x
+
+
+stylesheets[all][] = rovas_wallet_fullness.css

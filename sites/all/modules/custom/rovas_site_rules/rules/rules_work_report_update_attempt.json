@@ -1,0 +1,32 @@
+{ "rules_work_report_update_attempt" : {
+    "LABEL" : "Attempt to update work report",
+    "PLUGIN" : "reaction rule",
+    "OWNER" : "rules",
+    "TAGS" : [ "work report" ],
+    "REQUIRES" : [ "rules" ],
+    "ON" : { "node_prepare" : [] },
+    "IF" : [
+      { "NOT entity_is_new" : { "entity" : [ "node" ] } },
+      { "node_is_of_type" : {
+          "node" : [ "node" ],
+          "type" : { "value" : { "work_report" : "work_report" } }
+        }
+      },
+      { "list_count_is" : {
+          "list" : [ "node:field-verification-slip" ],
+          "op" : "\u003E",
+          "value" : "0"
+        }
+      },
+      { "NOT data_is" : { "data" : [ "site:current-user:uid" ], "value" : "1" } }
+    ],
+    "DO" : [
+      { "drupal_message" : {
+          "message" : "This work report can not be edited because it was already verified by at least one user",
+          "type" : "error"
+        }
+      },
+      { "redirect" : { "url" : [ "node:url" ] } }
+    ]
+  }
+}

@@ -1,0 +1,35 @@
+{ "rules_change_user_role_when_merits_is_positive" : {
+    "LABEL" : "change user role when merits is positive",
+    "PLUGIN" : "reaction rule",
+    "OWNER" : "rules",
+    "TAGS" : [ "logic" ],
+    "REQUIRES" : [ "userpoints_rules", "rules" ],
+    "ON" : { "userpoints_event_points_awarded_after" : [] },
+    "IF" : [
+      { "userpoints_condition_check_points" : {
+          "user" : [ "userpoints-transaction:user" ],
+          "tid" : "0",
+          "threshold" : "0",
+          "comparison" : "ge"
+        }
+      },
+      { "user_has_role" : {
+          "account" : [ "userpoints-transaction:user" ],
+          "roles" : { "value" : { "5" : "5" } }
+        }
+      }
+    ],
+    "DO" : [
+      { "user_remove_role" : {
+          "account" : [ "userpoints-transaction:user" ],
+          "roles" : { "value" : { "5" : "5" } }
+        }
+      },
+      { "user_add_role" : {
+          "account" : [ "userpoints-transaction:user" ],
+          "roles" : { "value" : { "4" : "4" } }
+        }
+      }
+    ]
+  }
+}

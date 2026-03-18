@@ -1,0 +1,30 @@
+{ "rules_google_translate_text" : {
+    "LABEL" : "Google translate text",
+    "PLUGIN" : "action set",
+    "OWNER" : "rules",
+    "REQUIRES" : [ "php", "rules" ],
+    "USES VARIABLES" : {
+      "input" : { "label" : "input", "type" : "text" },
+      "to_code" : { "label" : "destination language code", "type" : "text" },
+      "from_code" : { "label" : "source language code", "type" : "text", "allow null" : true },
+      "translation" : { "label" : "translation", "type" : "text", "parameter" : false }
+    },
+    "ACTION SET" : [
+      { "variable_add" : {
+          "USING" : {
+            "type" : "text",
+            "value" : "\u003C?php\r\n\r\nif (empty($from_code) || $from_code == \u0027xx\u0027) {\r\n   $from_code = \u0027\u0027;\r\n}\r\nelse {\r\n   $from_code = \u0027\u0026source=\u0027 . $from_code;\r\n}\r\n$encoded = drupal_encode_path($input);\r\n$contype = \u0027text\/plain\u0027;\r\n$google_service = \u0027https:\/\/translation.googleapis.com\/language\/translate\/v2\u0027;\r\n$api_key = \u0027AIzaSyBnI5dC_Avk9QRu5-G-LSjum-LFnjE14Xk\u0027;\r\n\r\n$url = $google_service . \u0027?key=\u0027 . $api_key . \u0027\u0026q=\u0027 . $encoded . \u0027\u0026target=\u0027 . $to_code . $from_code;\r\n\r\n$rest_call = drupal_http_request($url, array(\r\n\t\u0027headers\u0027 =\u003E array(\u0027Content-Type\u0027 =\u003E $contype),\r\n\t\u0027method\u0027 =\u003E \u0027POST\u0027,\r\n));\r\n\r\nif (isset($rest_call-\u003Ecode) \u0026\u0026 $rest_call-\u003Ecode == 200) {\r\n\t$kuk = json_decode($rest_call-\u003Edata);\r\n\techo $kuk-\u003Edata-\u003Etranslations[0]-\u003EtranslatedText;\r\n}\r\nelse {\r\n\techo \u0027e\u221a\u221aor\u0027;\r\nwatchdog(\u0027rule\u0027,\u0027rules_google_translate_text 1\u0027 . print_r($rest_call,1));\r\n}\r\n\r\n?\u003E"
+          },
+          "PROVIDE" : { "variable_added" : { "translated" : "translated result" } }
+        }
+      },
+      { "data_set" : { "data" : [ "translation" ], "value" : [ "translated" ] } },
+      { "drupal_watchdog" : {
+          "type" : "rule",
+          "message" : "Used googler translate services. Translated [input:value] to [translation:value]"
+        }
+      }
+    ],
+    "PROVIDES VARIABLES" : [ "translation" ]
+  }
+}

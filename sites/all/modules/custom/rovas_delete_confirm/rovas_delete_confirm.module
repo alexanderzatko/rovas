@@ -1,0 +1,135 @@
+<?php
+
+function rovas_delete_confirm_form_alter(&$form, $form_state, $form_id) {
+	if (arg(0) == 'node' && is_numeric(arg(1)) && arg(2) == 'delete') {
+		$node = node_load(arg(1));
+		if ($form_id == 'node_delete_confirm') {
+//project
+			if($node->type == 'project'){
+				//if deleting is allowed - when project status < 2 AND current user is the owner AND project has work reports from the owner only
+				// OR 
+				// current user is the owner AND the owner has role "accused"
+				global $user;
+				if(rules_invoke_component('rules_delete_project_permissive', $user, $node)) {
+					drupal_set_title(t('Are you sure you want to delete') . ' ' . t('project') . ' ' . $node->title . '?');
+					$form['description'] = array('#markup' => t('This action cannot be undone.'));
+					$form['actions'] = array (
+						'#type' =>'actions',
+						'delete' => array(
+							'#type' => 'submit',
+							'#value' => t('Delete'),
+							'#submit' => array('rovas_delete_project_submit')
+						),
+						'cancel' => array (
+							'#type' => 'link',
+							'#title' => t('Cancel'),
+							'#href' => 'node/'.$node->nid,
+							'#options' => array ()
+						) 
+					);
+				}
+				else {
+					drupal_set_title(t('Action not allowed'));
+					$form['description'] = array('#markup' => t('Sorry, you can not delete this project. The likely causes are: The project was sold or expired, or workers other than you have worker on it.'));
+					$form['actions'] = array ('#type' =>'actions','cancel' => array ('#type' => 'link','#title' => 'Cancel','#href' => 'node/'.$node->nid,'#options' => array ()));
+					}
+			}
+//work report
+			else if ($node->type == 'work_report') {
+					drupal_set_title(t('Are you sure you want to delete') . ' ' . $node->title . '?');
+					$form['description'] = array('#markup' => t('This action cannot be undone.'));
+					$form['actions'] = array (
+						'#type' =>'actions',
+						'delete' => array(
+							'#type' => 'submit',
+							'#value' => t('Delete'),
+							'#submit' => array('rovas_delete_work_report_confirm_submit')
+						),
+						'cancel' => array (
+							'#type' => 'link',
+							'#title' => 'Cancel',
+							'#href' => 'node/'.$node->nid,
+							'#options' => array ()
+						) 
+					);
+			}
+//dispute
+			else if ($node->type == 'dispute') {
+				// if no supporters or defenders other than the primary actors participate, allow deletion
+				$result = db_query("SELECT COUNT(fd.field_dispute_target_id) AS cnt
+				FROM {node} node
+				LEFT JOIN {field_data_field_dispute} fd ON node.nid = fd.entity_id 
+				AND fd.entity_type = 'node' 
+				AND fd.deleted = '0'
+				WHERE fd.field_dispute_target_id = :node
+				AND node.status = '1'
+				AND node.type = 'dispute_party'", array(':node' => arg(1)));
+				$resarray = $result->fetchAll();
+				$cnt = $resarray[0]->cnt;
+				if ($cnt == 2) {
+					$form['description'] = array('#markup' => t('This action cannot be undone.'));
+				}
+				else {
+					drupal_set_title(t('Canceling Dispute'));
+					$form['description'] = array('#markup' => t('This dispute has been joined by users other than the complainant and the accused, therefore can be only canceled and not deleted. The only difference between canceled and deteted disputes is that the former remain visible in the list. If you would like to permanently delete the dispute instead, please first ask all supporters and defenders to remove themselves from the dispute and then delete it again.'));
+					$form['actions'] = array (
+						'#type' =>'actions',
+						'cancel' => array (
+							'#type' => 'link',
+							'#title' => 'Return to Dispute',
+							'#href' => 'node/'.$node->nid,
+							'#options' => array ()
+						),
+						'cancel_dispute' => array(
+							'#type' => 'submit',
+							'#value' => t('Cancel Dispute'),
+							'#submit' => array(
+								'cancel_dispute_submit'
+							)
+						)
+					);
+				}
+			}
+			else {
+					drupal_set_title(t('Are you sure you want to delete') . ' ' . $node->title . '?');
+					$form['description'] = array('#markup' => t('This action cannot be undone.'));
+					$form['actions'] = array (
+						'#type' =>'actions',
+						'delete' => array(
+							'#type' => 'submit',
+							'#value' => t('Delete'),
+							'#submit' => array('node_delete_confirm_submit')
+						),
+						'cancel' => array (
+							'#type' => 'link',
+							'#title' => t('Cancel'),
+							'#href' => 'node/'.$node->nid,
+							'#options' => array ()
+						) 
+					);
+			}
+		}
+	}
+}
+
+//processes "Cancel Dispute" action on the Delete Confirm page
+function cancel_dispute_submit (&$form, $form_state) {
+	$node = node_load(arg(1));
+	rules_invoke_component('rules_cancel_dispute', $node);
+	//call rule that changes status of dispute to 1, adjusts accused's roles and sends message to parties
+//	watchdog('debug','cancel_dispute_submit rule should have fired.');
+}
+
+//processes "Delete Project" action on the Delete Confirm page
+function rovas_delete_project_submit (&$form, $form_state) {
+	$node = node_load(arg(1));
+	rules_invoke_component('rules_delete_project', $node,'user');
+//	watchdog('debug','rules_delete_project rule should have fired.');
+}
+
+//processes "Delete Work report" action on the Delete Confirm page
+function rovas_delete_work_report_confirm_submit (&$form, $form_state) {
+	$node = node_load(arg(1));
+	rules_invoke_component('rules_delete_work_report', $node,'user');
+//	watchdog('debug','rules_delete_work_report rule should have fired.');
+}

@@ -1,0 +1,11 @@
+name = Rovas API Endpoints
+description = Custom Services endpoints for Rovas application verification system
+core = 7.x
+package = Rovas
+
+dependencies[] = services
+dependencies[] = services_auth_apikeys
+dependencies[] = rovas_verify
+dependencies[] = rules
+
+files[] = rovas_api_endpoints.module

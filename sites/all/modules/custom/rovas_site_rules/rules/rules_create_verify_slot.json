@@ -1,0 +1,89 @@
+{ "rules_create_verify_slot" : {
+    "LABEL" : "Create verify slot",
+    "PLUGIN" : "rule",
+    "OWNER" : "rules",
+    "TAGS" : [ "verification" ],
+    "REQUIRES" : [ "php", "rules", "rules_conditional" ],
+    "USES VARIABLES" : {
+      "uid" : { "label" : "user ID", "type" : "integer" },
+      "report_nid" : { "label" : "work report id", "type" : "integer", "allow null" : true },
+      "due_date_offset" : { "label" : "due date offset", "type" : "text", "allow null" : true },
+      "voluntary" : { "label" : "voluntary", "type" : "boolean", "allow null" : true },
+      "slot_nid" : { "label" : "slot nid", "type" : "integer", "parameter" : false }
+    },
+    "DO" : [
+      { "data_set" : {
+          "data" : [ "voluntary" ],
+          "value" : {
+            "select" : "voluntary",
+            "php" : { "code" : "return isset($value) ? $value : FALSE;" }
+          }
+        }
+      },
+      { "entity_fetch" : {
+          "USING" : { "type" : "user", "id" : [ "uid" ] },
+          "PROVIDE" : { "entity_fetched" : { "user_object" : "user object" } }
+        }
+      },
+      { "entity_create" : {
+          "USING" : {
+            "type" : "node",
+            "param_type" : "verification_slot",
+            "param_title" : "Slot",
+            "param_author" : [ "user-object" ]
+          },
+          "PROVIDE" : { "entity_created" : { "slot" : "slot" } }
+        }
+      },
+      { "data_set" : { "data" : [ "slot:field-slip-owner" ], "value" : [ "user-object" ] } },
+      { "CONDITIONAL" : [
+          {
+            "IF" : { "data_is" : { "data" : [ "report-nid" ], "op" : "\u003E", "value" : "0" } },
+            "DO" : [
+              { "entity_fetch" : {
+                  "USING" : { "type" : "node", "id" : [ "report-nid" ], "revision_id" : "0" },
+                  "PROVIDE" : { "entity_fetched" : { "report_object" : "report object" } }
+                }
+              },
+              { "data_set" : {
+                  "data" : [ "slot:field-report-to-verify" ],
+                  "value" : [ "report-object" ]
+                }
+              }
+            ]
+          }
+        ]
+      },
+      { "CONDITIONAL" : [
+          {
+            "IF" : { "data_is" : { "data" : [ "due-date-offset" ], "value" : "24" } },
+            "DO" : [
+              { "data_set" : { "data" : [ "slot:field-verify-date" ], "value" : "+ 24 hours" } }
+            ]
+          },
+          {
+            "ELSE IF" : { "data_is" : { "data" : [ "due-date-offset" ], "value" : "12" } },
+            "DO" : [
+              { "data_set" : { "data" : [ "slot:field-verify-date" ], "value" : "+12 hours" } }
+            ]
+          },
+          {
+            "ELSE IF" : { "data_is" : { "data" : [ "due-date-offset" ], "value" : "120" } },
+            "DO" : [
+              { "data_set" : { "data" : [ "slot:field-verify-date" ], "value" : "+ 5 days" } }
+            ]
+          }
+        ]
+      },
+      { "entity_modify" : {
+          "entity" : [ "slot" ],
+          "properties" : { "value" : { "field_voluntary" : "field_voluntary" } },
+          "param_field_voluntary" : [ "voluntary" ]
+        }
+      },
+      { "entity_save" : { "data" : [ "slot" ], "immediate" : "1" } },
+      { "data_set" : { "data" : [ "slot-nid" ], "value" : [ "slot:nid" ] } }
+    ],
+    "PROVIDES VARIABLES" : [ "slot_nid" ]
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "name": "drupal/hybridauth",
+  "description": "",
+  "type": "drupal-module",
+  "license": "GPL-2.0+",
+  "require": {
+    "hybridauth/hybridauth": "^3.6"
+  }
+}

@@ -1,0 +1,49 @@
+{ "rules_reset_dispute_notification" : {
+    "LABEL" : "Reset Dispute notification",
+    "PLUGIN" : "reaction rule",
+    "OWNER" : "rules",
+    "TAGS" : [ "dispute" ],
+    "REQUIRES" : [ "pathrules", "rules", "rules_conditional" ],
+    "ON" : { "node_view--page" : { "bundle" : "page" } },
+    "IF" : [ { "pathrules_checkpath" : { "path" : "dismiss_notify" } } ],
+    "DO" : [
+      { "data_set" : { "data" : [ "site:current-user:field-dispute-notify" ], "value" : "2" } },
+      { "entity_query" : {
+          "USING" : {
+            "type" : "node",
+            "property" : "field_accused",
+            "value" : [ "site:current-user" ],
+            "limit" : "1000000000"
+          },
+          "PROVIDE" : { "entity_fetched" : { "users_disputes" : "User\u0027s disputes" } }
+        }
+      },
+      { "LOOP" : {
+          "USING" : { "list" : [ "users-disputes" ] },
+          "ITEM" : { "this_dispute" : "this dispute" },
+          "DO" : [
+            { "CONDITIONAL" : [
+                {
+                  "IF" : { "entity_is_of_bundle" : {
+                      "entity" : [ "this-dispute" ],
+                      "type" : "node",
+                      "bundle" : { "value" : { "dispute" : "dispute" } }
+                    }
+                  },
+                  "DO" : [
+                    { "data_set" : {
+                        "data" : [ "this-dispute:field-dispute-start-date" ],
+                        "value" : [ "site:current-date" ]
+                      }
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      },
+      { "redirect" : { "url" : "disputes" } }
+    ]
+  }
+}

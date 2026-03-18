@@ -1,0 +1,59 @@
+<?php
+
+
+/**
+ * Implements the hook_form_FORM_ID_alter().
+ */
+
+function rovas_ma_edit_form_project_merit_allocation_node_form_alter(&$form, &$form_state, $form_id) {
+
+	array_unshift($form['#validate'], '_rovas_ma_edit_form_validate');
+
+	$form['field_merit_allocation'][LANGUAGE_NONE]['#element_validate'][] = '_rma_validate_share';
+
+
+	$form['field_merit_allocation']['#states'] = array(
+		'visible' => array(
+				':input[name^="field_share_project_time"]' => array('unchecked' => TRUE),
+			),
+		'required' => array(
+				':input[name^="field_share_project_time"]' => array('unchecked' => TRUE),
+			),
+		);
+}
+
+
+function _rovas_ma_edit_form_validate($form, &$form_state) {
+
+	//delete the percent share if the field_share_project_time is set to TRUE
+	$shrtime = isset($form_state['values']['field_share_project_time'][LANGUAGE_NONE][0]['value']) ? $form_state['values']['field_share_project_time'][LANGUAGE_NONE][0]['value'] : 0;
+	if ($shrtime) {
+		$form_state['values']['field_merit_allocation'][LANGUAGE_NONE][0]['value'] = 0;
+	}
+	
+	//make sure adding the new merit allocation does not lead to a cycle in the graph
+	//the _rb_check4loop function is defined in the rovas_base module
+	$nid = $form_state['values']['field_project'][LANGUAGE_NONE][0]['target_id'];
+	$project_id = $form_state['values']['field_shareholder_project'][LANGUAGE_NONE][0]['target_id'];
+	$res = _rb_check4loop ($nid,$project_id);
+  if ($res) {
+		$wrapper = entity_metadata_wrapper('node',$nid);
+  	$projname = $wrapper->label();
+		$wrapper = entity_metadata_wrapper('node',$res);
+  	$dupename = $wrapper->label();
+  	$mes = t('Adding this project as a shareholder would results in the <strong>@dupe</strong> - a child project of the project you are adding - to be the same, as the <strong>@project</strong> project, or one of its parents. Consequently a loop in the "project dependency chain" would be created, which is not allowed.',array('@dupe' => $dupename, '@project' => $projname));
+    form_set_error('field_shareholder_project', $mes);
+  }
+
+}
+
+
+function _rma_validate_share($element, &$form_state, $form) {
+
+	$time = $form_state['values']['field_share_project_time'][LANGUAGE_NONE];
+	$percent = $form_state['values']['field_merit_allocation'][LANGUAGE_NONE][0]['value'];
+
+	if ($time == 0 && !(is_numeric($percent) && ($percent > 0))) {
+		form_error($element, t('The <strong>Merit Allocation</strong> field must be a number between 0 and 100 if the <strong>Set share by time</strong> checkbox is unchecked'));
+	}
+}

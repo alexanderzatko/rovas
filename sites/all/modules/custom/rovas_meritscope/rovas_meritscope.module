@@ -1,0 +1,1349 @@
+<?php
+
+function rovas_meritscope_menu() {
+    $items['ajax/update-meritscope/%/%/%'] = [
+        'page callback' => 'rovas_meritscope_update_meritscope',
+        'page arguments' => [2,3,4],
+        'access arguments' => array('access content'),
+        'type' => MENU_CALLBACK,
+    ];
+    
+    // Updated route for loading top-level meritscope
+    $items['ajax/load-top-level-meritscope/%'] = [
+        'page callback' => 'rovas_meritscope_update_meritscope',
+        'page arguments' => array('top-level', 2, 'not set'),
+        'access arguments' => array('access content'),
+        'type' => MENU_CALLBACK,
+    ];
+    
+    return $items;
+}
+
+/*
+$category = tid of the top leven (n=1) NACE category
+*/
+function rovas_meritscope_update_meritscope($category, $uid, $hue) {
+
+    if ($category === 'top-level') {
+        // Handle top-level chart
+        $new_data = generate_data_for_meritscope($uid);
+        $new_cats = get_top_level_nace_terms();
+    }
+    else {
+//watchdog('module','rovas_meritscope category ' . $category);
+        // Handle subcategory chart
+        $new_data = generate_data_for_meritscope($uid, 4, $category);
+        $new_cats = find_leaf_nace_terms($category);
+    }
+
+	$hue = $hue == 'not set' ? NULL : $hue;
+
+    // Generate new SVG
+    $new_svg = generate_meritscope($new_data, $new_cats, $uid, $category === 'top-level' ? NULL : $category, $hue);
+
+    drupal_json_output([
+        'svg' => $new_svg,
+        'cats' => $new_cats
+    ]);
+    drupal_exit();
+}
+
+/*
+given a user ID, produces an array of top NACE categorie labels and their normalized merit scores
+ex: [860 => 3,1330 => 10,916 => 1,...]
+*/
+function generate_data_for_meritscope ($uid,$n=1,$category=NULL) {
+	$userstats = group_nace_merit_sum ($uid,$n,$category);
+	$maxarray = group_nace_max_merits ($n,$category);
+
+//watchdog('module','rovas_meritscope GD ' . print_r([$userstats, $maxarray],1));
+
+	$data = [];
+
+	foreach ($userstats as $ind => $merits) {
+	
+		$maxmerits = $maxarray[$ind];
+		$decile = $maxmerits > 0 ? ceil($merits*10/$maxmerits) : 0;
+		$data[$ind] = $decile;
+	}
+	return $data;
+}
+
+/*
+generates the Meriscope — a circular chart representing user's Merit score;
+@data looks like this (example): [860 => 3,1330 => 10,916 => 1,...]
+@cats looks like this (example): 
+$cats = [
+	860 => [
+		'label' => 'A',
+		'title' => 'Agriculture, forestry and fishing'
+	],
+	916 => [
+		'label' => 'B',
+		'title' => 'Mining and quarrying'
+	],
+	...
+	];
+*/
+function generate_meritscope ($data, $cats, $uid, $select_category=NULL, $hue_angle=NULL, $width=400, $height=455, $innerRadius=65, $outerRadius=200) {
+
+//watchdog('module','rovas_meritscope ' . $hue_angle);
+
+	$subcat = !is_null($select_category);
+
+    $svg = '<svg viewBox="0 0 ' . $width . ' ' . $height . '" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid slice" role="img">';
+
+    $svg .= '<defs>
+	<style type="text/css">
+		@import url("https://fonts.googleapis.com/css?family=Roboto:400,100,100italic,300,300italic,400italic,500,500italic,700,700italic,900,900italic");
+	</style>
+</defs>';
+
+	$catary = explode('-',$select_category);
+
+	if ($subcat) {
+
+		if (isset($catary[1])){
+			$term = get_top_level_nace_terms($catary[0]);
+		}
+		else {
+			$term = get_top_level_nace_terms($select_category);
+		}
+/*
+		$svg .= "<g class='bscrumb'>";
+		$svg .= "<text class='bc' text-anchor='left' dominant-baseline='middle' font-family='Roboto' font-size='12' x='0' y='10'>";
+		$svg .= "<tspan font-size='20px' baseline-shift='-2px' class='back-button' cursor='pointer'>←&nbsp;</tspan>";
+		$svg .= "<tspan>" . $term[$select_category]['title'] . "</tspan>";
+		$svg .= "</text>";
+		$svg .= "</g>";
+*/
+
+		$svg .= "<g class='bscrumb'>";
+		$svg .= "<text id='category-title' class='bc' text-anchor='left' dominant-baseline='middle' font-family='Roboto' font-size='12' x='0' y='10'>";
+		$svg .= "<tspan font-size='20px' baseline-shift='-2px' class='back-button' cursor='pointer'>←&nbsp;</tspan>";
+		$svg .= $term[$select_category]['title'];  // Passing the title directly to be handled by JavaScript
+		$svg .= "</text>";
+		$svg .= "</g>";
+	
+		}
+
+    $centerX = $width/2;
+    $centerY = ($height - $width) + $width/2 - 5;
+    $totalSegments = count($cats);
+    $subsegments = 10;
+    $anglePerSegment = 360 / $totalSegments;
+
+    $outlinePoints = [];
+    $coloredSegments = [];
+
+	$svg .= "<g id='segments'>";
+
+    // Generate segments and subsegments
+	$i = 0;
+	foreach ($cats as $tid => $category) {
+//        $letter = $category['label'];
+		$body = $category['title'];
+
+
+        $startAngle = $i * $anglePerSegment - 90 - ($anglePerSegment/2);
+        $endAngle = ($i + 1) * $anglePerSegment - 90 - ($anglePerSegment/2);
+
+        $hue = $hue_angle ? $hue_angle : rovas_meritscope_sigmoid ($i+1,$totalSegments);
+
+//		if ($letter){
+		if (FALSE){
+			$svg .= "<g class='segment segment-$letter clickable-segment' data-letter='$letter' data-tid='$tid'>";
+		}
+		else {
+			$svg .= "<g class='segment' data-tid='$tid' hue='$hue'>";
+		}
+
+        for ($j = 0; $j < $subsegments; $j++) {
+
+            $innerR = $innerRadius + ($outerRadius - $innerRadius) * $j / $subsegments;
+            $outerR = $innerRadius + ($outerRadius - $innerRadius) * ($j + 1) / $subsegments;
+
+            $startX1 = $centerX + $innerR * cos(deg2rad($startAngle));
+            $startY1 = $centerY + $innerR * sin(deg2rad($startAngle));
+            $endX1 = $centerX + $innerR * cos(deg2rad($endAngle));
+            $endY1 = $centerY + $innerR * sin(deg2rad($endAngle));
+            
+            $startX2 = $centerX + $outerR * cos(deg2rad($startAngle));
+            $startY2 = $centerY + $outerR * sin(deg2rad($startAngle));
+            $endX2 = $centerX + $outerR * cos(deg2rad($endAngle));
+            $endY2 = $centerY + $outerR * sin(deg2rad($endAngle));
+
+            $largeArcFlag = ($endAngle - $startAngle) > 180 ? 1 : 0;
+
+            $path = "M $startX1 $startY1 " .
+                    "A $innerR $innerR 0 $largeArcFlag 1 $endX1 $endY1 " .
+                    "L $endX2 $endY2 " .
+                    "A $outerR $outerR 0 $largeArcFlag 0 $startX2 $startY2 " .
+                    "Z";
+
+            $saturation = $j * 9 + 15;
+			$lightness = 80 - $j*3 . '%';
+
+            $color = "hsl($hue, $saturation%, $lightness)";
+	
+            if (isset($data[$tid]) && $j < $data[$tid]) {
+				$path_class = 'fillshown clickable-subsegment';
+	            $fillColor = $color;
+
+				$coloredSegments[] = [
+//					'letter' => $letter,
+					'startAngle' => $startAngle,
+					'endAngle' => $endAngle,
+					'subsegment' => $data[$tid]
+				];
+            }
+            else {
+				$path_class = 'fillhidden';
+	            $fillColor = $color;
+            }
+
+            $svg .= "<path class='$path_class' d='$path' fill='$fillColor' stroke='#CCCCCC' stroke-width='0.5' />";
+        }
+
+        $angle = $startAngle + $anglePerSegment/2;
+        $labelRadius = $outerRadius + 10;
+        $x = $centerX + $labelRadius * cos(deg2rad($angle));
+        $y = $centerY + $labelRadius * sin(deg2rad($angle));
+        
+/*
+		if ($letter){
+	        $rotation = $angle + 90;    
+	        $svg .= "<text font-family='Roboto' font-weight='700' x='$x' y='$y' text-anchor='middle' dominant-baseline='middle' 
+                 font-size='12' transform='rotate($rotation, $x, $y)'>$letter</text>";
+		 }
+*/
+	    $svg .= "</g>";
+
+    	$i += 1;
+    }
+
+	    $svg .= "</g>";
+
+    // Generate outline path
+    $outlinePath = "";
+    $prevEndAngle = null;
+    $prevEndX = null;
+    $prevEndY = null;
+    $pathOriginX = null;
+    $pathOriginY = null;
+    
+    foreach ($coloredSegments as $i => $segment) {
+    	//skip duplicate entries
+    	if ($i > 0 && $segment == $coloredSegments[$i-1]) {
+    		continue;
+    	}
+        $startAngle = $segment['startAngle'];
+        $endAngle = $segment['endAngle'];
+        $cursegment = $segment['subsegment'];
+        
+        $r = $innerRadius + $cursegment * ($outerRadius - $innerRadius) / $subsegments;
+        
+        $startX = $centerX + $r * cos(deg2rad($startAngle));
+        $startY = $centerY + $r * sin(deg2rad($startAngle));
+        $endX = $centerX + $r * cos(deg2rad($endAngle));
+        $endY = $centerY + $r * sin(deg2rad($endAngle));
+
+		// Add inner arc if there's a gap
+        if ($prevEndAngle === null || $startAngle - $prevEndAngle > 0.01) {
+			$innerStartX = $centerX + $innerRadius * cos(deg2rad(isset($prevEndAngle) ? $prevEndAngle : $startAngle));
+			$innerStartY = $centerY + $innerRadius * sin(deg2rad(isset($prevEndAngle) ? $prevEndAngle : $startAngle));
+            $innerEndX = $centerX + $innerRadius * cos(deg2rad($startAngle));
+            $innerEndY = $centerY + $innerRadius * sin(deg2rad($startAngle));
+            
+			$largeArcFlag = ($startAngle - (isset($prevEndAngle) ? $prevEndAngle : $startAngle)) > 180 ? 1 : 0;
+            
+            if ($prevEndX !== null) {
+                $outlinePath .= "L $innerStartX $innerStartY ";
+            } else {
+                $outlinePath .= "M $innerStartX $innerStartY ";
+                if (!isset($pathOriginX)) {
+					$pathOriginX = $innerStartX;
+					$pathOriginY = $innerStartY;
+				}
+            }
+            $outlinePath .= "A $innerRadius $innerRadius 0 $largeArcFlag 1 $innerEndX $innerEndY ";
+            $outlinePath .= "L $startX $startY ";
+        }
+        elseif ($prevEndX !== null) {
+            $outlinePath .= "L $startX $startY ";
+        }
+        else {
+            $outlinePath .= "M $startX $startY ";
+        }
+
+        $largeArcFlag = ($endAngle - $startAngle) > 180 ? 1 : 0;
+        $outlinePath .= "A $r $r 0 $largeArcFlag 1 $endX $endY ";
+
+        $prevEndAngle = $endAngle;
+        $prevEndX = $endX;
+        $prevEndY = $endY;
+    }
+
+    // Close the path if it's not a full circle
+    if ($prevEndAngle !== null && $prevEndAngle < 359.99) {
+        $innerEndX = $centerX + $innerRadius * cos(deg2rad($prevEndAngle));
+        $innerEndY = $centerY + $innerRadius * sin(deg2rad($prevEndAngle));
+        $outlinePath .= "L $innerEndX $innerEndY ";
+        
+        // Calculate the angle difference
+        $startAngle = rad2deg(atan2($pathOriginY - $centerY, $pathOriginX - $centerX));
+        $endAngle = rad2deg(atan2($innerEndY - $centerY, $innerEndX - $centerX));
+        $angleDiff = $endAngle - $startAngle;
+        if ($angleDiff < 0) {
+            $angleDiff += 360;
+        }
+        
+        // Determine the large arc flag
+        $largeArcFlag = $angleDiff > 180 ? 0 : 1;
+        
+        $outlinePath .= "A $innerRadius $innerRadius 0 $largeArcFlag 1 " . $pathOriginX . " " . $pathOriginY . " ";
+    }
+    $outlinePath .= "Z";
+
+    // Add the outline path to SVG
+    $svg .= "<path d='$outlinePath' fill='none' stroke='#000000' stroke-width='2' />";
+
+	//the Merit logo
+	$logoX = $centerX-50;
+	$logoY = $centerY-53;
+
+    $svg .= "<image x='$logoX' y='$logoY' width='100' height='100' href='/sites/default/files/pictures/meritlogo.svg' />";
+
+    // Add SVG frame for displaying category text
+    $svg .= "<g id='category-frame' style='display:none;'>
+        <rect id='frame-background' class='shadow' x='0' y='0' width='0' height='0' fill='white' stroke='black' stroke-width='1' rx='7' opacity='0.85' />
+		<text id='category-text' class='clickable-text' text-anchor='middle' dominant-baseline='middle' font-family='Roboto' font-size='16'></text>
+    </g>";
+
+    $svg .= '</svg>';
+
+	$svg .= "<script type='text/javascript'>
+		window.meritscope_data = " . json_encode([
+			'cats' => $cats,
+			'isSubcategory' => $subcat,
+			'uid' => $uid,
+		]) . ";
+	</script>";
+
+    $svg .= "<script type='text/javascript'>
+		(function() {
+		var svg = document.querySelector('svg');
+		var segments = svg.querySelectorAll('.segment');
+		var frame = document.getElementById('category-frame');
+		var frameBackground = document.getElementById('frame-background');
+		var text = document.getElementById('category-text');
+		var cats = window.meritscope_data ? window.meritscope_data.cats : {};
+	    var isSubcategory = window.meritscope_data ? window.meritscope_data.isSubcategory : false;
+	    var uid = window.meritscope_data ? window.meritscope_data.uid : false;
+
+		function getTextWidth(txt, font) {
+			var temp = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+			temp.setAttribute('font-family', font);
+			temp.setAttribute('font-size', '18');
+			temp.textContent = txt;
+			svg.appendChild(temp);
+			var width = temp.getComputedTextLength();
+			svg.removeChild(temp);
+			return width;
+		}
+	
+		function wrapText(text, maxWidth) {
+			// Split on any whitespace character
+			var words = text.split(/\s+/);
+			var lines = [];
+			var currentLine = words[0] || '';
+
+			for (var i = 1; i < words.length; i++) {
+				var word = words[i];
+				var width = getTextWidth(currentLine + ' ' + word, 'Roboto');
+				if (width < maxWidth) {
+					currentLine += (currentLine ? ' ' : '') + word;
+				} else {
+					lines.push(currentLine);
+					currentLine = word;
+				}
+			}
+			lines.push(currentLine);
+		
+			// Trim each line to remove any leading/trailing whitespace
+			return lines.map(line => line.trim());
+		}		
+
+		function attachBackButtonListener() {
+			var backButton = svg.querySelector('#category-title .back-button');
+			if (backButton) {
+				backButton.addEventListener('click', function(e) {
+				e.stopPropagation();
+				console.log('Back button clicked');  // Debug log
+				loadTopLevelChart();
+				});
+			}
+			else {
+				console.log('Back button not found');  // Debug log
+			}
+		}
+	
+		function hideFrame() {
+			frame.style.display = 'none';
+		}
+	
+		function showFrame(lines, tid, hue) {
+			// Calculate frame dimensions
+			var maxLineWidth = Math.max(...lines.map(line => getTextWidth(line, 'Roboto')));
+			var frameWidth = maxLineWidth + 40; // Add padding
+			var frameHeight = lines.length * 24 + 10; // Assuming 24px line height, add top padding only
+		
+			// Set frame position and size
+			var frameX = (" . $width . " - frameWidth) / 2;
+			var frameY = (" . $height . " - frameHeight) / 2;
+			frameBackground.setAttribute('x', frameX);
+			frameBackground.setAttribute('y', frameY);
+			frameBackground.setAttribute('width', frameWidth);
+			frameBackground.setAttribute('height', frameHeight);
+		
+			// Store the category ID in the frame
+			frame.setAttribute('data-tid', tid);
+			frame.setAttribute('hue', hue);
+
+			// Position and set text
+			text.setAttribute('x', " . $width . " / 2);
+			text.setAttribute('y', frameY + 20); // Top padding
+			text.innerHTML = ''; // Clear previous text
+			lines.forEach((line, index) => {
+				var tspan = document.createElementNS('http://www.w3.org/2000/svg', 'tspan');
+				tspan.textContent = line;
+				tspan.setAttribute('x', " . $width . " / 2);
+				tspan.setAttribute('dy', index ? '1.2em' : 0);
+				tspan.setAttribute('data-tid', tid);
+				text.appendChild(tspan);
+			});
+		
+			frame.style.display = 'block';
+		}
+
+		function updateCategoryTitle() {
+			const titleElement = document.querySelector('#category-title');
+			if (!titleElement) return;
+	
+			const originalText = titleElement.textContent;
+
+			// Check if the title contains the back button and extract it
+			const backButton = titleElement.querySelector('tspan.back-button');
+			let backButtonText = '';
+			let cleanText = originalText;
+			if (backButton) {
+				backButtonText = backButton.textContent;
+				cleanText = originalText.replace(backButtonText, '').trim();
+			}
+	
+			// Use this width to wrap the text dynamically
+			const wrappedLines = wrapText(cleanText, 500);  // Adjust the width as needed
+	
+			// Clear original content
+			titleElement.textContent = '';
+	
+			// Add the back button to the first line (or create it as its own tspan)
+			if (backButtonText) {
+				const backTspan = document.createElementNS('http://www.w3.org/2000/svg', 'tspan');
+				backTspan.setAttribute('x', '0');
+				backTspan.setAttribute('dy', '0');
+				backTspan.setAttribute('font-size', '20px');
+				backTspan.setAttribute('baseline-shift', '-2px');
+				backTspan.setAttribute('class', 'back-button');
+				backTspan.setAttribute('cursor', 'pointer');
+				backTspan.textContent = backButtonText;
+				titleElement.appendChild(backTspan);
+			}
+	
+			// Insert wrapped lines into the text element
+			wrappedLines.forEach((line, index) => {
+				const tspan = document.createElementNS('http://www.w3.org/2000/svg', 'tspan');
+				tspan.setAttribute('x', backButtonText ? '25' : '0');
+				tspan.setAttribute('dy', index === 0 ? (backButtonText ? '0' : '0') : '1.2em');
+				tspan.textContent = line;
+				tspan.setAttribute('xml:space', 'preserve');
+				titleElement.appendChild(tspan);
+			});
+
+			// Re-attach event listener to the back button
+			attachBackButtonListener();
+		}
+		
+		function updateChart() {
+			if (isSubcategory) {
+				return;
+			}
+	
+			var hue = frame.getAttribute('hue');
+			var tid = frame.getAttribute('data-tid');
+			if (!tid) {
+				console.error('No category ID found');
+				return;
+			}
+	
+			// AJAX call to fetch new chart data
+			var xhr = new XMLHttpRequest();
+			xhr.open('GET', '/ajax/update-meritscope/' + tid + '/' + uid + '/' + hue, true);
+			xhr.onload = function() {
+				if (xhr.status === 200) {
+					var response = JSON.parse(xhr.responseText);
+					if (response.svg && response.cats) {
+						// Replace the entire SVG content
+						var tempDiv = document.createElement('div');
+						tempDiv.innerHTML = response.svg;
+						var newSvg = tempDiv.querySelector('svg');
+						svg.parentNode.replaceChild(newSvg, svg);
+	
+						// Update our references
+						svg = newSvg;
+						frame = document.getElementById('category-frame');
+						frameBackground = document.getElementById('frame-background');
+						text = document.getElementById('category-text');
+	
+						// Update the cats variable with the new data
+						cats = response.cats;
+	
+						// Update the global meritscope_data and set isSubcategory to true
+						window.meritscope_data = { 
+							cats: response.cats,
+							isSubcategory: true,
+							uid: uid
+						};
+						isSubcategory = true;
+	
+						// Reinitialize event listeners
+						initializeEventListeners();
+	
+// Update the category title with proper text wrapping
+//						updateCategoryTitle();
+					}
+				}
+			};
+			xhr.send();
+		}
+
+		function navigateToTaxonomyTerm(tid) {
+			window.location.href = '/taxonomy/term/' + tid;
+		}
+		
+		function loadTopLevelChart() {
+			var xhr = new XMLHttpRequest();
+			xhr.open('GET', '/ajax/load-top-level-meritscope/' + uid, true);
+			xhr.onload = function() {
+				if (xhr.status === 200) {
+					var response = JSON.parse(xhr.responseText);
+					if (response.svg && response.cats) {
+						// Replace the entire SVG content
+						var tempDiv = document.createElement('div');
+						tempDiv.innerHTML = response.svg;
+						var newSvg = tempDiv.querySelector('svg');
+						svg.parentNode.replaceChild(newSvg, svg);
+						
+						// Update our references
+						svg = newSvg;
+						frame = document.getElementById('category-frame');
+						frameBackground = document.getElementById('frame-background');
+						text = document.getElementById('category-text');
+						
+						// Update the cats variable with the new data
+						cats = response.cats;
+						
+						// Update the global meritscope_data and set isSubcategory to false
+						window.meritscope_data = { 
+							cats: response.cats,
+							isSubcategory: false,
+							uid: uid
+						};
+						isSubcategory = false;
+						
+						// Reinitialize event listeners
+						initializeEventListeners();
+					}
+				}
+			};
+			xhr.send();
+		}
+		
+		function initializeEventListeners() {
+			segments = svg.querySelectorAll('.segment');
+			segments.forEach(function(segment) {
+				segment.addEventListener('click', function(e) {
+					e.stopPropagation();
+
+					// Check if the clicked element or its parent has the 'clickable-subsegment' class
+					if (e.target.classList.contains('clickable-subsegment') || 
+					(e.target.parentElement && e.target.parentElement.classList.contains('clickable-subsegment'))) {
+						var tid = this.getAttribute('data-tid');
+						var hue = this.getAttribute('hue');
+	//					var letter = this.getAttribute('data-letter');
+						if (cats[tid] && cats[tid]['title']) {
+							var content = cats[tid]['title'];
+							var lines = wrapText(content, 280);
+							showFrame(lines, tid, hue);
+							window.currentTid = tid;
+						} else {
+							console.error('Category data not found for tid:', tid);
+						}
+					}
+					else {
+						// If the clicked element is not a clickable subsegment, hide the frame
+						hideFrame();
+					}
+				});
+			});
+		
+			if (frameBackground) {
+				frameBackground.addEventListener('click', function(e) {
+					e.stopPropagation();
+					hideFrame();
+				});
+			}
+		
+			if (text) {
+				text.addEventListener('click', function(e) {
+					e.stopPropagation();
+					if (!isSubcategory) {
+						updateChart();
+					} else {
+	                    navigateToTaxonomyTerm(window.currentTid);
+					}
+				});
+			}
+		
+			svg.addEventListener('click', hideFrame);
+
+			// Attach back button listener
+			attachBackButtonListener();
+			
+			// Call updateCategoryTitle after initialization
+			updateCategoryTitle();
+			}
+
+		// Initial setup
+		initializeEventListeners();
+		})();
+    </script>";
+
+    return $svg;
+}
+
+/*
+find the summed merit rewards for user's each (top level or @category) NACE category
+*/
+function group_nace_merit_sum ($uid,$n=1,$category=FALSE,$split=TRUE) {
+	$result = db_query("SELECT category.field_category_tid AS tid, merits.field_merits_value AS merits
+	FROM {node} node
+	LEFT JOIN {field_data_field_expert} expert ON node.nid = expert.entity_id AND (expert.entity_type = 'node' AND expert.deleted = '0')
+	LEFT JOIN {field_data_field_category} category ON node.nid = category.entity_id AND (category.entity_type = 'node' AND category.deleted = '0')
+	LEFT JOIN {field_data_field_merits} merits ON node.nid = merits.entity_id AND (merits.entity_type = 'node' AND merits.deleted = '0')
+	WHERE expert.field_expert_target_id = :uid
+	AND node.status = '1'
+	AND node.type = 'user_expertise'
+	AND merits.field_merits_value > 0
+	ORDER BY tid", array(":uid" => $uid));
+
+	$result = $result->fetchAll();
+
+	$meritsum = 0;
+	$resarray = [];
+	$oldid = NULL;
+
+	foreach ($result as $row) {
+
+		$tid = $row->tid;
+
+		//the filter id
+		if ($tid && $n==1){
+			$id = get_nth_parent_term_name($tid,$n)['tid'];
+		}
+		else {
+			$id = explode('-',$category)[0];
+		}
+
+		$dum = explode('-',$oldid);
+
+		//splitting the manufacturing sector into 3 parts
+		if ($split == TRUE && $id == 947) {
+
+			unset($resarray[$id]);
+			switch (TRUE) {
+				case $tid > 1154:
+					$append = '-25';
+				break;
+				case $tid > 1049:
+					$append = '-18';
+				break;
+				case $tid > 950:
+					$append = '-10';
+				break;
+				default:
+					$append = '';
+			}
+			$id = $id . $append;
+
+			if ($category) {
+				$termTLcategory = get_nth_parent_term_name($tid,1)['tid'];
+				if ($termTLcategory . $append != $category) {
+					$oldid = $id;
+					continue;
+				}
+			}
+
+			if ($id == $oldid) {
+				$meritsum += $row->merits;
+			}
+			else {
+				$meritsum = $row->merits;
+			}
+		}
+		else {
+
+			if ($category) {
+				$termTLcategory = get_nth_parent_term_name($tid,1)['tid'];
+				if ($termTLcategory != $category) {
+					$oldid = $id;
+					continue;
+				}
+			}
+
+			if ($id == $dum[0]) {
+				$meritsum += $row->merits;
+			}
+			else {
+				$meritsum = $row->merits;
+			}
+		}
+
+		if ($category) {
+			$resarray[$tid] = $meritsum;
+		}
+		else {
+			$resarray[$id] = $meritsum;
+		}
+		$oldid = $id;
+	}
+
+	return $resarray;
+}
+
+/*
+find the summed merit rewards for each (top level) NACE category of all users
+*/
+function group_nace_max_merits ($n = 1,$category=FALSE) {
+
+	$result = db_query("SELECT category.field_category_tid AS tid, MAX(merits.field_merits_value) AS meritsmax
+	FROM {node} node
+	LEFT JOIN {field_data_field_category} category ON node.nid = category.entity_id AND (category.entity_type = 'node' AND category.deleted = '0')
+	LEFT JOIN {field_data_field_merits} merits ON node.nid = merits.entity_id AND (merits.entity_type = 'node' AND merits.deleted = '0')
+	WHERE node.status = '1'
+	AND node.type = 'user_expertise'
+	AND merits.field_merits_value > 0
+	GROUP BY tid");
+
+	$result = $result->fetchAll();
+
+	$meritsmax = 0;
+	$resarray = [];
+	$oldid = NULL;
+
+	foreach ($result as $row) {
+		$tid = $row->tid;
+
+		if ($tid && $n==1){
+			$id = get_nth_parent_term_name($tid,$n)['tid'];
+		}
+		else {
+			$id = explode('-',$category)[0];
+		}
+
+		$dum = explode('-',$oldid);
+
+		//splitting the manufacturing sector to 3 parts
+		if ($id == 947) {
+			unset($resarray[$id]);
+			switch (TRUE) {
+				case $tid > 1154:
+					$append = '-25';
+				break;
+				case $tid > 1049:
+					$append = '-18';
+				break;
+				case $tid > 950:
+					$append = '-10';
+				break;
+				default:
+					$append = '';
+			}
+			$id = $id . $append;
+
+			if ($category) {
+				$termTLcategory = get_nth_parent_term_name($tid,1)['tid'];
+				if ($termTLcategory . $append != $category) {
+					$oldid = $id;
+					continue;
+				}
+			}
+
+			if ($id == $oldid) {
+				$meritsmax = $row->meritsmax > $meritsmax ? $row->meritsmax : $meritsmax;
+			}
+			else {
+				$meritsmax = $row->meritsmax;
+			}
+		}
+		else {
+
+			if ($category) {
+				$termTLcategory = get_nth_parent_term_name($tid,1)['tid'];
+				if ($termTLcategory != $category) {
+				$oldid = $id;
+					continue;
+				}
+			}
+
+			if ($id == $dum[0]) {
+				$meritsmax = $row->meritsmax > $meritsmax ? $row->meritsmax : $meritsmax;
+			}
+			else {
+				$meritsmax = $row->meritsmax;
+			}
+		}
+
+		if ($category) {
+			$resarray[$tid] = $meritsmax;
+		}
+		else {
+			$resarray[$id] = $meritsmax;
+		}
+
+		$oldid = $id;
+	}
+
+	return $resarray;
+}
+
+//find the top level (letter) label for a given NACE term ID
+function get_nth_parent_term_name($tid, $n = 1, $lang=NULL) {
+
+	//the literal in the condition should be replaced by a dynamically found minimum tid in the db
+	if ($tid < 860) {
+		return [
+		'tid' => $tid,
+		'label' => '',
+		'name' => ''
+		];
+	}
+
+//watchdog('rovas_meritscope','params: <pre>' . print_r([$tid,$n,$lang],1) . '</pre>');
+
+	$parents = taxonomy_get_parents_all($tid);
+	$parents = array_reverse($parents);
+	$nth_parent = isset($parents[$n]) ? $parents[$n] : end($parents);
+
+	if (!$lang){
+		global $user;
+		$lang = isset($user->language) ? $user->language : 'en';
+	}
+
+	$translated = _rb_translate_term($nth_parent->tid, $lang);
+
+	return [
+	'tid' => $nth_parent->tid,
+	'label' => substr($translated,0,1),
+	'name' => $translated
+	];
+}
+
+/*
+for a given top-level NACE term ID finds all leaf-level terms
+*/
+function find_leaf_nace_terms($level1_tid,$lang=NULL) {
+	// Get the vocabulary ID for the NACE taxonomy
+	$vocabulary = taxonomy_vocabulary_machine_name_load('tags');
+	$vid = $vocabulary->vid;
+	
+	// Get all terms in the vocabulary
+	$terms = taxonomy_get_tree($vid);
+	
+	$leaf_terms = [];
+	
+	$dum = explode('-',$level1_tid);
+	
+	$tid = $dum[0];
+	$interval = NULL;
+
+	if (isset($dum[1])) {
+		switch ($dum[1]) {
+			case '25':
+				$interval = [1154,1296];
+			break;
+			case '18':
+				$interval = [1049,1151];
+			break;
+			case '10':
+				$interval = [950,1046];
+			break;
+		}
+	}
+
+	foreach ($terms as $term) {
+		// Check if this term is a descendant of the given level 1 term
+		$parents = taxonomy_get_parents_all($term->tid);
+		$top_parent = array_slice($parents,-2,1);
+		
+		if ($top_parent[0]->tid == $tid) {
+			
+			// Check if this term is a leaf (has no children)
+			$children = taxonomy_get_children($term->tid);
+			if (empty($children)) {
+
+				//skip categories that are outside of the clicked manufacturing part
+				if (isset($interval) && ($interval[0] > $term->tid || $term->tid > $interval[1])) {
+					continue;
+				}
+
+				if (!$lang){
+					global $user;
+					$lang = isset($user->language) ? $user->language : 'en';
+				}
+				
+				$translated = _rb_translate_term($term->tid, $lang);
+				
+				$leaf_terms[$term->tid] = [
+					'label' => '',
+					'title' => $translated,
+				];
+			}
+		}
+	}
+	
+	return $leaf_terms;
+}
+
+/*
+generate top-level NACE term array
+*/
+function get_top_level_nace_terms($selecterm=FALSE,$lang=NULL) {
+	// Get the vocabulary ID for the NACE taxonomy
+	$vocabulary = taxonomy_vocabulary_machine_name_load('tags');
+	$vid = $vocabulary->vid;
+	
+	// Get all terms in the vocabulary
+	$terms = taxonomy_get_tree($vid);
+	
+	$tl_terms = [];
+	
+	foreach ($terms as $term) {
+		$parents = taxonomy_get_parents_all($term->tid);
+		if (($selecterm && $selecterm == $term->tid) || (!$selecterm && count($parents) == 2)) {
+
+			if (!$lang){
+				global $user;
+				$lang = isset($user->language) ? $user->language : 'en';
+			}
+	
+			$translated = _rb_translate_term($term->tid, $lang);
+
+			//splitting the manufacturing sector to 3 parts
+			if ($term->tid == 947) {
+				$tl_terms[$term->tid.'-10'] = [
+				'label' => substr($translated,0,1),
+				'title' => substr($translated,1) . ' (' . t('part') . ' 1)',
+				];
+				$tl_terms[$term->tid.'-18'] = [
+				'label' => substr($translated,0,1),
+				'title' => substr($translated,1) . ' (' . t('part') . ' 2)',
+				];
+				$tl_terms[$term->tid.'-25'] = [
+				'label' => substr($translated,0,1),
+				'title' => substr($translated,1) . ' (' . t('part') . ' 3)',
+				];
+			}
+			else {
+				$tl_terms[$term->tid] = [
+				'label' => substr($translated,0,1),
+				'title' => substr($translated,1),
+				];
+			}
+		}		
+	}
+	
+	return $tl_terms;
+}
+
+/*
+maps a merit value to a hue
+*/
+function rovas_meritscope_sigmoid ($value,$maxvalue) {
+
+	if ($maxvalue <= 0) {
+		return;
+	}
+
+	$normalValue = (21 * $value)/$maxvalue;
+	switch (TRUE) {
+		case $normalValue <= 1:
+			$point1array = [0,0];
+			$point2array = [1,17];
+			return rovas_meritscope_linear($point1array, $point2array, $normalValue);
+//			return 17;
+			break;
+		case $normalValue <= 2:
+			$point1array = [1,17];
+			$point2array = [2,26];
+			return rovas_meritscope_linear($point1array, $point2array, $normalValue);
+//			return 26;
+			break;
+		case $normalValue <= 3:
+			$point1array = [2,26];
+			$point2array = [3,37];
+			return rovas_meritscope_linear($point1array, $point2array, $normalValue);
+//			return 37;
+			break;
+		case $normalValue <= 4:
+			$point1array = [3,37];
+			$point2array = [4,51];
+			return rovas_meritscope_linear($point1array, $point2array, $normalValue);
+//			return 51;
+			break;
+		case $normalValue <= 5:
+			$point1array = [4,51];
+			$point2array = [5,67];
+			return rovas_meritscope_linear($point1array, $point2array, $normalValue);
+//			return 67;
+			break;
+		case $normalValue <= 6:
+			$point1array = [5,67];
+			$point2array = [6,84];
+			return rovas_meritscope_linear($point1array, $point2array, $normalValue);
+//			return 84;
+			break;
+		case $normalValue <= 7:
+			$point1array = [6,84];
+			$point2array = [7,107];
+			return rovas_meritscope_linear($point1array, $point2array, $normalValue);
+//			return 107;
+			break;
+		case $normalValue <= 8:
+			$point1array = [7,107];
+			$point2array = [8,155];
+			return rovas_meritscope_linear($point1array, $point2array, $normalValue);
+//			return 155;
+			break;
+		case $normalValue <= 9:
+			$point1array = [8,155];
+			$point2array = [9,180];
+			return rovas_meritscope_linear($point1array, $point2array, $normalValue);
+//			return 180;
+			break;
+		case $normalValue <= 10:
+			$point1array = [9,180];
+			$point2array = [10,200];
+			return rovas_meritscope_linear($point1array, $point2array, $normalValue);
+//			return 200;
+			break;
+		case $normalValue <= 11:
+			$point1array = [10,200];
+			$point2array = [11,220];
+			return rovas_meritscope_linear($point1array, $point2array, $normalValue);
+//			return 220;
+			break;
+		case $normalValue <= 12:
+			$point1array = [11,220];
+			$point2array = [12,235];
+			return rovas_meritscope_linear($point1array, $point2array, $normalValue);
+//			return 235;
+			break;
+		case $normalValue <= 13:
+			$point1array = [12,235];
+			$point2array = [13,250];
+			return rovas_meritscope_linear($point1array, $point2array, $normalValue);
+//			return 250;
+			break;
+		case $normalValue <= 14:
+			$point1array = [13,250];
+			$point2array = [14,262];
+			return rovas_meritscope_linear($point1array, $point2array, $normalValue);
+//			return 262;
+			break;
+		case $normalValue <= 15:
+			$point1array = [14,262];
+			$point2array = [15,272];
+			return rovas_meritscope_linear($point1array, $point2array, $normalValue);
+//			return 272;
+			break;
+		case $normalValue <= 16:
+			$point1array = [15,272];
+			$point2array = [16,284];
+			return rovas_meritscope_linear($point1array, $point2array, $normalValue);
+//			return 284;
+			break;
+		case $normalValue <= 17:
+			$point1array = [16,284];
+			$point2array = [17,294];
+			return rovas_meritscope_linear($point1array, $point2array, $normalValue);
+//			return 294;
+			break;
+		case $normalValue <= 18:
+			$point1array = [17,294];
+			$point2array = [18,310];
+			return rovas_meritscope_linear($point1array, $point2array, $normalValue);
+//			return 310;
+			break;
+		case $normalValue <= 19:
+			$point1array = [18,310];
+			$point2array = [19,322];
+			return rovas_meritscope_linear($point1array, $point2array, $normalValue);
+//			return 322;
+			break;
+		case $normalValue <= 20:
+			$point1array = [19,322];
+			$point2array = [20,340];
+			return rovas_meritscope_linear($point1array, $point2array, $normalValue);
+//			return 340;
+			break;
+		case $normalValue <= 21:
+			$point1array = [20,340];
+			$point2array = [21,365];
+			return rovas_meritscope_linear($point1array, $point2array, $normalValue);
+//			return 365;
+			break;
+	}
+}
+
+/*
+helper function for the rovas_meritscope_sigmoid to interpolate values between there-defined steps
+*/
+function rovas_meritscope_linear($point1array, $point2array, $indvar) {
+
+    list($x1, $y1) = $point1array;
+    list($x2, $y2) = $point2array;
+    
+    if ($x1 == $x2 && $y1 == $y2) {
+        return $y1;
+    }
+    
+    if ($x1 == $x2) {
+        return $y1;
+    }
+    
+    $m = ($y2 - $y1) / ($x2 - $x1);
+    
+    $b = $y1 - $m * $x1;
+    
+    $depvar = $m * $indvar + $b;
+    
+    return $depvar;
+}
+
+/**
+ * Displays user expertise as icons with popover tooltips showing top limit categories by merit points
+ * 
+ * @param int $uid User ID to display expertise for
+ * @param int $limit Number of top categories to display
+ * @return string HTML output with expertise icons and popover data
+ */
+function rovas_meritscope_display_user_expertise($uid, $limit = NULL) {
+
+    // Step 1: Get total userpoints from the Userpoints module
+    $userpoints_total = db_query("SELECT points FROM {userpoints} WHERE uid = :uid", [':uid' => $uid])->fetchField();
+    $userpoints_total = floatval($userpoints_total);
+
+    // Step 2: Get category-based merits from user_expertise nodes
+    $query = "SELECT field_data_field_category.field_category_tid AS field_data_field_category_field_category_tid, 
+                     MIN(node.nid) AS nid, 
+                     'node' AS field_data_field_category_node_entity_type, 
+                     'node' AS field_data_field_merits_node_entity_type, 
+                     SUM(field_data_field_merits.field_merits_value) AS field_data_field_merits_field_merits_value
+              FROM {node} node
+              LEFT JOIN {field_data_field_category} field_data_field_category ON node.nid = field_data_field_category.entity_id AND (field_data_field_category.entity_type = 'node' AND field_data_field_category.deleted = '0')
+              LEFT JOIN {field_data_field_merits} field_data_field_merits ON node.nid = field_data_field_merits.entity_id AND (field_data_field_merits.entity_type = 'node' AND field_data_field_merits.deleted = '0')
+              WHERE (( (node.uid = :uid ) )AND(( (node.status = '1') AND (node.type IN  ('user_expertise')) )))
+              GROUP BY field_data_field_category_node_entity_type, field_data_field_category_field_category_tid, field_data_field_merits_node_entity_type
+              ORDER BY field_data_field_merits_field_merits_value DESC";
+    
+    $result = db_query($query, [':uid' => $uid]);
+    
+    $terms_data = [];
+    foreach ($result as $row) {
+        if ($row->field_data_field_category_field_category_tid && $row->field_data_field_merits_field_merits_value) {
+            $terms_data[] = [
+                'term_id' => $row->field_data_field_category_field_category_tid,
+                'merits' => floatval($row->field_data_field_merits_field_merits_value)
+            ];
+        }
+    }
+
+    // Sort by merits in descending order
+    usort($terms_data, function($a, $b) {
+        if ($a['merits'] == $b['merits']) {
+            return 0;
+        }
+        return ($a['merits'] < $b['merits']) ? 1 : -1;
+    });
+
+    // Step 3: Group by parent category
+    $grouped_terms = [];
+    foreach ($terms_data as $term_data) {
+        $term_id = $term_data['term_id'];
+        $merits = $term_data['merits'];
+        
+        $cat = taxonomy_get_parents_all($term_id);
+        $catindex = count($cat) > 1 ? count($cat) - 2 : 0;
+        $parent_tid = $cat[$catindex]->tid;
+
+        if (!isset($grouped_terms[$parent_tid])) {
+            $grouped_terms[$parent_tid] = [
+                'parent_tid' => $parent_tid,
+                'parent_name' => $cat[$catindex]->name,
+                'parent_rate' => isset($cat[$catindex]->field_hourly_reward[LANGUAGE_NONE][0]['value']) ? $cat[$catindex]->field_hourly_reward[LANGUAGE_NONE][0]['value'] : null,
+                'total_merits' => 0
+            ];
+        }
+
+        $grouped_terms[$parent_tid]['total_merits'] += $merits;
+    }
+
+    // Step 4: Proportional adjustment of merits if userpoints > summed merits
+    $sum_expertise_merits = array_sum(array_column($grouped_terms, 'total_merits'));
+
+    if ($sum_expertise_merits > 0 && $userpoints_total > $sum_expertise_merits) {
+        $scaling_factor = $userpoints_total / $sum_expertise_merits;
+        foreach ($grouped_terms as &$term) {
+            $term['total_merits'] *= $scaling_factor;
+        }
+        unset($term); // Avoid reference bugs
+    }
+
+    // Sort grouped terms by total merits
+    usort($grouped_terms, function($a, $b) {
+        if ($a['total_merits'] == $b['total_merits']) {
+            return 0;
+        }
+        return ($a['total_merits'] < $b['total_merits']) ? 1 : -1;
+    });
+    
+    $top_terms = $limit ? array_slice($grouped_terms, 0, $limit) : $grouped_terms;
+
+    $total_user_merits = array_sum(array_column($grouped_terms, 'total_merits'));
+
+    // Build HTML
+    $language = $GLOBALS['language']->language;
+    $output = '<div style="min-width: 45px;white-space:nowrap;">';
+
+    foreach ($top_terms as $term_data) {
+        $parent_tid = $term_data['parent_tid'];
+        $parent_name = $term_data['parent_name'];
+        $parent_rate = $term_data['parent_rate'];
+        $total_merits = $term_data['total_merits'];
+
+        $percentage = $total_user_merits > 0 ? round(($total_merits / $total_user_merits) * 100) : 0;
+
+        $parent_label = i18n_string("taxonomy:term:$parent_tid:name", $parent_name, ['langcode' => $language]);
+
+        $img_name = strtolower(substr($parent_name, 0, 1)) . '.svg';
+
+        $popup = '<strong>' . substr($parent_label, 2) . '</strong><br/>';
+        $popup .= round($total_merits) . ' ' . t('ME', [], ['context' => 'merit index']) . ' (' . $percentage . '%)';
+        $popup .= '<div style="font-size: smaller;">';
+        $popup .= ($parent_rate ? t('Estimated rate') . ': ' . $parent_rate : t('Default rate') . ': 10') . ' ' . t('€/hour');
+        $popup .= '</div>';
+
+        $title = substr($parent_label, 2) . ' | ' . round($total_merits) . ' ' . t('ME', [], ['context' => 'merit index']) . ' | ' . $percentage . '%';
+
+        $icon = '<img style="max-width:20px;margin-right:5px;" src="/sites/default/files/pictures/nace_icons/' . $img_name . '" title="' . $title . '">';
+        $icon_container = '<div style="display: inline-block; width: 25px; height: 30px; text-align: center; line-height: 30px; vertical-align: middle;">' . $icon . '</div>';
+
+        $output .= '<div style="display:inline;">';
+        $output .= "<a 
+            tabindex='0'
+            role='button'
+            data-content='<div>$popup</div>'
+            data-toggle='popover'
+            data-placement='top'
+            data-trigger='click'
+            data-html='true'
+            style='outline: none; text-decoration: none; border: none; display: inline-block;'>$icon_container</a>";
+        $output .= '</div>';
+    }
+
+    $output .= '</div>';
+    return $output;
+}
+
+/**
+ * Calculates the total Euro value of user expertise based on merits and hourly rewards
+ * 
+ * @param int $uid User ID to calculate expertise value for
+ * @return float Total Euro value across all expertise categories
+ */
+function rovas_meritscope_get_user_merit_euro_value($uid) {
+
+    $query = "SELECT field_data_field_category.field_category_tid AS field_data_field_category_field_category_tid, 
+                     MIN(node.nid) AS nid, 
+                     'node' AS field_data_field_category_node_entity_type, 
+                     'node' AS field_data_field_merits_node_entity_type, 
+                     SUM(field_data_field_merits.field_merits_value) AS field_data_field_merits_field_merits_value
+              FROM {node} node
+              LEFT JOIN {field_data_field_category} field_data_field_category ON node.nid = field_data_field_category.entity_id AND (field_data_field_category.entity_type = 'node' AND field_data_field_category.deleted = '0')
+              LEFT JOIN {field_data_field_merits} field_data_field_merits ON node.nid = field_data_field_merits.entity_id AND (field_data_field_merits.entity_type = 'node' AND field_data_field_merits.deleted = '0')
+              WHERE (( (node.uid = :uid ) )AND(( (node.status = '1') AND (node.type IN  ('user_expertise')) )))
+              GROUP BY field_data_field_category_node_entity_type, field_data_field_category_field_category_tid, field_data_field_merits_node_entity_type
+              ORDER BY field_data_field_merits_field_merits_value DESC";
+    
+    $result = db_query($query, array(':uid' => $uid));
+    
+    $terms_data = [];
+    foreach ($result as $row) {
+        if ($row->field_data_field_category_field_category_tid && $row->field_data_field_merits_field_merits_value) {
+            $terms_data[] = [
+                'term_id' => $row->field_data_field_category_field_category_tid,
+                'merits' => floatval($row->field_data_field_merits_field_merits_value)
+            ];
+        }
+    }
+    
+    // Group by parent category and sum merits
+    $grouped_terms = [];
+    foreach ($terms_data as $term_data) {
+        $term_id = $term_data['term_id'];
+        $merits = $term_data['merits'];
+        
+        // Get parent categories
+        $cat = taxonomy_get_parents_all($term_id);
+        $catindex = count($cat) > 1 ? count($cat) - 2 : 0;
+        $parent_tid = $cat[$catindex]->tid;
+        
+        if (!isset($grouped_terms[$parent_tid])) {
+            $grouped_terms[$parent_tid] = [
+                'parent_tid' => $parent_tid,
+                'total_merits' => 0,
+                'term_object' => $cat[$catindex]
+            ];
+        }
+        
+        $grouped_terms[$parent_tid]['total_merits'] += $merits;
+    }
+    
+    // Calculate total Euro value
+    $total_euro_value = 0;
+    foreach ($grouped_terms as $term_data) {
+        $term = $term_data['term_object'];
+        $total_merits = $term_data['total_merits'];
+        
+        // Get hourly reward value, default to 10 if not set
+        $hourly_reward = 10; // Default value
+        if (isset($term->field_hourly_reward['und'][0]['value']) && !empty($term->field_hourly_reward['und'][0]['value'])) {
+            $hourly_reward = floatval($term->field_hourly_reward['und'][0]['value']);
+        }
+        
+        $total_euro_value += $total_merits * $hourly_reward;
+    }
+    
+    return $total_euro_value / 10;
+}

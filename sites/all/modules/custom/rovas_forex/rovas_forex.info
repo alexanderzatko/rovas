@@ -1,0 +1,4 @@
+name = Rovas forex functionality
+description = Adds functionality to Rovas to exchange Chrons for other currencies and vice versa
+core = 7.x
+package = Rovas

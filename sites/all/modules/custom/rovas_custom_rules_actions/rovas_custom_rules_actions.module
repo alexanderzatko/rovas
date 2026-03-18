@@ -1,0 +1,91 @@
+<?php
+/**
+ * Implements hook_rules_action_info().
+ */
+function rovas_custom_rules_actions_rules_action_info() {
+  return array(
+    'rovas_custom_rules_actions_filter_payment_methods' => array(
+      'label' => t('Filter payment methods based on order preference'),
+      'parameter' => array(
+        'commerce_order' => array(
+          'type' => 'commerce_order',
+          'label' => t('Order'),
+          'description' => t('The order to filter payment methods for.'),
+        ),
+      ),
+      'group' => t('Commerce Payment'),
+      'callbacks' => array(
+        'execute' => 'rovas_custom_rules_actions_filter_payment_methods_action',
+      ),
+    ),
+  );
+}
+
+/**
+ * Rules action callback: Filter payment methods.
+ */
+function rovas_custom_rules_actions_filter_payment_methods_action($order) {
+  if (isset($order->data['rpr_paytype'])) {
+    $preferred_method = $order->data['rpr_paytype'];
+    
+    // Store the filtering preference in session for later use
+    $_SESSION['commerce_payment_method_filter'] = $preferred_method;
+  }
+}
+
+/**
+ * Implements hook_commerce_payment_method_info_alter().
+ * Filter payment methods for rewpro-originated orders using order data first,
+ * then session as fallback (e.g. when a Rule has set it).
+ */
+function rovas_custom_rules_actions_commerce_payment_method_info_alter(&$payment_methods) {
+  $filter = NULL;
+
+  // Prefer order-based filter for rewpro orders (no dependency on Rules).
+  if (arg(0) === 'checkout' && arg(1) && is_numeric(arg(1))) {
+    $order = commerce_order_load(arg(1));
+    if ($order && _rovas_custom_rules_actions_is_rewpro_order($order) && isset($order->data['rpr_paytype'])) {
+      $filter = $order->data['rpr_paytype'];
+    }
+  }
+
+  if ($filter === NULL && isset($_SESSION['commerce_payment_method_filter'])) {
+    $filter = $_SESSION['commerce_payment_method_filter'];
+  }
+
+  if ($filter === 'pay-choice-card') {
+    $allowed_methods = array('commerce_stripe_pi', 'paypal_wpp', 'paypal_checkout', 'paypal_ec', 'paypal_wps');
+    foreach ($payment_methods as $method_id => $method) {
+      if (!in_array($method_id, $allowed_methods)) {
+        unset($payment_methods[$method_id]);
+      }
+    }
+  }
+  elseif ($filter === 'pay-choice-bank') {
+    foreach ($payment_methods as $method_id => $method) {
+      if ($method_id !== 'bank_transfer') {
+        unset($payment_methods[$method_id]);
+      }
+    }
+  }
+}
+
+/**
+ * Returns TRUE if the order is from the rewpro (reward project) flow.
+ */
+function _rovas_custom_rules_actions_is_rewpro_order($order) {
+  if (empty($order->order_id)) {
+    return FALSE;
+  }
+  $wrapper = entity_metadata_wrapper('commerce_order', $order);
+  $recipient = $wrapper->field_payment_recipient->value();
+  return isset($recipient) && $recipient !== '' && $recipient !== NULL;
+}
+
+/**
+ * Implements hook_commerce_checkout_complete().
+ * Clean up session after checkout completes
+ */
+function rovas_custom_rules_actions_commerce_checkout_complete($order) {
+  unset($_SESSION['commerce_payment_method_filter']);
+}

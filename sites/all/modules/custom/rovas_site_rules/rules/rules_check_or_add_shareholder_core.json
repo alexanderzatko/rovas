@@ -1,0 +1,71 @@
+{ "rules_check_or_add_shareholder_core" : {
+    "LABEL" : "Check or add shareholder core",
+    "PLUGIN" : "rule",
+    "OWNER" : "rules",
+    "REQUIRES" : [ "rules", "views_bulk_operations", "rules_conditional" ],
+    "USES VARIABLES" : {
+      "result" : { "label" : "result", "type" : "integer", "parameter" : false },
+      "user" : { "label" : "user", "type" : "user" },
+      "project" : { "label" : "project", "type" : "node" }
+    },
+    "IF" : [
+      { "entity_is_of_bundle" : {
+          "entity" : [ "project" ],
+          "type" : "node",
+          "bundle" : { "value" : { "project" : "project" } }
+        }
+      }
+    ],
+    "DO" : [
+      { "views_bulk_operations_action_load_list" : {
+          "USING" : {
+            "view" : "project_user_shareholder|default",
+            "args" : "[project:nid]\r\n[user:uid]"
+          },
+          "PROVIDE" : { "entity_list" : { "entity_list" : "A list of entities" } }
+        }
+      },
+      { "CONDITIONAL" : [
+          {
+            "IF" : { "list_count_is" : { "list" : [ "entity-list" ], "op" : "\u003E", "value" : "0" } },
+            "DO" : [
+              { "data_set" : { "data" : [ "result" ], "value" : [ "entity-list:0:nid" ] } }
+            ]
+          },
+          { "ELSE" : [
+              { "CONDITIONAL" : [
+                  {
+                    "IF" : { "NOT data_is" : { "data" : [ "project:field-participation" ], "value" : "0" } },
+                    "DO" : [
+                      { "entity_create" : {
+                          "USING" : {
+                            "type" : "node",
+                            "param_type" : "co_worker_merit_allocation",
+                            "param_title" : "temp",
+                            "param_author" : [ "user" ]
+                          },
+                          "PROVIDE" : { "entity_created" : { "wma" : "Created wma" } }
+                        }
+                      },
+                      { "entity_modify" : {
+                          "entity" : [ "wma" ],
+                          "properties" : { "value" : { "field_coworker" : "field_coworker", "field_project" : "field_project" } },
+                          "param_field_coworker" : [ "user" ],
+                          "param_field_project" : [ "project" ]
+                        }
+                      },
+                      { "entity_save" : { "data" : [ "wma" ], "immediate" : "1" } },
+                      { "data_set" : { "data" : [ "result" ], "value" : [ "wma:nid" ] } }
+                    ]
+                  },
+                  { "ELSE" : [ { "data_set" : { "data" : [ "result" ], "value" : "0" } } ] }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "PROVIDES VARIABLES" : [ "result" ]
+  }
+}

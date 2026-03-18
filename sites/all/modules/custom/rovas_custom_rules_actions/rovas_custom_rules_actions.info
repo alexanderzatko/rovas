@@ -1,0 +1,4 @@
+name = Rovas Custom Rules Actions
+description = Provides custom rules actions
+core = 7.x
+package = Rovas

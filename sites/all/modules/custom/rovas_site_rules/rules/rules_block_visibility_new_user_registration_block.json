@@ -1,0 +1,64 @@
+{ "rules_block_visibility_new_user_registration_block" : {
+    "LABEL" : "new user registration block",
+    "PLUGIN" : "rule",
+    "OWNER" : "rules",
+    "TAGS" : [ "block visibility" ],
+    "REQUIRES" : [ "rules", "rules_conditional", "php", "pathrules" ],
+    "USES VARIABLES" : {
+      "module" : { "label" : "Module", "type" : "text" },
+      "delta" : { "label" : "Delta", "type" : "text" },
+      "result" : { "label" : "Result", "type" : "boolean", "parameter" : false }
+    },
+    "DO" : [
+      { "variable_add" : {
+          "USING" : { "type" : "integer", "value" : "0" },
+          "PROVIDE" : { "variable_added" : { "sys_project_id" : "sys project id" } }
+        }
+      },
+      { "component_rules_find_system_project_for_user" : {
+          "USING" : { "user_object" : [ "site:current-user" ] },
+          "PROVIDE" : { "system_project" : { "system_project" : "The system project" } }
+        }
+      },
+      { "CONDITIONAL" : [
+          {
+            "IF" : { "NOT data_is_empty" : { "data" : [ "system-project:nid" ] } },
+            "DO" : [
+              { "data_set" : { "data" : [ "sys-project-id" ], "value" : [ "system-project:nid" ] } }
+            ]
+          }
+        ]
+      },
+      { "variable_add" : {
+          "USING" : {
+            "type" : "text",
+            "value" : "\u003C?php \r\n\r\nglobal $user;\r\n\r\n$result = db_query(\u0022SELECT COUNT(node.nid) AS nid\r\nFROM {node} node\r\nWHERE node.uid = :uid\r\nAND node.status = \u00271\u0027\r\nAND node.type = \u0027work_report\u0027\u0022, array(\u0027uid\u0027 =\u003E $user-\u003Euid));\r\n\r\n$resarray = $result-\u003EfetchAll();\r\n\r\nif (count($resarray) \u003E 0)\r\necho $resarray[0]-\u003Enid;\r\nelse\r\necho 0;\r\n\r\n?\u003E"
+          },
+          "PROVIDE" : { "variable_added" : { "report_count" : "report count" } }
+        }
+      },
+      { "CONDITIONAL" : [
+          {
+            "IF" : { "data_is" : { "data" : [ "report-count" ], "value" : "0" } },
+            "DO" : [
+              { "CONDITIONAL" : [
+                  {
+                    "IF" : { "pathrules_checkpath" : {
+                        "path" : "node\/add\/work-report\/[sys-project-id:value]",
+                        "operation" : "equals"
+                      }
+                    },
+                    "DO" : [ { "data_set" : { "data" : [ "result" ], "value" : "1" } } ]
+                  },
+                  { "ELSE" : [ { "data_set" : { "data" : [ "result" ], "value" : "0" } } ] }
+                ]
+              }
+            ]
+          },
+          { "ELSE" : [ { "data_set" : { "data" : [ "result" ], "value" : "0" } } ] }
+        ]
+      }
+    ],
+    "PROVIDES VARIABLES" : [ "result" ]
+  }
+}

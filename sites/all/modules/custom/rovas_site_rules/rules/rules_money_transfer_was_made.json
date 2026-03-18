@@ -1,0 +1,50 @@
+{ "rules_money_transfer_was_made" : {
+    "LABEL" : "Money transfer was made",
+    "PLUGIN" : "reaction rule",
+    "OWNER" : "rules",
+    "TAGS" : [ "chrons" ],
+    "REQUIRES" : [ "pathrules", "php", "rules", "privatemsg_rules" ],
+    "ON" : { "node_insert--money_transfer" : { "bundle" : "money_transfer" } },
+    "IF" : [ { "pathrules_checkpath" : { "path" : "add\/money-transfer" } } ],
+    "DO" : [
+      { "component_rules_update_user_chron_account" : {
+          "user_object" : [ "site:current-user" ],
+          "chrons_to_add" : {
+            "select" : "node:field-amount",
+            "php" : { "code" : "return -1*$value;" }
+          },
+          "fxsp_id" : {
+            "select" : "site:current-user:uid",
+            "php" : { "code" : "return NULL;" }
+          }
+        }
+      },
+      { "component_rules_update_user_chron_account" : {
+          "user_object" : [ "node:field-recipient" ],
+          "chrons_to_add" : [ "node:field-amount" ],
+          "fxsp_id" : {
+            "select" : "site:current-user:uid",
+            "php" : { "code" : "return NULL;" }
+          }
+        }
+      },
+      { "drupal_message" : { "message" : "Your money was sent successfully." } },
+      { "privatemsg_rules_new" : {
+          "USING" : {
+            "recipient" : [ "node:field-recipient" ],
+            "author" : "1",
+            "subject" : "Money received in application Rovas",
+            "body" : "User [node:author] sent you [node:field-amount] Chrons. You can see the transaction record here: [node:url]"
+          },
+          "PROVIDE" : { "thread_id" : { "thread_id" : "ID of new thread" } }
+        }
+      },
+      { "variable_add" : {
+          "USING" : { "type" : "integer", "value" : [ "site:current-user:uid" ] },
+          "PROVIDE" : { "variable_added" : { "sender_uid" : "sender uid" } }
+        }
+      },
+      { "redirect" : { "url" : "user\/[sender-uid:value]\/chrons" } }
+    ]
+  }
+}

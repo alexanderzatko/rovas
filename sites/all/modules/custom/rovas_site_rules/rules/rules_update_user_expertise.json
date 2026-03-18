@@ -1,0 +1,40 @@
+{ "rules_update_user_expertise" : {
+    "LABEL" : "update user expertise",
+    "PLUGIN" : "rule",
+    "OWNER" : "rules",
+    "REQUIRES" : [ "rules", "rules_conditional", "php" ],
+    "USES VARIABLES" : {
+      "time_share" : { "label" : "time share", "type" : "decimal" },
+      "merit_reward" : { "label" : "merit reward", "type" : "decimal" },
+      "classification" : { "label" : "classification", "type" : "integer" },
+      "rewardee_uid" : { "label" : "rewardee uid", "type" : "integer" }
+    },
+    "IF" : [
+      { "data_is" : { "data" : [ "merit-reward" ], "op" : "\u003E", "value" : "0" } },
+      { "NOT data_is" : { "data" : [ "time-share" ], "op" : "\u003C", "value" : "0" } }
+    ],
+    "DO" : [
+      { "entity_fetch" : {
+          "USING" : { "type" : "user", "id" : [ "rewardee-uid" ] },
+          "PROVIDE" : { "entity_fetched" : { "user" : "user" } }
+        }
+      },
+      { "CONDITIONAL" : [
+          {
+            "IF" : { "NOT user_has_role" : { "account" : [ "user" ], "roles" : { "value" : { "5" : "5" } } } },
+            "DO" : [
+              { "variable_add" : {
+                  "USING" : {
+                    "type" : "text",
+                    "value" : "\u003C?php\r\n\r\n\t\/\/load the expert table node corresponding to the current category in order to find its existing Merit value\r\n\t$result = db_query(\u0022SELECT node.nid AS nid, m.field_merits_value AS merits\r\n\tFROM {node} node\r\n\tLEFT JOIN {field_data_field_expert} x ON node.nid = x.entity_id AND (x.entity_type = \u0027node\u0027 AND x.deleted = \u00270\u0027)\r\n\tLEFT JOIN {field_data_field_category} c ON node.nid = c.entity_id AND (c.entity_type = \u0027node\u0027 AND c.deleted = \u00270\u0027)\r\n\tLEFT JOIN {field_data_field_merits} m ON node.nid = m.entity_id AND (m.entity_type = \u0027node\u0027 AND m.deleted = \u00270\u0027)\r\n\tWHERE node.type = \u0027user_expertise\u0027\r\n\tAND field_expert_target_id = :uid\r\n\tAND c.field_category_tid = :cat\r\n\t\u0022, array(\u0027:uid\u0027 =\u003E $rewardee_uid, \u0027:cat\u0027 =\u003E $classification));\r\n\r\n\t$record = $result-\u003EfetchAssoc();\r\n\t\/\/for some users and category IDs we will have to create a new user_expertise node\t\t\t\r\n\tif (empty($record)) {\r\n\t\t$node = new stdClass();\r\n\t\t$node-\u003Etype = \u0027user_expertise\u0027;\r\n\t\t$node-\u003Etitle = \u0027UX-\u0027 . $rewardee_uid . \u0027-\u0027 . $classification;\r\n\t\t$node-\u003Elanguage = LANGUAGE_NONE;\r\n\t\tnode_object_prepare($node);\r\n\t\t$node-\u003Euid = $rewardee_uid;\r\n\r\n\t\t$node-\u003Efield_expert[LANGUAGE_NONE][0][\u0027target_id\u0027] = $rewardee_uid;\r\n\t\t$node-\u003Efield_category[LANGUAGE_NONE][0][\u0027tid\u0027] = $classification;\r\n\r\n\t\t$old_merits = 0;\r\n\t\t$node-\u003Efield_merits[LANGUAGE_NONE][0][\u0027value\u0027] = $old_merits;\r\n\r\n\t\t$node = node_submit($node);\r\n\t\tnode_save($node);\r\n\t\t$nid = $node-\u003Enid;\r\n\r\n\t}\r\n\telse {\r\n\t\t$old_merits = $record[\u0027merits\u0027];\r\n\t\t$nid = $record[\u0027nid\u0027];\r\n\t}\r\n\t\/\/ @time_share is the ratio of the time reported in the work report being processed divided by the project total_time\r\n\tif ($time_share == 1) {\r\n\t\t$cur_merits = $old_merits + $merit_reward;\r\n\t}\r\n\telse {\r\n\t\t$merits2add = $time_share * $merit_reward;\r\n\t\t$cur_merits = $old_merits + $merits2add;\r\n\t}\r\n\r\n\t\/\/updating the node with new merit value\r\n\t$xobject = entity_metadata_wrapper(\u0027node\u0027, $nid);\r\n\t$xobject-\u003Efield_merits = $cur_merits;\r\n\t$xobject-\u003Esave();\r\n?\u003E"
+                  },
+                  "PROVIDE" : { "variable_added" : { "variable_added" : "Added variable" } }
+                }
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

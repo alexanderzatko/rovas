@@ -1,0 +1,13 @@
+name = Language Icons
+description = Adds icons to language links.
+dependencies[] = locale
+package = Multilingual
+core = 7.x
+configure = admin/config/regional/language/icons
+
+; Information added by Drupal.org packaging script on 2016-11-17
+version = "7.x-1.1+1-dev"
+core = "7.x"
+project = "languageicons"
+datestamp = "1479366623"
+

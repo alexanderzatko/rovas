@@ -1,0 +1,90 @@
+{ "rules_create_verification" : {
+    "LABEL" : "Create verification",
+    "PLUGIN" : "rule",
+    "OWNER" : "rules",
+    "TAGS" : [ "api", "verification" ],
+    "REQUIRES" : [ "rules", "rules_conditional", "php" ],
+    "USES VARIABLES" : {
+      "verdict" : { "label" : "verdict", "type" : "boolean" },
+      "wr_id" : { "label" : "work report ID", "type" : "integer" },
+      "verification_id" : { "label" : "verification id", "type" : "integer", "parameter" : false }
+    },
+    "DO" : [
+      { "component_rules_retrieve_user_id_from_api_key_and_token" : { "USING" : {}, "PROVIDE" : { "uid" : { "uid" : "user id" } } } },
+      { "entity_fetch" : {
+          "USING" : { "type" : "user", "id" : [ "uid" ] },
+          "PROVIDE" : { "entity_fetched" : { "found_user" : "found user" } }
+        }
+      },
+      { "entity_fetch" : {
+          "USING" : { "type" : "node", "id" : [ "wr-id" ] },
+          "PROVIDE" : { "entity_fetched" : { "fetched_wr" : "Fetched work report" } }
+        }
+      },
+      { "CONDITIONAL" : [
+          {
+            "IF" : { "entity_is_of_bundle" : {
+                "entity" : [ "fetched-wr" ],
+                "type" : "node",
+                "bundle" : { "value" : { "work_report" : "work_report" } }
+              }
+            },
+            "DO" : [
+              { "component_rules_verifiability" : {
+                  "USING" : {
+                    "wr_object" : [ "fetched-wr" ],
+                    "user_object" : [ "found-user" ],
+                    "create_lock" : "0"
+                  },
+                  "PROVIDE" : { "verifiable" : { "verifiable" : "verifiable" } }
+                }
+              },
+              { "CONDITIONAL" : [
+                  {
+                    "IF" : { "data_is" : { "data" : [ "verifiable" ], "value" : "1" } },
+                    "DO" : [
+                      { "entity_create" : {
+                          "USING" : {
+                            "type" : "node",
+                            "param_type" : "verification",
+                            "param_title" : "Verification by a REST client user",
+                            "param_author" : [ "found-user" ]
+                          },
+                          "PROVIDE" : { "entity_created" : { "new_verification" : "the new verification" } }
+                        }
+                      },
+                      { "entity_modify" : {
+                          "entity" : [ "new-verification" ],
+                          "properties" : { "value" : {
+                              "field_work_report" : "field_work_report",
+                              "field_verifier" : "field_verifier",
+                              "field_verdict" : "field_verdict",
+                              "field_verification_source" : "field_verification_source"
+                            }
+                          },
+                          "param_field_work_report" : [ "fetched-wr" ],
+                          "param_field_verifier" : [ "found-user" ],
+                          "param_field_verdict" : [ "verdict" ],
+                          "param_field_verification_source" : "1"
+                        }
+                      },
+                      { "entity_save" : { "data" : [ "new-verification" ], "immediate" : "1" } },
+                      { "data_set" : { "data" : [ "verification-id" ], "value" : [ "new-verification:nid" ] } }
+                    ]
+                  },
+                  { "ELSE" : [
+                      { "php_eval" : { "code" : "watchdog(\u0027rule\u0027,\u0027rules_create_verification: work report : \u0027 . $wr_id . \u0027 is not verifiable by user \u0027 . $uid);" } },
+                      { "data_set" : { "data" : [ "verification-id" ], "value" : "-3" } }
+                    ]
+                  }
+                ]
+              }
+            ]
+          },
+          { "ELSE" : [ { "data_set" : { "data" : [ "verification-id" ], "value" : "-2" } } ] }
+        ]
+      }
+    ],
+    "PROVIDES VARIABLES" : [ "verification_id" ]
+  }
+}

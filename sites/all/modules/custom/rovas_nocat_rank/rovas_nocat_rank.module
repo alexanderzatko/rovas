@@ -1,0 +1,117 @@
+<?php
+
+/**
+ * Implements hook_menu().
+ */
+
+function rovas_nocat_rank_menu() {
+  $items = array();
+
+  $items['unspecified_activity_rank'] = array(
+    'title' => t('Top 10 workers in category'),
+//    'description' => t('A form to be embedded in content types, allowing users to reward the post creators.'),
+    'page callback' => array('_nocat_page'),
+    'access callback' => TRUE
+  );
+
+  return $items;
+}
+
+
+
+function _nocat_page() {
+	global $user;
+
+	$html = '<div class="view-header rovas_nocat_rank-module">';
+	$html .= t('Category') . ':';
+	$html .= '<h4>';
+	//can't link it to the category yet, because the target page does not generate correct content for this category
+//	$html .= '<a href="/taxonomy/term/1857">';
+	$html .= t('Unspecified activity');
+//	$html .= '</a>';
+	$html .= '</h4></div>';
+
+
+	$header = array(t('Position'),t('Worker'),t('Merits'));
+
+	$result0 = db_query("SELECT CONCAT(rc.field_reward_recipient_target_id,'|',u.name) AS uid, SUM(da.field_reward_amount_value) AS merits
+	FROM {field_data_field_receipt_project} r,
+	{node} dn,
+	{users} u,
+	{field_data_field_reward_amount} da,
+	{field_data_field_parent_purchase_receipt} d,
+	{field_data_field_reward_recipient} rc
+
+	WHERE r.field_receipt_project_target_id NOT IN (
+	SELECT field_project_target_id
+	FROM {field_data_field_project}
+	WHERE bundle = 'work_report'
+	)
+	AND dn.nid = da.entity_id
+	AND dn.nid = d.entity_id
+	AND dn.nid = rc.entity_id
+	AND d.field_parent_purchase_receipt_target_id = r.entity_id
+	AND u.uid = rc.field_reward_recipient_target_id
+	GROUP BY rc.field_reward_recipient_target_id
+	ORDER BY merits DESC
+	LIMIT 10");
+
+	$resarray0 = $result0->fetchAllKeyed();
+	$issetres0 = count($resarray0) > 0;
+
+	//get sum of merits for each category and user
+	$result = db_query("SELECT CONCAT(node.uid,'|',u.name) AS uid,  SUM(e.field_merit_reward_value) AS merits
+	FROM {node} node
+	LEFT JOIN {users}                           u    ON node.uid = u.uid
+	LEFT JOIN {field_data_field_project}        proj ON node.nid = proj.entity_id AND (proj.entity_type = 'node' AND proj.deleted = '0')
+	LEFT JOIN {node}                            n1   ON proj.field_project_target_id = n1.nid
+	LEFT JOIN {field_data_field_classification} c    ON node.nid = c.entity_id AND (c.entity_type = 'node' AND c.deleted = '0')
+	LEFT JOIN {field_data_field_merit_reward}   e    ON node.nid = e.entity_id AND (e.entity_type = 'node' AND e.deleted = '0')
+	WHERE node.status = '1'
+	AND node.type = 'work_report'
+	AND c.field_classification_tid = 1857
+	GROUP BY uid
+	ORDER BY merits DESC
+	LIMIT 10");
+	$resarray = $result->fetchAllKeyed();
+
+	//merging the two resultsets
+	foreach ($resarray as $rowkey => $rowval) {
+		if ($issetres0) {
+			$ncmerits = isset($resarray0[$rowkey]) ? $resarray0[$rowkey] : 0;
+			$resarray0[$rowkey] = $ncmerits + $rowval;
+		}
+		else {
+			$resarray0 = array($rowkey => $rowval);
+		}
+	}
+
+	//resorting the array
+	arsort($resarray0);
+
+	$rows = array();
+	$position = 1;
+
+	//building the table
+	foreach ($resarray0 as $uid => $merits) {
+		$usrary = explode('|',$uid);
+		$usruid = $usrary[0];
+		$usrname = $usrary[1];
+		$linkdusr = '<a href="/user/'.$usruid.'">' . $usrname . '</a>';
+		$classes = ($position % 2) != 0 ? 'odd' : 'even';
+		$classes .= $usruid == $user->uid ? ' current-user' : '';
+		$row = array(
+			'data' =>array(
+				array('data' => $position, 'class' => 'cat-pos'),
+				array('data' => $linkdusr, 'class' => 'cat-usr'),
+				array('data' => round($merits,2), 'class' => 'cat-merits')
+			),
+			'class' => $classes
+		);
+		$rows[] = $row;
+		$position += 1;
+	}
+
+	$html .= theme('table', array('header' => $header, 'rows' => $rows));
+	return $html;
+}

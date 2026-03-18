@@ -1,0 +1,72 @@
+{ "rules_project_children_parent_check" : {
+    "LABEL" : "project children parent check",
+    "PLUGIN" : "reaction rule",
+    "OWNER" : "rules",
+    "TAGS" : [ "project", "project merit allocation", "work report" ],
+    "REQUIRES" : [ "rules", "php", "rules_conditional" ],
+    "ON" : { "node_prepare" : [] },
+    "IF" : [
+      { "entity_is_of_bundle" : {
+          "entity" : [ "node" ],
+          "type" : "node",
+          "bundle" : { "value" : {
+              "project_merit_allocation" : "project_merit_allocation",
+              "work_report" : "work_report",
+              "co_worker_merit_allocation" : "co_worker_merit_allocation"
+            }
+          }
+        }
+      },
+      { "php_eval" : { "code" : "$arg2 = arg(2);\r\n$arg3 = arg(3);\r\nreturn $arg2 != \u0027edit\u0027 \u0026\u0026 (empty($arg3) || !is_numeric($arg3));" } }
+    ],
+    "DO" : [
+      { "variable_add" : {
+          "USING" : { "type" : "text" },
+          "PROVIDE" : { "variable_added" : { "msg" : "msg" } }
+        }
+      },
+      { "drupal_message" : { "message" : "No project ID was supplied!", "type" : "error" } },
+      { "SWITCH" : {
+          "USING" : { "data" : [ "node:type" ] },
+          "DO" : [
+            { "CASE" : {
+                "USING" : { "value" : "work_report" },
+                "DO" : [
+                  { "data_set" : {
+                      "data" : [ "msg" ],
+                      "value" : "Use the Add Report button on the Project page to add a report"
+                    }
+                  }
+                ]
+              }
+            },
+            { "CASE" : {
+                "USING" : { "value" : "project_merit_allocation" },
+                "DO" : [
+                  { "data_set" : {
+                      "data" : [ "msg" ],
+                      "value" : "Use the Add Project Shareholder button on the Project page to add a shareholder"
+                    }
+                  }
+                ]
+              }
+            },
+            { "CASE" : {
+                "USING" : { "value" : "co_worker_merit_allocation" },
+                "DO" : [
+                  { "data_set" : {
+                      "data" : [ "msg" ],
+                      "value" : "Use the Add Worker Shareholder button on the Project page to add a shareholder"
+                    }
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      },
+      { "drupal_message" : { "message" : [ "msg" ] } },
+      { "redirect" : { "url" : "\u003Cfront\u003E" } }
+    ]
+  }
+}

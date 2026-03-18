@@ -1,0 +1,36 @@
+.title-text {
+	word-wrap: break-word;
+	white-space: pre-wrap;
+}
+
+section#block-block-14 svg {
+    max-width: 500px;
+}
+
+g.segment text {
+    fill: unset;
+}
+
+g.segment:hover path, g.segment:focus path {
+	filter: saturate(5) !important;
+}
+
+path.fillhidden {
+    fill-opacity: 0;
+}
+
+g.segment:hover, g.segment:focus {
+	text-decoration: unset;
+}
+
+.shadow {
+  -webkit-filter: drop-shadow( 6px 7px 9px rgba(0, 0, 0, 0.7));
+  filter: drop-shadow( 6px 7px 9px rgba(0, 0, 0, 0.7));
+}
+
+.clickable-subsegment {
+	cursor: pointer;
+}
+.clickable-text {
+	cursor: pointer;
+}

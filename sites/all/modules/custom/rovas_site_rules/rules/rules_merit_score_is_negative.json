@@ -1,0 +1,32 @@
+{ "rules_merit_score_is_negative" : {
+    "LABEL" : "merit score is negative",
+    "PLUGIN" : "rule condition set",
+    "OWNER" : "rules",
+    "REQUIRES" : [ "rules_conditional", "rules", "userpoints_rules" ],
+    "USES VARIABLES" : { "user" : { "label" : "user", "type" : "user" } },
+    "DO" : [
+      { "variable_add" : {
+          "USING" : { "type" : "decimal", "value" : [ "user:field-merit-decimal-part" ] },
+          "PROVIDE" : { "variable_added" : { "merits_decimal" : "merits decimal" } }
+        }
+      },
+      { "userpoints_rules_get_current_points" : {
+          "USING" : { "user" : [ "user" ], "tid" : "all" },
+          "PROVIDE" : { "loaded_points" : { "whole_merits" : "whole merits" } }
+        }
+      },
+      { "data_calc" : {
+          "USING" : {
+            "input_1" : [ "merits-decimal" ],
+            "op" : "+",
+            "input_2" : [ "whole-merits" ]
+          },
+          "PROVIDE" : { "result" : { "total_merits" : "total merits" } }
+        }
+      }
+    ],
+    "RESULT" : [
+      { "data_is" : { "data" : [ "total-merits" ], "op" : "\u003C", "value" : "0" } }
+    ]
+  }
+}

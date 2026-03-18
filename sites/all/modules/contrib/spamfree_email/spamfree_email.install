@@ -1,0 +1,47 @@
+<?php
+
+/**
+ * @file
+ * Install, update and uninstall functions for the spamfree email module.
+ */
+
+/**
+ * Implements hook_install().
+ */
+function spamfree_email_install() {
+  $t = get_t();
+  drupal_set_message($t('Spamfree email settings are available under <a href="@administer-page">Administration » Configuration » Content » Spamfree Email obfuscation</a>.',
+  array('@administer-page' => url('admin/config/content/spamfree_email'))));
+}
+
+/**
+ * Implements hook_uninstall().
+ */
+function spamfree_email_uninstall() {
+  variable_del('spamfree_email_nofollow');
+  variable_del('spamfree_email');
+  variable_del('spamfree_email_nojs');
+  variable_del('spamfree_email_bg_color');
+  variable_del('spamfree_email_text_color');
+  variable_del('spamfree_email_font_size');
+  variable_del('spamfree_email_font_family');
+}
+
+/**
+ * Implements hook_requirements().
+ */
+function spamfree_email_requirements($phase) {
+  $requirements = array();
+  $t = get_t();
+  if ($phase == 'install') {
+    if (!function_exists("mcrypt_encrypt")) {
+      $requirements['spamfree_email_mcrypt'] = array(
+        'title' => $t('Mcrypt extension is needed.'),
+        'description' => $t('Spamfree email module requires mcrypt extension.'),
+        'value' => $t('Not Found.'),
+        'severity' => REQUIREMENT_ERROR,
+      );
+    }
+  }
+  return $requirements;
+}

@@ -1,0 +1,133 @@
+{ "rules_delete_project" : {
+    "LABEL" : "Delete project",
+    "PLUGIN" : "action set",
+    "OWNER" : "rules",
+    "TAGS" : [ "project" ],
+    "REQUIRES" : [ "rules", "rules_conditional", "privatemsg_rules" ],
+    "USES VARIABLES" : {
+      "project_node" : { "label" : "Project node", "type" : "node" },
+      "triggering_actor" : { "label" : "Triggering actor", "type" : "text" }
+    },
+    "ACTION SET" : [
+      { "entity_query" : {
+          "USING" : {
+            "type" : "node",
+            "property" : "field_shareholder_project",
+            "value" : [ "project-node" ],
+            "limit" : "1000000000"
+          },
+          "PROVIDE" : { "entity_fetched" : { "merit_allocation_nodes" : "Merit allocation nodes" } }
+        }
+      },
+      { "LOOP" : {
+          "USING" : { "list" : [ "merit-allocation-nodes" ] },
+          "ITEM" : { "ma_node" : "MA node" },
+          "DO" : [ { "entity_delete" : { "data" : [ "ma-node" ] } } ]
+        }
+      },
+      { "entity_query" : {
+          "USING" : {
+            "type" : "node",
+            "property" : "field_project",
+            "value" : [ "project-node" ],
+            "limit" : "1000000000"
+          },
+          "PROVIDE" : { "entity_fetched" : { "all_child_nodes" : "All child nodes" } }
+        }
+      },
+      { "LOOP" : {
+          "USING" : { "list" : [ "all-child-nodes" ] },
+          "ITEM" : { "this_child_node" : "This child node" },
+          "DO" : [
+            { "CONDITIONAL" : [
+                {
+                  "IF" : { "entity_is_of_bundle" : {
+                      "entity" : [ "this-child-node" ],
+                      "type" : "node",
+                      "bundle" : { "value" : { "work_report" : "work_report" } }
+                    }
+                  },
+                  "DO" : [
+                    { "component_rules_delete_work_report" : {
+                        "node" : [ "this-child-node" ],
+                        "triggering_actor" : [ "triggering_actor" ]
+                      }
+                    },
+                    { "CONDITIONAL" : [
+                        {
+                          "IF" : { "NOT data_is" : {
+                              "data" : [ "this-child-node:author" ],
+                              "value" : [ "site:current-user" ]
+                            }
+                          },
+                          "DO" : [
+                            { "privatemsg_rules_new" : {
+                                "USING" : {
+                                  "recipient" : [ "this-child-node:author" ],
+                                  "author" : "1",
+                                  "subject" : "Rovas application - Project deleted",
+                                  "body" : "Project [node:title] where you had a share has been deleted by the owner. As a consequence, [this-child-node:field-chrons-to-grant] Chrons were subtracted from your account balance.\r\n\r\nProject owner is [node:author]"
+                                },
+                                "PROVIDE" : { "thread_id" : { "thread_id" : "ID of new thread" } }
+                              }
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "ELSE IF" : { "entity_is_of_bundle" : {
+                      "entity" : [ "this-child-node" ],
+                      "type" : "node",
+                      "bundle" : { "value" : { "co_worker_merit_allocation" : "co_worker_merit_allocation" } }
+                    }
+                  },
+                  "DO" : [
+                    { "CONDITIONAL" : [
+                        {
+                          "IF" : { "NOT data_is" : {
+                              "data" : [ "this-child-node:author" ],
+                              "value" : [ "site:current-user" ]
+                            }
+                          },
+                          "DO" : [
+                            { "privatemsg_rules_new" : {
+                                "USING" : {
+                                  "recipient" : [ "this-child-node:field-coworker" ],
+                                  "author" : "1",
+                                  "subject" : "Rovas application - Project deleted",
+                                  "body" : "Project [node:title] where you had a share has been deleted by the owner [node:author].\r\n\r\nIf you did not anticipate this action, please contact the project owner to find out the reason for and optionally seek a remedy of this action."
+                                },
+                                "PROVIDE" : { "thread_id" : { "thread_id" : "ID of new thread" } }
+                              }
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    { "entity_delete" : { "data" : [ "this-child-node" ] } }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      },
+      { "component_rules_rectify_dispute_object" : {
+          "node" : [ "project-node" ],
+          "triggering_actor" : [ "triggering_actor" ]
+        }
+      },
+      { "entity_delete" : { "data" : [ "project-node" ] } },
+      { "CONDITIONAL" : [
+          {
+            "IF" : { "NOT data_is" : { "data" : [ "triggering-actor" ], "value" : "REST api" } },
+            "DO" : [ { "redirect" : { "url" : "dash" } } ]
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -1,0 +1,11 @@
+name = Spamfree Email
+description = Email addresses in content type fields like (body, summary etc) are converted into corresponding mailto links and provides email obfuscation to protect from harvesting bots. Alternative support for Javascript disabled browsers.
+core = 7.x
+configure = admin/config/content/spamfree_email
+
+; Information added by Drupal.org packaging script on 2016-03-20
+version = "7.x-1.0"
+core = "7.x"
+project = "spamfree_email"
+datestamp = "1458457440"
+

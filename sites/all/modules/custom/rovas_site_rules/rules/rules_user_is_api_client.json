@@ -1,0 +1,34 @@
+{ "rules_user_is_api_client" : {
+    "LABEL" : "Caller has api client role",
+    "PLUGIN" : "rule condition set",
+    "OWNER" : "rules",
+    "REQUIRES" : [ "rules_conditional", "php", "rules" ],
+    "DO" : [
+      { "variable_add" : {
+          "USING" : {
+            "type" : "text",
+            "value" : "\u003C?php\r\n$head = getallheaders();\r\necho $head[\u0027API-KEY\u0027];\r\n?\u003E"
+          },
+          "PROVIDE" : { "variable_added" : { "api_key" : "api key" } }
+        }
+      },
+      { "variable_add" : {
+          "USING" : {
+            "type" : "text",
+            "value" : "\u003C?php \r\n$head = getallheaders();\r\necho $head[\u0027TOKEN\u0027];\r\n?\u003E"
+          },
+          "PROVIDE" : { "variable_added" : { "token" : "token" } }
+        }
+      },
+      { "component_rules_retrieve_user_id_from_api_key_and_token" : { "USING" : {}, "PROVIDE" : { "uid" : { "uid" : "user id" } } } },
+      { "entity_fetch" : {
+          "USING" : { "type" : "user", "id" : [ "uid" ] },
+          "PROVIDE" : { "entity_fetched" : { "user" : "user" } }
+        }
+      }
+    ],
+    "RESULT" : [
+      { "user_has_role" : { "account" : [ "user" ], "roles" : { "value" : { "8" : "8" } } } }
+    ]
+  }
+}

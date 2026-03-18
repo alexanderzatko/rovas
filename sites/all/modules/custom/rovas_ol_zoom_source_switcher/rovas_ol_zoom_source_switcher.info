@@ -1,0 +1,6 @@
+name = OpenLayers Zoom Source Switcher
+description = Switches OpenLayers 3 tile sources based on zoom level.
+core = 7.x
+package = Rovas
+
+dependencies[] = openlayers

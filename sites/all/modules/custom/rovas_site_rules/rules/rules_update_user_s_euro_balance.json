@@ -1,0 +1,53 @@
+{ "rules_update_user_s_euro_balance" : {
+    "LABEL" : "update user\u0027s euro balance",
+    "PLUGIN" : "rule",
+    "OWNER" : "rules",
+    "TAGS" : [ "forex" ],
+    "REQUIRES" : [ "rules_conditional", "rules" ],
+    "USES VARIABLES" : {
+      "amount" : { "label" : "amount", "type" : "decimal" },
+      "user_object" : { "label" : "the receiving user", "type" : "user" },
+      "eur_amount" : {
+        "label" : "the new Eur amount",
+        "type" : "decimal",
+        "parameter" : false
+      }
+    },
+    "DO" : [
+      { "CONDITIONAL" : [
+          {
+            "IF" : { "NOT data_is_empty" : { "data" : [ "user-object:field-euro-balance" ] } },
+            "DO" : [
+              { "variable_add" : {
+                  "USING" : { "type" : "decimal", "value" : [ "user-object:field-euro-balance" ] },
+                  "PROVIDE" : { "variable_added" : { "old_balance" : "old balance" } }
+                }
+              },
+              { "data_calc" : {
+                  "USING" : { "input_1" : [ "old-balance" ], "op" : "+", "input_2" : [ "amount" ] },
+                  "PROVIDE" : { "result" : { "new_balance" : "new balance" } }
+                }
+              }
+            ]
+          },
+          { "ELSE" : [
+              { "variable_add" : {
+                  "USING" : { "type" : "decimal", "value" : [ "amount" ] },
+                  "PROVIDE" : { "variable_added" : { "new_balance" : "new balance" } }
+                }
+              }
+            ]
+          }
+        ]
+      },
+      { "data_set" : {
+          "data" : [ "user-object:field-euro-balance" ],
+          "value" : [ "new-balance" ]
+        }
+      },
+      { "entity_save" : { "data" : [ "user-object" ], "immediate" : "1" } },
+      { "data_set" : { "data" : [ "eur-amount" ], "value" : [ "new-balance" ] } }
+    ],
+    "PROVIDES VARIABLES" : [ "eur_amount" ]
+  }
+}

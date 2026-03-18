@@ -1,0 +1,58 @@
+{ "rules_project_merit_allocation_record_deleted" : {
+    "LABEL" : "Project Merit allocation record deleted",
+    "PLUGIN" : "reaction rule",
+    "OWNER" : "rules",
+    "TAGS" : [ "logic" ],
+    "REQUIRES" : [ "php", "rules", "pathrules", "rules_conditional" ],
+    "ON" : { "node_delete--project_merit_allocation" : { "bundle" : "project_merit_allocation" } },
+    "IF" : [
+      { "php_eval" : { "code" : "return is_numeric(arg(3));" } },
+      { "pathrules_checkpath" : { "path" : "delete" } },
+      { "entity_is_of_bundle" : {
+          "entity" : [ "node:field-shareholder-project" ],
+          "type" : "node",
+          "bundle" : { "value" : { "project" : "project" } }
+        }
+      }
+    ],
+    "DO" : [
+      { "variable_add" : {
+          "USING" : { "type" : "integer", "value" : [ "node:field-project:nid" ] },
+          "PROVIDE" : { "variable_added" : { "project_id" : "project id" } }
+        }
+      },
+      { "CONDITIONAL" : [
+          {
+            "IF" : { "data_is" : { "data" : [ "node:field-share-project-time" ], "value" : "1" } },
+            "DO" : [
+              { "variable_add" : {
+                  "USING" : {
+                    "type" : "decimal",
+                    "value" : [ "node:field-shareholder-project:field-project-total-hours" ]
+                  },
+                  "PROVIDE" : { "variable_added" : { "lbrtime" : "labor time" } }
+                }
+              },
+              { "php_eval" : { "code" : "\/\/subtract from all of the ancestors of the removed project the project\u0027s total labor time\r\n$negtime = -1 * $lbrtime;\r\n_rb_projects_update_time($project_id,$negtime,0);" } }
+            ]
+          },
+          { "ELSE" : [
+              { "variable_add" : {
+                  "USING" : { "type" : "text", "value" : [ "node:field-merit-allocation" ] },
+                  "PROVIDE" : { "variable_added" : { "deleted_share" : "deleted share" } }
+                }
+              },
+              { "component_rules_recalculate_total_project_shares" : {
+                  "USING" : { "project_id" : [ "project_id" ] },
+                  "PROVIDE" : { "total_project_shares" : { "total_project_shares" : "Total project shares" } }
+                }
+              },
+              { "php_eval" : { "code" : "watchdog(\u0027debug\u0027,\u0027total_project_shares is \u0027 . $total_project_shares);\r\n\r\nif (is_numeric($deleted_share))\r\n$ds = $deleted_share;\r\nelse\r\n$ds = 0;\r\n\r\n$newshares = $total_project_shares - $ds;\r\n\r\n$prnode = node_load($project_id);\r\n$wrapper = entity_metadata_wrapper(\u0027node\u0027, $prnode);\r\n$wrapper-\u003Efield_total_shares = $newshares;\r\n\/\/reset field \u0022status\u0022 to \u0022not ready for purchase\u0022\r\nif($total_project_shares \u003E 100) {\r\n$wrapper-\u003Efield_status = 0;\r\n}\r\n$wrapper-\u003Esave(); " } }
+            ]
+          }
+        ]
+      },
+      { "redirect" : { "url" : "\u003C?php\r\nreturn \u0027\/node\/\u0027. arg(3);\r\n?\u003E" } }
+    ]
+  }
+}

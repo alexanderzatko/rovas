@@ -1,0 +1,188 @@
+<?php
+
+/*
+* implements hook_menu()
+*/
+function rovas_report_actions_menu() {
+  $items = [];
+
+  $items['transfer-report/%'] = [
+    'title' => t('Transfer work report'),
+    'description' => t('Transfer a work report to a different project'),
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('rovas_transfer_report', 1),
+    'access callback' => '_report_transfer_privileges',
+    'access arguments' => array(1),
+  ];
+
+  return $items;
+}
+
+// load the module-specific css
+function rovas_report_actions_init() {
+	drupal_add_css(drupal_get_path('module', 'rovas_report_actions') . '/rovas_report_actions.css');
+}
+
+function rovas_transfer_report($form, &$form_state, $nid) {
+
+	global $user;
+
+	$wreportObj = entity_metadata_wrapper('node', $nid);
+	$repname = $wreportObj->title->value();
+	$projid = $wreportObj->field_project->getIdentifier(); //the parent project ID
+//	$uid = $wreportObj->author->getIdentifier();
+
+	$description = t('Transfer the work report <strong>@repname</strong> to a new project',['@repname' => $repname]);
+
+	$form['opening'] = array(
+		'#markup' => '<div class="text">'.$description.'</div>',
+	);
+
+	$sql = "SELECT node.nid AS nid, node.title AS title
+	FROM {node} node
+	LEFT JOIN {field_data_field_project} fproj ON node.nid = fproj.field_project_target_id AND (fproj.entity_type = 'node' AND fproj.deleted = '0')
+	LEFT JOIN {node} prnode ON fproj.entity_id = prnode.nid
+	INNER JOIN {field_data_field_participation} particip ON node.nid = particip.entity_id AND (particip.entity_type = 'node' AND particip.deleted = '0')
+	LEFT JOIN {field_data_field_coworker} user ON prnode.nid = user.entity_id AND (user.entity_type = 'node' AND user.deleted = '0')
+	WHERE user.field_coworker_target_id = :userid
+	AND node.status = '1'
+	AND node.type = 'project'
+	AND node.nid <> :projid
+	AND particip.field_participation_value IN (1)
+	ORDER BY node.title ASC";
+
+	$result = db_query($sql, array(':userid' => $user->uid,':projid' => $projid));
+	$projects = [];
+	foreach ($result as $row) {
+		$projects[$row->nid] = $row->title;
+	}
+
+	$form['target-project'] = [
+		'#type' => 'select',
+		'#title' => t('Project'),
+		'#options' => $projects,
+		'#description' => t('Select the target project'),
+	];
+
+	$form['wr-nid'] = [
+	'#type' => 'hidden',
+	'#value' => $nid,
+	];
+
+	$form['source-project'] = [
+	'#type' => 'hidden',
+	'#value' => $projid,
+	];
+
+	$form['submit'] = [
+		'#type' => 'submit',
+		'#value' => t('Submit'),
+		];
+
+	return $form;
+
+}
+
+
+//checks if the current user has right to make the report transfer
+function _report_transfer_privileges($nid) {
+
+	global $user;
+	
+	if ($user->uid == 1) {
+			return TRUE;
+	}
+	$user_wrapper = entity_metadata_wrapper('user', $user);
+	$user_object = $user_wrapper->value();
+
+	if (is_numeric($nid)) {
+
+		$wreportObj = entity_metadata_wrapper('node', $nid);
+		
+		if (!isset($wreportObj->author)) {
+			return FALSE;
+		}
+
+		if (isset($wreportObj->field_project) && $wreportObj->field_project->value() !== NULL) {
+
+			$projectObj = entity_metadata_wrapper('node', $wreportObj->field_project->value());
+
+			$privusers = $projectObj->field_privileged_users->value();
+
+			$privusers[] = $projectObj->author->value();
+
+		}
+		else {
+			$privusers = [];
+		}
+		
+		if (in_array($user_object,$privusers)) {
+			return TRUE;
+		}
+		else {
+			return FALSE;
+		}
+
+	}
+	else {
+		return FALSE;
+	}
+
+}
+
+
+function rovas_transfer_report_submit ($form, &$form_state) {
+
+	$sourc_proj_nid = $form_state['values']['source-project'];
+	$sourc_wr_nid = $form_state['values']['wr-nid'];
+	$targt_proj_nid = $form_state['values']['target-project'];
+
+
+	$sourc_projObj = entity_metadata_wrapper('node', $sourc_proj_nid);
+	$sourc_wrObj = entity_metadata_wrapper('node', $sourc_wr_nid);
+	$targt_projObj = entity_metadata_wrapper('node', $targt_proj_nid);
+
+	$reportTime = $sourc_wrObj->field_hours_worked->value();
+	$authorUID = $sourc_wrObj->author->getIdentifier();
+
+	// modify the work report -> move to new project
+	$sourc_wrObj->field_project->set($targt_proj_nid);
+	$sourc_wrObj->save();
+
+	$chrons = NULL;
+
+	//the work report was verified already - update the src and (optionally) the destination project CHR basket
+	if ($sourc_wrObj->field_verification_status->value() === 1 || $sourc_wrObj->field_verification_status->value() === 2) {
+		$oldChronBasket = $sourc_projObj->field_chron_basket->value();
+		$sourc_projObj->field_chron_basket->set($oldChronBasket - (10*$reportTime));
+		$sourc_projObj->save();
+		
+		//if the destination project has a project exchange rate, update its basket too
+		if (isset($targt_projObj->field_project_exchange_rate)) {
+			$oldChronBasketTarget = isset($targt_projObj->field_chron_basket) ? $targt_projObj->field_chron_basket->value() : 0;
+			$targt_projObj->field_chron_basket->set($oldChronBasketTarget + (10*$reportTime));
+			$targt_projObj->save();
+			
+			//ideally the value here should be taken from the source project share for this user, as it might be lower than the one given below
+			$chrons = 10*$reportTime;
+		}
+	}
+
+	//recalculate all upstream project times
+	//updates also labor time for the source and target projects
+	_rb_projects_update_time($sourc_proj_nid,(-1*$reportTime),0);
+	_rb_projects_update_time($targt_proj_nid,$reportTime,0);
+
+	//modify the SOURCE worker merit allocation record
+	_rb_update_project_worker_share($sourc_proj_nid,$authorUID,(-1*$reportTime),0);
+
+	//modify the TARGET worker merit allocation record
+	_rb_update_project_worker_share($targt_proj_nid,$authorUID,$reportTime,$chrons);
+
+	$node_path = 'node/' . $sourc_proj_nid;
+	$sourcePage = drupal_get_path_alias($node_path);
+	drupal_goto($sourcePage);
+
+//	dsm([$form,$form_state['values']]);
+
+}

@@ -1,0 +1,37 @@
+{ "rules_duplicate_test" : {
+    "LABEL" : "duplicate test",
+    "PLUGIN" : "rule condition set",
+    "OWNER" : "rules",
+    "REQUIRES" : [ "rules_conditional", "rules", "views_bulk_operations" ],
+    "USES VARIABLES" : {
+      "project_nid" : { "label" : "Project nid", "type" : "integer" },
+      "access_token" : { "label" : "Access token", "type" : "text" }
+    },
+    "DO" : [
+      { "views_bulk_operations_action_load_id_list" : {
+          "USING" : {
+            "view" : "work_report_duplicates|default",
+            "args" : "[project-nid:value]\r\n[access-token:value]"
+          },
+          "PROVIDE" : { "entity_id_list" : { "found_reports" : "found reports" } }
+        }
+      },
+      { "CONDITIONAL" : [
+          {
+            "IF" : { "list_count_is" : { "list" : [ "found-reports" ], "op" : "\u003E", "value" : "0" } },
+            "DO" : [
+              { "drupal_watchdog" : {
+                  "type" : "rule",
+                  "message" : "Registered an attempt to write a work report duplicate; Project ID: [project-nid:value]; Access token: [access-token:value]"
+                }
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "RESULT" : [
+      { "list_count_is" : { "list" : [ "found-reports" ], "op" : "\u003E", "value" : "0" } }
+    ]
+  }
+}

@@ -1,0 +1,121 @@
+<?php
+/**
+ * @file
+ * Main module file.
+ */
+
+/**
+ * Implements hook_views_api().
+ */
+function views_ef_fieldset_views_api() {
+  return array('api' => 3);
+}
+
+/**
+ * Implements hook_theme().
+ */
+function views_ef_fieldset_theme() {
+  $path = drupal_get_path('module', 'views_ef_fieldset') . '/theme';
+  return array(
+    'views_ef_fieldset_reorder_form' => array(
+      'render element' => 'form',
+      'path' => $path,
+      'file' => 'theme.inc',
+    ),
+    'views_ef_fieldset_exposed_widget' => array(
+      'render element' => 'element',
+      'path' => $path,
+      'file' => 'theme.inc',
+      'template' => 'views-ef-fieldset-exposed-widget',
+    ),
+  );
+}
+
+/**
+ * Implements hook_views_ef_fieldset_item_types().
+ */
+function views_ef_fieldset_views_ef_fieldset_item_types() {
+  return array(
+    'button' => array(
+      'class' => 'ViewsEFFieldsetItemTypeButton',
+    ),
+    'sort' => array(
+      'class' => 'ViewsEFFieldsetItemTypeSort',
+    ),
+    'filter' => array(
+      'class' => 'ViewsEFFieldsetItemTypeFilter',
+    ),
+    'fieldset' => array(
+      'class' => 'ViewsEFFieldsetItemTypeFieldset',
+    ),
+    'vertical_tabs' => array(
+      'class' => 'ViewsEFFieldsetItemTypeVerticalTabs',
+    ),
+    'container' => array(
+      'class' => 'ViewsEFFieldsetItemTypeContainer',
+    ),
+  );
+}
+
+/**
+ * Implements hook_form_FORM_ID_alter().
+ */
+function views_ef_fieldset_form_views_exposed_form_alter(&$form, &$form_state) {
+  /** @var views_plugin_display $display */
+  $display = $form_state['display']->handler;
+  /** @var views_ef_fieldset_display_extender_plugin $plugin */
+  $plugin = isset($display->extender['views_ef_fieldset']) ? $display->extender['views_ef_fieldset'] : null;
+
+  if ($plugin && $plugin->get_option('enabled') && $plugin->get_option('items')) {
+    $form['#after_build'][] = 'views_ef_fieldset_views_exposed_form_after_build';
+    $form['filters'] = array('#weight' => -100);
+
+    // By default fieldset legends are positioned absolutely. Because exposed
+    // widgets are floated by default, a collapsed fieldset might completely
+    // lose its width, appearing only as a thin line.
+    // This fix replaces display:none with visibility:hidden to maintain a
+    // fieldset's content width.
+    // @todo Make this optional/configurable.
+    $form['#attached']['css'][] = drupal_get_path('module', 'views_ef_fieldset') . '/css/views_ef_fieldset.css';
+  }
+}
+
+function views_ef_fieldset_views_exposed_form_after_build($form, $form_state) {
+  /** @var views_plugin_display $display */
+  $display = $form_state['display']->handler;
+  /** @var views_ef_fieldset_display_extender_plugin $plugin */
+  $plugin = $display->extender['views_ef_fieldset'];
+  $manager = $plugin->get_manager();
+  $items = $plugin->get_option('items');
+  $tree = new ViewsEFFieldsetTree($items);
+  $tree = $tree->getTree();
+  
+  if ($tree_form = views_ef_fieldset_build_form($tree, $manager, $form)) {
+    $form['views_ef_fieldset'] = array(
+      '#type' => 'container',
+      '#id' => 'views_ef_fieldset',
+    ) + $tree_form;
+
+    $form['#info'] = array(
+      'views_ef_fieldset' => array(
+        'value' => 'views_ef_fieldset',
+      )
+    ) + $form['#info'];
+  }
+
+  return $form;
+}
+
+function views_ef_fieldset_build_form($tree, ViewsEFFieldsetItemManager $manager, &$form) {
+  $build = array();
+  foreach ($tree as $item) {
+    $children = $item['children']
+      ? views_ef_fieldset_build_form($item['children'], $manager, $form)
+      : array();
+    if ($element = $manager->getWidget($item['id'], $form, $children)) {
+      $element['#weight'] = $item['weight'];
+      $build[] = $element;
+    }
+  }
+  return $build;
+}

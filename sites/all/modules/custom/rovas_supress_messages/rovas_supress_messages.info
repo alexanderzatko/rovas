@@ -1,0 +1,4 @@
+name = Rovas Supress system messages
+description = Removes messages generated bu Drupal
+core = 7.x
+package = Rovas

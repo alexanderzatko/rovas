@@ -1,0 +1,92 @@
+<?php
+
+/**
+ * @file
+ * Install, update and uninstall functions for the Rovas Stripe Webhooks module.
+ */
+
+/**
+ * Implements hook_schema().
+ */
+function rovas_stripe_webhooks_schema() {
+  $schema['rovas_stripe_webhooks'] = array(
+    'description' => 'Stores Stripe webhook events',
+    'fields' => array(
+      'id' => array(
+        'type' => 'serial',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'description' => 'Primary Key: Unique record ID',
+      ),
+      'webhook_id' => array(
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => TRUE,
+        'description' => 'Stripe webhook event ID',
+      ),
+      'event_type' => array(
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => TRUE,
+        'description' => 'Type of Stripe event (e.g., payment_intent.succeeded)',
+      ),
+      'webhook_data' => array(
+        'type' => 'text',
+        'size' => 'big',
+        'not null' => TRUE,
+        'description' => 'Full JSON webhook payload',
+      ),
+      'processed' => array(
+        'type' => 'int',
+        'size' => 'tiny',
+        'not null' => TRUE,
+        'default' => 0,
+        'description' => 'Processing status (0 = pending, 1 = processed)',
+      ),
+      'created' => array(
+        'type' => 'int',
+        'not null' => TRUE,
+        'default' => 0,
+        'description' => 'Timestamp when record was created',
+      ),
+      'stripe_created' => array(
+        'type' => 'int',
+        'not null' => FALSE,
+        'description' => 'Timestamp from Stripe event',
+      ),
+    ),
+    'primary key' => array('id'),
+    'unique keys' => array(
+      'webhook_id' => array('webhook_id'),
+    ),
+    'indexes' => array(
+      'event_type' => array('event_type'),
+      'created' => array('created'),
+      'processed' => array('processed'),
+    ),
+  );
+
+  return $schema;
+}
+
+/**
+ * Implements hook_install().
+ */
+function rovas_stripe_webhooks_install() {
+  // Set default configuration values
+  variable_set('rovas_stripe_webhooks_endpoint_secret', '');
+  variable_set('rovas_stripe_webhooks_webhook_id', '');
+  
+  drupal_set_message(t('Rovas Stripe Webhooks module has been installed. Please configure the webhook settings at admin/config/services/rovas-stripe-webhooks.'));
+}
+
+/**
+ * Implements hook_uninstall().
+ */
+function rovas_stripe_webhooks_uninstall() {
+  // Remove configuration variables
+  variable_del('rovas_stripe_webhooks_endpoint_secret');
+  variable_del('rovas_stripe_webhooks_webhook_id');
+  
+  drupal_set_message(t('Rovas Stripe Webhooks module has been uninstalled and all configuration removed.'));
+}

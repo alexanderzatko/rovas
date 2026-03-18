@@ -1,0 +1,61 @@
+{ "rules_find_system_project_for_user" : {
+    "LABEL" : "find system project for user",
+    "PLUGIN" : "rule",
+    "OWNER" : "rules",
+    "TAGS" : [ "user" ],
+    "REQUIRES" : [ "rules", "php", "rules_conditional" ],
+    "USES VARIABLES" : {
+      "user_object" : { "label" : "User object", "type" : "user" },
+      "system_project" : { "label" : "The system project", "type" : "node", "parameter" : false }
+    },
+    "IF" : [
+      { "entity_is_of_bundle" : {
+          "entity" : [ "user-object" ],
+          "type" : "user",
+          "bundle" : { "value" : { "user" : "user" } }
+        }
+      }
+    ],
+    "DO" : [
+      { "variable_add" : {
+          "USING" : {
+            "type" : "integer",
+            "value" : {
+              "select" : "user-object:uid",
+              "php" : { "code" : "$result = db_query(\u0022SELECT node.nid AS nid\r\nFROM {node} node\r\nINNER JOIN {field_data_field_system_project} s ON node.nid = s.entity_id\r\nAND s.entity_type = \u0027node\u0027\r\nWHERE node.uid = :uid\r\nAND node.status = \u00271\u0027\r\nAND node.type = \u0027project\u0027\r\nAND s.field_system_project_value = \u00271\u0027\r\nORDER BY node.created ASC\r\nLIMIT 2 OFFSET 0\u0022, array(\u0027:uid\u0027 =\u003E $value));\r\n\r\n$resarray = $result-\u003EfetchAll();\r\n\r\nif (sizeof($resarray) \u003E 1)\r\n\twatchdog(\u0027rules\u0027, \u0027in component \u0022Find system project for user\u0022 more than one sys projects were found for user \u0027 . $value );\r\n\r\nif (count($resarray) \u003E0)\r\n\treturn $resarray[0]-\u003Enid;\r\nelse\r\n\treturn 0;\r\n" }
+            }
+          },
+          "PROVIDE" : { "variable_added" : { "system_project_nid" : "system project nid" } }
+        }
+      },
+      { "CONDITIONAL" : [
+          {
+            "IF" : { "NOT data_is_empty" : { "data" : [ "system-project-nid" ] } },
+            "DO" : [
+              { "entity_fetch" : {
+                  "USING" : { "type" : "node", "id" : [ "system-project-nid" ] },
+                  "PROVIDE" : { "entity_fetched" : { "the_system_project" : "the system project" } }
+                }
+              },
+              { "CONDITIONAL" : [
+                  {
+                    "IF" : { "entity_is_of_bundle" : {
+                        "entity" : [ "the-system-project" ],
+                        "type" : "node",
+                        "bundle" : { "value" : { "project" : "project" } }
+                      }
+                    },
+                    "DO" : [
+                      { "data_set" : { "data" : [ "system-project" ], "value" : [ "the-system-project" ] } }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "PROVIDES VARIABLES" : [ "system_project" ]
+  }
+}

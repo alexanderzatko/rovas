@@ -1,0 +1,124 @@
+<?php
+
+/**
+ * @file
+ * Rovas API endpoints module - Custom Services endpoints for Rovas application
+ * 
+ * CONFIGURATION REQUIREMENTS:
+ * - This module assumes user entities have fields for API key and token storage
+ * - Default field names: field_api_key and field_token
+ * - Adjust field names in rovas_api_endpoints_authenticate_user() as needed
+ * - Headers expected: X-API-Key (or API-Key) and X-Token (or Token)
+ */
+
+/**
+ * Implements hook_services_resources().
+ */
+function rovas_api_endpoints_services_resources() {
+  return array(
+    'rovas_verifications' => array(
+      'operations' => array(
+        'index' => array(
+          'help' => 'Get active verifications for the authenticated user',
+          'callback' => 'rovas_api_endpoints_get_active_verifications',
+          'access callback' => 'rovas_api_endpoints_access_callback',
+          'access arguments' => array('access'),
+          'access arguments append' => FALSE,
+          'args' => array(),
+        ),
+      ),
+    ),
+  );
+}
+
+/**
+ * Access callback for rovas verifications endpoint.
+ */
+function rovas_api_endpoints_access_callback($op) {
+  // Allow access if user is authenticated
+  global $user;
+  return !empty($user->uid);
+}
+
+/**
+ * Callback function to get active verifications for the current user.
+ *
+ * @return array
+ *   Array of active verification data or error response.
+ */
+function rovas_api_endpoints_get_active_verifications() {
+  global $user;
+  
+  // Check if user is authenticated
+  if (empty($user->uid)) {
+    return services_error(t('User not authenticated'), 401);
+  }
+  
+  // Check if rovas_verify module is available
+  if (!function_exists('active_verification_slips')) {
+    return services_error(t('Verification system not available'), 500);
+  }
+  
+  try {
+    // Get active verification slots for the user
+    $slots = active_verification_slips($user->uid);
+    $verifications = array();
+    
+    foreach ($slots as $slot_data) {
+      // Check if verification date is in the future
+      if ($slot_data['verify_date'] >= time()) {
+        $verifications[] = array(
+          'report_nid' => $slot_data['report_nid'],
+          'report_title' => $slot_data['report_title'],
+          'verify_date' => $slot_data['verify_date'],
+          'verify_date_formatted' => format_date($slot_data['verify_date']),
+          'report_url' => url('node/' . $slot_data['report_nid'], array('absolute' => TRUE)),
+        );
+      }
+    }
+    
+    return array(
+      'status' => 'success',
+      'count' => count($verifications),
+      'verifications' => $verifications,
+    );
+    
+  } catch (Exception $e) {
+    watchdog('rovas_api_endpoints', 'Error retrieving verifications: @message', array('@message' => $e->getMessage()), WATCHDOG_ERROR);
+    return services_error(t('Unable to retrieve verifications'), 500);
+  }
+}
+
+/**
+ * Helper function to get active verifications (standalone version).
+ * This can be used independently of the Services endpoint.
+ *
+ * @param int $uid
+ *   User ID to get verifications for.
+ *
+ * @return array
+ *   Array of active verification data.
+ */
+function rovas_api_endpoints_get_user_verifications($uid) {
+  if (!function_exists('active_verification_slips')) {
+    return array();
+  }
+  
+  $slots = active_verification_slips($uid);
+  $verifications = array();
+  
+  foreach ($slots as $slot_data) {
+    // Check if verification date is in the future
+    if ($slot_data['verify_date'] >= time()) {
+      $verifications[] = array(
+        'report_nid' => $slot_data['report_nid'],
+        'report_title' => $slot_data['report_title'],
+        'verify_date' => $slot_data['verify_date'],
+        'verify_date_formatted' => format_date($slot_data['verify_date']),
+        'report_url' => url('node/' . $slot_data['report_nid'], array('absolute' => TRUE)),
+      );
+    }
+  }
+  
+  return $verifications;
+}

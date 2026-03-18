@@ -1,0 +1,54 @@
+{ "rules_create_merit_disbursement" : {
+    "LABEL" : "create merit disbursement",
+    "PLUGIN" : "rule",
+    "OWNER" : "rules",
+    "TAGS" : [ "merit", "purchase", "reward" ],
+    "REQUIRES" : [ "rules", "rovas_base" ],
+    "USES VARIABLES" : {
+      "receipt_id" : { "label" : "purchase receipt ID", "type" : "integer" },
+      "rewarded_uid" : { "label" : "rewarded user ID", "type" : "integer" },
+      "reward_amt" : { "label" : "reward amount", "type" : "decimal" },
+      "disburs_id" : { "label" : "disbursement id", "type" : "integer", "parameter" : false }
+    },
+    "DO" : [
+      { "data_set" : { "data" : [ "disburs-id" ], "value" : "0" } },
+      { "entity_fetch" : {
+          "USING" : { "type" : "user", "id" : [ "rewarded-uid" ] },
+          "PROVIDE" : { "entity_fetched" : { "rewarded_usr_object" : "rewarder user object" } }
+        }
+      },
+      { "entity_fetch" : {
+          "USING" : { "type" : "node", "id" : [ "receipt-id" ], "revision_id" : "0" },
+          "PROVIDE" : { "entity_fetched" : { "purchased_receipt_obj" : "purchased receipt object" } }
+        }
+      },
+      { "entity_create" : {
+          "USING" : {
+            "type" : "node",
+            "param_type" : "merits_disbursement",
+            "param_title" : "ignore",
+            "param_author" : "1"
+          },
+          "PROVIDE" : { "entity_created" : { "merits_disbursement" : "Created merits disbursement" } }
+        }
+      },
+      { "entity_modify" : {
+          "entity" : [ "merits-disbursement" ],
+          "properties" : { "value" : {
+              "field_reward_amount" : "field_reward_amount",
+              "field_reward_recipient" : "field_reward_recipient",
+              "field_parent_purchase_receipt" : "field_parent_purchase_receipt"
+            }
+          },
+          "param_field_parent_purchase_receipt" : [ "purchased-receipt-obj" ],
+          "param_field_reward_recipient" : [ "rewarded-usr-object" ],
+          "param_field_reward_amount" : [ "reward-amt" ]
+        }
+      },
+      { "rules_set_fresh_timestamps" : { "node" : [ "merits-disbursement" ] } },
+      { "entity_save" : { "data" : [ "merits-disbursement" ], "immediate" : "1" } },
+      { "data_set" : { "data" : [ "disburs-id" ], "value" : [ "merits-disbursement:nid" ] } }
+    ],
+    "PROVIDES VARIABLES" : [ "disburs_id" ]
+  }
+}

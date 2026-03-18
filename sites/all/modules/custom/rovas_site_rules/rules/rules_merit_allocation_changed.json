@@ -1,0 +1,56 @@
+{ "rules_merit_allocation_changed" : {
+    "LABEL" : "Worker Merit allocation record inserted",
+    "PLUGIN" : "reaction rule",
+    "OWNER" : "rules",
+    "TAGS" : [ "logic" ],
+    "REQUIRES" : [ "pathrules", "rules", "rules_conditional", "php" ],
+    "ON" : { "node_insert--co_worker_merit_allocation" : { "bundle" : "co_worker_merit_allocation" } },
+    "IF" : [ { "pathrules_checkpath" : { "path" : "node\/add" } } ],
+    "DO" : [
+      { "variable_add" : {
+          "USING" : { "type" : "integer", "value" : [ "node:field-project:nid" ] },
+          "PROVIDE" : { "variable_added" : { "project_id" : "project id" } }
+        }
+      },
+      { "CONDITIONAL" : [
+          {
+            "IF" : { "NOT data_is_empty" : { "data" : [ "node:field-coworker" ] } },
+            "DO" : [
+              { "variable_add" : {
+                  "USING" : { "type" : "integer", "value" : [ "node:field-coworker:uid" ] },
+                  "PROVIDE" : { "variable_added" : { "worker_id" : "worker id" } }
+                }
+              },
+              { "php_eval" : { "code" : "\/\/recalculate total hours for this user\r\n\r\n$result = db_query(\u0022SELECT SUM(hr.field_hours_worked_value) AS thrs, SUM(mr.field_merit_reward_value) AS tmerits\r\nFROM {node} n\r\nLEFT JOIN {field_data_field_project} p ON n.nid = p.entity_id AND (p.entity_type = \u0027node\u0027 AND p.deleted = \u00270\u0027)\r\nLEFT JOIN {field_data_field_hours_worked} hr ON n.nid = hr.entity_id AND (hr.entity_type = \u0027node\u0027 AND hr.deleted = \u00270\u0027)\r\nLEFT JOIN {field_data_field_merit_reward} mr ON n.nid = mr.entity_id AND (mr.entity_type = \u0027node\u0027 AND mr.deleted = \u00270\u0027)\r\nWHERE n.uid = :uid\r\nAND p.field_project_target_id = :projecid\r\nAND n.status = \u00271\u0027\r\nAND n.type = \u0027work_report\u0027\u0022, array(\u0027:projecid\u0027 =\u003E $project_id,\u0027:uid\u0027 =\u003E $worker_id));\r\n\r\n$resarray = $result-\u003EfetchAll();\r\n\r\nif (is_numeric($resarray[0]-\u003Ethrs))\r\n$thrs = $resarray[0]-\u003Ethrs;\r\nelse\r\n$thrs = 0;\r\n\r\nif (is_numeric($resarray[0]-\u003Etmerits))\r\n$tmerits = $resarray[0]-\u003Etmerits;\r\nelse\r\n$tmerits = 0;\r\n\r\n\/\/watchdog(\u0027debug\u0027, \u0027total hours = \u0027 . $thrs . \u0027total merits = \u0027 . $tmerits);\r\n\/\/insert the calculated values into the merit allocation record\r\n\/\/ need to reload the already loaded node because if $node is used directly in the EMW function I was getting SQL \u0022duplicate ID\u0022 error in the node table\r\n$recob = node_load($node-\u003Enid);\r\n$obj = entity_metadata_wrapper(\u0027node\u0027, $recob);\r\n$obj-\u003Efield_total_hours_worked = $thrs;\r\n$obj-\u003Efield_merits_earned = $tmerits;\r\n$obj-\u003Esave(); \r\n" } },
+              { "component_rules_recalculate_total_project_shares" : {
+                  "USING" : { "project_id" : [ "project_id" ] },
+                  "PROVIDE" : { "total_project_shares" : { "total_project_shares" : "Total project shares" } }
+                }
+              },
+              { "php_eval" : { "code" : "\/\/watchdog(\u0027debug\u0027,\u0027total_project_shares is \u0027 . $total_project_shares);\r\n\r\n\/\/update shares count for the parent project of this merit allocation share\r\n$newshares = $total_project_shares;\r\n\r\n$prnode = node_load($project_id);\r\n$wrapper = entity_metadata_wrapper(\u0027node\u0027, $prnode);\r\n$wrapper-\u003Efield_total_shares = $newshares;\r\n\/\/reset field \u0022status\u0022 to \u0022not ready for purchase\u0022\r\nif($total_project_shares \u003E 100) {\r\n$wrapper-\u003Efield_status = 0;\r\n}\r\n$wrapper-\u003Esave(); " } },
+              { "CONDITIONAL" : [
+                  {
+                    "IF" : { "NOT pathrules_checkpath" : { "path" : "user" } },
+                    "DO" : [
+                      { "redirect" : { "url" : "\u003C?php\r\nif (arg(0) ==\u0027node\u0027 \u0026\u0026 arg(2) == \u0027addmyself\u0027)\r\nreturn \u0027\/node\/\u0027. arg(1);\r\nelse if (arg(0) ==\u0027node\u0027 \u0026\u0026 arg(1) == \u0027add\u0027 \u0026\u0026  arg(2) == \u0027project\u0027)\r\nreturn \u0027\/node\/\u0027 . $project_id;\r\nelse\r\nreturn \u0027\/node\/\u0027. arg(3);\r\n?\u003E" } }
+                    ]
+                  }
+                ]
+              }
+            ]
+          },
+          { "ELSE" : [
+              { "entity_delete" : { "data" : [ "node" ] } },
+              { "redirect" : { "url" : [ "node:field-project:url" ] } },
+              { "drupal_message" : {
+                  "message" : "Error: The specified user does not exist. The new Worker Merit Allocation record was deleted.",
+                  "type" : "error"
+                }
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

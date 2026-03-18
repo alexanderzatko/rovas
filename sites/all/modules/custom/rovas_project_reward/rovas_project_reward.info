@@ -1,0 +1,4 @@
+name = Reward project
+description = Provides a page making rewarding a project possible
+core = 7.x
+package = Rovas

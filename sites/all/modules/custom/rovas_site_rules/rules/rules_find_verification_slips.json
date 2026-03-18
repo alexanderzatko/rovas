@@ -1,0 +1,28 @@
+{ "rules_find_verification_slips" : {
+    "LABEL" : "find pending verification slips",
+    "PLUGIN" : "rule",
+    "OWNER" : "rules",
+    "REQUIRES" : [ "rules", "views_bulk_operations" ],
+    "USES VARIABLES" : {
+      "nid" : { "label" : "work report nid", "type" : "integer" },
+      "uid" : { "label" : "slip owner", "type" : "integer", "allow null" : true },
+      "slips" : {
+        "label" : "slips",
+        "type" : "list\u003Cnode\u003E",
+        "parameter" : false
+      }
+    },
+    "DO" : [
+      { "views_bulk_operations_action_load_list" : {
+          "USING" : {
+            "view" : "find_slot_for_verifiaction|default",
+            "args" : "[uid:value]\r\n[nid:value]"
+          },
+          "PROVIDE" : { "entity_list" : { "found_slots" : "found slots" } }
+        }
+      },
+      { "data_set" : { "data" : [ "slips" ], "value" : [ "found-slots" ] } }
+    ],
+    "PROVIDES VARIABLES" : [ "slips" ]
+  }
+}

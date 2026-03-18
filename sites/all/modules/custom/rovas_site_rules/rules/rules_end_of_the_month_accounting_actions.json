@@ -1,0 +1,78 @@
+{ "rules_end_of_the_month_accounting_actions" : {
+    "LABEL" : "End of the month accounting actions",
+    "PLUGIN" : "rule",
+    "OWNER" : "rules",
+    "REQUIRES" : [
+      "views_bulk_operations",
+      "rules_conditional",
+      "rules",
+      "rules_scheduler"
+    ],
+    "DO" : [
+      { "views_bulk_operations_action_load_list" : {
+          "USING" : { "view" : "projects_with_allocation_thresholds|default" },
+          "PROVIDE" : { "entity_list" : { "projects" : "projects" } }
+        }
+      },
+      { "LOOP" : {
+          "USING" : { "list" : [ "projects" ] },
+          "ITEM" : { "project" : "project" },
+          "DO" : [
+            { "CONDITIONAL" : [
+                {
+                  "IF" : { "entity_is_of_bundle" : {
+                      "entity" : [ "project" ],
+                      "type" : "node",
+                      "bundle" : { "value" : { "project" : "project" } }
+                    }
+                  },
+                  "DO" : [
+                    { "entity_create" : {
+                        "USING" : {
+                          "type" : "node",
+                          "param_type" : "accounting_movements_nodes",
+                          "param_title" : "temp",
+                          "param_author" : "1"
+                        },
+                        "PROVIDE" : { "entity_created" : { "accounting_movement" : "accounting movement" } }
+                      }
+                    },
+                    { "entity_modify" : {
+                        "entity" : [ "accounting-movement" ],
+                        "properties" : { "value" : {
+                            "field_affected_node" : "field_affected_node",
+                            "field_operation" : "field_operation",
+                            "field_amount" : "field_amount",
+                            "field_note" : "field_note",
+                            "field_closing_date" : "field_closing_date"
+                          }
+                        },
+                        "param_field_amount" : [ "project:field-pa-wallet-current-level" ],
+                        "param_field_note" : "Previous month end balance reset",
+                        "param_field_affected_node" : [ "project" ],
+                        "param_field_operation" : "1",
+                        "param_field_closing_date" : { "select" : "site:current-date", "date_offset" : { "value" : -86400 } }
+                      }
+                    },
+                    { "data_set" : { "data" : [ "project:field-pa-wallet-current-level" ], "value" : "0" } }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      },
+      { "drupal_watchdog" : {
+          "type" : "rule",
+          "message" : "The rule \u0022End of the month accounting actions\u0022 fired"
+        }
+      },
+      { "schedule" : {
+          "component" : "rules_end_of_the_month_accounting_actions",
+          "date" : "first day of next month 00:00:00",
+          "identifier" : "reset project thresholds"
+        }
+      }
+    ]
+  }
+}

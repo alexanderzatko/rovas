@@ -1,0 +1,94 @@
+{ "rules_the_punisher" : {
+    "LABEL" : "The punisher",
+    "PLUGIN" : "rule",
+    "OWNER" : "rules",
+    "REQUIRES" : [
+      "views_bulk_operations",
+      "rules_conditional",
+      "rules",
+      "userpoints_rules",
+      "rules_scheduler"
+    ],
+    "DO" : [
+      { "views_bulk_operations_action_load_list" : {
+          "USING" : { "view" : "users_with_low_compliance_score|default" },
+          "PROVIDE" : { "entity_list" : { "users" : "users" } }
+        }
+      },
+      { "LOOP" : {
+          "USING" : { "list" : [ "users" ] },
+          "ITEM" : { "user" : "user" },
+          "DO" : [
+            { "CONDITIONAL" : [
+                {
+                  "IF" : { "data_is" : {
+                      "data" : [ "user:field-verification-score" ],
+                      "op" : "\u003C",
+                      "value" : "-2"
+                    }
+                  },
+                  "DO" : [
+                    { "data_set" : { "data" : [ "user:field-verification-score" ], "value" : "0" } },
+                    { "userpoints_action_grant_points" : {
+                        "user" : [ "user" ],
+                        "points" : "-10",
+                        "tid" : "0",
+                        "entity" : [ "" ],
+                        "description" : "Merits subtracted due to low compliance score",
+                        "operation" : "remove",
+                        "display" : "1",
+                        "moderate" : "approved"
+                      }
+                    },
+                    { "entity_create" : {
+                        "USING" : {
+                          "type" : "node",
+                          "param_type" : "merit_penalty",
+                          "param_title" : "temp",
+                          "param_author" : "1"
+                        },
+                        "PROVIDE" : { "entity_created" : { "penalty" : "penalty" } }
+                      }
+                    },
+                    { "entity_modify" : {
+                        "entity" : [ "penalty" ],
+                        "properties" : { "value" : {
+                            "field_reward_recipient" : "field_reward_recipient",
+                            "field_reward_amount" : "field_reward_amount",
+                            "language" : "language"
+                          }
+                        },
+                        "param_field_reward_recipient" : [ "user" ],
+                        "param_field_reward_amount" : "-10",
+                        "param_language" : [ "user:language" ]
+                      }
+                    },
+                    { "data_set" : {
+                        "data" : [ "penalty:body:value" ],
+                        "value" : "Penalty for repeated breaking of the NEO rules"
+                      }
+                    },
+                    { "mail" : {
+                        "to" : [ "user:mail" ],
+                        "subject" : "Rovas - your merit score was lowered",
+                        "message" : "[user:name],\r\n\r\nYour Compliance Score dropped to value below -3 (you have probably not been responding to emails send by Rovas, asking you to verify other user\u0027s work). \u003Cbr\u003EConsequently and in accordance with the \u003Ca href=\u0022https:\/\/rovas.app\/rules\u0022\u003ENEO rules\u003C\/a\u003E, your merit score was lowered by 10.",
+                        "language" : [ "user:language" ]
+                      }
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      },
+      { "drupal_watchdog" : { "type" : "info", "message" : "The rule Punisher run as scheduled" } },
+      { "schedule" : {
+          "component" : "rules_the_punisher",
+          "date" : "+1 day",
+          "identifier" : "the punisher"
+        }
+      }
+    ]
+  }
+}

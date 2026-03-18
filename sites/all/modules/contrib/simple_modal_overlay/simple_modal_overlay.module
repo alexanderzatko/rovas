@@ -1,0 +1,110 @@
+<?php
+/**
+ * @file
+ *   Core code for the "Simple modal overlay" module.
+ * 
+ *   © 2014-2016 RedBottle Design, LLC, Inveniem, and House at Work.
+ *   All rights reserved.
+ *
+ * @author Guy Paddock (guy@redbottledesign.com)
+ */
+
+/**
+ * Implements hook_theme().
+ */
+function simple_modal_overlay_theme($existing, $type, $theme, $path) {
+  $theme_functions = array();
+
+  $theme_functions['simple_modal_overlay'] = array(
+    'variables' => array(
+      'name'              => NULL,
+      'title'             => NULL,
+      'content'           => NULL,
+      'open_immediately'  => TRUE,
+      'dismissible'       => TRUE,
+      'dispose_on_close'  => TRUE,
+    ),
+    'file' => 'simple_modal_overlay.theme.inc',
+  );
+
+  return $theme_functions;
+}
+
+/**
+ * Displays the provided content in an overlay.
+ * 
+ * @param string $title
+ *  The translated title for the overlay.
+ * 
+ * @param string $content
+ *  The content to display in the overlay, as translated text, HTML, or a render
+ *  array.
+ *
+ * @param boolean $dismissible
+ *   Whether or not the user can dismiss the overlay by clicking a close link in
+ *   the overlay. The default is TRUE.
+ */
+function simple_modal_overlay_show($title, $content, $dismissible = TRUE) {
+  $output = theme(
+    'simple_modal_overlay',
+    array(
+      'title'       => $title,
+      'content'     => $content,
+      'dismissible' => $dismissible,
+    ));
+
+  // Ensure that JavaScript settings get carried forward with the message
+  $output .= _simple_modal_overlay_get_settings_js();
+
+  /* Yup. You can pass anything you want for the second parameter of
+   * drupal_set_message (message type) as long as the theme doesn't break.
+   */
+  drupal_set_message($output, 'simple-overlay');
+}
+
+/**
+ * Gets HTML for JavaScript settings needed to display simple modal overlays.
+ *
+ * This is only necessary for overlays rendered as status messages, because
+ * <code>drupal_add_js()</code> does not persist its settings across page loads.
+ *
+ * @return string
+ *   The HTML <script> tag for initializing modal overlay settings in the next
+ *   page load.
+ */
+function _simple_modal_overlay_get_settings_js() {
+  $javascript_code = '';
+
+  $all_javascript = drupal_add_js();
+
+  if (!empty($all_javascript['settings'])) {
+    $settings = $all_javascript['settings'];
+
+    foreach ($settings['data'] as $key => $setting) {
+      if (!array_key_exists('simpleModalOverlay', $setting)) {
+        unset($settings['data'][$key]);
+      }
+    }
+
+    // Based on similar logic from drupal_get_js()
+    $element = array(
+      '#tag'          => 'script',
+      '#attributes'   => array(
+        'type' => 'text/javascript',
+      ),
+      '#value_prefix' => "\n<!--//--><![CDATA[//><!--\n",
+      '#value_suffix' => "\n//--><!]]>\n",
+      '#value'        =>
+        // jQuery is not loaded yet by the time this fires.
+        'document.addEventListener("DOMContentLoaded", function(event) {' .
+          'jQuery.extend(true, Drupal.settings, ' .
+            drupal_json_encode(drupal_array_merge_deep_array($settings['data'])) .
+          ');'.
+        '});',
+    );
+
+    $javascript_code = theme('html_tag', array('element' => $element));
+  }
+
+  return $javascript_code;
+}

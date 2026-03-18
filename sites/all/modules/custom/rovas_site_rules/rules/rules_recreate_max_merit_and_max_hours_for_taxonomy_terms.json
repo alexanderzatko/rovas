@@ -1,0 +1,12 @@
+{ "rules_recreate_max_merit_and_max_hours_for_taxonomy_terms" : {
+    "LABEL" : "Recreate Max Merit and Max hours for taxonomy terms",
+    "PLUGIN" : "action set",
+    "OWNER" : "rules",
+    "TAGS" : [ "taxonomy" ],
+    "REQUIRES" : [ "php", "rules" ],
+    "USES VARIABLES" : { "tids" : { "label" : "taxonomy ids", "type" : "text" } },
+    "ACTION SET" : [
+      { "php_eval" : { "code" : "\/\/$ids contains a string of comma separated term ids\r\n$idsarray = explode(\u0027,\u0027, $ids);\r\n$result = db_query(\u0022SELECT c.field_classification_tid AS classif, MAX(w.field_hours_worked_value) AS hours, MAX(e.field_merit_reward_value) AS merits\r\nFROM {node} node\r\nLEFT JOIN {field_data_field_project} proj0 ON node.nid = proj0.entity_id AND (proj0.entity_type = \u0027node\u0027 AND proj0.deleted = \u00270\u0027)\r\nLEFT JOIN {node} n0 ON proj0.field_project_target_id = n0.nid\r\nLEFT JOIN {users} u ON node.uid = u.uid\r\nLEFT JOIN {field_data_field_project} proj ON n0.nid = proj.entity_id AND (proj.entity_type = \u0027node\u0027 AND proj.deleted = \u00270\u0027)\r\nLEFT JOIN {node} n1 ON proj.field_project_target_id = n1.nid\r\nLEFT JOIN {field_data_field_classification} c ON node.nid = c.entity_id AND (c.entity_type = \u0027node\u0027 AND c.deleted = \u00270\u0027)\r\nLEFT JOIN {field_data_field_hours_worked} w ON node.nid = w.entity_id AND (w.entity_type = \u0027node\u0027 AND w.deleted = \u00270\u0027)\r\nLEFT JOIN {field_data_field_merit_reward} e ON node.nid = e.entity_id AND (e.entity_type = \u0027node\u0027 AND e.deleted = \u00270\u0027)\r\nWHERE node.status = \u00271\u0027\r\nAND node.type = \u0027work_report\u0027\r\nAND c.field_classification_tid IN (:tids)\r\nGROUP BY classif\r\nORDER BY classif ASC\u0022), array(\u0027:tids\u0027 =\u003E $idsarray);\r\n$resarray = $result-\u003EfetchAll();\r\n\r\nforeach ($resarray as $row) {\r\n\t$term_w = entity_metadata_wrapper(\u0027taxonomy_term\u0027, taxonomy_term_load($row-\u003Eclassif));\r\n\t$term_w-\u003Efield_max_merits = round($row-\u003Emerits);\r\n\t$term_w-\u003Efield_max_time = round($row-\u003Ehours);\r\n\t$term_w-\u003Esave();\r\n}\r\n\/\/watchdog(\u0027cron\u0027,\u0027re-created max merit and time values for NACE taxonomy terms\u0027);" } }
+    ]
+  }
+}

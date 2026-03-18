@@ -1,0 +1,87 @@
+diff --git a/commerce_bank_transfer.module b/commerce_bank_transfer.module
+index 91cd988..6511a20 100755
+--- a/commerce_bank_transfer.module
++++ b/commerce_bank_transfer.module
+@@ -71,7 +71,7 @@ function commerce_bank_transfer_settings_form($settings = NULL) {
+ 
+   // help text
+   $form['commerce_bank_transfer_help_text'] = array(
+-    '#markup' => '<div class="help">' . t('<h4><strong>Setup instructions</strong></h4><p>For better customer experience please use the token [order-payment-bank-details] to display the bank details on the invoice. You can find an example invoice template doing this in the commerce_bank_transfer module folder.</p><p>Enter the bank account details to display to customers who choose this payment method during checkout. Details left empty will not be shown. You can also choose to leave all bank details empty and create your own output using the payment instructions.</p>') . '</div>', // TODO update needed - this is how Ubercart worked...
++    '#markup' => '<div class="help">' . t('<h4><strong>Setup instructions</strong></h4><p>For better customer experience please use the token [commerce-order:payment-bank-details] to display the bank details on the invoice. You can find an example invoice template doing this in the commerce_bank_transfer module folder.</p><p>Enter the bank account details to display to customers who choose this payment method during checkout. Details left empty will not be shown. You can also choose to leave all bank details empty and create your own output using the payment instructions.</p>') . '</div>',
+   );
+   // settings
+   $form['details'] = array(
+diff --git a/commerce_bank_transfer.tokens.inc b/commerce_bank_transfer.tokens.inc
+new file mode 100644
+index 0000000..3203aee
+--- /dev/null
++++ b/commerce_bank_transfer.tokens.inc
+@@ -0,0 +1,68 @@
++<?php
++/**
++ * @file
++ * Commerce Bank Transfer tokens.
++ */
++
++/**
++ * Implements hook_token_info_alter().
++ */
++function commerce_bank_transfer_token_info_alter(&$data) {
++  if (module_exists('commerce_checkout')) {
++    $data['tokens']['commerce-order']['payment-bank-details'] = array(
++      'name'        => t('Payment bank details'),
++      'description' => t('The payment bank details.'),
++    );
++  }
++  if (module_exists('commerce_payment')) {
++    $data['tokens']['commerce-payment-transaction']['payment-bank-details'] = array(
++      'name'        => t('Payment bank details'),
++      'description' => t('The payment bank details.'),
++    );
++  }
++}
++
++/**
++ * Implements hook_tokens().
++ */
++function commerce_bank_transfer_tokens($type, $tokens, array $data = array(), array $options = array()) {
++  $replacements = array();
++
++  if ($type == 'commerce-payment-transaction' && !empty($data['commerce-payment-transaction'])) {
++    $transaction = $data['commerce-payment-transaction'];
++
++    if (!empty($transaction->payment_method)) {
++      $payment_method = commerce_payment_method_instance_load($transaction->instance_id);
++
++      foreach ($tokens as $name => $original) {
++        switch ($name) {
++          case 'payment-bank-details':
++            $details                 = commerce_bank_transfer_bank_details($transaction->order_id, $payment_method);
++            $replacements[$original] = $details;
++            break;
++        }
++      }
++    }
++  }
++
++  if ($type == 'commerce-order' && !empty($data['commerce-order'])) {
++    $order = $data['commerce-order'];
++
++    if (!empty($order->data['payment_method'])) {
++      $payment_method = commerce_payment_method_instance_load($order->data['payment_method']);
++
++      if (!empty($payment_method) && !empty($payment_method['method_id'])) {
++        foreach ($tokens as $name => $original) {
++          switch ($name) {
++            case 'payment-bank-details':
++              $details                 = commerce_bank_transfer_bank_details($order->order_id, $payment_method);
++              $replacements[$original] = $details;
++              break;
++          }
++        }
++      }
++    }
++  }
++
++  return $replacements;
++}

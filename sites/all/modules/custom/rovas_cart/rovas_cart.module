@@ -1,0 +1,12 @@
+<?php
+
+function rovas_cart_form_alter(&$form, &$form_state, $form_id) {
+	if ($form['#id'] == 'uc-cart-view-form') {
+		if ( count($form['items']) > 6) {
+			$form['actions']['checkout']['checkout']['#disabled'] = true;
+			$form['instructions'] = array(
+			'#markup' => '<div class="cart-warn">' . t('Please make sure there is only one product in the cart.') . '</div>');
+		}
+
+	}
+}

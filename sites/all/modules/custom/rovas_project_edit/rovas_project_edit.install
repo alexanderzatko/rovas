@@ -1,0 +1,13 @@
+<?php
+
+/**
+ * Set module weight higher than Field Permissions (with weight = 50) to ensure access hooks run after.
+ */
+function rovas_project_edit_update_7101() {
+  db_update('system')
+    ->fields(['weight' => 51])
+    ->condition('name', 'rovas_project_edit')
+    ->execute();
+
+  drupal_set_message('Set rovas_project_edit module weight to 51.');
+}

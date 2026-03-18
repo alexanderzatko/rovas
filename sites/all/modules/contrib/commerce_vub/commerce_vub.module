@@ -1,0 +1,304 @@
+<?php
+
+define("COMMERCE_PAYMENT_METHOD_VUB", 'vub');
+
+/**
+ * Implements hook_commerce_payment_method_info().
+ * @return array $payment_methods
+ */
+function commerce_vub_commerce_payment_method_info() {
+  $payment_methods[COMMERCE_PAYMENT_METHOD_VUB] = array(
+    'base' => COMMERCE_PAYMENT_METHOD_VUB,
+    'title' => t('ePlatby VUB'),
+    'short_title' => t('ePlatby VUB'),
+    'description' => t('ePlatby VUB'),
+    'terminal' => FALSE,
+    'offsite' => TRUE,
+    'offsite_autoredirect' => TRUE,
+  );
+
+  return $payment_methods;
+}
+
+/**
+ * Implementation of hook_menu_alter
+ * Register RURL path parameter for VUB e-platby payment method
+ * @param array $items
+ */
+function commerce_vub_menu() {
+  $items['payment-transaction-vub'] = array(
+    'title' => 'Return form offsite payment',
+    'description' => 'RURL - Path for processing payment after user returns from offline payment website',
+    'page callback' => 'commerce_vub_return_page',
+    'access callback' => '_commerce_vub_return_page_access'
+  );
+  return $items;
+}
+
+/**
+ * Access callback for return page from offsite service
+ */
+function _commerce_vub_return_page_access() {
+  $payment_method = commerce_payment_method_instance_load(COMMERCE_PAYMENT_METHOD_VUB . '|commerce_payment_' . COMMERCE_PAYMENT_METHOD_VUB);
+  //Check if payment method is enabled and set
+  if (empty($payment_method['settings'])) {
+    return FALSE;
+  }
+  //Check if URL contains all required parameters
+  if (empty($_GET['VS']) || empty($_GET['RES']) || empty($_GET['SIGN'])) {
+    return FALSE;
+  }
+  //Check if SIGN parameter from URL is correct
+  $string_to_encypher = $_GET['VS'] . $_GET['RES'];
+  $sign_computed = _commerce_vub_get_sign($string_to_encypher, $payment_method['settings']['PWD']);
+  if ($sign_computed != $_GET['SIGN']) {
+    return FALSE;
+  }
+  return TRUE;
+}
+
+/**
+ * Implementation of redirect form callback for VUB payment method
+ * @param array $form
+ * @param array $form_state
+ * @param object $order
+ * @param array $payment_method
+ * @return array $form
+ */
+function vub_redirect_form($form, &$form_state, $order, $payment_method) {
+  $settings = $payment_method['settings'];
+  $parameters_from_payment_settings = array('MID', 'RURL', 'DESC', 'RSMS', 'REM', 'CS');
+  foreach ($settings as $key => $value) {
+    if (in_array($key, $parameters_from_payment_settings)) {
+      $form[$key] = array(
+        '#type' => 'hidden',
+        '#value' => $value
+      );
+    }
+  }
+
+//PAYMENT ATTRIBUTES
+  $price = $order->commerce_order_total[LANGUAGE_NONE][0]['amount'] / 100;
+//VUB restriction: the price have to be lower then 10 000 000 000 000
+  if ($price >= 10000000000000) {
+    //TODO: check if there is validation on VUB site
+  }
+
+  $price = number_format($price, 2, '.', '');
+  $form['AMT'] = array(
+    '#type' => 'hidden',
+    '#value' => $price
+  );
+
+  $vs = strlen($order->order_id) <= 10 ? $order->order_id : substr($order->order_id, -10); //TODO:this is restriction for VUB
+  $form['VS'] = array(
+    '#type' => 'hidden',
+    '#value' => $vs
+  );
+
+  $form['RURL'] = array(
+    '#type' => 'hidden',
+    '#value' => url('payment-transaction-vub', array('absolute' => TRUE))
+  );
+
+  $string_to_encypher = $form['MID']['#value'] . $form['AMT']['#value'] . $form['VS']['#value'] . $form['CS']['#value'] . $form['RURL']['#value'];
+  $sign = _commerce_vub_get_sign($string_to_encypher, $settings['PWD']);
+  $form['SIGN'] = array(
+    '#type' => 'hidden',
+    '#value' => $sign
+  );
+
+  $form['#commerce_vub'] = TRUE;
+
+  $form['#action'] = url('aaa', array('absolute' => TRUE));
+  $form['#action'] = $settings['live_url'];
+
+  $form['submit'] = array(
+    '#type' => 'submit',
+    '#value' => t('Save')
+  );
+
+
+  return $form;
+}
+
+/**
+ * Implementation of hook_form_FORM_ID_alter()
+ * 
+ * This hook is changing payment form in checkout process. After payment form is submitted, user is redirected to offsite payment website.
+ * VUB payment service does not accept requests containing GET parameters like form_id, form_build, that are typicall for Drupal forms.
+ * Before the form is submitted, we need to remove unallowed form elements. 
+ * Form values are sent to offsite payment service, so removing mentioned Drupal form elements should not be the issue.
+ * @param array $form
+ * @param array $form_state
+ */
+function commerce_vub_form_commerce_checkout_form_payment_alter(&$form, &$form_state) {
+  if (isset($form['#commerce_vub'])) {
+    $allowed_parameters = array('MID', 'AMT', 'VS', 'SS', 'CS', 'RURL', 'SIGN', 'DESC', 'REM', 'RSMS');
+    $allowed_element_types = array('#markup', '#submit');
+    foreach ($form as $key => $element) {
+      if (strpos($key, '#') !== 0 && !in_array($key, $allowed_parameters)) {
+        if (!empty($element['#type']) && !in_array($element['#type'], $allowed_element_types))
+          unset($form[$key]);
+      }
+    }
+  }
+}
+
+/**
+ * Get SIGN parameter from text and password
+ * @author VUB, a.s. <http://vub.sk>
+ * @param string $string_to_encypher - string to be encoded
+ * @param string $password - pasword
+ * @return string $SIGN
+ */
+function _commerce_vub_get_sign($string_to_encypher, $password) {
+  $SIGN = "";
+  try {
+    $bytesHash = pack('A*', $string_to_encypher);
+    $bytesPWD = pack('A*', $password);
+    $SIGN = strtoupper(hash_hmac('sha256', $bytesHash, $bytesPWD, false));
+  }
+  catch (Exception $e) {
+    ;
+  }
+  return $SIGN;
+}
+
+/**
+ * Page callback for return from VUB (third-party's website)
+ */
+function commerce_vub_return_page() {
+  $order = commerce_order_load($_GET['VS']);
+  if (empty($order)) {
+    //This would happen only if the order was removed from database, while user made payment
+    $msg_text = t('Order !order_id was not found', array('!order_id' => $_GET['VS']));
+    drupal_set_message($msg_text, 'warning');
+  }
+  //Set payment status and return to checkout process
+  switch ($_GET['RES']) {
+    case 'OK':
+      $new_payment_status = COMMERCE_PAYMENT_STATUS_SUCCESS;
+      $return_path = 'checkout/' . $order->order_id . '/payment/return/' . $order->data['payment_redirect_key'];
+      break;
+    case 'FAIL':
+      $new_payment_status = COMMERCE_PAYMENT_STATUS_FAILURE;
+      $return_path = 'checkout/' . $order->order_id . '/payment/back/' . $order->data['payment_redirect_key'];
+      break;
+  }
+  if (isset($new_payment_status)) {
+    //query for searching for payment transaction instance
+    $query = new EntityFieldQuery;
+    $result = $query
+        ->entityCondition('entity_type', 'commerce_payment_transaction')
+        ->propertyCondition('order_id', $order->order_id)
+        ->execute();
+    if (!empty($result['commerce_payment_transaction'])) {
+      foreach ($result['commerce_payment_transaction'] as $entity_id => $entity) {
+        if ($entity->payment_method == COMMERCE_PAYMENT_METHOD_VUB) {
+          //TODO: what if there are more transactions with this payment method in the same order?
+          $transaction_entity = commerce_payment_transaction_load($entity->transaction_id);
+          $transaction_entity->status = $new_payment_status;
+          commerce_payment_transaction_save($transaction_entity);
+          break;
+        }
+      }
+    }
+  }
+  if (!isset($return_path)) {
+    $return_path = 'checkout/' . $order->order_id;
+  }
+  drupal_goto($return_path);
+}
+
+/**
+ * Implementation of payment method callback; validate callback for the payment submission form.
+ * Create payment transaction instance
+ * Set order status before payment is processed.
+ *
+ * @param $payment_method
+ *   An array of the current settings.
+ * @param $pane_values
+ *   The current values of the pane.
+ * @param $checkout_pane
+ *   The checkout pane array.
+ * @param $order
+ *   The order object.
+ * @param $charge
+ *   A price structure that needs to be charged.
+ */
+function vub_submit_form_submit($payment_method, $pane_form, $pane_values, $order, $charge) {
+  $transaction = commerce_payment_transaction_new($payment_method['method_id'], $order->order_id);
+  $transaction->instance_id = $payment_method['instance_id'];
+  $transaction->amount = $charge['amount'];
+  $transaction->currency_code = $charge['currency_code'];
+  $transaction->status = COMMERCE_PAYMENT_STATUS_PENDING;
+  $transaction->message = $payment_method['method_id'];
+  commerce_payment_transaction_save($transaction);
+}
+
+/**
+ * Payment method callback; return the settings form for a payment method.
+ *
+ * @param $settings
+ *   An array of the current settings.
+ * @return
+ *   A form snippet.
+ */
+function vub_settings_form($settings = NULL) {
+  $form = array();
+
+  $init_payment_settings = array(
+    'live_url' => 'https://nib.vub.sk/epay/merchant',
+    'MID' => '',
+    'REM' => '',
+    'RSMS' => '',
+    'PWD' => '',
+    'CS' => '',
+  );
+
+  $settings = (array) $settings + $init_payment_settings;
+
+  $form['live_url'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Live mode -  target URL'),
+    '#default_value' => $settings['live_url'],
+  );
+
+  $form['MID'] = array(
+    '#type' => 'textfield',
+    '#title' => t('MID'),
+    '#description' => t('Merchant account ID. Max. 20 alphanumeric caaracters without spaces'),
+    '#required' => TRUE,
+    '#default_value' => $settings['MID'],
+  );
+
+  $form['CS'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Constant symbol'),
+    '#default_value' => $settings['CS'],
+  );
+  $form['REM'] = array(
+    '#type' => 'textfield',
+    '#title' => t('REM'),
+    '#description' => t('Email address of the seller. Set this parameter only if you wish to receive email notifications on another email then is set in agreement with VUB'),
+    '#default_value' => $settings['REM'],
+  );
+  $form['RSMS'] = array(
+    '#type' => 'textfield',
+    '#title' => t('RSMS'),
+    '#description' => t('Slovak mobile phone number of seller, where the SMS message should be sent after payment. The number should be in the following format: 09XXXXXXXX. It is not possible to use this number while SIGN parameter is generating with PGP'),
+    '#required' => TRUE,
+    '#default_value' => $settings['RSMS'],
+  );
+
+  $form['PWD'] = array(
+    '#type' => 'textarea',
+    '#title' => t('Password'),
+    '#description' => t('Paswword for generating SIGN'),
+    '#required' => TRUE,
+    '#default_value' => $settings['PWD'],
+  );
+
+  return $form;
+}

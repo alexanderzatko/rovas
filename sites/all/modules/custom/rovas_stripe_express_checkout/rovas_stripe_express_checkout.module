@@ -1,0 +1,69 @@
+<?php
+
+require_once DRUPAL_ROOT . '/sites/all/libraries/stripe-php/init.php';
+
+/**
+ * Implements hook_menu().
+ */
+function rovas_stripe_express_checkout_menu() {
+  $items = [];
+
+  $items['stripe/express-checkout/init'] = array(
+    'page callback' => 'rovas_stripe_express_checkout_init_x',
+    'access callback' => TRUE,
+    'type' => MENU_CALLBACK,
+  );
+
+  $items['stripe/express-checkout/thank-you'] = array(
+    'page callback' => 'rovas_stripe_express_checkout_thanks',
+    'access callback' => TRUE,
+    'type' => MENU_CALLBACK,
+  );
+  return $items;
+}
+
+function rovas_stripe_express_checkout_add_js() {
+  drupal_add_js(drupal_get_path('module', 'rovas_stripe_express_checkout') . '/js/express_checkout.js');
+}
+
+function rovas_stripe_express_checkout_init_x() {
+  module_load_include('inc', 'rovas_stripe_express_checkout', 'includes/init');
+  return _rovas_stripe_express_checkout_init();
+}
+
+function rovas_stripe_express_checkout_thanks() {
+    /*
+    https://dev.rovas.app/stripe/express-checkout/thank-you?
+    payment_intent=pi_3RSwIbDM0rK3al8P1gUwGvgt&
+    payment_intent_client_secret=pi_3RSwIbDM0rK3al8P1gUwGvgt_secret_gDDr73ZBgAVfPlXRqkLKCKNyD&
+    redirect_status=succeeded
+    */
+
+	$parameters = drupal_get_query_parameters();
+	
+	$payment_intent_id = isset($parameters['payment_intent']) ? $parameters['payment_intent'] : null;
+
+	if (!$payment_intent_id) {
+			return;
+	}
+
+	try {
+
+			\Stripe\Stripe::setApiKey(variable_get('stripe_secret_key'));        
+			$intent = \Stripe\PaymentIntent::retrieve($payment_intent_id);
+
+			$project_id = isset($intent->metadata->project_id) ? $intent->metadata->project_id : null;
+			$paid_amt = isset($intent->amount_received) ? $intent->amount_received / 100 : null;
+			$email = isset($intent->charges->data[0]->receipt_email) ? $intent->charges->data[0]->receipt_email : null;
+
+			if ($project_id) {
+					$project = node_load($project_id);
+					rovas_project_reward_notify_purchase($project,$paid_amt,'EUR',$email);
+			} else {
+					watchdog('rovas_stripe', 'No project_id found in PaymentIntent metadata for PI: @pi_id', array('@pi_id' => $payment_intent_id), WATCHDOG_WARNING);
+			}
+			
+	} catch (Exception $e) {
+			watchdog('rovas_stripe', 'Error retrieving PaymentIntent: @error', array('@error' => $e->getMessage()), WATCHDOG_ERROR);
+	}
+}

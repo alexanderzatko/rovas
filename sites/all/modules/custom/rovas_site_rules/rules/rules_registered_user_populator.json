@@ -1,0 +1,99 @@
+{ "rules_registered_user_populator" : {
+    "LABEL" : "registered user populator",
+    "PLUGIN" : "reaction rule",
+    "OWNER" : "rules",
+    "TAGS" : [ "user" ],
+    "REQUIRES" : [ "rules_conditional", "rules", "hybridauth", "services_auth_apikeys" ],
+    "ON" : { "user_insert" : [] },
+    "DO" : [
+      { "CONDITIONAL" : [
+          {
+            "IF" : { "hybridauth_user_created_hybridauth" : { "account" : [ "account" ] } },
+            "DO" : [
+              { "variable_add" : {
+                  "USING" : {
+                    "type" : "text",
+                    "value" : "[account:hybridauth:firstName] [account:hybridauth:lastName]"
+                  },
+                  "PROVIDE" : { "variable_added" : { "full_name" : "full name" } }
+                }
+              },
+              { "variable_add" : {
+                  "USING" : { "type" : "text", "value" : "[account:hybridauth:firstName]\r\n" },
+                  "PROVIDE" : { "variable_added" : { "ha_first" : "hybridauth first name" } }
+                }
+              },
+              { "CONDITIONAL" : [
+                  {
+                    "IF" : { "data_is_empty" : { "data" : [ "ha-first" ] } },
+                    "DO" : [ { "data_set" : { "data" : [ "full-name" ], "value" : "Nomen Omen" } } ]
+                  }
+                ]
+              },
+              { "drupal_watchdog" : {
+                  "type" : "rule",
+                  "message" : "rules_registered_user_populator -\u003E hybridauth option",
+                  "severity" : "6"
+                }
+              }
+            ]
+          },
+          { "ELSE" : [
+              { "variable_add" : {
+                  "USING" : { "type" : "text", "value" : [ "account:field-full-name" ] },
+                  "PROVIDE" : { "variable_added" : { "full_name" : "full name" } }
+                }
+              },
+              { "drupal_watchdog" : {
+                  "type" : "rule",
+                  "message" : "rules_registered_user_populator -\u003E the other",
+                  "severity" : "6"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      { "user_add_role" : { "account" : [ "account" ], "roles" : { "value" : { "4" : "4" } } } },
+      { "data_set" : { "data" : [ "account:field-verified-by" ], "value" : "1" } },
+      { "data_set" : { "data" : [ "account:field-verified" ], "value" : "1" } },
+      { "data_set" : { "data" : [ "account:field-full-name" ], "value" : [ "full-name" ] } },
+      { "services_auth_apikeys_rules_action_generate_token_api_key" : {
+          "USING" : { "user_id" : [ "account:uid" ], "service_endpoint" : "rovas_endpoint" },
+          "PROVIDE" : {
+            "generated_api_key" : { "generated_api_key" : "API Key Generated" },
+            "generated_token" : { "generated_token" : "Token Generated\/API Key Generated" }
+          }
+        }
+      },
+      { "variable_add" : {
+          "USING" : { "type" : "text", "value" : "System project - [account:name]" },
+          "PROVIDE" : { "variable_added" : { "project_title" : "project title" } }
+        }
+      },
+      { "variable_add" : {
+          "USING" : {
+            "type" : "text",
+            "value" : "This is a special project that collects, tracks and rewards all work the owner performs to keep the economy running."
+          },
+          "PROVIDE" : { "variable_added" : { "description" : "description" } }
+        }
+      },
+      { "component_rules_create_project" : {
+          "USING" : {
+            "project_name" : [ "project-title" ],
+            "project_author" : [ "account" ],
+            "project_url" : "#",
+            "project_price" : "0",
+            "project_status" : "1",
+            "project_participation" : "0",
+            "project_description" : [ "description" ],
+            "system_project" : "1"
+          },
+          "PROVIDE" : { "created_project" : { "the_system_project" : "The system project" } }
+        }
+      },
+      { "hybridauth_set_destination" : { "destination" : "dash" } }
+    ]
+  }
+}

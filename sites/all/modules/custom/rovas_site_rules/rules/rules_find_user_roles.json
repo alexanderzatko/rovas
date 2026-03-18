@@ -1,0 +1,59 @@
+{ "rules_find_user_roles" : {
+    "LABEL" : "Find user roles",
+    "PLUGIN" : "rule",
+    "OWNER" : "rules",
+    "TAGS" : [ "api", "user" ],
+    "REQUIRES" : [ "rules", "rules_conditional", "php" ],
+    "USES VARIABLES" : {
+      "api_key" : { "label" : "Api key", "type" : "text" },
+      "token" : { "label" : "Token", "type" : "text" },
+      "user_roles" : { "label" : "user roles", "type" : "text", "parameter" : false }
+    },
+    "DO" : [
+      { "component_rules_retrieve_user_id_from_api_key_and_token" : { "USING" : {}, "PROVIDE" : { "uid" : { "uid" : "user id" } } } },
+      { "CONDITIONAL" : [
+          {
+            "IF" : { "data_is" : { "data" : [ "uid" ], "op" : "\u003E", "value" : "0" } },
+            "DO" : [
+              { "entity_fetch" : {
+                  "USING" : { "type" : "user", "id" : [ "uid" ] },
+                  "PROVIDE" : { "entity_fetched" : { "user_object" : "user object" } }
+                }
+              },
+              { "variable_add" : {
+                  "USING" : {
+                    "type" : "text",
+                    "value" : "\u003C?php \r\n$roles = user_roles();\r\necho serialize($roles);\r\n?\u003E"
+                  },
+                  "PROVIDE" : { "variable_added" : { "all_user_roles" : "all user roles" } }
+                }
+              },
+              { "LOOP" : {
+                  "USING" : { "list" : [ "user-object:roles" ] },
+                  "ITEM" : { "list_item" : "Current list item" },
+                  "DO" : [
+                    { "variable_add" : {
+                        "USING" : {
+                          "type" : "text",
+                          "value" : "\u003C?php \r\n$all_user_roles_ary = unserialize($all_user_roles);\r\n$rname = $all_user_roles_ary[$list_item];\r\necho serialize(array($list_item =\u003E $rname));\r\n\r\n?\u003E"
+                        },
+                        "PROVIDE" : { "variable_added" : { "variable_added" : "Added variable" } }
+                      }
+                    },
+                    { "data_set" : {
+                        "data" : [ "user-roles" ],
+                        "value" : "\u003C?php\r\n$user_roles = empty($user_roles) ? array() : unserialize($user_roles);\r\necho serialize($user_roles+unserialize($variable_added));\r\n?\u003E"
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          },
+          { "ELSE" : [ { "data_set" : { "data" : [ "user-roles" ], "value" : "0" } } ] }
+        ]
+      }
+    ],
+    "PROVIDES VARIABLES" : [ "user_roles" ]
+  }
+}

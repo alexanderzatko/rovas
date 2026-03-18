@@ -1,0 +1,199 @@
+{ "rules_process_forex_order" : {
+    "LABEL" : "process forex order",
+    "PLUGIN" : "rule",
+    "OWNER" : "rules",
+    "TAGS" : [ "forex" ],
+    "REQUIRES" : [ "rules_variable_get", "rules", "rules_conditional", "php" ],
+    "USES VARIABLES" : {
+      "order_id" : { "label" : "order ID", "type" : "integer" },
+      "payment_status" : { "label" : "payment status", "type" : "integer" },
+      "forex_nid" : { "label" : "forex node id", "type" : "integer", "parameter" : false },
+      "euro_basket" : { "label" : "euro basket", "type" : "decimal" },
+      "chron_basket" : { "label" : "chron basket", "type" : "decimal" },
+      "conv_type" : { "label" : "conversion type", "type" : "text" },
+      "input_amt" : { "label" : "input amount", "type" : "decimal" },
+      "output_amt" : { "label" : "output amount", "type" : "decimal" },
+      "fee" : { "label" : "transaction fee", "type" : "decimal" },
+      "user_uid" : { "label" : "ID of the buyer", "type" : "integer" }
+    },
+    "DO" : [
+      { "rules_variable_get_action_get_system_integer_variable" : {
+          "USING" : { "variable" : "rovas_admin_uid" },
+          "PROVIDE" : { "variable_added" : { "rovas_admin_uid" : "UID of rovas admin" } }
+        }
+      },
+      { "entity_fetch" : {
+          "USING" : { "type" : "user", "id" : [ "user-uid" ] },
+          "PROVIDE" : { "entity_fetched" : { "user_object" : "buyer object" } }
+        }
+      },
+      { "entity_fetch" : {
+          "USING" : { "type" : "user", "id" : [ "rovas-admin-uid" ] },
+          "PROVIDE" : { "entity_fetched" : { "rovas_admin" : "rovas admin" } }
+        }
+      },
+      { "CONDITIONAL" : [
+          {
+            "IF" : { "data_is" : { "data" : [ "conv-type" ], "value" : "chrons_to_euros" } },
+            "DO" : [
+              { "component_rules_chrons_actually_available" : {
+                  "USING" : { "user_object" : [ "user_object" ] },
+                  "PROVIDE" : { "chrons_available" : { "chrons_available" : "Chrons available" } }
+                }
+              },
+              { "CONDITIONAL" : [
+                  {
+                    "IF" : { "NOT data_is" : {
+                        "data" : [ "input-amt" ],
+                        "op" : "\u003E",
+                        "value" : [ "chrons-available" ]
+                      }
+                    },
+                    "DO" : [
+                      { "component_rules_update_user_chron_account" : {
+                          "user_object" : [ "user-object" ],
+                          "chrons_to_add" : { "select" : "input-amt", "php" : { "code" : "return -1 * $value;" } },
+                          "fxsp_id" : {
+                            "select" : "order-id",
+                            "php" : { "code" : "if ($value \u003C 0) {\r\nreturn -1 * $value;\r\n}\r\nelse {\r\nreturn NULL;\r\n}" }
+                          }
+                        }
+                      },
+                      { "entity_create" : {
+                          "USING" : {
+                            "type" : "node",
+                            "param_type" : "forex_transaction",
+                            "param_title" : "ignore",
+                            "param_author" : "1"
+                          },
+                          "PROVIDE" : { "entity_created" : { "forex_node" : "forex transaction node" } }
+                        }
+                      },
+                      { "entity_modify" : {
+                          "entity" : [ "forex-node" ],
+                          "properties" : { "value" : {
+                              "field_buyer" : "field_buyer",
+                              "field_conversion_type" : "field_conversion_type",
+                              "field_input_amount" : "field_input_amount",
+                              "field_output_amount" : "field_output_amount",
+                              "field_conversion_fee" : "field_conversion_fee",
+                              "field_chron_basket" : "field_chron_basket",
+                              "field_euro_basket" : "field_euro_basket",
+                              "field_note" : "field_note",
+                              "field_payment_status" : "field_payment_status",
+                              "language" : "language",
+                              "author" : "author"
+                            }
+                          },
+                          "param_field_buyer" : [ "user-object" ],
+                          "param_field_conversion_type" : "chrons_to_euros",
+                          "param_field_input_amount" : [ "input-amt" ],
+                          "param_field_output_amount" : [ "output-amt" ],
+                          "param_field_conversion_fee" : [ "fee" ],
+                          "param_field_chron_basket" : [ "chron-basket" ],
+                          "param_field_euro_basket" : [ "euro-basket" ],
+                          "param_field_note" : {
+                            "select" : "order-id",
+                            "php" : { "code" : "if ($value \u003C 0) {\r\nreturn t(\u0027Exchange of Chrons from a \u003Ca href=\u0022\/node\/@pnid\u0022\u003Efx sandbox\u0022 project\u003C\/a\u003E\u0027,[\u0027@pnid\u0027 =\u003E -1 * $value]);\r\n}" }
+                          },
+                          "param_field_payment_status" : [ "payment-status" ],
+                          "param_language" : [ "user-object:language" ],
+                          "param_author" : [ "user-object" ]
+                        }
+                      },
+                      { "entity_save" : { "data" : [ "forex-node" ], "immediate" : "1" } },
+                      { "data_calc" : {
+                          "USING" : { "input_1" : [ "output-amt" ], "op" : "*", "input_2" : "-1" },
+                          "PROVIDE" : { "result" : { "negative_output_amt" : "negative output amt" } }
+                        }
+                      },
+                      { "component_rules_update_user_s_euro_balance" : {
+                          "USING" : {
+                            "amount" : [ "negative-output-amt" ],
+                            "user_object" : [ "user-object" ]
+                          },
+                          "PROVIDE" : { "eur_amount" : { "user_eur_amount" : "users new Eur amount" } }
+                        }
+                      },
+                      { "mail" : {
+                          "to" : [ "rovas-admin:mail" ],
+                          "subject" : "User converted Chrons to Euros",
+                          "message" : "User [user-object:name] changed [input-amt:value] Chrons to [output-amt:value] Euros. The fee is [fee:value] and the transaction node can be found here:\r\n[forex-node:url]\r\nThe fee amount of [fee:value] Eur was added to your Euro balance.\r\n\r\nDo not forget to update the user\u0027s euro balance after the payment is made.",
+                          "language" : [ "rovas-admin:language" ]
+                        }
+                      },
+                      { "data_set" : { "data" : [ "forex-nid" ], "value" : [ "forex-node:nid" ] } }
+                    ]
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "ELSE IF" : { "data_is" : { "data" : [ "conv-type" ], "value" : "euros_to_chrons" } },
+            "DO" : [
+              { "entity_create" : {
+                  "USING" : {
+                    "type" : "node",
+                    "param_type" : "forex_transaction",
+                    "param_title" : "temp",
+                    "param_author" : "1"
+                  },
+                  "PROVIDE" : { "entity_created" : { "forex_node" : "forex transaction node" } }
+                }
+              },
+              { "entity_modify" : {
+                  "entity" : [ "forex-node" ],
+                  "properties" : { "value" : {
+                      "field_buyer" : "field_buyer",
+                      "field_conversion_type" : "field_conversion_type",
+                      "field_input_amount" : "field_input_amount",
+                      "field_output_amount" : "field_output_amount",
+                      "field_conversion_fee" : "field_conversion_fee",
+                      "field_chron_basket" : "field_chron_basket",
+                      "field_euro_basket" : "field_euro_basket",
+                      "field_payment_status" : "field_payment_status",
+                      "language" : "language",
+                      "author" : "author"
+                    }
+                  },
+                  "param_field_buyer" : [ "user-object" ],
+                  "param_field_conversion_type" : [ "conv-type" ],
+                  "param_field_input_amount" : [ "input-amt" ],
+                  "param_field_output_amount" : [ "output-amt" ],
+                  "param_field_conversion_fee" : [ "fee" ],
+                  "param_field_chron_basket" : [ "chron-basket" ],
+                  "param_field_euro_basket" : [ "euro-basket" ],
+                  "param_field_payment_status" : [ "payment-status" ],
+                  "param_language" : [ "user-object:language" ],
+                  "param_author" : [ "user-object" ]
+                }
+              },
+              { "CONDITIONAL" : [
+                  {
+                    "IF" : { "data_is" : { "data" : [ "order-id" ], "op" : "\u003E", "value" : "0" } },
+                    "DO" : [
+                      { "entity_fetch" : {
+                          "USING" : { "type" : "commerce_order", "id" : [ "order-id" ] },
+                          "PROVIDE" : { "entity_fetched" : { "order_fetched" : "Fetched order" } }
+                        }
+                      },
+                      { "data_set" : {
+                          "data" : [ "forex-node:field-order-record" ],
+                          "value" : [ "order-fetched" ]
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              { "entity_save" : { "data" : [ "forex-node" ], "immediate" : "1" } },
+              { "data_set" : { "data" : [ "forex-nid" ], "value" : [ "forex-node:nid" ] } }
+            ]
+          }
+        ]
+      }
+    ],
+    "PROVIDES VARIABLES" : [ "forex_nid" ]
+  }
+}

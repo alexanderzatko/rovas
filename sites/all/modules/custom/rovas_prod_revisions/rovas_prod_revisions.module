@@ -1,0 +1,8 @@
+<?php
+
+function rovas_prod_revisions_form_alter(&$form, &$form_state, $form_id) {
+	if ($form['#id'] == 'commerce-product-ui-product-form') {
+		$form['change_history']['revision']['#default_value'] = FALSE;
+		$form['change_history']['#collapsed'] = TRUE;
+	}
+}

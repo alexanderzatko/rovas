@@ -1,0 +1,7 @@
+name = Blank
+description = A blank theme for embedding
+version = VERSION
+core = 7.x
+engine = phptemplate
+stylesheets[all][] = blank.css
+regions[content] = Content

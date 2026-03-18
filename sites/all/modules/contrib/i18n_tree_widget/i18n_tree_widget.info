@@ -1,0 +1,4 @@
+name = i18n for Ajax-enabled TTRT Widget
+description = Delivers i18n for Ajax-enabled Taxonomy Term Reference Tree Widget
+core = 7.x
+package = Rovas

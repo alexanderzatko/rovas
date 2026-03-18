@@ -1,0 +1,68 @@
+{ "rules_create_project" : {
+    "LABEL" : "Create project",
+    "PLUGIN" : "action set",
+    "OWNER" : "rules",
+    "TAGS" : [ "project" ],
+    "REQUIRES" : [ "rules", "rules_conditional" ],
+    "USES VARIABLES" : {
+      "project_name" : { "label" : "Name", "type" : "text" },
+      "project_author" : { "label" : "Author", "type" : "user" },
+      "project_url" : { "label" : "Web address", "type" : "text", "allow null" : true },
+      "project_price" : { "label" : "Price", "type" : "decimal", "allow null" : true },
+      "project_status" : { "label" : "Status", "type" : "integer" },
+      "project_participation" : { "label" : "Participation", "type" : "integer" },
+      "project_description" : { "label" : "Description", "type" : "text" },
+      "system_project" : { "label" : "System project", "type" : "boolean" },
+      "created_project" : { "label" : "Created Project", "type" : "node", "parameter" : false }
+    },
+    "ACTION SET" : [
+      { "entity_create" : {
+          "USING" : {
+            "type" : "node",
+            "param_type" : "project",
+            "param_title" : [ "project-name" ],
+            "param_author" : [ "project-author" ]
+          },
+          "PROVIDE" : { "entity_created" : { "new_project" : "new project" } }
+        }
+      },
+      { "data_set" : {
+          "data" : [ "new-project:field-status" ],
+          "value" : [ "project-status" ]
+        }
+      },
+      { "CONDITIONAL" : [
+          {
+            "IF" : { "data_is" : { "data" : [ "project-price" ], "op" : "\u003E", "value" : "0" } },
+            "DO" : [
+              { "data_set" : { "data" : [ "new-project:field-price" ], "value" : [ "project-price" ] } }
+            ]
+          }
+        ]
+      },
+      { "data_set" : {
+          "data" : [ "new-project:field-participation" ],
+          "value" : [ "project-participation" ]
+        }
+      },
+      { "data_set" : {
+          "data" : [ "new-project:body:value" ],
+          "value" : [ "project-description" ]
+        }
+      },
+      { "data_set" : {
+          "data" : [ "new-project:field-asset-web-address:value" ],
+          "value" : [ "project-url" ]
+        }
+      },
+      { "data_set" : {
+          "data" : [ "new-project:field-system-project" ],
+          "value" : [ "system-project" ]
+        }
+      },
+      { "data_set" : { "data" : [ "created-project" ], "value" : [ "new-project" ] } },
+      { "data_set" : { "data" : [ "created-project:body:format" ], "value" : "filtered_html" } }
+    ],
+    "PROVIDES VARIABLES" : [ "created_project" ]
+  }
+}

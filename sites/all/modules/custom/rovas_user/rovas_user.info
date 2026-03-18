@@ -1,0 +1,4 @@
+name = Rovas User profile form
+description = Implements modifications on the User Profile form
+core = 7.x
+package = Rovas

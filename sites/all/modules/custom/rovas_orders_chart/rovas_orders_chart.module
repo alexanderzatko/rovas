@@ -1,0 +1,503 @@
+<?php
+
+/**
+ * Implements hook_menu().
+ */
+function rovas_orders_chart_menu() {
+  return [
+    'orders-chart/%' => [
+      'title' => 'Orders Chart',
+      'page callback' => 'rovas_orders_chart_page',
+      'page arguments' => [1], // recipient ID is argument 1
+      'access callback' => 'rovas_orders_chart_access',
+      'access arguments' => [1], // Pass recipient_id as argument
+      'type' => MENU_CALLBACK,
+    ],
+  ];
+}
+
+/**
+ * Custom access callback for orders chart page.
+ *
+ * @param int|null $recipient_id
+ *   The node ID of the project (recipient).
+ *
+ * @return bool
+ *   TRUE if access is granted, FALSE otherwise.
+ */
+function rovas_orders_chart_access($recipient_id = NULL) {
+  global $user;
+  
+  // Deny access if user is not logged in
+  if (!user_is_logged_in()) {
+    return FALSE;
+  }
+  
+  // Grant access if current user has administrator role
+  if (in_array('administrator', array_values($user->roles))) {
+    return TRUE;
+  }
+  
+  // Deny access if recipient_id is NULL or invalid
+  if (!is_numeric($recipient_id) || $recipient_id <= 0) {
+    return FALSE;
+  }
+  
+  // Load the project node
+  $project_node = node_load($recipient_id);
+  
+  // Deny access if node doesn't exist or is not a project
+  if (!$project_node || $project_node->type !== 'project') {
+    return FALSE;
+  }
+  
+  // Grant access if current user is the project owner
+  if ($project_node->uid == $user->uid) {
+    return TRUE;
+  }
+  
+  // Check if current user is in the privileged users field
+  if (isset($project_node->field_privileged_users[LANGUAGE_NONE])) {
+    foreach ($project_node->field_privileged_users[LANGUAGE_NONE] as $privileged_user) {
+      if (isset($privileged_user['target_id']) && $privileged_user['target_id'] == $user->uid) {
+        return TRUE;
+      }
+    }
+  }
+  
+  // Deny access by default
+  return FALSE;
+}
+
+/**
+ * Page callback with chart + date filter.
+ */
+function rovas_orders_chart_page($recipient_id = NULL) {
+
+  if (!is_numeric($recipient_id) || $recipient_id <= 0) {
+    return ['#markup' => '<p style="color: red;">' . t('The recipient ID was not supplied.') . '</p>'];
+  }
+
+  // Add the CSS file
+  drupal_add_css(drupal_get_path('module', 'rovas_orders_chart') . '/rovas_orders_chart.css');
+
+  // Determine date range based on session or defaults
+  $from_default = isset($_SESSION['rovas_orders_chart_from']) ? $_SESSION['rovas_orders_chart_from'] : date('Y-m-d', strtotime('-30 days'));
+  $to_default = isset($_SESSION['rovas_orders_chart_to']) ? $_SESSION['rovas_orders_chart_to'] : date('Y-m-d');
+  $filter_mode = isset($_SESSION['rovas_orders_chart_mode']) ? $_SESSION['rovas_orders_chart_mode'] : 'custom';
+  $group_by = isset($_SESSION['rovas_orders_chart_group_by']) ? $_SESSION['rovas_orders_chart_group_by'] : 'day';
+  
+  $form = drupal_get_form('rovas_orders_chart_filter_form', $from_default, $to_default, $recipient_id, $filter_mode, $group_by);
+
+  $output = '<div class="orders-chart-filters">' . drupal_render($form) . '</div>';
+
+  // Convert to timestamps.
+  $from_ts = strtotime($from_default);
+  $to_ts = strtotime($to_default . ' 23:59:59');
+
+  // Build dynamic SQL based on grouping
+  $select_clause = '';
+  $group_clause = '';
+  
+  switch ($group_by) {
+    case 'week':
+      $select_clause = "YEARWEEK(FROM_UNIXTIME(co.placed), 1) AS period_key, 
+                       CONCAT(YEAR(FROM_UNIXTIME(co.placed)), '-W', LPAD(WEEK(FROM_UNIXTIME(co.placed), 1), 2, '0')) AS period_label";
+      $group_clause = "YEARWEEK(FROM_UNIXTIME(co.placed), 1)";
+      break;
+    case 'month':
+      $select_clause = "DATE_FORMAT(FROM_UNIXTIME(co.placed), '%Y-%m') AS period_key, 
+                       DATE_FORMAT(FROM_UNIXTIME(co.placed), '%Y-%m') AS period_label";
+      $group_clause = "DATE_FORMAT(FROM_UNIXTIME(co.placed), '%Y-%m')";
+      break;
+    case 'year':
+      $select_clause = "YEAR(FROM_UNIXTIME(co.placed)) AS period_key, 
+                       YEAR(FROM_UNIXTIME(co.placed)) AS period_label";
+      $group_clause = "YEAR(FROM_UNIXTIME(co.placed))";
+      break;
+    default: // day
+      $select_clause = "DATE(FROM_UNIXTIME(co.placed)) AS period_key, 
+                       DATE(FROM_UNIXTIME(co.placed)) AS period_label";
+      $group_clause = "DATE(FROM_UNIXTIME(co.placed))";
+  }
+
+  // Query results with dynamic grouping
+  $results = db_query("
+    SELECT
+      {$select_clause},
+      SUM(cot.commerce_order_total_amount) / 100 AS total_eur
+    FROM {commerce_order} co
+    JOIN {field_data_commerce_order_total} cot ON cot.entity_id = co.order_id
+    JOIN {field_data_field_payment_recipient} fpr ON fpr.entity_id = co.order_id
+    WHERE co.status IN ('completed')
+      AND co.placed BETWEEN :from AND :to
+      AND fpr.field_payment_recipient_value = :recipient
+    GROUP BY {$group_clause}
+    ORDER BY period_key ASC
+  ", [
+    ':from' => $from_ts,
+    ':to' => $to_ts,
+    ':recipient' => $recipient_id,
+  ]);
+
+  // Create array with all periods in range, defaulting to 0
+  $data_by_period = [];
+  
+  if ($group_by == 'day') {
+    // Generate all dates in the range
+    $current_date = new DateTime($from_default);
+    $end_date = new DateTime($to_default);
+    
+    while ($current_date <= $end_date) {
+      $date_key = $current_date->format('Y-m-d');
+      $data_by_period[$date_key] = 0;
+      $current_date->add(new DateInterval('P1D'));
+    }
+  } elseif ($group_by == 'week') {
+    // Generate all weeks in the range
+    $current_date = new DateTime($from_default);
+    $end_date = new DateTime($to_default);
+    
+    // Start from beginning of the week
+    $current_date->modify('monday this week');
+    
+    while ($current_date <= $end_date) {
+      $year = $current_date->format('Y');
+      $week = $current_date->format('W');
+      $week_key = $year . sprintf('%02d', $week);
+      $data_by_period[$week_key] = 0;
+      $current_date->add(new DateInterval('P1W'));
+    }
+  } elseif ($group_by == 'month') {
+    // Generate all months in the range
+    $current_date = new DateTime($from_default);
+    $end_date = new DateTime($to_default);
+    
+    // Start from beginning of the month
+    $current_date->modify('first day of this month');
+    
+    while ($current_date <= $end_date) {
+      $month_key = $current_date->format('Y-m');
+      $data_by_period[$month_key] = 0;
+      $current_date->add(new DateInterval('P1M'));
+    }
+  } elseif ($group_by == 'year') {
+    // Generate all years in the range
+    $start_year = date('Y', strtotime($from_default));
+    $end_year = date('Y', strtotime($to_default));
+    
+    for ($year = $start_year; $year <= $end_year; $year++) {
+      $data_by_period[$year] = 0;
+    }
+  }
+  
+  // Fill in actual data from query results
+  foreach ($results as $row) {
+    $data_by_period[$row->period_key] = round($row->total_eur, 2);
+  }
+
+  // Prepare labels and values arrays with proper formatting
+  $labels = [];
+  $values = [];
+  
+  foreach ($data_by_period as $period => $amount) {
+    $formatted_label = '';
+    
+    switch ($group_by) {
+      case 'week':
+        // Convert YYYYWW format to readable week label
+        $year = substr($period, 0, 4);
+        $week = intval(substr($period, 4, 2));
+        $formatted_label = "Týždeň {$week}/{$year}";
+        break;
+      case 'month':
+        // Convert YYYY-MM format to readable month label
+        $date_obj = DateTime::createFromFormat('Y-m', $period);
+        $formatted_label = $date_obj ? $date_obj->format('n/Y') : $period;
+        break;
+      case 'year':
+        $formatted_label = $period;
+        break;
+      default: // day
+        $date_obj = DateTime::createFromFormat('Y-m-d', $period);
+        $formatted_label = $date_obj ? $date_obj->format('j. n. Y') : $period;
+    }
+    
+    $labels[] = $formatted_label;
+    $values[] = $amount;
+  }
+
+  if (empty($values)) {
+    drupal_set_message(t('No data available for the selected recipient and date range.'), 'warning');
+  }
+
+  // Set chart title based on grouping
+  $chart_titles = [
+    'day' => t('Denný súčet objednávok'),
+    'week' => t('Týždenný súčet objednávok'),
+    'month' => t('Mesačný súčet objednávok'),
+    'year' => t('Ročný súčet objednávok'),
+  ];
+
+  $chart = [
+    '#type' => 'chart',
+    '#chart_type' => 'column',
+    '#chart_library' => 'google',
+    '#title' => $chart_titles[$group_by],
+    '#xaxis' => [
+      '#type' => 'chart_xaxis',
+      '#title' => t('Obdobie'),
+      '#labels' => $labels,
+    ],
+    '#yaxis' => [
+      '#type' => 'chart_yaxis',
+      '#title' => t('Suma (€)'),
+      '#suffix' => '€',
+    ],
+    '#options' => [
+      'hAxis' => [
+        'slantedText' => TRUE,
+        'slantedTextAngle' => 90,
+      ],
+    ],
+    '#attached' => [
+      'library' => [
+        ['charts', 'charts.google'],
+      ],
+    ],
+  ];
+
+  $chart['total'] = [
+    '#type' => 'chart_data',
+    '#title' => t('Suma (€)'),
+    '#labels' => $labels,
+    '#data' => $values,
+  ];
+
+  // Generate HTML table for the chart data (only show periods with orders)
+  $table_rows = '';
+  $total_periods = 0;
+  $sum = 0;
+  $periods_with_orders = 0;
+  
+  foreach ($data_by_period as $period => $amount) {
+    // Only show rows with actual orders in the table
+    if ($amount > 0) {
+      $formatted_label = '';
+      
+      switch ($group_by) {
+        case 'week':
+          $year = substr($period, 0, 4);
+          $week = intval(substr($period, 4, 2));
+          $formatted_label = "Týždeň {$week}/{$year}";
+          break;
+        case 'month':
+          $date_obj = DateTime::createFromFormat('Y-m', $period);
+          $formatted_label = $date_obj ? $date_obj->format('n/Y') : $period;
+          break;
+        case 'year':
+          $formatted_label = $period;
+          break;
+        default: // day
+          $date_obj = DateTime::createFromFormat('Y-m-d', $period);
+          $formatted_label = $date_obj ? $date_obj->format('j. n. Y') : $period;
+      }
+      
+      $table_rows .= '<tr><td>' . check_plain($formatted_label) . '</td><td>' . check_plain(number_format($amount, 0,',','')) . '</td></tr>';
+      $periods_with_orders++;
+    }
+    $total_periods++;
+    $sum += $amount;
+  }
+  
+  if ($periods_with_orders > 0) {
+    $average_all = $sum / $total_periods; // Average over all periods in range
+    $average_with_orders = $sum / $periods_with_orders; // Average over periods with orders only
+    $table_rows .= '<tr><th>Priemer (všetky obdobia): </th><td>' . round($average_all) . '</td></tr>';
+    $table_rows .= '<tr><th>Priemer (obdobia s objednávkami): </th><td>' . round($average_with_orders) . '</td></tr>';
+  }
+
+  // Set table title based on grouping
+  $table_titles = [
+    'day' => t('Tabuľka denných súm objednávok'),
+    'week' => t('Tabuľka týždenných súm objednávok'),
+    'month' => t('Tabuľka mesačných súm objednávok'),
+    'year' => t('Tabuľka ročných súm objednávok'),
+  ];
+
+  $period_labels = [
+    'day' => t('Dátum'),
+    'week' => t('Týždeň'),
+    'month' => t('Mesiac'),
+    'year' => t('Rok'),
+  ];
+
+  $table_html = '
+    <div class="orders-chart-table">
+      <h3>' . $table_titles[$group_by] . '</h3>
+      <table class="orders-data-table" border="1" cellpadding="4" cellspacing="0">
+        <thead>
+          <tr>
+            <th>' . $period_labels[$group_by] . '</th>
+            <th>' . t('Suma (€)') . '</th>
+          </tr>
+        </thead>
+        <tbody>' . $table_rows . '</tbody>
+      </table>
+    </div>
+  ';
+
+  return $output . drupal_render($chart) . $table_html;
+}
+
+function rovas_orders_chart_filter_form($form, &$form_state, $default_from, $default_to, $recipient_id = NULL, $filter_mode = 'custom', $group_by = 'day') {
+
+  $form['filter_mode'] = [
+    '#type' => 'radios',
+    '#title' => t('Režim filtrovania'),
+    '#options' => [
+      'quick' => t('Rýchly výber'),
+      'custom' => t('Vlastný výber dátumov'),
+    ],
+    '#default_value' => $filter_mode,
+    '#attributes' => ['class' => ['filter-mode-selector']],
+    '#ajax' => [
+      'callback' => 'rovas_orders_chart_filter_mode_callback',
+      'wrapper' => 'date-filter-wrapper',
+      'method' => 'replace',
+      'effect' => 'fade',
+      'progress' => [
+        'type' => 'throbber',
+        'message' => NULL,
+      ],
+    ],
+  ];
+
+  $form['group_by'] = [
+    '#type' => 'select',
+    '#title' => t('Zobraziť podľa'),
+    '#options' => [
+      'day' => t('Dní'),
+      'week' => t('Týždňov'),
+      'month' => t('Mesiacov'),
+      'year' => t('Rokov'),
+    ],
+    '#default_value' => $group_by,
+    '#attributes' => ['class' => ['group-by-selector']],
+  ];
+
+  $form['date_filters'] = [
+    '#type' => 'container',
+    '#prefix' => '<div id="date-filter-wrapper">',
+    '#suffix' => '</div>',
+  ];
+
+  $current_mode = isset($form_state['values']['filter_mode']) ? $form_state['values']['filter_mode'] : $filter_mode;
+
+  if ($current_mode == 'quick') {
+    $form['date_filters']['quick_select'] = [
+      '#type' => 'select',
+      '#title' => t('Obdobie'),
+      '#options' => [
+        'week' => t('Posledný týždeň'),
+        'month' => t('Posledný mesiac'),
+        'quarter' => t('Posledný štvrťrok'),
+        'year' => t('Posledný rok'),
+      ],
+      '#default_value' => isset($_SESSION['rovas_orders_chart_quick']) ? $_SESSION['rovas_orders_chart_quick'] : 'week',
+    ];
+  } else {
+		$form['date_filters']['from'] = [
+			'#type' => 'date_popup',
+			'#title' => t('Od dátumu'),
+			'#default_value' => $default_from,
+			'#date_format' => 'Y-m-d',
+		];
+		
+		$form['date_filters']['to'] = [
+			'#type' => 'date_popup',
+			'#title' => t('Do dátumu'),
+			'#default_value' => $default_to,
+			'#date_format' => 'Y-m-d',
+		];
+  }
+
+  $form['recipient_id'] = [
+    '#type' => 'value',
+    '#value' => $recipient_id,
+  ];
+  
+  $form['submit'] = [
+    '#type' => 'submit',
+    '#value' => t('Zobraziť'),
+    '#attributes' => ['class' => ['btn', 'btn-primary']],
+    '#ajax' => [],
+  ];
+
+  return $form;
+}
+
+/**
+ * AJAX callback for filter mode change.
+ */
+function rovas_orders_chart_filter_mode_callback($form, $form_state) {
+  return $form['date_filters'];
+}
+
+function rovas_orders_chart_filter_form_submit($form, &$form_state) {
+  $filter_mode = $form_state['values']['filter_mode'];
+  $group_by = $form_state['values']['group_by'];
+  
+  $_SESSION['rovas_orders_chart_mode'] = $filter_mode;
+  $_SESSION['rovas_orders_chart_group_by'] = $group_by;
+
+  if ($filter_mode == 'quick') {
+    $quick_select = $form_state['values']['quick_select'];
+    $_SESSION['rovas_orders_chart_quick'] = $quick_select;
+    
+    $to = date('Y-m-d');
+    
+    switch ($quick_select) {
+      case 'week':
+        $from = date('Y-m-d', strtotime('-7 days'));
+        break;
+      case 'month':
+        $from = date('Y-m-d', strtotime('-30 days'));
+        break;
+      case 'quarter':
+        $from = date('Y-m-d', strtotime('-90 days'));
+        break;
+      case 'year':
+        $from = date('Y-m-d', strtotime('-365 days'));
+        break;
+      default:
+        $from = date('Y-m-d', strtotime('-7 days'));
+    }
+    
+    $_SESSION['rovas_orders_chart_from'] = $from;
+    $_SESSION['rovas_orders_chart_to'] = $to;
+    
+  } else {
+    // Custom date mode
+    $from_string = $form_state['values']['from'];
+    $to_string = $form_state['values']['to'];
+
+    // Confirm these are strings before passing to strtotime
+    $from_ts = strtotime($from_string);
+    $to_ts = strtotime($to_string);
+
+    if (!$from_ts || !$to_ts) {
+      drupal_set_message(t('Invalid date selected.'), 'error');
+      return;
+    }
+
+    $from = date('Y-m-d', $from_ts);
+    $to = date('Y-m-d', $to_ts);
+
+    $_SESSION['rovas_orders_chart_from'] = $from;
+    $_SESSION['rovas_orders_chart_to'] = $to;
+  }
+
+  $recipient_id = $form_state['values']['recipient_id'];
+  drupal_goto('orders-chart/' . $recipient_id);
+}

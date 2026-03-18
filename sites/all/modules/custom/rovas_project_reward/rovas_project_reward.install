@@ -1,0 +1,40 @@
+<?php
+
+
+include_once 'rovas_project_reward.field_base.inc';
+include_once 'rovas_project_reward.field_instance.inc';
+
+/*
+*
+* Implements hook_install(). 
+*/
+function rovas_project_reward_install () {
+
+  node_types_rebuild();
+
+  foreach (_rovas_project_reward_installed_fields() as $field) {
+    field_create_field($field);
+  }
+
+  foreach (_rovas_project_reward_installed_instances() as $fieldinstance) {
+    field_create_instance($fieldinstance);
+	}
+}
+
+/*
+* implements hook_uninstall() 
+*/
+function rovas_project_reward_uninstall() {
+	if($instance = field_info_instance('commerce_order', 'field_payer_type', 'commerce_order')) {
+		field_delete_instance($instance);
+	}
+	if($instance = field_info_instance('commerce_order', 'field_payment_recipient', 'commerce_order')) {
+		field_delete_instance($instance);
+	}
+	if($instance = field_info_instance('node', 'field_payment_recipient', 'project')) {
+		field_delete_instance($instance);
+	}
+	if($instance = field_info_instance('node', 'field_payment_recipient', 'project')) {
+		field_delete_instance($instance);
+	}
+}

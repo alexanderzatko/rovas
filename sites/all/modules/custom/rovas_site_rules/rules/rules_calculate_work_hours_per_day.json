@@ -1,0 +1,78 @@
+{ "rules_calculate_work_hours_per_day" : {
+    "LABEL" : "Calculate work hours per day",
+    "PLUGIN" : "action set",
+    "OWNER" : "rules",
+    "TAGS" : [ "user" ],
+    "REQUIRES" : [ "php", "rules", "rules_conditional" ],
+    "USES VARIABLES" : {
+      "user_to_check" : { "label" : "user to check", "type" : "user" },
+      "hours_per_day" : { "label" : "hours per day", "type" : "decimal", "parameter" : false }
+    },
+    "ACTION SET" : [
+      { "variable_add" : {
+          "USING" : {
+            "type" : "decimal",
+            "value" : {
+              "select" : "user-to-check:uid",
+              "php" : { "code" : "$result = db_query(\u0022SELECT SUM(hw.field_hours_worked_value) AS hours\r\nFROM {node} node\r\nLEFT JOIN {field_data_field_hours_worked} hw ON node.nid = hw.entity_id \r\nAND hw.entity_type = \u0027node\u0027 \r\nAND hw.deleted = \u00270\u0027\r\nWHERE node.uid = :uid\r\nAND node.status = \u00271\u0027\r\nAND node.type IN  (\u0027work_report\u0027)\u0022, array(\u0027:uid\u0027 =\u003E $value));\r\n\r\n$resarray = $result-\u003EfetchAll();\r\n\r\nreturn round($resarray[0]-\u003Ehours);" }
+            }
+          },
+          "PROVIDE" : { "variable_added" : { "t_worker_hours" : "total worker hours" } }
+        }
+      },
+      { "variable_add" : {
+          "USING" : { "type" : "date", "value" : [ "user-to-check:created" ] },
+          "PROVIDE" : { "variable_added" : { "user_created" : "user created" } }
+        }
+      },
+      { "data_convert" : {
+          "USING" : { "type" : "integer", "value" : [ "user-created" ] },
+          "PROVIDE" : { "conversion_result" : { "user_created_unix" : "user created unix" } }
+        }
+      },
+      { "variable_add" : {
+          "USING" : {
+            "type" : "integer",
+            "value" : {
+              "select" : "user-created-unix",
+              "php" : { "code" : "$created = $value;\r\n$today =  time();\r\n\r\n$unixDifference = $today - $created;\r\n$daysDifference = $unixDifference\/86400;\r\n\r\nreturn round($daysDifference);" }
+            }
+          },
+          "PROVIDE" : { "variable_added" : { "accnt_age" : "Account age" } }
+        }
+      },
+      { "data_convert" : {
+          "USING" : { "type" : "decimal", "value" : [ "accnt-age" ] },
+          "PROVIDE" : { "conversion_result" : { "accnt_age_decimal" : "account age decimal" } }
+        }
+      },
+      { "CONDITIONAL" : [
+          {
+            "IF" : { "data_is" : { "data" : [ "accnt-age-decimal" ], "op" : "\u003E", "value" : "0" } },
+            "DO" : [
+              { "data_calc" : {
+                  "USING" : {
+                    "input_1" : [ "t-worker-hours" ],
+                    "op" : "\/",
+                    "input_2" : [ "accnt-age" ]
+                  },
+                  "PROVIDE" : { "result" : { "result" : "hpd" } }
+                }
+              }
+            ]
+          },
+          { "ELSE" : [
+              { "variable_add" : {
+                  "USING" : { "type" : "decimal", "value" : "0" },
+                  "PROVIDE" : { "variable_added" : { "result" : "result" } }
+                }
+              }
+            ]
+          }
+        ]
+      },
+      { "data_set" : { "data" : [ "hours-per-day" ], "value" : [ "result" ] } }
+    ],
+    "PROVIDES VARIABLES" : [ "hours_per_day" ]
+  }
+}

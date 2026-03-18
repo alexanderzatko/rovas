@@ -1,0 +1,32 @@
+{ "rules_users_chrons" : {
+    "LABEL" : "user\u0027s chrons",
+    "PLUGIN" : "rule",
+    "OWNER" : "rules",
+    "TAGS" : [ "api", "chrons" ],
+    "REQUIRES" : [ "rules" ],
+    "USES VARIABLES" : {
+      "total_chrons" : { "label" : "total chrons", "type" : "decimal", "parameter" : false },
+      "chrons_available" : { "label" : "chrons available", "type" : "decimal", "parameter" : false }
+    },
+    "DO" : [
+      { "component_rules_retrieve_user_id_from_api_key_and_token" : { "USING" : {}, "PROVIDE" : { "uid" : { "uid" : "user id" } } } },
+      { "entity_fetch" : {
+          "USING" : { "type" : "user", "id" : [ "uid" ] },
+          "PROVIDE" : { "entity_fetched" : { "user_fetched" : "Fetched user" } }
+        }
+      },
+      { "data_set" : {
+          "data" : [ "total-chrons" ],
+          "value" : [ "user-fetched:field-chrons-balance" ]
+        }
+      },
+      { "component_rules_chrons_actually_available" : {
+          "USING" : { "user_object" : [ "user-fetched" ] },
+          "PROVIDE" : { "chrons_available" : { "chrons_computed" : "Chrons computed" } }
+        }
+      },
+      { "data_set" : { "data" : [ "chrons-available" ], "value" : [ "chrons-computed" ] } }
+    ],
+    "PROVIDES VARIABLES" : [ "total_chrons", "chrons_available" ]
+  }
+}

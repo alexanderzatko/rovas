@@ -1,0 +1,47 @@
+{ "rules_proxy_report_verification_status" : {
+    "LABEL" : "proxy - report verification status",
+    "PLUGIN" : "rule",
+    "OWNER" : "rules",
+    "TAGS" : [ "api", "verification" ],
+    "REQUIRES" : [ "rules", "rules_conditional" ],
+    "USES VARIABLES" : {
+      "wr_id" : { "label" : "work report ID", "type" : "integer" },
+      "result" : { "label" : "result", "type" : "integer", "parameter" : false },
+      "count_total" : { "label" : "count total", "type" : "integer", "parameter" : false }
+    },
+    "DO" : [
+      { "component_rules_retrieve_user_id_from_api_key_and_token" : { "USING" : {}, "PROVIDE" : { "uid" : { "uid" : "user id" } } } },
+      { "entity_fetch" : {
+          "USING" : { "type" : "node", "id" : [ "wr-id" ] },
+          "PROVIDE" : { "entity_fetched" : { "wr_object" : "Fetched work report" } }
+        }
+      },
+      { "CONDITIONAL" : [
+          {
+            "IF" : { "entity_is_of_bundle" : {
+                "entity" : [ "wr-object" ],
+                "type" : "node",
+                "bundle" : { "value" : { "work_report" : "work_report" } }
+              }
+            },
+            "DO" : [
+              { "component_rules_determine_verification_outcome" : {
+                  "USING" : { "wr_object" : [ "wr_object" ] },
+                  "PROVIDE" : { "outcome" : { "outcome" : "outcome" }, "count" : { "count" : "count" } }
+                }
+              },
+              { "data_set" : { "data" : [ "count-total" ], "value" : [ "count" ] } },
+              { "data_set" : { "data" : [ "result" ], "value" : [ "outcome" ] } }
+            ]
+          },
+          { "ELSE" : [
+              { "data_set" : { "data" : [ "count-total" ], "value" : "-1" } },
+              { "data_set" : { "data" : [ "result" ], "value" : "-3" } }
+            ]
+          }
+        ]
+      }
+    ],
+    "PROVIDES VARIABLES" : [ "result", "count_total" ]
+  }
+}

@@ -1,0 +1,61 @@
+diff --git a/commerce_bank_transfer.module b/commerce_bank_transfer.module
+index 91cd988..4e0ea1e 100755
+--- a/commerce_bank_transfer.module
++++ b/commerce_bank_transfer.module
+@@ -147,6 +147,7 @@ function commerce_bank_transfer_settings_form($settings = NULL) {
+     '#required' => FALSE,
+     '#rows' => 3,
+   );
++  $form['config']['tokens'] = _commerce_bank_transfer_generate_token_list();
+ 
+   return $form;
+ }
+@@ -206,6 +207,8 @@ function commerce_bank_transfer_transaction($payment_method, $order, $charge) {
+  * $oid = order ID
+  */
+ function commerce_bank_transfer_bank_details($oid, $pm) {
++  global $user;
++
+   if (!empty($pm['settings']['details']['account_owner'])) {
+     $bank_info[] = t('Account owner') . ': ' . $pm['settings']['details']['account_owner'];
+   }
+@@ -236,6 +239,39 @@ function commerce_bank_transfer_bank_details($oid, $pm) {
+ 
+   isset($bank_info) ? ($bank_details = implode('<br />', $bank_info)) : ($bank_details = '');
+ 
++  $bank_details = token_replace($bank_details, array('user' => $user, 'commerce-order' => commerce_order_load($oid)));
++
+   return $bank_details;
+ }
+ 
++
++/**
++ * Generate a fieldset with a list of available tokens.
++ *
++ * @param array $types
++ * @return array
++ */
++function _commerce_bank_transfer_generate_token_list() {
++  $placeholders = array();
++  $tokens = token_info();
++
++  foreach ($tokens['tokens'] as $type => $token) {
++    if ($type == 'commerce-order' || $type == 'user' || $type == 'date') {
++      foreach ($token as $placeholder => $name) {
++        $placeholders[] = array(check_plain("[$type:$placeholder]"), check_plain($name['description']));
++      }
++    }
++  }
++  $form_element = array(
++    '#type' => 'fieldset',
++    '#title' => t('Available tokens'),
++    '#description' => t('You can use these tokens in for the bank transfer message.'),
++    '#collapsible' => TRUE,
++    '#collapsed' => TRUE,
++  );
++  $form_element['items'] = array(
++    '#markup' => theme('table', array('header' => array(t('Token'), t('Description')), 'rows' => $placeholders)),
++  );
++
++  return $form_element;
++}

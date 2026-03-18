@@ -1,0 +1,1213 @@
+<?php
+
+//ads admin menu for setting values of the verification period variables
+function rovas_verify_menu() {
+  $items = array();
+
+  $items['admin/config/development/wr_verify'] = array(
+    'title' => t('Report verification administration'),
+    'description' => t('Set report verification periods'),
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('rovas_verify_admin_form'),
+    'access arguments' => array('access administration pages'),
+    'menu_name' => 'management'
+  );
+
+  $items['widget_wrw/%'] = array(
+    'title' => t('Verify report'),
+    'description' => t('Provides a widget for verifying reports'),
+    'page callback' => '_render_form_copy',
+    'page arguments' => array(1),
+//    'access arguments' => array('access administration pages'),
+    'access callback' => TRUE,
+  );
+
+  return $items;
+}
+
+
+function _render_form_copy($nid) {
+	module_load_include('inc', 'node', 'node.pages');
+
+	$form = node_add('verification');
+	$form['field_work_report'][LANGUAGE_NONE][0]['target_id']['#default_value'] = '(' . $nid . ')';
+	return drupal_render($form);
+}
+
+function rovas_verify_admin_form($form, &$form_state) {
+
+	$rv_normal_period = variable_get('rv_normal_period') ? variable_get('rv_normal_period') : 0;
+	
+	$form['normal_period'] = array(
+		'#type' => 'textfield',
+		'#title' => 'Normal period',
+		'#description' => 'Verification period for users with positive compliance score - in hours',
+		'#default_value' => $rv_normal_period,
+		'#size' => 20, 
+		'#maxlength' => 40, 
+		'#required' => TRUE,
+	);
+
+	$rv_restrict_period = variable_get('rv_restrict_period') ? variable_get('rv_restrict_period') : 0;
+	
+	$form['restricted_period'] = array(
+		'#type' => 'textfield',
+		'#title' => 'Restricted period',
+		'#description' => 'Verification period for users with negative compliance score - in hours',
+		'#default_value' => $rv_restrict_period,
+		'#size' => 20, 
+		'#maxlength' => 40, 
+		'#required' => TRUE,
+	);
+
+	$rv_restr_wait_period = variable_get('rv_restr_wait_period') ? variable_get('rv_restr_wait_period') : 0;
+	
+	$form['restr_wait_period'] = array(
+		'#type' => 'textfield',
+		'#title' => 'Restricted wait period',
+		'#description' => 'Number of days we wait for a non-responding user to be asked again to verify a new report',
+		'#default_value' => $rv_restr_wait_period,
+		'#size' => 20, 
+		'#maxlength' => 40, 
+		'#required' => TRUE,
+	);
+
+	$form['submit'] = array(
+		'#type' => 'submit',
+		'#value' => 'Save',
+		'#validate' => array('_rv_validate_admin'),
+	);
+
+	return $form;
+}
+
+function rovas_verify_admin_form_submit($form, &$form_state) {
+
+	variable_set('rv_normal_period',$form_state['values']['normal_period']);
+	variable_set('rv_restrict_period',$form_state['values']['restricted_period']);
+	variable_set('rv_restr_wait_period',$form_state['values']['restr_wait_period']);
+
+	$msg = '';
+	drupal_set_message($msg);
+
+	$path= current_path();
+	drupal_goto($path);
+
+}
+
+function _rv_validate_admin($form, &$form_state) {
+
+  if (!is_numeric($form_state['values']['normal_period']) || $form_state['values']['normal_period'] < 0) {
+    form_set_error('normal_period', 'Error: please enter numerical value greater than 0.');
+  }
+  else if (!is_numeric($form_state['values']['restricted_period']) || $form_state['values']['restricted_period'] < 0) {
+    form_set_error('restricted_period', 'Error: please enter numerical value greater than 0.');
+  }
+  else if (!is_numeric($form_state['values']['restr_wait_period']) || $form_state['values']['restr_wait_period'] < 0) {
+    form_set_error('restr_wait_period', 'Error: please enter numerical value greater than 0.');
+  }
+
+}
+
+
+function rovas_verify_form_alter(&$form, &$form_state, $form_id) {
+	if ($form['#id'] == 'verification-node-form') {
+
+		$wrname = $form['field_work_report'][LANGUAGE_NONE][0]['target_id']['#default_value'];
+
+		preg_match('/.+\((.+)\).*/', $wrname, $matches);
+		$wr_nid = isset($matches[1]) ? $matches[1] : 0;
+		
+		global $user;
+		$lang = $user->language;
+
+		$can_verify = rules_invoke_component('rules_verifiability',$wr_nid,$user->uid,FALSE);
+
+
+		if ($user->uid == 1 || ($can_verify[0] && $wrname)) {
+
+			$params = drupal_get_query_parameters();
+			$action = isset($params['action']) ? $params['action'] : NULL;
+
+			$node = node_load($wr_nid);
+			$object = entity_metadata_wrapper('node', $wr_nid);
+			$object_translated = $object->language($lang);
+
+			//finds verif. slip that is voluntary and not declined
+			$comp = rules_invoke_component('rules_find_verification_slips',$wr_nid,$user->uid);
+			$volObj = empty($comp) ? NULL : reset($comp[0]);
+			$canDecline = isset($volObj->field_voluntary[LANGUAGE_NONE][0]['value']) ? $volObj->field_voluntary[LANGUAGE_NONE][0]['value'] : FALSE;
+
+			$time2verify = $object->field_hours_worked->value();
+
+			$form['field_verified_time']['und'][0]['value']['#default_value'] = $time2verify;
+
+			$author_uid = $object->author->getIdentifier();
+			$whole_merits = userpoints_get_current_points($author_uid);
+			$dec_part = $object->author->field_merit_decimal_part->value();
+			$compl_score = $object->author->field_verification_score->value();
+			$auth_merits = $whole_merits + $dec_part;
+			$registered = $object->author->created->value();
+			$hrs_per_day =  $object->author->field_average_work_day->value();
+
+			$fullname = $object->author->field_full_name->value();
+			if (empty($fullname) || trim(strtolower($fullname)) == 'nomen omen') {
+				$fullname = t('not provided');
+			}
+
+			//render the report table
+			$my_display_name = 'master';
+			$my_view = views_get_view('users_reports');
+			if ( is_object($my_view) ) { 
+				$my_view->set_display($my_display_name);
+				$my_view->set_arguments(array($author_uid));
+				$my_view->pre_execute();
+				$my_view->execute();
+				$view_code = $my_view->render($my_display_name);
+			}
+			else {
+				$view_code = '';
+			}
+
+			$report_merits = $object->field_merit_reward->value() ? $object->field_merit_reward->value() : t('none yet');
+
+			$time_raw = $object->field_hours_worked->value();
+
+			$hours = floor($time_raw);
+			$hours_formated = $hours ? $hours . ' <span class="unit">' . t('hrs') . '</span>' : '';
+			$minutes = ($time_raw - $hours) * 60;
+			$minutes_formated = $minutes ? round($minutes,0) . '  <span class="unit">' . t('min') . '</span>' : '';
+			$comma = !empty($hours_formated) && !empty($minutes_formated) ? ' ' : '';
+
+			$time_formated = $hours_formated . $comma . $minutes_formated;
+
+
+			$wrdate = $object->created->value();
+			$wrbody_ary = $object_translated->body->value();
+			$wrbody = $wrbody_ary['value'];
+
+			$proof_photos = field_view_field('node', $node, 'field_photos', array(
+				'label' => 'hidden',
+				'type' => 'lightbox2',
+				'settings' => array(
+					'type' => 'lightbox',
+					'image_style' => 'thumbnail',
+					'lightbox_style' => 'original',
+					'caption' => 'title',
+					),
+				)
+			);
+
+			$proof_map = field_view_field('node', $node, 'field_location', array(
+				'label' => 'hidden',
+				'type' => 'openlayers_geofield',
+				'settings' => array(
+					'data' => 'full',
+	//				'map_layer_preset' => 'openlayers_geofield_map_geofield_formatter:openlayers_geofield_layer_formatter',
+					'map_layer_preset' => 'freemap:openlayers_geofield_layer_formatter',
+					),
+				)
+			);
+	
+			$proof_address = field_view_field('node', $node, 'field_address', array(
+				'label' => 'hidden',
+				'type' => 'field_collection_view',
+				'settings' => array(
+					'add' => '',
+					'edit' => '',
+					'delete' => '',
+					'description' => FALSE,
+					'view_mode' => 'full',
+					),
+				)
+			);
+	
+			$coworkers = field_view_field('node', $node, 'field_attendees', array(
+				'label' => 'hidden',
+				'type' => 'default_formatter',
+				'settings' => array(
+					'link' => TRUE,
+					),
+				)
+			);
+
+			$webs = $object->field_web_address->value();
+			$web_proofs = '';
+			foreach ($webs as $web) {
+
+				$septyp = strpos($web, '?');
+				$doubles = strpos($web, '"');
+
+				if ($septyp) {
+					$separator = '&';
+				}
+				else {
+					$separator = '?';
+				}
+		
+				if ($doubles) {
+					$web_proofs .= "<a href='". $web . $separator . "cbt=" . $object->field_content_access_token->value() ."' target='_blank'>" . $web . "</a><br>";
+				}
+				else {
+					$web_proofs .= '<a href="'. $web . $separator . 'cbt=' . $object->field_content_access_token->value() .'" target="_blank">' . $web . '</a><br>';
+				}
+			}
+
+			//an array of integers denoting the types of proofs available
+			$evidence = $object->field_work_evidence->value();
+
+			$report_info = '<div class="section-info report-info">';
+
+			$report_info .= '<div class="sec-field">';
+			$report_info .= '<span class="vrf_label">';
+			$report_info .= t('Report name') . ': ';
+			$report_info .= '</span>';
+			$report_info .= '<span class="vrf_value" style="padding-bottom:10px;">';
+			$report_info .= '<a href="/node/' . $wr_nid . '" . target="_blank">' . $wrname . '</a>';
+			$report_info .= '</span>';
+			$report_info .= '</div>';
+
+			$report_info .= '<div class="sec-field">';
+			$report_info .= '<span class="vrf_label">';
+			$report_info .= t('Date filed') . ': ';
+			$report_info .= '</span>';
+			$report_info .= '<span class="vrf_value">';
+			$report_info .= format_date($wrdate,'short_timestamp_with_spelled_month');
+			$report_info .= '</span>';
+			$report_info .= '</div>';
+
+			$report_info .= '<div class="sec-field">';
+			$report_info .= '<span class="vrf_label">';
+			$report_info .= t('Labor time') . ': ';
+			$report_info .= '</span>';
+			$report_info .= '<span class="vrf_value">';
+			$report_info .= $time_formated;
+			$report_info .= '</span>';
+			$report_info .= '</div>';
+
+			$report_info .= '<div class="sec-field">';
+			$report_info .= '<span class="vrf_label">';
+			$report_info .= t('Merits received') . ': ';
+			$report_info .= '</span>';
+			$report_info .= '<span class="vrf_value">';
+			$report_info .= $report_merits;
+			$report_info .= '</span>';
+			$report_info .= '</div>';
+
+			if (count($coworkers) > 0) {
+				$report_info .= '<div class="sec-field">';
+				$report_info .= '<span class="vrf_label">';
+				$report_info .= t('Coworkers') . ': ';
+				$report_info .= '</span>';
+				$report_info .= '<span class="vrf_value">';
+				$report_info .= render($coworkers);
+				$report_info .= '</span>';
+				$report_info .= '</div>';
+			}
+				$report_info .= '<div class="sec-field">';
+				$report_info .= '<span class="vrf_label proofs-provided">';
+				$report_info .= t('Proofs provided');
+				$report_info .= '</span>';
+				$report_info .= '<span class="vrf_value"></span>';
+				$report_info .= '</div>';
+
+			if ($wrbody) {
+				$report_info .= '<div class="sec-field">';
+				$report_info .= '<span class="vrf_label">';
+				$report_info .= t('Description') . ': ';
+				$report_info .= '</span>';
+				$report_info .= '<span class="vrf_value">';
+				$report_info .= html_entity_decode($wrbody);
+				$report_info .= '</span>';
+				$report_info .= '</div>';
+			}
+
+			if (in_array(1,$evidence)) {
+				$report_info .= '<div class="sec-field">';
+				$report_info .= '<span class="vrf_label">';
+				$report_info .= t('Web address') . ': ';
+				$report_info .= '</span>';
+				$report_info .= '<span class="vrf_value">';
+				$report_info .= $web_proofs;
+				$report_info .= '</span>';
+				$report_info .= '</div>';
+			}
+
+			if (in_array(4,$evidence)) {
+				$report_info .= '<div class="sec-field">';
+				$report_info .= '<span class="vrf_label">';
+				$report_info .= t('Photos') . ': ';
+				$report_info .= '</span>';
+				$report_info .= '<span class="vrf_value">';
+				$report_info .= render($proof_photos);
+				$report_info .= '</span>';
+				$report_info .= '</div>';
+			}
+
+			if (in_array(2,$evidence)) {
+				$report_info .= '<div class="sec-field">';
+				$report_info .= '<span class="vrf_label">';
+				$report_info .= t('Address') . ': ';
+				$report_info .= '</span>';
+				$report_info .= '<span class="vrf_value">';
+				$report_info .= render($proof_address);
+				$report_info .= '</span>';
+				$report_info .= '</div>';
+			}
+
+			if (in_array(3,$evidence)) {
+				$report_info .= '<div class="sec-field">';
+				$report_info .= '<span class="vrf_label">';
+				$report_info .= t('Location') . ': ';
+				$report_info .= '</span>';
+				$report_info .= '<span class="vrf_value">';
+				$report_info .= render($proof_map);
+				$report_info .= '</span>';
+				$report_info .= '</div>';
+			}
+
+			$report_info .= '</div>';
+
+
+			$form['field_work_report']['#access'] = FALSE;
+
+			$instructions = '<div class="section-info instruct">';
+
+			$instructions .= '<span class="vrf_label">';
+			$instructions .= t('What to check when verifying') . ':';
+			$instructions .= '</span>';
+			$instructions .= '<ol>';
+			$instructions .= '<li>';
+			$instructions .= t('the author provided <strong>sufficient evidence</strong> for actually performing the work');
+			$instructions .= '</li>';
+			$instructions .= '<li>';
+			$instructions .= t('the reported <strong>labor time is realistic</strong>');
+			$instructions .= '</li>';
+			$instructions .= '<li>';
+			$instructions .= t('the product of the work is either <strong>free, or can be (or was already) purchased with Chrons</strong>');
+			$instructions .= '</li>';
+			$instructions .= '<li>';
+			$instructions .= t('<strong>do not judge usefulness</strong> of the performed work.');
+			$instructions .= '</li>';
+			$instructions .= '</ol>';
+
+			$instructions .= '<span class="vrf_label">';
+			$instructions .= t('If you approve the report and its validity is later challenged in a dispute, you might be penalized alongside the work report author if you loose in the dispute. See the <a href="/rules">neo rules</a> for more information.');
+			$instructions .= '</span>';
+
+			$instructions .= '</div>';
+	
+			$auth_info = '<div class="section-info vrf_label">';
+
+			$auth_info .= '<div class="sec-field">';
+			$auth_info .= '<span class="vrf_label">';
+			$auth_info .= t('Name') . ': ';
+			$auth_info .= '</span>';
+			$auth_info .= '<span class="vrf_value">';
+			$auth_info .= '<a href="/user/'.$author_uid.'">'.$object->author->label().'</a>';
+			$auth_info .= '</span>';
+			$auth_info .= '</div>';
+
+			$auth_info .= '<div class="sec-field">';
+			$auth_info .= '<span class="vrf_label">';
+			$auth_info .= t('Full Name') . ': ';
+			$auth_info .= '</span>';
+			$auth_info .= '<span class="vrf_value">';
+			$auth_info .=  $fullname;
+			$auth_info .= '</span>';
+			$auth_info .= '</div>';
+
+			$auth_info .= '<div class="sec-field">';
+			$auth_info .= '<span class="vrf_label">';
+			$auth_info .= t('Registered') . ': ';
+			$auth_info .= '</span>';
+			$auth_info .= '<span class="vrf_value">';
+			$auth_info .= format_date($registered,'short_timestamp_with_spelled_month');
+			$auth_info .= '</span>';
+			$auth_info .= '</div>';
+
+			$auth_info .= '<div class="sec-field">';
+			$auth_info .= '<span class="vrf_label">';
+			$auth_info .= t('Merits') . ': ';
+			$auth_info .= '</span>';
+			$auth_info .= '<span class="vrf_value">';
+			$auth_info .= $auth_merits;
+			$auth_info .= '</span>';
+			$auth_info .= '</div>';
+
+			$auth_info .= '<div class="sec-field">';
+			$auth_info .= '<span class="vrf_label" title="'.t('Compliance score').'">';
+			$auth_info .= t('Compl. score') . ': ';
+			$auth_info .= '</span>';
+			$auth_info .= '<span class="vrf_value">';
+			$auth_info .= $compl_score;
+			$auth_info .= '</span>';
+			$auth_info .= '</div>';
+
+			$auth_info .= '<div class="sec-field">';
+			$auth_info .= '<span class="vrf_label" title="'.t('Average effort').'">';
+			$auth_info .= t('Average effort') . ': ';
+			$auth_info .= '</span>';
+			$auth_info .= '<span class="vrf_value">';
+			$auth_info .= $hrs_per_day . ' ' . t('hours/day');
+			$auth_info .= '</span>';
+			$auth_info .= '</div>';
+
+			$auth_info .= '</div>';
+
+			$auth_info .= $view_code;
+
+			if (!$action || $action == 'verify') {
+				//instructions
+				$form['instructions'] = array(
+					'#type' => 'fieldset',
+					'#title' => t('Instructions'),
+					'#weight' => -8,
+					'#attributes' => array('class' => array('abaut')),
+					'#collapsible' => TRUE,
+					'#collapsed' => TRUE,
+					);
+
+				$form['instructions']['content'] = array(
+					'#type' => 'item',
+					'#markup' => $instructions,
+				);
+
+				//report info
+				$form['report-info'] = array(
+					'#type' => 'fieldset',
+					'#title' => t('Report Information'),
+					'#weight' => -7,
+					'#attributes' => array('class' => array('about')),
+					'#collapsible' => TRUE,
+					'#collapsed' => FALSE,
+					);
+
+				$form['report-info']['content'] = array(
+					'#type' => 'item',
+					'#markup' => $report_info,
+				);
+
+				//author info
+				$form['about-author'] = array(
+					'#type' => 'fieldset',
+					'#title' => t('Author information'),
+					'#weight' => -5,
+					'#attributes' => array('class' => array('abaut')),
+					'#collapsible' => TRUE,
+					'#collapsed' => TRUE,
+					);
+
+				$form['about-author']['author_info'] = array(
+					'#type' => 'item',
+					'#markup' => $auth_info,
+				);
+			}
+
+			$lang = $form['field_verdict']['#language'];
+			$fhsname = 'field_verdict['.$lang.']';
+
+			$lang2 = $form['field_verification_note']['#language'];
+			$fhsname2 = 'field_verification_note['.$lang2.'][0][value]';
+
+			//add the Decline option
+			if ($canDecline) {
+
+				//insert new validation function and make it execute first
+				array_unshift($form['#validate'],'node_form_decline_validate');
+				
+				$form['field_verdict'][$lang]['#options'][] = t('will not verify');
+
+				$declineText = '<span style="display: block; margin-top: 30px; font-weight: bold; color: #00a835;">';
+
+				if ($action && $action == 'decline') {
+
+					$declineText .= t('Thank you for letting us know that you do not want to verify this report');
+					$declineText .= '</span>';
+					$declineText .= t('If you can, please mention the reason for your decision below.');
+					$declineText .= '<br>';
+					$declineText .= '<br>';
+
+					$form['field_verdict'][$lang]['#default_value'] = 2;
+				}
+				else {
+					$declineText .= t('Your verification of this report is voluntary and can be declined without penalties');
+					$declineText .= '</span>';
+					$declineText .= t('If you choose not to verify, please consider describing the reason for your decision below.');
+					$declineText .= '<br>';
+					$declineText .= '<br>';
+				}
+
+				$form['decline-info'] = array(
+					'#type' => 'item',
+					'#markup' => $declineText,
+					'#weight' => -1,
+				);
+
+				//save the work report and verif. slip IDs to the form
+				$form['wreport_id'] = array(
+					'#type' => 'hidden',
+					'#value' => $wr_nid,
+				);
+				$form['vslip_id'] = array(
+					'#type' => 'hidden',
+					'#value' => $volObj->nid
+				);
+			}
+
+			//render the note help text
+			$form['notetext_0'] = array (
+				'#type' =>'container',
+				'#markup' => '<p id="notetext_0">' . t('Optional note for the decision') . '</p>',
+				'#children' => '<p id="notetext_0">' . t('Optional note for the decision') . '</p>',
+				'#prefix' => '<div class="note-text">',
+				'#suffix' => '</div>',
+				'#states' => array(
+					'invisible' => array(
+							':input[name="'. $fhsname .'"]' => array('value' => (string) '0'),
+						),
+					)
+				);
+
+			$form['notetext_1'] = array (
+				'#type' =>'container',
+				'#markup' => '<p id="notetext_1">' . t('Please provide an explanation of your decision') . '</p>',
+				'#children' => '<p id="notetext_1">' . t('Please provide an explanation of your decision') . '</p>',
+				'#prefix' => '<div class="note-text">',
+				'#suffix' => '</div>',
+				'#states' => array(
+					'visible' => array(
+							':input[name="'. $fhsname .'"]' => array('value' => (string) '0'),
+						),
+					)
+				);
+
+			$form['actions'] = array (
+				'#type' =>'actions',
+				'cancel' => array (
+					'#type' => 'button',
+					'#value' => t('Cancel'),
+					'#weight' => -1,
+					'#attributes' => array('onClick' => 'history.go(-1); event.preventDefault();'),
+				),
+				'submit' => array(
+					'#type' => 'submit',
+					'#value' => t('Save'),
+					'#states' => array(
+						'disabled' => array(
+							':input[name="'. $fhsname .'"]' => array('!value' => (string) '1'),
+							':input[name="'. $fhsname2 .'"]' => array('empty' => TRUE),
+						),
+						'invisible' => array(
+							':input[name="'. $fhsname .'"]' => array('value' => (string) '2'),
+						),
+					),
+					'#submit' => array('node_form_submit')
+				),
+				'submit2' => array(
+					'#type' => 'submit',
+					'#value' => t('Send'),
+					'#states' => array(
+						'visible' => array(
+							':input[name="'. $fhsname .'"]' => array('value' => (string) '2'),
+						),
+					),
+					'#submit' => array('node_form_decline')
+				)
+			);
+		}
+		else {
+
+				$form['field_work_report']['#access'] = FALSE;
+				$form['field_verification_note']['#access'] = FALSE;
+				$form['field_verdict']['#access'] = FALSE;
+
+				$form['banned'] = array(
+					'#type' => 'markup',
+					'#prefix' => '<div class="cant-verify">',
+					'#suffix' => '</div>',
+					'#markup' => t('Only Rovas-selected users can verify reports'),
+				);
+
+				$form['actions'] = array (
+					'#type' =>'actions',
+					'cancel' => array (
+						'#type' => 'button',
+						'#value' => t('Cancel'),
+						'#weight' => -1,
+						'#attributes' => array('onClick' => 'history.go(-1); event.preventDefault();'),
+					),
+				);
+		}
+	}
+//dsm($form);
+}
+
+//rewrite the "decline" verdict option to appease the next validation function
+function node_form_decline_validate(&$form, &$form_state) {
+
+	$lang = $form['field_verdict']['#language'];
+
+	if ($form['field_verdict'][$lang]['#value'] == 2) {
+		unset($form['field_verdict'][$lang]['#options'][2]);
+		$form['field_verdict'][$lang]['#value'] = NULL;
+		
+		$form_state['values']['field_verdict'][$lang][0]['value'] = NULL;
+		unset($form_state['input']['field_verdict']);
+	}
+}
+
+//custom processing function for declining invitation to verify a report
+function node_form_decline(&$form, &$form_state) {
+
+	global $user;
+
+	$vslip_id = $form_state['values']['vslip_id'];
+	$wreport_id = $form_state['values']['wreport_id'];
+
+	//update the verification slip for this user - set the user refused to verify the work report
+	$wsobject = entity_metadata_wrapper('node', $vslip_id);
+	$wsobject->field_declined->set(1);
+	$wsobject->save();
+
+	$wrobject = entity_metadata_wrapper('node', $wreport_id);
+
+	//if a note was included in the form, send an email to the report creator
+	if (!empty($form_state['values']['field_verification_note'][LANGUAGE_NONE][0]['value'])) {
+
+		$recipient = $wrobject->author->mail->value();
+		$subject = t('Your work report verification status');
+
+		$replink = '/node/' . $wreport_id;
+		$usrlink = '/user/' . $user->uid;
+
+		$message = t('Hello @user,',['@user' => $wrobject->author->name->value()]);
+		$message .= '
+		<br>';
+		$message .= t('Recently we asked user <a href="@usrlink">@user</a> to verify your report <a href="@replink">@repname</a>.',['@user' => $user->name,'@usrlink' => $usrlink,'@repname' => $wrobject->title->value(array('sanitize' => TRUE)), '@replink' => $replink]);
+		$message .= '
+		 <br>';
+		$message .= t('The report requires expertise that @user does not have, and <strong>can therefore refuse to perform the verification, which they did.</strong>',['@user' => $user->name]);
+		$message .= '
+		<br>';
+		$message .= t('@user left the following commentary when asked to verify the report:',['@user' => $user->name]);
+		$message .= '<p>';
+		$message .= $form_state['values']['field_verification_note'][LANGUAGE_NONE][0]['value'];
+		$message .= '</p>';
+		$message .= t('If you need, you might still be able to <a href="@editlink">edit the work report</a>. In any case, we will try to find another verifier for your report.',['@editlink' => $replink . '/edit']);
+		$message .= '
+		<br><br>';
+		$message .= t('Thank you for your patience.');
+	
+		$lang = $wrobject->language->value();
+
+		rules_invoke_component('rules_send_email',$recipient,$subject,$message,$lang);
+	}
+
+	drupal_goto('/node/' . $wreport_id);
+
+}
+
+/*
+* the verifier-finding algorithm
+* report_nid is the newly-created work report's node ID
+* see https://github.com/alexanderzatko/rovas/issues/58 for a spec
+*/
+function rovas_verify_find_verifier($report_nid) {
+
+	$wrobject = entity_metadata_wrapper('node', $report_nid);
+	$usrary = _rv_excluded_users($wrobject);
+
+	//tid of the newly created work report that needs verifiers
+	$leaf_category = $wrobject->field_classification[0]->tid->value();
+
+	//the number of days we wait for non-responding user before asking them again
+	$wait_period = variable_get('rv_restr_wait_period') ? variable_get('rv_restr_wait_period') : 5;
+
+	$graceper = date('Y-m-d\Th:i:s',time() - $wait_period*24*60*60);
+	$ver_uid = 0;
+
+	//find suitable owner who has a verification slot
+	$ver_uid = _find_verifier_core($leaf_category,$usrary,$graceper);
+
+
+	/*
+	No suitable verifier was found. We will:
+
+	1. try to find an user who created a report in the leaf category of the work report.
+		We exclude from the search the excluded users
+
+		A: none was found, we stop the search (and wait for a new user with the required expertise to emerge).
+			verification ID returned will be -1.
+
+		B: at least one was found, we create a verify slot for the user with most merits in the selected category, 
+		or with the most hours clocked
+
+	 2. we return the author UID
+	*/
+	if (!$ver_uid > 0) {
+
+		//finding available experts
+		$ver_users = _find_filing_users($leaf_category,$usrary);
+
+		if ($ver_users) {
+				rules_invoke_component('rules_create_verify_slot',$ver_users);
+				$ver_uid = $ver_users;
+			}
+		else {
+
+			$ver_uid = -1;
+		}
+
+		//erase the verify dates for the selected slots
+/*
+		else {
+
+watchdog('module','rovas_verify - C - no dates');
+
+			foreach($slots AS $slot) {
+				db_update('field_data_field_verify_date')
+				->fields(array(
+				'field_verify_date_value' => NULL,
+				))
+				->condition('field_verify_date_value', '', '!=')
+				->condition('entity_id', $slot, '=')
+				->execute();
+			}
+		}
+*/
+	}
+	else {
+
+watchdog('module','rovas_verify - D - found uid: ' . $ver_uid);
+
+	}
+	return $ver_uid;
+}
+
+/*
+This finds all users who should not be selected as verifiers for the given work report
+*/
+function _rv_excluded_users($param) {
+    // Check if the provided param is a node
+    if (is_object($param) && $param instanceof stdClass && isset($param->nid)) {
+        $report_nid = $param->nid;
+        $wrobject = entity_metadata_wrapper('node', $report_nid);
+    }
+    // Check if the provided param is a metadata wrapper object
+    else if (is_object($param) && $param instanceof EntityMetadataWrapper) {
+        $wrobject = $param;
+        $report_nid = $wrobject->getIdentifier();
+    }
+    // The param is the report ID
+    else if (is_numeric($param)) {
+        $report_nid = $param;
+        $wrobject = entity_metadata_wrapper('node', $report_nid);
+    }
+    else {
+    	return [];
+    }
+
+    $slips = $wrobject->field_verification_slip->value();
+    $uid = $wrobject->author->uid->value();
+
+    $usrary = array($uid);
+
+    //exclude all users who already verified the report
+    if (isset($slips)) {
+        foreach ($slips as $slip) {
+            $usrary[] = $slip->uid;
+        }
+    }
+
+    //exclude already designated verifiers 
+    $owners = _find_slot_owners($report_nid);
+    $usrary = array_unique(array_merge($usrary,$owners));
+
+    //exclude dormant and banned users
+    $query = "SELECT users.uid AS uid
+    FROM {users} users
+    LEFT JOIN {users_roles} roles ON users.uid = roles.uid
+    WHERE (users.status = '0' OR roles.rid IN ('5', '9'))";
+    
+    $result = db_query($query);
+    $uids = array();
+    foreach ($result as $row) {
+        $uids[] = $row->uid;
+    }
+
+    return array_unique(array_merge($usrary,$uids));
+}
+
+/*
+* $category = tid of the newly created work report that needs verifiers
+* $uid = an array of uids to exclude (the work report author, users who already verified the report...)
+* $per = the period in UNIX time we wait for non-responding user before asking them again
+*/
+function _find_verifier_core($category,$uid,$per) {
+
+	//re-creating parent categories, as they might be missing in the field_classification field
+	$parents = taxonomy_get_parents_all($category);
+	//the pool of the potential candidates consists of the leaf and the branch closest to the leaf node
+	$parents = array_merge(array($parents[0]),array($parents[1]));
+	$ver_uid = NULL;
+
+	foreach ($parents as $parent) {
+
+		$query = "SELECT node.uid AS vuid, SUM(h.field_hours_worked_value) AS hrs, SUM(m.field_merit_reward_value) AS merits
+		FROM {node} node
+		LEFT JOIN {users} u ON node.uid = u.uid
+		LEFT JOIN {userpoints_total} usrmer ON node.uid = usrmer.uid
+		LEFT JOIN {field_data_field_suspend_account} suspend ON u.uid = suspend.entity_id AND suspend.entity_type = 'user'
+		LEFT JOIN {field_data_field_slip_owner} owner ON u.uid = owner.field_slip_owner_target_id AND owner.entity_type = 'node'
+		LEFT JOIN {field_data_field_verify_date} date ON owner.entity_id = date.entity_id AND date.entity_type = 'node'
+		LEFT JOIN {field_data_field_report_to_verify} report ON owner.entity_id = report.entity_id AND report.entity_type = 'node'
+		LEFT JOIN {field_data_field_classification} c ON node.nid = c.entity_id AND c.entity_type = 'node'
+		LEFT JOIN {field_data_field_hours_worked} h ON node.nid = h.entity_id AND h.entity_type = 'node'
+		LEFT JOIN {field_data_field_merit_reward} m ON node.nid = m.entity_id AND m.entity_type = 'node'
+		WHERE node.uid NOT IN (:uid)
+		AND c.field_classification_tid = :classif
+		AND node.status = 1
+		AND (usrmer.points IS NULL OR usrmer.points >= 0)
+		AND node.type = 'work_report'
+		AND owner.field_slip_owner_target_id > 0
+		AND (suspend.field_suspend_account_value IS NULL OR suspend.field_suspend_account_value = 0)
+		AND (
+		date.field_verify_date_value IS NULL OR 
+		(report.field_report_to_verify_target_id IS NULL AND DATE_FORMAT(ADDTIME(FROM_UNIXTIME(date.field_verify_date_value), SEC_TO_TIME(3600)), '%Y-%m-%d\T%H:%i:%s') < :date)
+		)
+		GROUP BY vuid
+#		ORDER BY merits DESC, hrs DESC
+		LIMIT 1 OFFSET 0";
+
+		$result =  db_query($query,array(':classif' => $parent->tid, ':uid' => $uid,':date' => $per));
+		$record = $result->fetchAssoc();
+
+		$ver_uid = $record['vuid'];
+//	watchdog('rule','rules_find_verifier - classif: ' . $parent->tid . ' | excluded: ' . print_r($uid,1) . ' | user: ' . print_r($record,TRUE));
+
+		//if a suitable verifier is found, terminate the search
+		if ($ver_uid > 0) {
+//			watchdog('rule','rules_find_verifier - found verifier with uid: ' . $ver_uid . ' and category: ' . $parent->tid);
+			break;
+		}
+	}
+//	watchdog('rule','rules_find_verifier 2 - verifier uid: ' . $ver_uid . ' and category: ' . $parent->tid);
+	return $ver_uid;
+}
+
+/*
+* find nids of 10 available verification slots for a particular user identified with @uid
+* if no uid is supplied, 10 slots are returned regardless of user.
+* xcld_uid - an array of slip owner IDs to exclude from the results
+* we exclude slots of banned users
+*/
+function _find_user_verif_slots($uid = NULL, $xcld_uid = NULL, $per = NULL) {
+
+	if ($per == NULL) {
+		$wait_period = variable_get('rv_restr_wait_period') ? variable_get('rv_restr_wait_period') : 5;
+		$graceper = date('Y-m-d\Th:i:s',time() - $wait_period*24*60*60);
+	}
+	else {
+		$graceper = $per;
+	}
+
+	// PHP 7.2+ warns on count(NULL); normalize to an array for Drupal IN() expansion.
+	if ($xcld_uid === NULL) {
+		$xcld_uid = array();
+	}
+	elseif (!is_array($xcld_uid)) {
+		$xcld_uid = array($xcld_uid);
+	}
+
+	$ucount = count($xcld_uid) == 0 ? 0 : 1;
+
+	$qry = "SELECT distinct(node.nid) AS nid
+	FROM {node} node
+	LEFT JOIN {field_data_field_slip_owner} owner ON node.nid = owner.entity_id AND owner.entity_type = 'node'
+	LEFT JOIN {field_data_field_report_to_verify} report ON node.nid = report.entity_id AND report.entity_type = 'node'
+	LEFT JOIN {field_data_field_verify_date} date ON node.nid = date.entity_id AND date.entity_type = 'node'
+	LEFT JOIN {users_roles} roles ON node.uid = roles.uid
+	
+	WHERE IF (:uid IS NULL,owner.field_slip_owner_target_id > 0,owner.field_slip_owner_target_id = :uid)
+	AND node.status = '1'
+	AND report.field_report_to_verify_target_id IS NULL
+	AND IF (:ucount = 0,1 = 1,owner.field_slip_owner_target_id NOT IN (:xcld_uid))
+	AND (
+	date.field_verify_date_value IS NULL OR 
+	DATE_FORMAT(ADDTIME(FROM_UNIXTIME(date.field_verify_date_value), SEC_TO_TIME(3600)), '%Y-%m-%d\T%H:%i:%s') < :date
+	)
+	AND node.type = 'verification_slot'
+	AND roles.rid <> 5
+	ORDER BY  node.nid DESC
+	LIMIT 100";
+
+	$result =  db_query($qry,array(':uid' => $uid,':ucount' => $ucount,':xcld_uid' => $xcld_uid,':date' => $graceper));
+	$nodes = $result->fetchAll();
+
+	$res = array();
+	foreach ($nodes as $node) {
+		$res[] = $node->nid;
+	}
+
+	return $res;
+}
+
+
+/*
+this query:
+1. selects all reports with a given category
+2. creates a list of projects the reports belong to
+3. gets distinct shareholders in those projects
+* excludes users who 
+	- never filled a work report
+	- have a negative merit score
+*/
+function _find_filing_users($category,$exlude_users) {
+
+	$query1 = "SELECT min(nid) as min, max(nid) as max
+	FROM {node} node
+	WHERE node.type = 'work_report'";
+
+	$result1 =  db_query($query1);
+	$record1 = $result1->fetchAll();
+
+	$min = $record1[0]->min;
+	$max = $record1[0]->max;
+	$rand = rand($min, $max);
+
+	$query = "SELECT DISTINCT(fwr.uid) as uid
+	FROM {node} node
+	LEFT JOIN {field_data_field_classification} c ON node.nid = c.entity_id AND c.entity_type = 'node'
+	LEFT JOIN {field_data_field_project} p ON node.nid = p.entity_id AND p.entity_type = 'node'
+	LEFT JOIN {node} proj ON p.field_project_target_id = proj.nid AND p.entity_type = 'node'
+
+	LEFT JOIN {field_data_field_project} dp ON proj.nid = dp.field_project_target_id AND p.entity_type = 'node'
+	LEFT JOIN {node} fwr ON dp.entity_id = fwr.nid AND p.entity_type = 'node'
+	LEFT JOIN {users_roles} roles ON fwr.uid = roles.uid
+
+	LEFT JOIN {users} user ON fwr.uid = user.uid
+
+	WHERE node.type = 'work_report'
+	AND node.nid > :rand
+	AND node.uid = fwr.uid
+	AND fwr.type = 'co_worker_merit_allocation'
+	AND c.field_classification_tid = :classif
+	AND fwr.uid NOT IN (:uid)
+	AND user.status = 1
+	AND roles.rid <> 5
+	AND node.status = 1
+	LIMIT 1
+	";
+
+	$result =  db_query($query,array(':classif' => $category, ':uid' => $exlude_users,':rand' => $rand));
+	$record = $result->fetchAll();
+	return isset($record[0]->uid) ? $record[0]->uid : 0;
+
+//the code below tries to find a single expert by searching reports with set expertise
+//it searches the leaf node and if not found, the siblings of the leaf node in the classif. hierarchy
+/*
+	//re-creating parent categories, as they might be missing in the field_classification field
+	$parents = taxonomy_get_parents_all($category);
+	//the pool of the potential candidates consists of the leaf and the branch closest to the leaf node
+	$parents = array_merge(array($parents[0]),array($parents[1]));
+	$ver_uid = NULL;
+
+	foreach ($parents as $parent) {
+
+		$query = "SELECT node.uid AS vuid, SUM(h.field_hours_worked_value) AS hrs, SUM(m.field_merit_reward_value) AS merits
+		FROM {node} node
+		LEFT JOIN {users} u ON node.uid = u.uid
+		LEFT JOIN {userpoints_total} usrmer ON node.uid = usrmer.uid
+		LEFT JOIN {field_data_field_classification} c ON node.nid = c.entity_id AND c.entity_type = 'node'
+
+		LEFT JOIN {field_data_field_hours_worked} h ON node.nid = h.entity_id AND h.entity_type = 'node'
+		LEFT JOIN {field_data_field_merit_reward} m ON node.nid = m.entity_id AND m.entity_type = 'node'
+
+		WHERE node.uid NOT IN (:uid)
+		AND c.field_classification_tid = :classif
+		AND node.status = 1
+		AND (usrmer.points IS NULL OR usrmer.points >= 0)
+		AND node.type = 'work_report'
+		GROUP BY vuid
+		ORDER BY merits DESC, hrs DESC
+		LIMIT 1";
+
+		$result =  db_query($query,array(':classif' => $parent->tid, ':uid' => $exlude_users));
+		$record = $result->fetchAssoc();
+
+		$ver_uid = $record['vuid'];
+
+		//if a suitable verifier is found, terminate the search
+		if ($ver_uid > 0) {
+			break;
+		}
+	}
+	return $ver_uid;
+	*/
+}
+
+
+/*
+* find all slot/user ids, for users, who have slots for a given repot
+*/
+function _find_slot_owners($report_nid) {
+
+	$qry = "SELECT node.nid AS nid, owner.field_slip_owner_target_id AS uid
+	FROM {node} node
+	LEFT JOIN {field_data_field_report_to_verify} rep ON node.nid = rep.entity_id AND rep.entity_type = 'node'
+	LEFT JOIN {field_data_field_slip_owner} owner ON node.nid = owner.entity_id AND owner.entity_type = 'node'
+	WHERE rep.field_report_to_verify_target_id = :nid
+	AND node.status = '1'
+	AND node.type = 'verification_slot'";
+
+	$result = db_query($qry,array(':nid' => $report_nid));
+	$rarray = $result->fetchAll();
+
+	$res = array();
+	foreach ($rarray as $nid) {
+		$res[$nid->nid] = $nid->uid;
+	}
+
+	return $res;
+
+}
+
+
+/*
+* find work reports that have not yet been verified and for which verification isn't scheduled yet
+* exclude reports from users who have outstanding verifications AND users who have negative merit scores
+*/
+
+function _find_unprocessed_reports() {
+    $qry = "
+SELECT DISTINCT n.nid AS nid
+FROM {node} n
+LEFT JOIN {field_data_field_report_to_verify} tv ON n.nid = tv.field_report_to_verify_target_id
+LEFT JOIN {node} tvn ON tv.entity_id = tvn.nid
+LEFT JOIN {field_data_field_voluntary} vol ON vol.entity_id = tvn.nid
+LEFT JOIN {field_data_field_declined} fd ON fd.entity_id = tvn.nid
+LEFT JOIN {field_data_field_verification_status} vsv ON n.nid = vsv.entity_id
+LEFT JOIN {field_data_field_system_report} srv ON n.nid = srv.entity_id
+LEFT JOIN {field_data_field_hours_worked} hrs ON n.nid = hrs.entity_id
+WHERE n.type = 'work_report'
+AND vsv.field_verification_status_value NOT IN (1, 2)
+AND n.status = 1
+AND srv.field_system_report_value <> 1
+AND (tvn.nid IS NULL OR (tvn.nid IS NOT NULL AND vol.field_voluntary_value = 1 AND fd.field_declined_value = 1))
+AND hrs.field_hours_worked_value > 0
+AND n.uid NOT IN (
+    SELECT DISTINCT owner.field_slip_owner_target_id AS uid
+    FROM {node} vn
+    LEFT JOIN {field_data_field_report_to_verify} report ON vn.nid = report.entity_id
+    LEFT JOIN {field_data_field_slip_owner} owner ON vn.nid = owner.entity_id
+    WHERE vn.status = '1'
+    AND vn.type = 'verification_slot'
+    AND report.field_report_to_verify_target_id IS NOT NULL
+    UNION
+    SELECT u.uid AS uid
+    FROM {users} u
+    LEFT JOIN {userpoints} up ON u.uid = up.uid
+    LEFT JOIN {userpoints_total} upt ON u.uid = upt.uid
+    WHERE upt.points < 0 OR u.status = '0'
+)
+AND n.nid > 37000
+ORDER BY n.nid DESC;
+	";
+
+    $result = db_query($qry);
+    $rarray = $result->fetchAll();
+
+    $res = array();
+    foreach ($rarray as $nde) {
+        $res[] = $nde->nid;
+    }
+
+    return $res;
+}
+
+
+/*
+* find nids of all active verification slips
+* @uid - uid of the user queried
+* @include_voluntary - {TRUE|FALSE} - control for including/excluding voluntary verification slips
+*/
+
+function active_verification_slips($uid = NULL, $exclude_voluntary = FALSE,$only_active = TRUE) {
+  
+  $qry = "SELECT 
+    node.nid AS nid, 
+    owner.field_slip_owner_target_id AS uid,
+    report.field_report_to_verify_target_id AS report_nid,
+    report_node.title AS report_title,
+    verify_date.field_verify_date_value AS verify_date,
+    voluntary.field_voluntary_value AS voluntary,
+    declined.field_declined_value AS declined
+  FROM {node} node
+  LEFT JOIN {field_data_field_report_to_verify} report ON node.nid = report.entity_id
+  LEFT JOIN {field_data_field_slip_owner} owner ON node.nid = owner.entity_id
+  LEFT JOIN {field_data_field_verify_date} verify_date ON node.nid = verify_date.entity_id
+  LEFT JOIN {field_data_field_voluntary} voluntary ON node.nid = voluntary.entity_id
+  LEFT JOIN {field_data_field_declined} declined ON node.nid = declined.entity_id
+  LEFT JOIN {node} report_node ON report.field_report_to_verify_target_id = report_node.nid
+  WHERE node.status = '1'
+  AND IF(:uid > 0, owner.field_slip_owner_target_id = :uid, 1 = 1)
+	AND IF(:exclude_voluntary = 1, (voluntary.field_voluntary_value IS NULL OR voluntary.field_voluntary_value <> 1), 1 = 1)
+  AND node.type = 'verification_slot'
+  AND IF(:only_active = 1, report.field_report_to_verify_target_id IS NOT NULL, 1 = 1)";
+  
+  $params = array(':uid' => $uid, ':exclude_voluntary' => $exclude_voluntary, ':only_active' => $only_active);
+  $result = db_query($qry, $params);
+  $resarray = $result->fetchAll();
+  
+  $res = array();
+  foreach ($resarray as $row) {
+    $res[$row->nid] = array(
+      'nid' => $row->nid,
+      'uid' => $row->uid,
+      'report_nid' => $row->report_nid,
+      'report_title' => $row->report_title,
+      'verify_date' => $row->verify_date,
+      'voluntary' => $row->voluntary,
+      'declined' => $row->declined,
+    );
+  }
+  
+  return $res;
+}
+
+/**
+* Implement hook_query_TAG_alter
+* to get users who are banned by role
+* 
+* @param QueryAlterableInterface $query
+*/
+function rovas_verify_query_role_filter_alter(QueryAlterableInterface $query) {
+  $query->leftJoin('users_roles', 'r', 'users.uid = r.uid');  
+  $and = db_and()
+            ->condition('r.rid', 5, '=');
+  $query
+    ->condition($and);
+}
+
+
+/*
+count the number of experts for a given taxonomy ID (NACE code)
+@userex allows excluding some users from the count
+*/
+function _rv_count_experts ($classif,$userex) {
+
+	$qry = "SELECT COUNT(DISTINCT node.uid) AS count
+	FROM {node} node
+	INNER JOIN {field_data_field_classification} clasf ON node.nid = clasf.entity_id AND (clasf.entity_type = 'node' AND clasf.deleted = '0')
+	WHERE node.status = '1'
+	AND node.type = 'work_report'
+	AND clasf.field_classification_tid = :classif
+	AND node.uid NOT IN (:uids)";
+
+	$result = db_query($qry,array(':classif' => $classif,':uids' => $userex));
+
+	$ciel = $result->fetchAssoc();
+
+	return $ciel['count'];
+}

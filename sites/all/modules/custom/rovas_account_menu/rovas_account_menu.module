@@ -1,0 +1,44 @@
+<?php
+
+function rovas_menu_link(array $variables) {
+  global $user;
+  $element = $variables['element'];
+  $sub_menu = '';
+  $caret_text = '';
+
+	/*
+	if ($element['#below']) {
+		unset($element['#below']['#theme_wrappers']); // remove default html menu wrappers
+		$sub_menu = '<ul class="dropdown-menu">' . drupal_render($element['#below']) . '</ul>'; // add submenu wrapper <ul> tag with bootstrap class "dropdown-menu"
+		$caret_text = ' <span class="caret"></span>'; // only show caret if submenu exists
+	}
+	*/
+
+  $title = '';
+  // Check if the user is logged in, that you are in the correct menu,
+  // and that you have the right menu item
+  if ($user->uid != 0 && $element['#theme'] == 'menu_link__main_menu' && $element['#title'] == t('My account')) {
+    $element['#title'] = $user->name;
+    // prepare bootstrap attributes for wrapper <li>, and then the <a> tag it contains
+    //$element['#attributes']['class'][] = 'dropdown';
+    $element['#attributes']['class'][] = 'user-picture';
+    $element['#localized_options']['html'] = TRUE;
+    //$element['#localized_options']['attributes']['class'][] = 'dropdown-toggle';
+    //$element['#localized_options']['attributes']['data-target'] = '#';
+    //$element['#localized_options']['attributes']['data-toggle'] = 'dropdown';
+    // manually prepare picture, <a> tag with image reference, username (theme_user_picture won't work due to nested <a> tag)
+    if (!empty($user->picture)) {
+      $fid = $user->picture; 
+      $file = file_load($fid);
+      $title = theme('image_style', array('style_name' => 'menu_pic_30x30', 'path' => $file->uri, 'alt' => $element['#title'], 'title' => $element['#title'])) . '<span class="menu-account">' . $element['#title'] . '</span>' . $caret_text;
+    }
+    else {
+      $title = $element['#title'] . $caret_text;
+    }
+  } 
+  else {
+    $title = $element['#title'];
+  }
+  $output = l($title, $element['#href'], $element['#localized_options']);
+  return '<li' . drupal_attributes($element['#attributes']) . '>' . $output . $sub_menu . "</li>\n";
+}

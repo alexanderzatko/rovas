@@ -1,0 +1,6 @@
+name = Work report actions
+description = Perform various actions with work report like transfer them to different projects
+core = 7.x
+package = Rovas
+
+stylesheets[all][] = rovas_report_actions.css

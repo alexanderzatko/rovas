@@ -1,0 +1,13 @@
+name = Rovas Stripe Webhooks
+description = Process and store Stripe webhook events
+core = 7.x
+package = Rovas
+version = 7.x-1.0
+
+dependencies[] = commerce
+dependencies[] = rovas_project_reward
+dependencies[] = rovas_forex
+
+files[] = rovas_stripe_webhooks.module
+files[] = rovas_stripe_webhooks.install
+files[] = rovas_stripe_webhooks.admin.inc

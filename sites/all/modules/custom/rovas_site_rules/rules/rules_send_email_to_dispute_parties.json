@@ -1,0 +1,62 @@
+{ "rules_send_email_to_dispute_parties" : {
+    "LABEL" : "Send email to dispute parties",
+    "PLUGIN" : "rule",
+    "OWNER" : "rules",
+    "TAGS" : [ "dispute" ],
+    "REQUIRES" : [ "rules", "rules_conditional", "privatemsg_rules" ],
+    "USES VARIABLES" : {
+      "dispute_node" : { "label" : "Dispute node", "type" : "node" },
+      "message_body" : { "label" : "Message body", "type" : "text" },
+      "user_to_skip" : { "label" : "User to skip", "type" : "user" }
+    },
+    "IF" : [
+      { "entity_is_of_bundle" : {
+          "entity" : [ "dispute-node" ],
+          "type" : "node",
+          "bundle" : { "value" : { "dispute" : "dispute" } }
+        }
+      }
+    ],
+    "DO" : [
+      { "entity_query" : {
+          "USING" : {
+            "type" : "node",
+            "property" : "field_dispute",
+            "value" : [ "dispute-node" ]
+          },
+          "PROVIDE" : { "entity_fetched" : { "dispute_parties_list" : "Dispute parties list" } }
+        }
+      },
+      { "LOOP" : {
+          "USING" : { "list" : [ "dispute-parties-list" ] },
+          "ITEM" : { "this_dispute_party" : "This dispute party" },
+          "DO" : [
+            { "variable_add" : {
+                "USING" : { "type" : "user", "value" : [ "this-dispute-party:author" ] },
+                "PROVIDE" : { "variable_added" : { "party_user" : "Party user" } }
+              }
+            },
+            { "CONDITIONAL" : [
+                {
+                  "IF" : { "NOT data_is" : { "data" : [ "party-user" ], "value" : [ "user-to-skip" ] } },
+                  "DO" : [
+                    { "privatemsg_rules_new" : {
+                        "USING" : {
+                          "recipient" : [ "party-user" ],
+                          "author" : "1",
+                          "subject" : "Rovas application - Dispute notification",
+                          "body" : [ "message-body" ]
+                        },
+                        "PROVIDE" : { "thread_id" : { "thread_id" : "ID of new thread" } }
+                      }
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      }
+    ]
+  }
+}

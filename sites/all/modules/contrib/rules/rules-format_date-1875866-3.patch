@@ -1,0 +1,30 @@
+diff --git a/ui/ui.data.inc b/ui/ui.data.inc
+index 0f1fde9..9f0c5f5 100644
+--- a/ui/ui.data.inc
++++ b/ui/ui.data.inc
+@@ -354,20 +354,20 @@ class RulesDataUIBoolean extends RulesDataUI implements RulesDataDirectInputForm
+ class RulesDataUIDate extends RulesDataUIText {
+ 
+   public static function inputForm($name, $info, $settings, RulesPlugin $element) {
+-    $settings += array($name => isset($info['default value']) ? $info['default value'] : (empty($info['optional']) ? gmdate('Y-m-d H:i:s', time()) : NULL));
++    $settings += array($name => isset($info['default value']) ? $info['default value'] : (empty($info['optional']) ? format_date(time(), 'custom', 'Y-m-d H:i:s') : NULL));
+ 
+     // Convert any configured timestamp into a readable format.
+     if (is_numeric($settings[$name])) {
+-      $settings[$name] = gmdate('Y-m-d H:i:s', $settings[$name]);
++      $settings[$name] = format_date($settings[$name], 'custom', 'Y-m-d H:i:s');
+     }
+     $form = parent::inputForm($name, $info, $settings, $element);
+     $form[$name]['#type'] = 'textfield';
+     $form[$name]['#element_validate'][] = 'rules_ui_element_date_validate';
+     // Note that the date input evaluator takes care for parsing dates using
+     // strtotime() into a timestamp, which is the internal date format.
+-    $form[$name]['#description'] = t('The date in GMT. You may enter a fixed time (like %format) or any other values in GMT known by the PHP !strtotime function (like "+1 day"). Relative dates like "+1 day" or "now" relate to the evaluation time.',
+-      array('%format' => gmdate('Y-m-d H:i:s', time() + 86400),
+-            '!strtotime' => l('strtotime()', 'http://php.net/strtotime')));
++    $form[$name]['#description'] = t('The date in system\'s default timezone. You may enter a fixed time (like %format) or any other values in GMT known by the PHP !strtotime function (like "+1 day"). Relative dates like "+1 day" or "now" relate to the evaluation time.',
++      array('%format' => format_date(time() + 86400, 'custom', 'Y-m-d H:i:s'),
++        '!strtotime' => l('strtotime()', 'http://php.net/strtotime')));
+ 
+     //TODO: Leverage the jquery datepicker+timepicker once a module providing
+     //the timpeicker is available.

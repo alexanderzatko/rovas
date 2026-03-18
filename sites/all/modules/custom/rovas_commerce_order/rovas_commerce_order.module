@@ -1,0 +1,117 @@
+<?php
+
+
+/**
+ * Implements hook_menu_alter.
+ * Check access for forum menu item.
+ */
+function rovas_commerce_order_menu_alter(&$items) {
+
+	$items['user/%user/orders/%commerce_order'] = array(
+//    'title callback' => 'commerce_order_ui_order_title',
+//    'title arguments' => array(2),
+    'page callback' => '_custom_commerce_order_ui_order_view',
+    'page arguments' => array(3),
+    'access callback' => TRUE,
+//    'access arguments' => array('view entities'),
+    'type' => MENU_CALLBACK,
+  );
+}
+
+/*
+function _custom_commerce_order_ui_order_view($entity, $view_mode='full') {
+  $entity_type = $entity->entityType();
+  $entity_id = entity_id($entity_type, $entity);
+
+  // Remove previously built content, if exists
+  $entity->content = array();
+
+  $entity->title = filter_xss($entity->title);
+
+  //
+  // Build the fields content
+  //
+  field_attach_prepare_view($entity_type, array($entity_id => $entity), $view_mode);
+  entity_prepare_view($entity_type, array($entity_id => $entity));
+  
+  $entity->content += field_attach_view($entity_type, $entity, $view_mode);
+ 
+   // Specify the theme to use and set the #element. Note that the key 
+   // you use to pass the entity object must match the key you set in the 
+   // variables in my_module_theme(). So in the case below, we use the key 
+   // named #element because in my_module_theme() we set the following code:
+   //
+   // array(
+   //   'my_entity' => array(
+   //     'variables' => array('element' => null),
+   //     'template' => 'my_entity'
+   //   ),
+   // );
+   //
+  $entity->content += array(
+    '#theme'     => $entity_type,
+    '#element'   => $entity,
+    '#view_mode' => $view_mode,
+    '#language'  => LANGUAGE_NONE,
+  );
+  
+  return $entity->content;
+}
+*/
+
+function _custom_commerce_order_ui_order_view($entity, $view_mode='full') {
+
+/*
+  $entity_type = $entity->type;
+  $entity_id = entity_id($entity_type, $entity);
+
+	$build = '<div>';
+	$build .= print_r($entity_id,TRUE);
+	$build .= '</div>';
+
+	return $build;
+
+*/
+
+  $entity_type = $entity->type;
+  $entity_id = entity_id($entity_type, $entity);
+
+  // Remove previously built content, if exists
+  $entity->content = array();
+
+  //
+  // Build the fields content
+  //
+  field_attach_prepare_view($entity_type, array($entity_id => $entity), $view_mode);
+
+  entity_prepare_view($entity_type, array($entity_id => $entity));
+  
+  $entity->content += field_attach_view($entity_type, $entity, $view_mode);
+ 
+   // Specify the theme to use and set the #element. Note that the key 
+   // you use to pass the entity object must match the key you set in the 
+   // variables in my_module_theme(). So in the case below, we use the key 
+   // named #element
+	
+  $entity->content += array(
+    '#theme'     => $entity_type,
+    '#element'   => $entity,
+    '#view_mode' => $view_mode,
+    '#language'  => LANGUAGE_NONE,
+  );
+  
+  return $entity->content;
+
+}
+
+/**
+ * Implements hook_theme
+ */
+function rovas_commerce_order_theme($existing, $type, $theme, $path) {
+  return array(
+    'commerce_order' => array(
+      'variables' => array('element' => null),
+      'template' => 'commerce_order'
+    ),
+  );
+}

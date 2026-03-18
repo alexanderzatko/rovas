@@ -1,0 +1,68 @@
+{ "rules_verifiability" : {
+    "LABEL" : "Work report verifiability",
+    "PLUGIN" : "rule",
+    "OWNER" : "rules",
+    "TAGS" : [ "verification", "work report" ],
+    "REQUIRES" : [ "rules", "rules_conditional", "php" ],
+    "USES VARIABLES" : {
+      "wr_object" : { "label" : "work report", "type" : "node" },
+      "user_object" : { "label" : "user to check", "type" : "user" },
+      "create_lock" : { "label" : "create lock", "type" : "boolean" },
+      "verifiable" : { "label" : "verifiable", "type" : "boolean", "parameter" : false }
+    },
+    "IF" : [
+      { "user_has_role" : {
+          "account" : [ "site:current-user" ],
+          "roles" : { "value" : { "2" : "2" } }
+        }
+      },
+      { "entity_is_of_bundle" : {
+          "entity" : [ "wr-object" ],
+          "type" : "node",
+          "bundle" : { "value" : { "work_report" : "work_report" } }
+        }
+      }
+    ],
+    "DO" : [
+      { "CONDITIONAL" : [
+          {
+            "IF" : { "NOT data_is" : {
+                "data" : [ "wr-object:field-verification-status" ],
+                "op" : "IN",
+                "value" : { "value" : { "1" : "1", "2" : "2" } }
+              }
+            },
+            "DO" : [
+              { "CONDITIONAL" : [
+                  {
+                    "IF" : { "data_is" : { "data" : [ "wr-object:author" ], "value" : [ "user-object" ] } },
+                    "DO" : [ { "data_set" : { "data" : [ "verifiable" ], "value" : "0" } } ]
+                  },
+                  { "ELSE" : [
+                      { "component_rules_find_verification_slips" : {
+                          "USING" : { "nid" : [ "wr-object:nid" ], "uid" : [ "user-object:uid" ] },
+                          "PROVIDE" : { "slips" : { "slips" : "slips" } }
+                        }
+                      },
+                      { "CONDITIONAL" : [
+                          {
+                            "IF" : { "NOT data_is_empty" : { "data" : [ "slips" ] } },
+                            "DO" : [ { "data_set" : { "data" : [ "verifiable" ], "value" : "1" } } ]
+                          },
+                          { "ELSE" : [ { "data_set" : { "data" : [ "verifiable" ], "value" : "0" } } ] }
+                        ]
+                      },
+                      { "php_eval" : { "code" : "\/\/LEGACY CODE -\u003E permanntly unlock the verlocks variable (needs to be deleted eventually)\r\n$arraj = array();\r\nvariable_set(\u0027verlocks\u0027,$arraj);" } }
+                    ]
+                  }
+                ]
+              }
+            ]
+          },
+          { "ELSE" : [ { "data_set" : { "data" : [ "verifiable" ], "value" : "0" } } ] }
+        ]
+      }
+    ],
+    "PROVIDES VARIABLES" : [ "verifiable" ]
+  }
+}

@@ -1,0 +1,54 @@
+{ "rules_fetch_user_data" : {
+    "LABEL" : "fetch user data",
+    "PLUGIN" : "rule",
+    "OWNER" : "rules",
+    "TAGS" : [ "user" ],
+    "REQUIRES" : [ "rules", "rules_conditional" ],
+    "USES VARIABLES" : {
+      "country" : { "label" : "Country", "type" : "text", "parameter" : false },
+      "uid" : { "label" : "User ID", "type" : "integer", "parameter" : false },
+      "username" : { "label" : "Username", "type" : "text", "parameter" : false },
+      "lang_code" : { "label" : "Language code", "type" : "text", "parameter" : false },
+      "email" : { "label" : "Email", "type" : "text", "parameter" : false },
+      "comp_score" : { "label" : "Compliance score", "type" : "integer", "parameter" : false },
+      "whole_name" : { "label" : "User whole name", "type" : "text", "parameter" : false }
+    },
+    "DO" : [
+      { "component_rules_retrieve_user_id_from_api_key_and_token" : { "USING" : {}, "PROVIDE" : { "uid" : { "fetched_uid" : "fetched user ID" } } } },
+      { "CONDITIONAL" : [
+          {
+            "IF" : { "data_is" : { "data" : [ "fetched-uid" ], "op" : "\u003E", "value" : "0" } },
+            "DO" : [
+              { "entity_fetch" : {
+                  "USING" : { "type" : "user", "id" : [ "fetched-uid" ] },
+                  "PROVIDE" : { "entity_fetched" : { "user" : "user" } }
+                }
+              },
+              { "data_set" : { "data" : [ "uid" ], "value" : [ "fetched-uid" ] } },
+              { "data_set" : { "data" : [ "username" ], "value" : [ "user:name" ] } },
+              { "data_set" : { "data" : [ "country" ], "value" : [ "user:field-country:iso2" ] } },
+              { "data_set" : { "data" : [ "lang-code" ], "value" : [ "user:language" ] } },
+              { "data_set" : {
+                  "data" : [ "comp-score" ],
+                  "value" : [ "user:field-verification-score" ]
+                }
+              },
+              { "data_set" : { "data" : [ "whole-name" ], "value" : [ "user:field-full-name" ] } },
+              { "data_set" : { "data" : [ "email" ], "value" : [ "user:mail" ] } }
+            ]
+          },
+          { "ELSE" : [ { "data_set" : { "data" : [ "uid" ], "value" : "-1" } } ] }
+        ]
+      }
+    ],
+    "PROVIDES VARIABLES" : [
+      "country",
+      "uid",
+      "username",
+      "lang_code",
+      "email",
+      "comp_score",
+      "whole_name"
+    ]
+  }
+}

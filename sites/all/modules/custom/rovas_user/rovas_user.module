@@ -1,0 +1,93 @@
+<?php
+
+function rovas_user_form_alter(&$form, &$form_state, $form_id) {
+	if ($form['#id'] == 'user-profile-form') {
+
+		$form['picture']['picture_upload']['#description'] = t('Upload your photograph (optional)');
+		$form['comment_notify_settings']['comment_notify']['#description'] = '';
+
+//this is necessary because https://drupal.stackexchange.com/questions/160387/how-to-re-order-user-profile-form
+		$form['#pre_render'][] = 'rovas_user_alter_weight';
+
+		global $user;
+		
+		$verslips = active_verification_slips($user->uid,TRUE,FALSE);
+		$verifcount = count($verslips);
+		
+		if ($verifcount > 0) {
+			$form['field_suspend_account']['#disabled'] = TRUE;
+			$form['field_suspend_account'][LANGUAGE_NONE]['#description'] = t("You can't suspend verifications, because you have @verifcount unfulfilled verification obligations. <br/>
+			You might have to wait for Rovas to turn these obligations to work report verification requests. Only after verifying those requests you will be able to suspend verifications.",['@verifcount' => $verifcount]);	
+		}
+	}
+	else if ($form['#id'] == 'user-cancel-confirm-form') {
+		$message = t('Your account will be removed and all account information deleted.');
+		$message .= '<br>';
+		$message .= t('All of your content (projects, work reports, verifications,...) will be assigned to the <em class="placeholder">Anonymous</em> user.');
+		$message .= '<br><br>';
+		$message .= t('This action cannot be undone.');
+
+		$form['description']['#markup'] = $message;
+		$form['actions']['cancel']['#weight'] = 10;
+		$form['actions']['cancel']['#title'] = t('Back to account');
+		$form['actions']['cancel']['#attributes']['class'][] = 'btn';
+		$form['actions']['cancel']['#attributes']['class'][] = 'btn-default';
+		$form['actions']['cancel']['#attributes']['style'] = 'margin-right: 10px;';
+		$form['actions']['submit']['#weight'] = 20;
+		if (!isset($form['actions']['submit']['#attributes']['class'])) {
+			$form['actions']['submit']['#attributes']['class'] = array();
+		}
+		$form['actions']['submit']['#attributes']['class'][] = 'btn-danger';
+	}
+}
+
+function rovas_user_alter_weight($elements) {
+
+	$order = array('field_full_name',
+					'picture',
+					'account',
+					'field_country',
+					'locale',
+					'timezone',
+					'comment_notify_settings',
+					'privatemsg',
+					'contact',
+					'signature_settings',
+					'field_verified',
+					'field_average_work_day',
+					'field_chrons_balance',
+					'field_actually_available_chrons',
+					'field_merit_decimal_part',
+					'field_dispute_notify');
+
+	foreach ($order as $key => $value){
+		$elements[$value]['#weight'] = $key;
+	}
+
+  return $elements;
+
+}
+
+
+/*
+implements hook_views_pre_render
+adds user name to the Chrons and Merit tabs in the user profile
+*/
+
+function rovas_user_views_pre_render(&$view) {
+  if ($view->name == 'money_transfers' && $view->current_display == 'page') {
+		$uid = $view->args[0];
+		$user = user_load($uid);
+    $view->build_info['title'] = $user->name;
+  }
+  if ($view->name == 'merit_history' && $view->current_display == 'page_1') {
+		$uid = $view->args[0];
+		$user = user_load($uid);
+    $view->build_info['title'] = $user->name;
+  }
+  if ($view->name == 'Mentions' && $view->current_display == 'page_1') {
+		$uid = $view->args[0];
+		$user = user_load($uid);
+    $view->build_info['title'] = $user->name;
+  }
+}

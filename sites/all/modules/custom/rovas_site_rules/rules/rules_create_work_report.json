@@ -1,0 +1,203 @@
+{ "rules_create_work_report" : {
+    "LABEL" : "Create work report",
+    "PLUGIN" : "action set",
+    "OWNER" : "rules",
+    "TAGS" : [ "work report" ],
+    "REQUIRES" : [ "rules_conditional", "rules", "php" ],
+    "USES VARIABLES" : {
+      "wr_activity_name" : { "label" : "WR activity name", "type" : "text" },
+      "wr_web_address" : { "label" : "WR web address", "type" : "text" },
+      "wr_hours" : { "label" : "WR hours", "type" : "decimal" },
+      "parent_project" : { "label" : "Parent project", "type" : "node" },
+      "wr_description" : { "label" : "WR description", "type" : "text" },
+      "verif_sources" : { "label" : "Verification sources", "type" : "list\u003Ctext\u003E" },
+      "systemreport" : { "label" : "System report", "type" : "boolean", "allow null" : true },
+      "verificationstatus" : {
+        "label" : "Verification status",
+        "type" : "integer",
+        "allow null" : true
+      },
+      "access_token" : { "label" : "Content access token", "type" : "text", "allow null" : true },
+      "language" : { "label" : "Language", "type" : "token", "allow null" : true },
+      "date_started" : { "label" : "Date started", "type" : "date" },
+      "publish_status" : { "label" : "Publishing status", "type" : "integer" },
+      "author" : { "label" : "report author", "type" : "user" },
+      "result" : { "label" : "result", "type" : "integer", "parameter" : false },
+      "created_wr" : { "label" : "Created WR", "type" : "node", "parameter" : false },
+      "wr_classification" : { "label" : "WR classification", "type" : "taxonomy_term" }
+    },
+    "ACTION SET" : [
+      { "CONDITIONAL" : [
+          {
+            "IF" : { "data_is" : {
+                "data" : [ "site:current-user:created" ],
+                "op" : "\u003C",
+                "value" : { "select" : "date-started", "date_offset" : { "value" : 86400 } }
+              }
+            },
+            "DO" : [
+              { "variable_add" : {
+                  "USING" : {
+                    "type" : "list\u003Ctaxonomy_term\u003E",
+                    "value" : [ "wr-classification:parents-all" ]
+                  },
+                  "PROVIDE" : { "variable_added" : { "taxonomy_list" : "taxonomy list" } }
+                }
+              },
+              { "entity_create" : {
+                  "USING" : {
+                    "type" : "node",
+                    "param_type" : "work_report",
+                    "param_title" : [ "wr-activity-name" ],
+                    "param_author" : [ "author" ]
+                  },
+                  "PROVIDE" : { "entity_created" : { "created_work_report" : "Created work report" } }
+                }
+              },
+              { "CONDITIONAL" : [
+                  {
+                    "IF" : { "data_is" : { "data" : [ "publish-status" ], "op" : "\u003E", "value" : "0" } },
+                    "DO" : [ { "data_set" : { "data" : [ "publish-status" ], "value" : "1" } } ]
+                  },
+                  { "ELSE" : [ { "data_set" : { "data" : [ "publish-status" ], "value" : "0" } } ] }
+                ]
+              },
+              { "data_set" : {
+                  "data" : [ "created-work-report:status" ],
+                  "value" : [ "publish-status" ]
+                }
+              },
+              { "variable_add" : {
+                  "USING" : { "type" : "list\u003Ctext\u003E" },
+                  "PROVIDE" : { "variable_added" : { "web_sites" : "web sites" } }
+                }
+              },
+              { "list_add" : {
+                  "list" : [ "web-sites" ],
+                  "item" : [ "wr-web-address" ],
+                  "unique" : "1"
+                }
+              },
+              { "entity_modify" : {
+                  "entity" : [ "created-work-report" ],
+                  "properties" : { "value" : {
+                      "field_hours_worked" : "field_hours_worked",
+                      "field_classification" : "field_classification",
+                      "field_project" : "field_project",
+                      "field_web_address" : "field_web_address",
+                      "field_work_evidence" : "field_work_evidence",
+                      "field_system_report" : "field_system_report",
+                      "field_verification_status" : "field_verification_status",
+                      "field_date" : "field_date",
+                      "field_content_access_token" : "field_content_access_token",
+                      "title" : "title",
+                      "language" : "language"
+                    }
+                  },
+                  "param_field_hours_worked" : [ "wr-hours" ],
+                  "param_field_classification" : [ "taxonomy-list" ],
+                  "param_field_project" : [ "parent-project" ],
+                  "param_field_web_address" : [ "web-sites" ],
+                  "param_field_work_evidence" : [ "verif-sources" ],
+                  "param_field_system_report" : [ "systemreport" ],
+                  "param_field_verification_status" : [ "verificationstatus" ],
+                  "param_field_date" : [ "date-started" ],
+                  "param_field_content_access_token" : [ "access-token" ],
+                  "param_title" : [ "wr-activity-name" ],
+                  "param_language" : [ "language" ]
+                }
+              },
+              { "data_set" : {
+                  "data" : [ "created-work-report:body:value" ],
+                  "value" : [ "wr-description" ]
+                }
+              },
+              { "data_set" : {
+                  "data" : [ "created-work-report:body:format" ],
+                  "value" : "filtered_html"
+                }
+              },
+              { "php_eval" : { "code" : "\/\/change the body language to the node language\r\n$lang = $created_work_report-\u003Elanguage;\r\n$array = $created_work_report-\u003Ebody;\r\n\r\nwatchdog(\u0027rule\u0027,\u0027rules_create_work_report body change 1: \u0027. print_r($array,1));\r\n\r\n$clone = $array;\r\n$newbod = reset($array);\r\n$first_key = key($array);\r\n\r\n$clone[$lang] = $clone[$first_key];\r\n$created_work_report-\u003Ebody = $clone;\r\n\r\nwatchdog(\u0027rule\u0027,\u0027rules_create_work_report body change 2: \u0027. print_r($clone,1));" } },
+              { "CONDITIONAL" : [
+                  {
+                    "IF" : { "data_is" : { "data" : [ "systemreport" ], "value" : "1" } },
+                    "DO" : [
+                      { "data_calc" : {
+                          "USING" : { "input_1" : [ "wr-hours" ], "op" : "*", "input_2" : "10" },
+                          "PROVIDE" : { "result" : { "chrons_earned" : "Chrons earned" } }
+                        }
+                      },
+                      { "component_rules_update_user_chron_account" : {
+                          "user_object" : [ "parent-project:author" ],
+                          "chrons_to_add" : [ "chrons-earned" ],
+                          "fxsp_id" : {
+                            "select" : "site:current-user:uid",
+                            "php" : { "code" : "return NULL;" }
+                          }
+                        }
+                      },
+                      { "data_set" : {
+                          "data" : [ "created-work-report:field-chrons-to-grant" ],
+                          "value" : [ "chrons-earned" ]
+                        }
+                      },
+                      { "data_set" : {
+                          "data" : [ "created-work-report:field-verification-status" ],
+                          "value" : "1"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              { "entity_save" : { "data" : [ "created-work-report" ], "immediate" : "1" } },
+              { "component_rules_update_user_s_labor_count_for_a_project_" : {
+                  "project_id" : [ "parent-project:nid" ],
+                  "user_obj" : [ "author" ],
+                  "hours_delta" : [ "wr-hours" ]
+                }
+              },
+              { "CONDITIONAL" : [
+                  {
+                    "IF" : { "data_is" : { "data" : [ "publish-status" ], "value" : "1" } },
+                    "DO" : [
+                      { "component_rules_create_verify_slot" : {
+                          "USING" : {
+                            "uid" : [ "author:uid" ],
+                            "report_nid" : "0",
+                            "due_date_offset" : "0",
+                            "voluntary" : "0"
+                          },
+                          "PROVIDE" : { "slot_nid" : { "slot_nid" : "slot nid" } }
+                        }
+                      },
+                      { "component_rules_create_verify_slot" : {
+                          "USING" : {
+                            "uid" : [ "author:uid" ],
+                            "report_nid" : "0",
+                            "due_date_offset" : "0",
+                            "voluntary" : "0"
+                          },
+                          "PROVIDE" : { "slot_nid" : { "slot_nid_2" : "slot nid 2" } }
+                        }
+                      },
+                      { "data_set" : { "data" : [ "result" ], "value" : "1" } }
+                    ]
+                  },
+                  { "ELSE" : [ { "data_set" : { "data" : [ "result" ], "value" : "0" } } ] }
+                ]
+              },
+              { "data_set" : { "data" : [ "created-wr" ], "value" : [ "created-work-report" ] } }
+            ]
+          },
+          { "ELSE" : [
+              { "data_set" : { "data" : [ "result" ], "value" : "-3" } },
+              { "data_set" : { "data" : [ "created-wr" ], "value" : [ "" ] } }
+            ]
+          }
+        ]
+      }
+    ],
+    "PROVIDES VARIABLES" : [ "result", "created_wr" ]
+  }
+}

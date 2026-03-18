@@ -1,0 +1,274 @@
+<?php
+
+/**
+ * @file
+ * Turns email links to javascript array and js is used to display it.
+ *
+ * This module turns email address in contenttype fields to javascript array
+ * via hook_preprocess_field(), in page source email address will be js array,
+ * and evaluated on the client in Javascript to prevent bots from harvesting
+ * email addresses on a Drupal web site.
+ *
+ * Each js array name is randomly generated so its difficult for the spambot
+ * to detect it from source code.
+ */
+
+/**
+ * Implements hook_menu().
+ */
+function spamfree_email_menu() {
+  $items['admin/config/content/spamfree_email'] = array(
+    'title' => 'Spamfree Email Settings',
+    'description' => 'Email addresses will be obfuscated in the page source, to reduce email harvest by spammers.',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('spamfree_email_settings_form'),
+    'type' => MENU_NORMAL_ITEM,
+    'file' => 'spamfree_email.admin.inc',
+    'access arguments' => array('administer site configuration'),
+  );
+
+  $items['email/text2image'] = array(
+    'title' => 'Form',
+    'page callback' => array('spamfree_email_text_2_image'),
+  );
+  return $items;
+}
+
+/**
+ * Implements template_preprocess_field().
+ */
+function spamfree_email_preprocess_field(&$vars, $hook) {
+  $spamfree_email_fields = variable_get('spamfree_email', 0);
+  if (isset($spamfree_email_fields[$vars['element']['#field_type']])
+   && !empty($vars['items'][0]['#markup'])) {
+    foreach ($vars['items'] as $key => $items) {
+      $vars['items'][$key]['#markup'] = spamfree_email_obfuscate($items['#markup']);
+    }
+  }
+}
+
+/**
+ * Function checking for email address in string.
+ *
+ * @param string $string
+ *    String containing email.
+ *
+ * @return string
+ *    A string with javascript version of email
+ */
+function spamfree_email_obfuscate($string) {
+  // Pattern matching for mailto links.
+  preg_match_all('/<a href="mailto:([^"]+)">([^>]+)<\/a>/', $string, $matches);
+  if (!empty($matches[0])) {
+    foreach ($matches[0] as $key => $tag) {
+      $string = str_replace($tag, $matches[2][$key], $string);
+    }
+  }
+  // Pattern matching for email addresses and replacing with callback function.
+  return preg_replace_callback('/[\w-\.]+@([\w-]+\.)+[\w-]{2,4}/', 'spamfree_email_process_email', $string);
+}
+
+/**
+ * Logic for converting email to javascript equivalent.
+ *
+ * @param string $matches
+ *   Matching email address patterns.
+ *
+ * @return array
+ *   A javascript equivalent of email address.
+ */
+function spamfree_email_process_email($matches) {
+  $email = $matches[0];
+  // Getting length of email.
+  $email_length = strlen($email);
+  // Generating a random variable between 3 and email length.
+  $split_length = mt_rand(3, $email_length);
+  // Splitting the email with above length by adding a hash.
+  $split_string = chunk_split($email, $split_length, '#');
+  // Exploding the hashed email string with.
+  $original_array = $string_arr = explode("#", $split_string);
+  // Shuffling the exploded array.
+  shuffle($string_arr);
+  // Joinig the exploded array.
+  $joined_string = implode("#", $string_arr);
+  // Generetaing a random variable for JS variable.
+  $rand_id = spamfree_email_process_email_generate_var();
+  // Setting the variables to null.
+  $the_vars = "";
+  // Looping to build the JS array.
+  foreach ($original_array as $value) {
+    $key_order = array_search($value, $string_arr);
+    $the_vars .= $rand_id . '[' . $key_order . ']+';
+  }
+  // Removing the trailing + sign.
+  $the_vars = rtrim($the_vars, '+');
+  // Adding rel tag.
+  $rel_tag = $noscript = "";
+  // Checking nofollow should be enabled.
+  $spamfree_email_nofollow = variable_get('spamfree_email_nofollow', 0);
+  if ($spamfree_email_nofollow) {
+    $rel_tag = "rel='nofollow'";
+  }
+  // Chekcing how non JS browsers to be handled.
+  $spamfree_email_nojs = variable_get('spamfree_email_nojs', 0);
+  if ($spamfree_email_nojs) {
+    if (!drupal_session_started()) {
+      drupal_session_start();
+    }
+    $encrypted_email = spamfree_email_encrypt($email);
+    $noscript = "<noscript><img src='" . url('email/text2image') . "?text=" . urlencode($encrypted_email) . "&token=" . drupal_get_token($encrypted_email) . "' alt='" . t('loading') . "' /></noscript>";
+  }
+  // Email to be replaced with below code.
+  $replace = "<a id='" . $rand_id . "' " . $rel_tag . "></a><script>var " . $rand_id . " = '" . $joined_string . "';\nvar " . $rand_id . " = " . $rand_id . ".split('#');\ndocument.getElementById('" . $rand_id . "').innerHTML = " . $the_vars . ";\ndocument.getElementById('" . $rand_id . "').href = 'mailto:'+" . $the_vars . ";\n\x3C/script>\n 
+    " . $noscript;
+  return $replace;
+}
+
+/**
+ * Function for generating random string used as javascrpit array variable.
+ *
+ * @return string
+ *   A random string.
+ */
+function spamfree_email_process_email_generate_var() {
+  // And any other characters.
+  $seed = str_split('abcdefghijklmnopqrstuvwxyz' . 'ABCDEFGHIJKLMNOPQRSTUVWXYZ');
+  // Probably optional since array_is randomized.
+  shuffle($seed);
+  $rand = '';
+  foreach (array_rand($seed, 9) as $k) {
+    $rand .= $seed[$k];
+  }
+  return $rand;
+}
+
+/**
+ * Converts given text to image.
+ */
+function spamfree_email_text_2_image() {
+  $text = spamfree_email_decrypt($_GET['text']);
+  if (empty($text) || !isset($_GET['token']) || !drupal_valid_token($_GET['token'], $_GET['text'], FALSE)) {
+    return "";
+  }
+  $bg_color = ltrim(variable_get('spamfree_email_bg_color', "fff"), "#");
+  $color = ltrim(variable_get('spamfree_email_text_color', '000'), "#");
+  // Font size is in pixels.
+  $font_size = variable_get('spamfree_email_font_size', 12);
+
+  // This is the path to your font file.
+  $font_file = drupal_realpath(variable_get('spamfree_email_font_family', 0));
+
+  // Retrieve bounding box.
+  $bounds = imagettfbbox($font_size, 0, $font_file, $text);
+
+  // Determine image width and height, 10 pixels are added for 5 pixels padding.
+  $image_width = abs($bounds[0]) + abs($bounds[2]) + 10;
+  $image_height = abs($bounds[5]) + abs($bounds[1]);
+
+  // Create image.
+  $image = imagecreatetruecolor($image_width, $image_height);
+
+  // Allocate text and background colors (RGB format).
+  $t_color = spamfree_email_hex_to_rgb($color);
+  $text_color = imagecolorallocate($image, $t_color['r'], $t_color['g'], $t_color['b']);
+  $b_color = spamfree_email_hex_to_rgb($bg_color);
+  $bg_color = imagecolorallocate($image, $b_color['r'], $b_color['g'], $b_color['b']);
+
+  // Fill image.
+  imagefill($image, 0, 0, $bg_color);
+
+  // Add TrueType text to image.
+  imagettftext($image, $font_size, 0, abs($bounds[0]), abs($bounds[5]), $text_color, $font_file, $text);
+
+  // Generate and send image to browser.
+  header('Content-type: image/png');
+  imagepng($image);
+
+  // Destroy image in memory to free-up resources.
+  imagedestroy($image);
+}
+
+/**
+ * Converts hex color code to rbg value.
+ *
+ * @param string $hex
+ *    Hex color code value.
+ *
+ * @return array
+ *    An array with rbg color values.
+ */
+function spamfree_email_hex_to_rgb($hex) {
+  preg_match("/^#{0,1}([0-9a-f]{1,6})$/i", $hex, $match);
+  if (!isset($match[1])) {
+    return FALSE;
+  }
+
+  if (strlen($match[1]) == 6) {
+    list($r, $g, $b)
+      = array($hex[0] . $hex[1], $hex[2] . $hex[3], $hex[4] . $hex[5]);
+  }
+  elseif (strlen($match[1]) == 3) {
+    list($r, $g, $b)
+      = array($hex[0] . $hex[0], $hex[1] . $hex[1], $hex[2] . $hex[2]);
+  }
+  elseif (strlen($match[1]) == 2) {
+    list($r, $g, $b)
+      = array($hex[0] . $hex[1], $hex[0] . $hex[1], $hex[0] . $hex[1]);
+  }
+  elseif (strlen($match[1]) == 1) {
+    list($r, $g, $b) = array($hex . $hex, $hex . $hex, $hex . $hex);
+  }
+  else {
+    return FALSE;
+  }
+
+  $color = array();
+  $color['r'] = hexdec($r);
+  $color['g'] = hexdec($g);
+  $color['b'] = hexdec($b);
+
+  return $color;
+}
+
+/**
+ * Implements hook_help().
+ */
+function spamfree_email_help($path, $arg) {
+  if ($path == 'admin/help#spamfree_email') {
+    $output = '<h3>' . t('About') . '</h3>';
+    $output .= '<p>' . t('The module links and obfuscates Email addresses in content type fields.') . '</p>';
+    return $output;
+  }
+}
+
+/**
+ * Returns an encrypted & utf8-encoded.
+ *
+ * @param string $pure_string
+ *    String to be encrypted.
+ *
+ * @return string
+ *    Encrypted string.
+ */
+function spamfree_email_encrypt($pure_string) {
+  $iv_size = mcrypt_get_iv_size(MCRYPT_BLOWFISH, MCRYPT_MODE_ECB);
+  $iv = mcrypt_create_iv($iv_size, MCRYPT_RAND);
+  $encrypted_string = mcrypt_encrypt(MCRYPT_BLOWFISH, drupal_get_private_key(), utf8_encode($pure_string), MCRYPT_MODE_ECB, $iv);
+  return $encrypted_string;
+}
+
+/**
+ * Returns an decrypted original string.
+ *
+ * @param string $encrypted_string
+ *    String to be decrypted.
+ *
+ * @return string
+ *    Decrypted original string.
+ */
+function spamfree_email_decrypt($encrypted_string) {
+  $iv_size = mcrypt_get_iv_size(MCRYPT_BLOWFISH, MCRYPT_MODE_ECB);
+  $iv = mcrypt_create_iv($iv_size, MCRYPT_RAND);
+  $decrypted_string = mcrypt_decrypt(MCRYPT_BLOWFISH, drupal_get_private_key(), $encrypted_string, MCRYPT_MODE_ECB, $iv);
+  return $decrypted_string;
+}

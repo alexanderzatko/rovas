@@ -1,0 +1,168 @@
+{ "rules_checkout_completed_actions" : {
+    "LABEL" : "Process Chrons purchase",
+    "PLUGIN" : "reaction rule",
+    "OWNER" : "rules",
+    "REQUIRES" : [
+      "rules",
+      "php",
+      "rules_variable_get",
+      "rules_conditional",
+      "commerce_order",
+      "commerce_payment",
+      "rovas_forex",
+      "commerce_checkout"
+    ],
+    "ON" : { "commerce_checkout_complete" : [] },
+    "IF" : [
+      { "entity_has_field" : { "entity" : [ "commerce-order" ], "field" : "field_conversion_fee" } },
+      { "OR" : [
+          { "NOT entity_has_field" : { "entity" : [ "commerce-order" ], "field" : "field_payment_recipient" } },
+          { "AND" : [
+              { "entity_has_field" : { "entity" : [ "commerce-order" ], "field" : "field_payment_recipient" } },
+              { "data_is_empty" : { "data" : [ "commerce-order:field-payment-recipient" ] } }
+            ]
+          }
+        ]
+      }
+    ],
+    "DO" : [
+      { "variable_add" : {
+          "USING" : { "type" : "integer", "value" : "0" },
+          "PROVIDE" : { "variable_added" : { "payment_status" : "payment status" } }
+        }
+      },
+      { "variable_add" : {
+          "USING" : {
+            "type" : "decimal",
+            "value" : [ "commerce-order:commerce-order-total:amount-decimal" ]
+          },
+          "PROVIDE" : { "variable_added" : { "order_total" : "order total" } }
+        }
+      },
+      { "variable_add" : {
+          "USING" : {
+            "type" : "decimal",
+            "value" : {
+              "select" : "commerce-order:commerce-line-items:0:quantity",
+              "php" : { "code" : "watchdog(\u0027rule\u0027,\u0027rules_checkout_completed_actions [\u0027 . $value . \u0027]\u0027);\r\nreturn $value;" }
+            }
+          },
+          "PROVIDE" : { "variable_added" : { "order_quantity" : "order quantity" } }
+        }
+      },
+      { "variable_add" : {
+          "USING" : {
+            "type" : "decimal",
+            "value" : [ "commerce-order:field-conversion-fee" ]
+          },
+          "PROVIDE" : { "variable_added" : { "conversion_fee" : "conversion fee" } }
+        }
+      },
+      { "rules_variable_get_action_get_system_array_variable" : {
+          "USING" : { "variable" : "forex_lock" },
+          "PROVIDE" : { "variable_added" : { "forex_lock" : "forex lock" } }
+        }
+      },
+      { "variable_add" : {
+          "USING" : {
+            "type" : "text",
+            "value" : "\u003C?php\r\necho $forex_lock[\u0027uid\u0027];\r\n?\u003E"
+          },
+          "PROVIDE" : { "variable_added" : { "lock_owner" : "lock owner" } }
+        }
+      },
+      { "data_convert" : {
+          "USING" : { "type" : "integer", "value" : [ "lock-owner" ] },
+          "PROVIDE" : { "conversion_result" : { "lock_owner_id" : "lock owner ID" } }
+        }
+      },
+      { "variable_add" : {
+          "USING" : {
+            "type" : "text",
+            "value" : "Your purchase of [order-quantity:value] Chrons with [order-total:value] Euros was successfully completed.\r\nThe order receipt is available here: [commerce-order:customer-url]"
+          },
+          "PROVIDE" : { "variable_added" : { "email_message" : "email message" } }
+        }
+      },
+      { "CONDITIONAL" : [
+          {
+            "IF" : { "commerce_payment_selected_payment_method" : { "commerce_order" : [ "commerce_order" ], "method_id" : "bank_transfer" } },
+            "DO" : [
+              { "commerce_order_update_status" : { "commerce_order" : [ "commerce_order" ], "order_status" : "pending" } },
+              { "data_set" : {
+                  "data" : [ "email-message" ],
+                  "value" : "Please complete your purchase of [order-quantity:value] Chrons by depositing [order-total:value] Euros using the information shown below. The purchased Chrons will be sent to your account once the payment is received.\r\n\r\n[commerce-order:payment-bank-details]\r\n\r\nYour order can be also seen \u003Ca href=\u0022[commerce-order:customer-url]\u0022\u003Ein the Orders section\u003C\/a\u003E of your account page."
+                }
+              },
+              { "mail" : {
+                  "to" : [ "commerce-order:owner:mail" ],
+                  "subject" : "Rovas currency exchange successfully completed",
+                  "message" : [ "email-message" ],
+                  "language" : [ "commerce-order:owner:language" ]
+                }
+              }
+            ]
+          },
+          { "ELSE" : [
+              { "commerce_order_update_status" : { "commerce_order" : [ "commerce_order" ], "order_status" : "completed" } },
+              { "data_set" : { "data" : [ "payment-status" ], "value" : "1" } }
+            ]
+          }
+        ]
+      },
+      { "CONDITIONAL" : [
+          {
+            "IF" : { "data_is" : { "data" : [ "commerce-order:owner:uid" ], "value" : [ "lock-owner-id" ] } },
+            "DO" : [
+              { "rovas_forex_transaction_params" : {
+                  "USING" : {
+                    "transact_type" : "eur_to_chr",
+                    "input" : [ "order-total" ],
+                    "processor_fee" : "0"
+                  },
+                  "PROVIDE" : {
+                    "eur_basket" : { "eur_basket" : "EUR basket amount" },
+                    "chr_basket" : { "chr_basket" : "CHR basket amount" },
+                    "variable_fee" : { "xfee" : "Variable fee percentage" },
+                    "output_amount" : { "output" : "Output amount" },
+                    "fixed_fee_amount" : { "fixed_fee" : "Fixed fee amount" },
+                    "use_temp_baskets" : { "use_temp_baskets" : "Using temporary baskets" }
+                  }
+                }
+              },
+              { "component_rules_process_forex_order" : {
+                  "USING" : {
+                    "order_id" : [ "commerce-order:order-id" ],
+                    "payment_status" : [ "payment_status" ],
+                    "euro_basket" : [ "eur-basket" ],
+                    "chron_basket" : [ "chr-basket" ],
+                    "conv_type" : "euros_to_chrons",
+                    "input_amt" : [ "order-total" ],
+                    "output_amt" : [ "order-quantity" ],
+                    "fee" : [ "conversion-fee" ],
+                    "user_uid" : [ "commerce-order:owner:uid" ]
+                  },
+                  "PROVIDE" : { "forex_nid" : { "forex_nid" : "forex node id" } }
+                }
+              },
+              { "CONDITIONAL" : [
+                  {
+                    "IF" : { "data_is" : { "data" : [ "forex-nid" ], "op" : "\u003E", "value" : "0" } },
+                    "DO" : [
+                      { "php_eval" : { "code" : "$the_message = t(\u0027Your purchase of @chrons Chrons with @euros Euros was successfully completed.\u0027,array(\u0027@euros\u0027 =\u003E $order_total, \u0027@chrons\u0027 =\u003E $order_quantity));\r\nforex_complete_order($the_message);\r\n" } }
+                    ]
+                  },
+                  { "ELSE" : [
+                      { "php_eval" : { "code" : "$the_message = (\u0027Error. The order was not processed. Please contact the portal administrator about this message.\u0027);\r\nforex_complete_order($the_message,\u0027\/forex\u0027);" } }
+                    ]
+                  }
+                ]
+              }
+            ]
+          },
+          { "ELSE" : [ { "php_eval" : { "code" : "lost_lock();" } } ] }
+        ]
+      }
+    ]
+  }
+}

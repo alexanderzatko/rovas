@@ -1,0 +1,4 @@
+name = Rovas private message form
+description = Implements modifications on the Private message form
+core = 7.x
+package = Rovas

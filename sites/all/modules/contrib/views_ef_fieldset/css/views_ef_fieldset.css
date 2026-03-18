@@ -1,0 +1,7 @@
+html.js .views-widget-views_ef_fieldset fieldset.collapsed {
+  height: 1em;
+}
+html.js .views-widget-views_ef_fieldset fieldset.collapsed .fieldset-wrapper {
+  display: block !important;
+  visibility: hidden;
+}

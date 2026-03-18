@@ -1,0 +1,25 @@
+{ "rules_translate_text" : {
+    "LABEL" : "translate text",
+    "PLUGIN" : "rule",
+    "OWNER" : "rules",
+    "REQUIRES" : [ "php", "rules" ],
+    "USES VARIABLES" : {
+      "text" : { "label" : "text", "type" : "text" },
+      "options" : { "label" : "options", "type" : "text" },
+      "language" : { "label" : "language", "type" : "text" },
+      "translated" : { "label" : "translated", "type" : "text", "parameter" : false }
+    },
+    "DO" : [
+      { "variable_add" : {
+          "USING" : {
+            "type" : "text",
+            "value" : "\u003C?php \r\n$unser = unserialize($options);\r\n\/\/watchdog(\u0027rule\u0027,\u0027rules_translate_text \u0027 . print_r($unser,1));\r\necho t($text,$unser,array(\u0027langcode\u0027 =\u003E $language));\r\n?\u003E"
+          },
+          "PROVIDE" : { "variable_added" : { "variable_added" : "Added variable" } }
+        }
+      },
+      { "data_set" : { "data" : [ "translated" ], "value" : [ "variable-added" ] } }
+    ],
+    "PROVIDES VARIABLES" : [ "translated" ]
+  }
+}

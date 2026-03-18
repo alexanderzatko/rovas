@@ -1,0 +1,21 @@
+{ "rules_redirect_to_dispute" : {
+    "LABEL" : "Redirect to Dispute",
+    "PLUGIN" : "reaction rule",
+    "OWNER" : "rules",
+    "TAGS" : [ "dispute" ],
+    "REQUIRES" : [ "rules" ],
+    "ON" : {
+      "node_insert--dispute_party" : { "bundle" : "dispute_party" },
+      "node_update--dispute_party" : { "bundle" : "dispute_party" },
+      "node_delete--dispute_party" : { "bundle" : "dispute_party" }
+    },
+    "DO" : [
+      { "variable_add" : {
+          "USING" : { "type" : "integer", "value" : [ "node:field-dispute:nid" ] },
+          "PROVIDE" : { "variable_added" : { "dispute_id" : "dispute id" } }
+        }
+      },
+      { "redirect" : { "url" : "\/node\/[dispute-id:value]" } }
+    ]
+  }
+}

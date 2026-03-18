@@ -1,0 +1,15 @@
+<?php
+
+/**
+ * Implements hook_term_reference_tree_taxonomy_get_tree_alter().
+ */
+function i18n_tree_widget_term_reference_tree_taxonomy_get_tree_alter($vid, &$terms, $hierarchy, $langcode) {
+  // Example with i18n.
+  foreach ($terms as $term) {
+    $term->name = i18n_taxonomy_term_name($term);
+  }
+
+  // If using the title module I think simply this should work.
+  //$field = field_info_field('name_field');
+  //field_attach_load('taxonomy_term', $terms, FIELD_LOAD_CURRENT, array('field_id' => $field['id']));
+}

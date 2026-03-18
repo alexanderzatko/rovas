@@ -1,0 +1,35 @@
+{ "rules_retrieve_user_s_api_key_and_token" : {
+    "LABEL" : "retrieve user\u0027s api key and token",
+    "PLUGIN" : "rule",
+    "OWNER" : "rules",
+    "TAGS" : [ "services", "user" ],
+    "REQUIRES" : [ "php", "rules" ],
+    "USES VARIABLES" : {
+      "uid" : { "label" : "user id", "type" : "integer" },
+      "service_endpoint" : { "label" : "service endpoint", "type" : "text" },
+      "api_key" : { "label" : "api key", "type" : "text", "parameter" : false },
+      "token" : { "label" : "token", "type" : "text", "parameter" : false }
+    },
+    "DO" : [
+      { "variable_add" : {
+          "USING" : {
+            "type" : "text",
+            "value" : "\u003C?php \r\n\/\/returns serialized array containing the api key and token\r\nif (module_exists(\u0027services_auth_apikeys\u0027)) {\r\n\t$tokarray = services_auth_apikeys_load_by_user($uid, $raw_value = FALSE);\r\n\t\/\/$keys[\u0027api_key\u0027]\r\n\t\/\/$keys[\u0027token\u0027]\r\n\t\/\/$keys[\u0027extra_key\u0027]\r\n\t\/\/$keys[\u0027updated\u0027]\r\n\techo serialize($tokarray);\r\n\/\/\twatchdog(\u0027rule\u0027,\u0027API keys for REST user: \u0027 . print_r($tokarray,TRUE));\r\n}\r\nelse {\r\n\twatchdog(\u0027rule\u0027,\u0027component rules_retrieve_user_s_api_key_and_token: module Services Auth API keys is not enabled.\u0027);\r\n\techo \u0022\u0022;\r\n}\r\n\r\n?\u003E\r\n"
+          },
+          "PROVIDE" : { "variable_added" : { "serlzd_token_key" : "serialized token and key" } }
+        }
+      },
+      { "data_set" : {
+          "data" : [ "api-key" ],
+          "value" : "\u003C?php\r\n\r\n$tokarray = unserialize($serlzd_token_key);\r\n\r\nif (isset($tokarray[$service_endpoint])) {\r\n\techo $tokarray[$service_endpoint]-\u003Eapi_key;\r\n}\r\nelse {\r\n\techo \u0027\u0027;\r\n}\r\n\r\n?\u003E"
+        }
+      },
+      { "data_set" : {
+          "data" : [ "token" ],
+          "value" : "\u003C?php\r\n\r\n$tokarray = unserialize($serlzd_token_key);\r\n\r\nif (isset($tokarray[$service_endpoint])) {\r\n\techo $tokarray[$service_endpoint]-\u003Etoken;\r\n}\r\nelse {\r\n\techo \u0027\u0027;\r\n}\r\n\r\n?\u003E"
+        }
+      }
+    ],
+    "PROVIDES VARIABLES" : [ "api_key", "token" ]
+  }
+}

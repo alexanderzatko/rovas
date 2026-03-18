@@ -1,0 +1,17 @@
+diff --git a/includes/translation.handler.inc b/includes/translation.handler.inc
+index cc58de0..3018211 100644
+--- a/includes/translation.handler.inc
++++ b/includes/translation.handler.inc
+@@ -1642,6 +1642,12 @@ class EntityTranslationDefaultHandler implements EntityTranslationHandlerInterfa
+       $form_langcode = $this->getActiveLanguage();
+       $language_tabs = array();
+ 
++      if (!isset($data['tabs'][1])) {
++      	array_unshift($data['tabs'], array(
++      		'count' => 0,
++      		'output' => array(),
++      	));
++      }
+       if ($this->getSourceLanguage()) {
+         foreach ($data['tabs'][1]['output'] as $index => &$add_tab) {
+           if ($add_tab['#link']['path'] == $root_path) {

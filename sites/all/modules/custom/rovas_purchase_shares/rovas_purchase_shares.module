@@ -1,0 +1,676 @@
+<?php
+
+/**
+ * @file
+ * Code for the purchase shares feature.
+ */
+
+include_once 'rovas_purchase_shares.inc';
+
+
+/**
+* Implementation of hook_menu().
+*/
+function rovas_purchase_shares_menu() {
+  $items = array();
+
+  $items['buyshares/%'] = array(
+    'title' => t('Project investing')	,
+    'description' => t('test'),
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('rovas_purchase_shares_form',1),
+    'access callback' => 'rovas_purchase_shares_access',
+  );
+
+  return $items;
+}
+
+//render a page that allows users to purchase shares
+function rovas_purchase_shares_form ($form, &$form_state,$proj_id) {
+
+	//the project info
+	$obj = entity_metadata_wrapper('node',$proj_id);
+
+	if($obj->field_allow_purchasing_shares->value() == 1) {
+
+		$storage = isset($form_state['storage']['old-payment-choice']) ? $form_state['storage']['old-payment-choice'] : -1;
+		$payment_choice = isset($form_state['values']['payment-choice']) ? $form_state['values']['payment-choice'] : -1;
+
+		//erase the buy amount when switching currencies
+		if ($storage != $payment_choice) {
+			$paymentChanged = TRUE;
+			$form_state['input']['buy_amount'] = NULL;
+		}
+		else {
+			$paymentChanged = FALSE;
+		}
+
+		global $user;
+
+		//the buyer info
+		$chronsary = rules_invoke_component('rules_chrons_actually_available',$user);
+		$chrons = $chronsary[0];
+
+		$rate_chrons = $obj->field_rate->value();
+		$rate_euros = $obj->field_time_share_cost_euros->value() ?: NULL;
+		$minimum_amount_time = $obj->field_minimum_time->value() > 0 ? $obj->field_minimum_time->value() : 0;
+		
+		$currency = isset($form_state['values']['payment-choice']) ? ((int)$form_state['values']['payment-choice'] === 1 ? 'EUR' : 'CHR') : 'CHR';
+
+		if ($currency == 'EUR') {
+			$sub_label = t('Next');
+			$cur_suffix = t('€');
+			$minimum_payment = $minimum_amount_time * $rate_euros;
+			$widget_default = round($minimum_payment > 0 ? $minimum_payment : 1);
+			$input_displ = 'block';
+		}
+		else if ($currency == 'CHR') {
+			$sub_label = t('Buy');
+			$cur_suffix = t('CH');
+			$minimum_payment = $minimum_amount_time * $rate_chrons;
+			$widget_default = round($minimum_payment > 0 ? $minimum_payment : 1);
+			$input_displ = 'block';
+		}
+		else {
+			$sub_label = t('Next');
+			$cur_suffix = NULL;
+			$minimum_payment = NULL;
+			$widget_default = NULL;
+			$input_displ = 'none';
+		}
+
+		$author_uid = $obj->author->uid->value();
+
+		$projname = $obj->label();
+		$projurl = '/node/' . $proj_id;
+
+		$note = '<div class="note">';
+		$note .= '<div class="note-strong">';
+		$note .= t('Project');
+		$note .= ': <a href="'.$projurl.'">';
+		$note .= $projname;
+		$note .= '</a>';
+		$note .= '</div>';
+		$note .= t('Use your Chrons or Euros to buy timeshares for this project.');
+		$note .= '<br>';
+		$note .= t('One timeshare will earn the same amount of Merits as one hour of time, worked in the project.');
+		$note .= '</div>';
+
+		$form['description'] = array(
+			'#type' => 'markup',
+			'#markup' => $note,
+			'#weight' => 1,
+		);
+	
+		$form['chrons'] = array('#type' => 'hidden','#value' => $chrons);
+		$form['widget_default'] = array('#type' => 'hidden','#value' => $widget_default);
+		$form['minimum_payment'] = array('#type' => 'hidden','#value' => $minimum_payment);
+		$form['proj_id'] = array('#type' => 'hidden','#value' => $proj_id);
+
+		if ($currency == 'EUR') {
+			if ($paymentChanged || !isset($form_state['values']['buy_amount']) || empty($form_state['values']['buy_amount'])) {
+				$hour_shares = $widget_default / $rate_euros;
+				$convary = _rovas_purchase_shares_stripe_convertor ($widget_default, $hour_shares*60);
+				$hour_shares = $convary['units']/60;
+			}
+			else {
+				$hour_shares = $form_state['values']['buy_amount'] / $rate_euros;
+				$convary = _rovas_purchase_shares_stripe_convertor ($form_state['values']['buy_amount'], $hour_shares*60);
+				$hour_shares = $convary['units']/60;
+			}
+		}
+		else if ($currency == 'CHR') {
+			if ($paymentChanged || !isset($form_state['values']['buy_amount']) || empty($form_state['values']['buy_amount'])) {
+				$hour_shares = $widget_default / $rate_chrons;
+			}
+			else {
+				$hour_shares = $form_state['values']['buy_amount'] / $rate_chrons;
+			}
+		}
+		else {
+			$hour_shares = 0;
+		}
+
+		$form['performance'] = array(
+			'#type' => 'fieldset', 
+			'#title' => t('Project data'), 
+			'#weight' => 3, 
+			'#attributes' => array('class' => array('collapsed collapsed')),
+			'#collapsible' => TRUE, 
+			'#collapsed' => TRUE,
+		);
+
+		$me_view = views_embed_view('project_merit_rewards_chart','page',$proj_id);
+
+		$me_history = '<div class="form-item form-item-chart form-type-textfield">';
+		$me_history .= '<label class="field-label">';
+		$me_history .= t('Labor time and Merit reward history');
+		$me_history .= '</label>';
+		$me_history .= '<div class="me-history">';
+		$me_history .= $me_view;
+		$me_history .= '</div>';
+		$me_history .= '</div>';
+
+		$yield = rovas_purchase_shares_yield($obj);
+		$yield = round($yield,2);
+
+		$yield_markup = '<div class="form-item form-item-yield form-type-textfield">';
+		$yield_markup .= '<label class="field-label">';
+		$yield_markup .= t('Current yield');
+		$yield_markup .= '</label>';
+		$yield_markup .= '<div class="yield">';
+		$yield_markup .= '<span class="yield-value">';
+		$yield_markup .= $yield;
+		$yield_markup .= ' ';
+		$yield_markup .= '</span>';
+		$yield_markup .= '<span class="yield-unit">';
+		$yield_markup .= t('ME/100 CH /1 hour');
+		$yield_markup .= '</span>';
+		$yield_markup .= '</div>';
+		$yield_markup .= '<div class="help-block">';
+		$yield_markup .= t('The number of Merits one (hour) timeshare receives when the project is rewarded  with 100 Chrons');
+		$yield_markup .= '</div>';
+		$yield_markup .= '</div>';
+
+		$form['performance']['yield'] = array(
+			'#type' => 'markup', 
+			'#markup' => $yield_markup,
+		);
+
+		$rateEuros = $obj->field_time_share_cost_euros->value();
+
+		$rate_markup = '<div class="form-item form-item-rate form-type-textfield field-label-inline">';
+		$rate_markup .= '<label class="field-label">';
+		$rate_markup .= t('Timeshare cost') . ': ';
+		$rate_markup .= '</label>';
+		$rate_markup .= '<div class="rate">';
+		$rate_markup .= '<span class="rate-value">';
+		$rate_markup .= $rate_chrons;
+		$rate_markup .= ' ';
+		$rate_markup .= '</span>';
+		$rate_markup .= '<span class="rate-unit">';
+		$rate_markup .= t('CH');
+		$rate_markup .= '</span>';
+		if ($rateEuros) {
+			$rate_markup .= '<span class="rate-value">';
+			$rate_markup .= ' / ' . $rateEuros;
+			$rate_markup .= ' ';
+			$rate_markup .= '</span>';
+			$rate_markup .= '<span class="rate-unit">';
+			$rate_markup .= t('€');
+			$rate_markup .= '</span>';
+		}
+		$rate_markup .= '</div>';
+		$rate_markup .= '<div class="help-block">';
+		$rate_markup .= t('The cost of one hour share');
+		$rate_markup .= '</div>';
+		$rate_markup .= '</div>';
+
+		$form['performance']['rate'] = array(
+			'#type' => 'markup', 
+			'#markup' => $rate_markup,
+		);
+
+
+		$form['performance']['chart'] = array(
+			'#type' => 'markup', 
+			'#markup' => $me_history,
+		);
+
+
+	/* Buy Shares */
+
+		$form['buy-hrs'] = [
+			'#type' => 'markup',
+			'#prefix' => '<div class="buy-hrs-wrapper">',
+			'#suffix' => '</div>',
+			'#weight' => 6,
+		];
+
+		$form['buy-hrs']['buy-hrs-markup'] = array(
+			'#type' => 'markup',
+			'#markup' => '<div class="forex subhead">' . t('Buy time share') . '</div>',
+		);
+		
+		//payment type selector
+		$form['buy-hrs']['payment-choice'] = [
+			'#type' => 'radios',
+			'#title' => t('Select payment type'),
+			'#default_value' => 0,
+			'#options' => [
+				0 => t('Chrons'),
+				1 => t('Euros')
+			],
+			'#ajax' => [
+				'callback' => '_switch_payment_currency',
+				'effect' => 'fade',
+				],
+		];
+
+		$balance_text = '<div class="chron-balance">';
+		$balance_text .= '<h2 class="block-title">';
+		$balance_text .= t('Chron balance');
+		$balance_text .= '</h2>';
+		$balance_text .= '<div class="available-chrons">';
+		$balance_text .= '<div class="field-content">';
+		$balance_text .= $chrons . ' ' . t('CH');
+		$balance_text .= '</div>';
+		$balance_text .= '</div>';
+		$balance_text .= '</div>';
+
+		$form['buy-hrs']['balance'] = [
+			'#markup' => $balance_text,
+			'#access' => TRUE,
+		];
+
+		$form['buy-hrs']['newline'] = [
+			'#markup' => '<div id="newline" style="display:block"></div>',
+		];
+
+		$form['buy-hrs']['buy_amount'] = [	
+			'#type' => 'textfield', 
+			'#default_value' => $widget_default,
+			'#field_suffix' => $cur_suffix,
+			'#attributes' => array('class' => array('input')),
+			'#size' => 60,
+			'#maxlength' => 128,
+			'#required' => TRUE,
+		];
+
+		$form['buy-hrs']['convert']['button'] = [
+			'#type' => 'button',
+			'#name' => 'con_chr_hrs',
+			'#button_type' => 'button',
+			'#value' => '<span class="glyphicon glyphicon-refresh"> </span>', //recalculate icon
+			"#submit" => [],
+			'#ajax' => [
+				'callback' => '_convert_chr_hrs',
+				'effect' => 'fade',
+				],
+		];
+
+		$form['buy-hrs-converted-value'] = array(
+				'#type' => 'hidden',
+				'#value' => $hour_shares,
+			);
+
+		$hours = floor($hour_shares);
+		$hours_formated = $hours ? $hours . '<span class="to-unit"> ' . t('hrs') . '</span>' : '';
+		$minutes = ($hour_shares - $hours) * 60;
+		$minutes_formated = $minutes ? round($minutes,0) . '<span class="to-unit"> ' . t('min') . '</span>' : '';
+		$comma = !empty($hours_formated) && !empty($minutes_formated) ? ' ' : '';
+
+		$form['buy-hrs']['buy-hrs-converted'] = [
+			'#type' => 'item',
+			'#prefix' => '<div id="buy-hrs-converted">',
+			'#suffix' => '</div>',
+			'#markup' => $hours_formated . $comma . $minutes_formated,
+		];
+	
+		$new_yield = rovas_purchase_shares_yield($obj,$hour_shares);
+
+		$applyeld = round($hour_shares * $new_yield,2);
+		$convert_note = t('Estimated yield is <strong>@aplyield Merits</strong> for 100 Chrons of reward',array('@aplyield' => $applyeld));
+		$btn_type = 'btn-success';
+		$css_class = '';
+		$button_note = '';
+
+	//do not allow submission if the amt paid is less than the minimum asked
+	if (!isset($form_state['values']['buy_amount'])) {
+		$sub_act = FALSE;
+		if ($currency == 'CHR') {
+			$button_note = '<div style="font-weight: bold; color:#4cae4c;">' . t('Clicking the button finalizes the transaction') . '</div>';
+ 		}
+ 		else if ($currency == 'EUR') {
+			$button_note = '<div style="font-weight: bold; color:#4cae4c;">' . t('Continue to Payment Information') . '</div>';
+ 		}
+	}
+	else if (!$paymentChanged && is_numeric($form_state['values']['buy_amount']) && $form_state['values']['buy_amount'] < $minimum_payment) {
+		if ($currency == 'CHR'){
+			$convert_note =  t('Please enter value equal to, or greater than @chr Chrons',array('@chr' => $minimum_payment));
+		}
+		else if ($currency == 'EUR') {
+			$convert_note =  t('Please enter value equal to, or greater than @eur Euros',array('@eur' => $minimum_payment));
+		}
+		$sub_act = TRUE;
+		$css_class = 'color:red;';
+	}
+	else if ($currency == 'CHR' && $form_state['values']['buy_amount'] > $chrons) {
+		$convert_note =  t('Please enter value lower than your account balance of @chr Chrons',array('@chr' => $chrons));
+		$sub_act = TRUE;
+		$css_class = 'color:red;';
+	}
+	else {
+		$sub_act = FALSE;
+		if ($currency == 'CHR') {
+			$button_note = '<div style="font-weight: bold; color:#4cae4c;">' . t('Clicking the button finalizes the transaction') . '</div>';
+ 		}
+ 		else if ($currency == 'EUR') {
+			$button_note = '<div style="font-weight: bold; color:#4cae4c;">' . t('Continue to Payment Information') . '</div>';
+ 		}
+	}	
+
+	$form['buy-hrs']['submit-explain'] = array(
+		'#markup' => $convert_note,
+		'#prefix' => '<div id="submit-explain" style="'.$css_class.'">',
+		'#suffix' => '</div>',
+	);
+
+		$form['final-note'] = array(
+			'#markup' => $button_note,
+			'#prefix' => '<div id="final-note">',
+			'#suffix' => '</div>',
+			'#weight' => 10,
+		);
+
+		$form['submit'] = array(
+			'#type' => 'submit',
+			'#value' => $sub_label,
+			'#attributes' => array('id' => array('pay-choice'),'class' => array('btn',$btn_type),'role' => array('button')),
+			'#disabled' => $sub_act,
+			'#prefix' => '<div id="buy-hrs-subbutton">',
+			'#suffix' => '</div>',
+			'#weight' => 20,
+		);
+		
+		$form['not-guaranteed-note'] = array(
+			'#type' => 'markup',
+			'#prefix' => '<div id="not-guaranteed-note">',
+			'#suffix' => '</div>',
+			'#markup' => t('Please note, that the yield amount as shown on this page is not guaranteed. Its value depends on many variables and can both - decrease and increase in the future.'),
+			'#weight' => 100,
+		);
+
+	}
+	else {
+		$form['description'] = array(
+			'#type' => 'markup',
+			'#markup' => t('This project is not set up to allow buying shares'),
+		);
+	}
+
+		$old_payment_choice = isset($form_state['values']['payment-choice']) ? $form_state['values']['payment-choice'] : -1;
+		$form_state['storage']['old-payment-choice'] = $old_payment_choice;
+
+	return $form;
+}
+
+/*
+converts the total amount paid and the number of units (like time share values),
+calculated by simple math, to values that Stripe order can process
+*/
+function _rovas_purchase_shares_stripe_convertor ($total_reward, $units) {
+
+    $unit_price = $total_reward / $units;
+    $unit_price = round($unit_price, 2);
+    $units = ceil($units);
+    $total_price = $units * $unit_price;
+
+    while ($total_price > $total_reward) {
+        $units--;
+        $total_price = $units * $unit_price;
+    }
+
+    return array('units' => $units, 'unit_price' => $unit_price);
+}
+
+function rovas_purchase_shares_form_submit ($form, &$form_state) {
+
+//watchdog('module','rovas_purchase_shares submit ' . print_r($form_state['values'],1));
+//dsm($form_state);
+
+	global $user;
+
+	$product_id = $form_state['values']['proj_id'];
+	$usr_chr = $form_state['values']['chrons'];
+	$total_reward = isset($form_state['values']['buy_amount']) ? $form_state['values']['buy_amount'] : 0;
+	$share = $form_state['values']['buy-hrs-converted-value'] ?: 1;
+	$currency = $form_state['values']['payment-choice'] == 1 ? 'EUR' : ($form_state['values']['payment-choice'] == 0 ? 'CHR' : NULL);
+
+	$minimum_payment = isset($form_state['values']['minimum_payment']) ? $form_state['values']['minimum_payment'] : 0;
+
+	if ($total_reward == 0) {
+		$message = t('Please enter value greater than 0');
+		$mestyp ='error';
+		$form_state["rebuild"] = TRUE;
+		$dest = FALSE;
+	}
+	else if ($total_reward < $minimum_payment) {
+		if ($currency == 'CHR'){
+			$message =  t('Please enter value equal to, or greater than @chr Chrons',array('@chr' => $minimum_payment));
+		}
+		else if ($currency == 'EUR') {
+			$message =  t('Please enter value equal to, or greater than @eur Euros',array('@eur' => $minimum_payment));
+		}
+		$mestyp ='error';
+		$form_state["rebuild"] = TRUE;
+		$dest = FALSE;
+	}
+	else if ($currency == 'CHR' && $total_reward > $usr_chr) {
+		$message =  t('Please enter value lower than your account balance of @chr Chrons',array('@chr' => $usr_chr));
+		$mestyp ='error';
+		$form_state["rebuild"] = TRUE;
+		$dest = FALSE;
+	}
+
+	if ($currency == 'CHR') {
+
+		$project = node_load($product_id); 
+
+		$hours = floor($share);
+		$hours_formated = $hours ? $hours . ' ' . t('hrs') : '';
+		$minutes = ($share - $hours) * 60;
+		$minutes_formated = $minutes ? round($minutes,0) . ' ' . t('min') : '';
+		$comma = !empty($hours_formated) && !empty($minutes_formated) ? ', ' : '';
+
+		$timeshare = $hours_formated . $comma . $minutes_formated;
+
+		//to give the buyer a stake in the project, they have to have a share there
+		$share_ary = rules_invoke_component('rules_check_or_add_time_shareholder_core',$project,$user->uid);
+
+		//update the user's share
+		$tshare_obj = entity_metadata_wrapper('node',$share_ary[0]);
+		$old_share = $tshare_obj->field_total_hours_worked->value();
+		$new_share = $old_share + $share;
+		$tshare_obj->field_total_hours_worked->set($new_share);
+		$tshare_obj->save();
+
+		$description = t('Purchased @hrs time share',array('@hrs' => $timeshare));
+
+		//create an asset usage record to process the purchase in the background
+		$result = rules_invoke_component('rules_create_aur',$project,$total_reward,$user,$description);
+		$proof = node_load($result[0]);
+
+		//this is an equivalent to creating a work report
+		rules_invoke_component('rules_create_time_share',$project,$proof,$total_reward,$share);
+
+		$message =  t('Your purchase of @shr time share for @chr Chrons was scheduled for processing.',array('@shr' => $timeshare, '@chr' => $total_reward));
+		$mestyp ='status';
+		$dest = drupal_get_path_alias('node/' . $product_id);
+	}
+	else if ($currency == 'EUR') {
+
+		$uid = $user->uid;
+
+		$product_obj = commerce_product_load_by_sku('time-share');
+		$anonpay_product_nid = $product_obj->product_id;
+
+		//converting the time purchased to minutes
+		$time_in_minutes = $share * 60;
+
+		$convertedAry = _rovas_purchase_shares_stripe_convertor ($total_reward, $time_in_minutes);
+
+		$unit_price = $convertedAry['unit_price'];
+		$quantity = $convertedAry['units'];
+		$quantity = round($quantity);
+
+		$fee_variable = variable_get('buy_ch_fee');
+		$fee_fixed = variable_get('buy_ch_fixed_fee');
+		$fee = $fee_fixed + $fee_variable * ($quantity * $unit_price);
+
+		$unit_price = 100*$unit_price;
+
+		if ($unit_price > 2147483647 || $quantity*$unit_price > 2147483647) {
+			$message = t('The amount paid can not be processed. Please split your payment into multiple smaller amounts.');
+			$mestyp = 'status';
+			$dest = FALSE;
+		}
+		else {
+			// Creating a new order in checkout
+			$order = commerce_order_new($uid, 'checkout_checkout');
+			commerce_order_save($order);
+
+			//modify unit price of the product
+			$product = entity_metadata_wrapper('commerce_product', $anonpay_product_nid);
+			$product->commerce_price->amount->set($unit_price);
+			$product->commerce_price->currency_code->set('EUR');
+			$product->save();
+
+			$product = commerce_product_load($anonpay_product_nid);
+			$line_item = commerce_product_line_item_new($product, $quantity, $order->order_id);
+
+			// Save the line item to get its ID.
+			commerce_line_item_save($line_item);
+
+			// Add the line item to the order
+			$order_wrapper = entity_metadata_wrapper('commerce_order', $order);
+			$order_wrapper->commerce_line_items[] = $line_item;
+
+			$order_wrapper->field_conversion_fee = $fee;
+
+			$order_wrapper->field_payer_type = 'project';
+			$order_wrapper->field_payment_recipient = $product_id;
+
+			commerce_order_save($order);
+			commerce_cart_order_session_save($order->order_id);
+
+//dsm($order->order_id,'exec 2');
+			drupal_goto('checkout/' . $order->order_id);
+		}
+	}
+
+	drupal_set_message($message,$mestyp);
+
+	if ($dest) {
+		drupal_goto($dest);
+	}
+
+}
+
+
+//set access to the purchase shares page
+function rovas_purchase_shares_access() {
+	return user_has_role(2);
+}
+
+//callback to switch gui for the chosen currency
+function _switch_payment_currency($form,&$form_state) {
+
+//watchdog('module','rovas_purchase_shares callback ' . print_r([$form_state['values'],$form_state['input']],1));
+
+	$commands = [
+		ajax_command_replace("#buy-hrs-subbutton", render($form['submit'])),
+		ajax_command_replace(".form-item-buy-amount", render($form['buy-hrs']['buy_amount'])),
+		ajax_command_css(".form-item-buy-amount", ['display' => 'inline-block']),
+		ajax_command_css("#edit-button", ['display' => 'inline-block']),
+		ajax_command_replace("#buy-hrs-converted", render($form['buy-hrs']['buy-hrs-converted'])),
+		ajax_command_css("#buy-hrs-converted", ['display' => 'inline-block']),
+		ajax_command_css("#submit-explain", ['display' => 'block']),
+		ajax_command_replace("#submit-explain", render($form['buy-hrs']['submit-explain'])),
+		ajax_command_replace("#final-note", render($form['final-note'])),
+	];
+
+	if ($form_state['values']['payment-choice'] == 0) {
+		$commands[] = ajax_command_css(".chron-balance", ['display' => 'block']);
+		$commands[] = ajax_command_css("#newline", ['display' => 'none']);
+	}
+	else if ($form_state['values']['payment-choice'] == 1) {
+		$commands[] = ajax_command_css(".chron-balance", ['display' => 'none']);
+		$commands[] = ajax_command_css("#newline", ['display' => 'block']);
+	}
+	else {
+		$commands = [];
+	}
+
+	return [
+		'#type' => 'ajax',
+		'#commands' => $commands
+	];
+}
+
+//callback to recalculate CH/EUR -> time share
+function _convert_chr_hrs($form, $form_state) {
+//watchdog('module','rovas_purchase_shares callback 2 ' . print_r([$form_state['values'],$form_state['input']],1));
+	return array(
+		'#type' => 'ajax',
+		'#commands' => array(
+			ajax_command_replace("#buy-hrs-converted", render($form['buy-hrs']['buy-hrs-converted'])),
+			ajax_command_css("#buy-hrs-converted", ['display' => 'inline-block']),
+			ajax_command_replace("#final-note", render($form['final-note'])),
+			ajax_command_replace("#buy-hrs-subbutton", render($form['submit'])),
+			ajax_command_replace("#submit-explain", render($form['buy-hrs']['submit-explain'])),
+		)
+	);
+}
+
+/*
+* calculates the project reward yield
+* @obj is the project metadata wrapper object
+* @add_time - additional time to add to the time exisiting in the project, to estimate a hypothetical yield
+*/
+function rovas_purchase_shares_yield ($obj,$add_time=NULL) {
+
+	$nid = $obj->getIdentifier();
+
+	$res = db_query("SELECT SUM(ma.field_merit_allocation_value) AS shares, SUM(hw.field_total_hours_worked_value) AS hours
+	FROM {node} node
+	LEFT JOIN {field_data_field_project} fpr ON node.nid = fpr.entity_id AND (fpr.entity_type = 'node' AND fpr.deleted = '0')
+	LEFT JOIN {node} n ON fpr.field_project_target_id = n.nid
+	LEFT JOIN {field_data_field_merit_allocation} ma ON node.nid = ma.entity_id AND (ma.entity_type = 'node' AND ma.deleted = '0')
+	LEFT JOIN {field_data_field_total_hours_worked} hw ON node.nid = hw.entity_id AND (hw.entity_type = 'node' AND hw.deleted = '0')
+	WHERE n.nid = :prid
+	AND (node.status = '1' AND node.type IN  ('project_merit_allocation', 'co_worker_merit_allocation','timeshare_merit_allocation'))
+	", array(':prid' => $nid));
+
+	$sumarray = $res->fetchAll();
+
+	//project merit share
+	$proj_me_share = $obj->field_reward_merit_allocation->value();
+
+	//the sum of all partial shares (and hours) from worker and project shareholders
+	$partial = $proj_me_share >0 ? $proj_me_share : 100;
+	$tsdiff = $partial - $partial * ($sumarray[0]->shares/100);
+	$partial2 = $sumarray[0]->hours > 0 ? $sumarray[0]->hours : 1;
+	$total_hours = $add_time + $partial2;
+
+	return $tsdiff / $total_hours;
+}
+
+/**
+ * Alter an individual chart's raw library representation.
+ *
+ * This hook is called AFTER hook_chart_alter(), after Charts module has
+ * converted the renderable into the chart definition that will be used by the
+ * library. Note that the structure of $definition will differ based on the
+ * charting library used. Switching charting libraries may cause your code
+ * to break when using this hook.
+ *
+ * Even though this hook may be fragile, it may provide developers with access
+ * to library-specific functionality.
+ *
+ * @param $definition
+ *   The chart definition to be modified. The raw values are passed directly to
+ *   the charting library.
+ * @param $chart
+ *   The chart renderable. This may be used for reference (or read to add
+ *   support for new properties), but any changes to this variable will not
+ *   have an effect on output.
+ * @param $chart_id
+ *   The chart ID, derived from the $chart['#chart_id'] property. Note that not
+ *   all charts may have a $chart_id.
+ */
+function rovas_purchase_shares_chart_definition_alter(&$definition, $chart, $chart_id) {
+
+		//WARNING! modifying the $chart array has no effect in this hook
+		$definition['options']['animation']['duration'] = 1;
+}

@@ -1,0 +1,20 @@
+diff --git a/modules/data.rules.inc b/modules/data.rules.inc
+index 6bb21fcc..a33d0c79 100644
+--- a/modules/data.rules.inc
++++ b/modules/data.rules.inc
+@@ -54,6 +54,7 @@ function rules_data_action_info() {
+         'description' => t('The new value to set for the specified data.'),
+         'allow null' => TRUE,
+         'optional' => TRUE,
++        'translatable' => TRUE,
+       ),
+     ),
+     'group' => t('Data'),
+@@ -165,6 +166,7 @@ function rules_data_action_info() {
+         'label' => t('Value'),
+         'optional' => TRUE,
+         'description' => t('Optionally, specify the initial value of the variable.'),
++        'translatable' => TRUE,
+       ),
+     ),
+     'provides' => array(

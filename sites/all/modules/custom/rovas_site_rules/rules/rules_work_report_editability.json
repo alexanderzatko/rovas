@@ -1,0 +1,97 @@
+{ "rules_work_report_editability" : {
+    "LABEL" : "Work report editability",
+    "PLUGIN" : "action set",
+    "OWNER" : "rules",
+    "TAGS" : [ "work report" ],
+    "REQUIRES" : [ "rules", "rules_conditional" ],
+    "USES VARIABLES" : {
+      "wr_object" : { "label" : "work report", "type" : "node" },
+      "user_object" : { "label" : "user to check", "type" : "user" },
+      "editable" : { "label" : "editable", "type" : "boolean", "parameter" : false }
+    },
+    "ACTION SET" : [
+      { "data_set" : { "data" : [ "editable" ], "value" : "0" } },
+      { "CONDITIONAL" : [
+          {
+            "IF" : { "data_is" : { "data" : [ "user-object" ], "value" : [ "wr-object:author" ] } },
+            "DO" : [
+              { "CONDITIONAL" : [
+                  {
+                    "IF" : { "NOT user_has_role" : { "account" : [ "user-object" ], "roles" : { "value" : { "6" : "6" } } } },
+                    "DO" : [
+                      { "CONDITIONAL" : [
+                          {
+                            "IF" : { "entity_is_of_bundle" : {
+                                "entity" : [ "wr-object" ],
+                                "type" : "node",
+                                "bundle" : { "value" : { "work_report" : "work_report" } }
+                              }
+                            },
+                            "DO" : [
+                              { "variable_add" : {
+                                  "USING" : { "type" : "node", "value" : [ "wr-object:field-project" ] },
+                                  "PROVIDE" : { "variable_added" : { "project_object" : "project object" } }
+                                }
+                              },
+                              { "CONDITIONAL" : [
+                                  {
+                                    "IF" : { "data_is_empty" : { "data" : [ "wr-object:field-verification-slip" ] } },
+                                    "DO" : [
+                                      { "CONDITIONAL" : [
+                                          {
+                                            "IF" : { "entity_is_of_bundle" : {
+                                                "entity" : [ "project-object" ],
+                                                "type" : "node",
+                                                "bundle" : { "value" : { "project" : "project" } }
+                                              }
+                                            },
+                                            "DO" : [
+                                              { "CONDITIONAL" : [
+                                                  {
+                                                    "IF" : { "data_is" : {
+                                                        "data" : [ "project-object:field-status" ],
+                                                        "op" : "IN",
+                                                        "value" : { "value" : [ "0", "1" ] }
+                                                      }
+                                                    },
+                                                    "DO" : [
+                                                      { "CONDITIONAL" : [
+                                                          {
+                                                            "IF" : { "NOT data_is" : {
+                                                                "data" : [ "wr-object:field-verification-status" ],
+                                                                "op" : "IN",
+                                                                "value" : { "value" : { "1" : "1", "2" : "2" } }
+                                                              }
+                                                            },
+                                                            "DO" : [ { "data_set" : { "data" : [ "editable" ], "value" : "1" } } ]
+                                                          }
+                                                        ]
+                                                      }
+                                                    ]
+                                                  }
+                                                ]
+                                              }
+                                            ]
+                                          }
+                                        ]
+                                      }
+                                    ]
+                                  }
+                                ]
+                              }
+                            ]
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "PROVIDES VARIABLES" : [ "editable" ]
+  }
+}

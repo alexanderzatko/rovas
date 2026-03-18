@@ -1,0 +1,1982 @@
+<?php
+
+/**
+* Implementations of hook_menu().
+*/
+function rovas_forex_menu() {
+  $items = array();
+
+  $items['forex'] = array(
+    'title' => t('Forex'),
+    'description' => t('Exchange Chrons for national currency and vice versa'),
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('rovas_forex_form'),
+    'access arguments' => array(array('full access')),
+    'access callback' => 'forex_has_roles',
+    'menu_name' => 'main-menu'
+  );
+
+  $items['admin/config/development/forex'] = array(
+    'title' => t('Forex administration'),
+    'description' => t('Administer Forex'),
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('forex_admin_form'),
+    'access arguments' => array('access administration pages'),
+    'menu_name' => 'management'
+  );
+
+	//do not allow users to see the cart page
+  $items['cart']['page callback'] = 'checkout_redirect';
+  $items['cart']['access callback'] = TRUE;
+
+  return $items;
+}
+
+function checkout_redirect() {
+	global $user;
+	$has_order = commerce_cart_order_load($user->uid);
+
+	if ($has_order)
+		drupal_goto('/checkout');
+	else
+		drupal_goto('/');
+}
+
+//forex page access callback
+function forex_has_roles() {
+  global $user;
+
+  if ($user->uid == 0) {
+    return FALSE;
+  }
+
+  // Check if user has 'banned' role
+  if (in_array('banned', $user->roles)) {
+    return FALSE;
+  }
+
+  return TRUE;
+}
+
+
+function forex_admin_form($form, &$form_state) {
+
+	$forex_product_id = variable_get('forex_product_id') ? variable_get('forex_product_id') : 0;
+	
+	$form['prod_id'] = array(
+		'#type' => 'textfield',
+		'#title' => 'Product ID',
+		'#description' => 'ID of the forex product',
+		'#default_value' => $forex_product_id,
+		'#size' => 60, 
+		'#maxlength' => 128, 
+		'#required' => TRUE,
+	);
+
+	$rovas_admin_uid = variable_get('rovas_admin_uid') ? variable_get('rovas_admin_uid') : 0;
+	
+	$form['rovas_admin_uid'] = array(
+		'#type' => 'textfield',
+		'#title' => 'Rovas admin UID',
+		'#description' => 'User id of the forex beneficiary',
+		'#default_value' => $rovas_admin_uid,
+		'#size' => 60, 
+		'#maxlength' => 128, 
+		'#required' => TRUE,
+	);
+
+	$forex_minimum_eur = variable_get('minimum_eur') ? variable_get('minimum_eur') : 0;
+
+	$form['minimum_eur'] = array(
+		'#type' => 'textfield',
+		'#title' => 'Purchase amount minimum',
+		'#description' => 'Minimum of Eur user can get when changing Chrons',
+		'#default_value' => $forex_minimum_eur,
+		'#size' => 60, 
+		'#maxlength' => 128, 
+		'#required' => TRUE,
+	);
+
+	$forex_ch_basket_init = variable_get('ch_basket_init') ? variable_get('ch_basket_init') : 0;
+
+	$form['ch_basket_init'] = array(
+		'#type' => 'textfield',
+		'#title' => 'Initial Chron basket amount',
+		'#description' => 'The value of Chron basket at the start',
+		'#default_value' => $forex_ch_basket_init,
+		'#size' => 60, 
+		'#maxlength' => 128, 
+		'#required' => TRUE,
+	);
+
+	$forex_eur_basket_init = variable_get('eu_basket_init') ? variable_get('eu_basket_init') : '';
+
+	$form['eu_basket_init'] = array(
+		'#type' => 'textfield',
+		'#title' => 'Initial Eur basket amount',
+		'#description' => 'The value of Eur basket at the start',
+		'#default_value' => $forex_eur_basket_init,
+		'#size' => 60, 
+		'#maxlength' => 128, 
+		'#required' => TRUE,
+	);
+
+	$buy_eur_fee = variable_get('buy_eur_fee') ? variable_get('buy_eur_fee') : 0;
+
+	$form['buy_eur_fee'] = array(
+		'#type' => 'textfield',
+		'#title' => 'Buy Euros fee [multiplier]',
+		'#description' => 'The fee charged when converting CH to Eur',
+		'#default_value' => $buy_eur_fee,
+		'#size' => 60, 
+		'#maxlength' => 128, 
+		'#required' => TRUE,
+	);
+
+	$base_buy_ch_fee = variable_get('base_buy_ch_fee') ? variable_get('base_buy_ch_fee') : 0;
+
+	$form['base_buy_ch_fee'] = array(
+		'#type' => 'textfield',
+		'#title' => 'Rovas base fee [multiplier]',
+		'#description' => 'The Rovas base fee used when converting Eur to CH',
+		'#default_value' => $base_buy_ch_fee,
+		'#size' => 60, 
+		'#maxlength' => 128, 
+		'#required' => TRUE,
+	);
+
+	$buy_ch_fee = variable_get('buy_ch_fee') ? variable_get('buy_ch_fee') : 0;
+
+	$form['buy_ch_fee'] = array(
+		'#type' => 'textfield',
+		'#title' => 'Buy Chrons fee [multiplier]',
+		'#description' => 'The default payment processor <strong>variable fee</strong> + Rovas base fee, charged when converting Eur to CH. <br>Used for estimated forex calculations, given the variability of fees for various payment methods.',
+		'#default_value' => $buy_ch_fee,
+		'#size' => 60, 
+		'#maxlength' => 128, 
+		'#required' => TRUE,
+	);
+
+	$buy_ch_fixed_fee = variable_get('buy_ch_fixed_fee') ? variable_get('buy_ch_fixed_fee') : 0;
+
+	$form['buy_ch_fixed_fee'] = array(
+		'#type' => 'textfield',
+		'#title' => 'Buy Chrons fixed fee [€]',
+		'#description' => 'The default payment processor <strong>fixed portion of the fee</strong>, charged when converting Eur to CH. <br>Used for estimated forex calculations, given the variability of fees for various payment methods.',
+		'#default_value' => $buy_ch_fixed_fee,
+		'#size' => 60, 
+		'#maxlength' => 128, 
+		'#required' => TRUE,
+	);
+
+	$form['adjust_chrons'] = array(
+		'#type' => 'textfield',
+		'#title' => 'Adjust the Chrons basket amount',
+		'#description' => 'Add or subtract Chron in the basket',
+		'#default_value' => 0,
+		'#size' => 60, 
+		'#maxlength' => 128, 
+		'#required' => TRUE,
+	);
+
+	$user = user_load($rovas_admin_uid);
+	$ch_available = rules_invoke_component('rules_chrons_actually_available',$user);
+	
+	$form['ch_available'] = array(
+		'#type' => 'markup',
+		'#prefix' => '<div class="ch-available">',
+		'#suffix' => '</div>',
+		'#markup' => '<style type="text/css">
+
+.form-item.form-type-textfield.form-item-adjust-chrons {
+  display: inline-block;
+}
+
+.ch-available {
+  display: inline-block;
+  margin-left: 10px;
+  top: -20px;
+  position: relative;
+}
+
+</style>' . '<strong>CH. available: </strong>' . $ch_available[0],
+		);
+
+	//delete temp basket if lock is lost
+	$lock_ts = variable_get('forex_lock');
+	$time_remaining = $lock_ts ? $lock_ts['time'] - (time() - 5*60) : -1;
+
+	// transaction-processing functionality
+	if ($time_remaining <= 0) {
+		variable_del('forex_baskets_temp');
+	}
+
+	$forex_baskets = variable_get('forex_baskets');
+	$forex_baskets_temp = variable_get('forex_baskets_temp');
+
+	$form['current'] = array(
+		'#type' => 'markup',
+		'#prefix' => '<div class="current-baskets">',
+		'#suffix' => '</div>',
+//		'#markup' => 'Current Eur basket amounts:',
+		'#markup' => '<div style="font-weight:bold;" class="baskets label eu">Current Eur basket amounts:</div>',
+		);
+	
+	$ch_current = isset($forex_baskets_temp['ch_basket']) ? $forex_baskets_temp['ch_basket'] : $forex_baskets['ch_basket'];
+	
+	$form['ch_basket_current'] = array(
+		'#type' => 'markup',
+		'#markup' => '<div style="font-weight:bold;" class="baskets label eu">Chron: </div><div class="baskets ch">' . $ch_current . '</div>',
+		);
+
+	$eu_current = $forex_baskets_temp['eur_basket'] ? $forex_baskets_temp['eur_basket'] : $forex_baskets['eur_basket'];
+
+	$form['eu_basket_current'] = array(
+		'#type' => 'markup',
+		'#markup' => '<div style="font-weight:bold;" class="baskets label eu">Eur: </div><div class="baskets eu">' . $eu_current . '</div>',
+		);
+
+	$form['submit'] = array(
+		'#type' => 'submit',
+		'#value' => 'Save',
+		'#validate' => array('_validate_admin'),
+	);
+
+	return $form;
+}
+
+function forex_admin_form_submit($form, &$form_state) {
+
+	variable_set('forex_product_id',$form_state['values']['prod_id']);
+	variable_set('rovas_admin_uid',$form_state['values']['rovas_admin_uid']);
+	variable_set('minimum_eur',$form_state['values']['minimum_eur']);
+	variable_set('ch_basket_init',$form_state['values']['ch_basket_init']);
+	variable_set('eu_basket_init',$form_state['values']['eu_basket_init']);
+	variable_set('buy_ch_fee',$form_state['values']['buy_ch_fee']);
+	variable_set('base_buy_ch_fee',$form_state['values']['base_buy_ch_fee']);
+	variable_set('buy_ch_fixed_fee',$form_state['values']['buy_ch_fixed_fee']);
+	variable_set('buy_eur_fee',$form_state['values']['buy_eur_fee']);
+
+	$lock_ts = variable_get('forex_lock');
+	$time_remaining = $lock_ts ? $lock_ts['time'] - (time() - 5*60) : -1;
+
+	// transaction-processing functionality
+	if ($time_remaining <= 0 && $form_state['values']['adjust_chrons'] != 0) {
+		variable_set('forex_lock',array('uid' => 1, 'time' => time()));
+
+		$forex_baskets = variable_get('forex_baskets');
+	
+		$forex_baskets = empty($forex_baskets) ? array('ch_basket' => $form_state['values']['adjust_chrons'], 'eur_basket' => $form_state['values']['eu_basket_init']) : $forex_baskets;
+
+		$new_ch_value = $form_state['values']['adjust_chrons'] + $forex_baskets['ch_basket'];
+		variable_set('forex_baskets',array('ch_basket' => $new_ch_value, 'eur_basket' => $forex_baskets['eur_basket'] ? $forex_baskets['eur_basket'] : 0));
+
+		if ($form_state['values']['adjust_chrons'] > 0) {
+			$result = rules_invoke_component(
+				'rules_process_forex_order',
+				$form_state['values']['rovas_admin_uid'],
+				'chrons_to_euros',
+				$form_state['values']['adjust_chrons'], //chrons transfered
+				0, //EUR received
+				0, //fee
+				$forex_baskets['ch_basket'],
+				$forex_baskets['eur_basket'],
+				0,
+				0
+			);
+		}
+		else {
+			$result = rules_invoke_component(
+				'rules_process_forex_order',
+				$form_state['values']['rovas_admin_uid'],
+				'euros_to_chrons',
+				0, //EUR received
+				-1 * $form_state['values']['adjust_chrons'], //chrons transfered
+				0, //fee
+				$forex_baskets['ch_basket'],
+				$forex_baskets['eur_basket'],
+				0,
+				0
+			);
+		}
+		if($result[0] > 0) {
+			global $user;
+			//update the user's chron account
+			rules_invoke_component(
+				'rules_update_user_chron_account',
+				$user,
+				-1 * $form_state['values']['adjust_chrons'], //chrons transfered
+				null
+			);
+			$msg = 'The changes have been saved';
+		}
+		else {
+			$msg = 'Error! There was a problem with creating a transaction record';
+		}
+
+		variable_del('forex_lock');
+
+	}
+	else if ($time_remaining <= 0) {
+			$msg = 'The changes have been saved';	
+		}
+	else {
+
+		$msg = 'Somebody has a lock right now. You can try again in '. date('i',$time_remaining) .' minutes, '. date('s',$time_remaining) .' seconds.';
+		}
+	drupal_set_message($msg);
+
+	$path= current_path();
+	drupal_goto($path);
+
+}
+
+function _validate_admin($form, &$form_state) {
+
+	$user_id = $form_state['values']['rovas_admin_uid'];
+	$user = user_load($user_id);
+	$ch_available = rules_invoke_component('rules_chrons_actually_available',$user);
+	
+	$forex_baskets = variable_get('forex_baskets');
+
+  if ($forex_baskets['ch_basket'] + $form_state['values']['adjust_chrons'] < 0) {
+    form_set_error('adjust_chrons', 'Error: the amout subtracted must be higher than the Chrons in the basket.');
+  }
+  else if ($form_state['values']['adjust_chrons'] > $ch_available[0]) {
+    form_set_error('adjust_chrons', 'Error: the amout must be lower than the Chrons available.');
+  }
+
+}
+
+
+function rovas_forex_form($form, &$form_state) {
+
+	if (variable_get('minimum_eur') === 0) {
+		drupal_set_message('Error: Setup variables are not defined. Please contact the portal administrator with this error.');
+		return $form;
+	}
+
+	//the minimum EUR amount for an order. We do not want to process smaller orders
+	$minimum_eur = variable_get('minimum_eur');
+
+	if (isset($form_state['storage']['page_two'])) {
+		return rovas_preview_form($form, $form_state);
+	}
+
+	global $user;
+
+	//determining if there is a lock active and who owns it
+	$lock_ts = variable_get('forex_lock') ? variable_get('forex_lock') : array('uid' => -1,'time' => 0);
+	$time_remaining = $lock_ts['time'] - (time() - 5*60);
+	$lock_user = $lock_ts['uid'];
+
+/*	
+	//lock is active - using the active value for the forex baskets
+	if ($time_remaining > 0 && $lock_user != $user->uid) {
+		$forex_baskets = variable_get('forex_baskets_temp');
+	}
+	else {
+		if (empty(variable_get('forex_baskets'))) {
+
+			//initial endowments for the baskets
+			$ch_basket_init = variable_get('ch_basket_init');
+			$eur_basket_init = variable_get('eu_basket_init');
+		
+			$forex_baskets = array('ch_basket' => $ch_basket_init, 'eur_basket' => $eur_basket_init);
+			variable_set('forex_baskets',$forex_baskets);
+		}
+		else {
+			$forex_baskets = variable_get('forex_baskets');
+		}
+	}
+
+	$ch_basket = $forex_baskets['ch_basket'];
+	$eur_basket = $forex_baskets['eur_basket'];
+*/
+
+	$forex_params = calculate_forex_transaction_params('chr_to_eur',1);
+	$eur_basket = $forex_params['eur_basket'];
+	$ch_basket = $forex_params['chr_basket'];
+	$buy_eur_fee = $forex_params['xfee'];
+
+/* Buy Euros */
+
+	$fx_sandbox_projects = rules_invoke_component('rules_worker_merit_shares_for_fx_sandbox_projects',$user);
+
+	$showRateSwitch = count($fx_sandbox_projects[0]) > 0 ? TRUE : FALSE;
+
+	$options = [0 => t('default')];
+
+	if ($fx_sandbox_projects[0]) {
+
+		foreach ($fx_sandbox_projects[0] as $i => $wma_string) {
+			$wma_array = explode('-',$wma_string);
+			$wma_nid = $wma_array[2];
+			$wma = node_load($wma_nid);
+			$options['ind-'.$i] = $wma_array[3] . ' €/Chr (' . t('from the "@projname" project',['@projname' => $wma->title]) . ')';
+		}
+	}
+
+	$result = rules_invoke_component('rules_chrons_actually_available',$user);
+	if ($result[0]) {
+		$user_chrons = $result[0];
+	}
+	else {
+		$user_chrons = 0;
+	}
+
+	if (isset($form_state['values']['forex-rate']) && substr($form_state['values']['forex-rate'],0,3) == 'ind') {
+		$indexv = $form_state['values']['forex-rate'];
+		$indx = substr($indexv,4);
+		$wma_string = $fx_sandbox_projects[0][$indx];
+		$wma_array = explode('-',$wma_string);
+		$proj_nid = $wma_array[2];
+
+		$projob = entity_metadata_wrapper('node', $proj_nid);
+
+		$proj_title = $projob->label();
+
+		//setting the exchange rate, through project-specific currency baskets
+		$ch_basket = $projob->field_chron_basket->value();
+		$eur_basket = $projob->field_euro_basket->value();
+
+		$show = 'project';
+		$user_chrons = $wma_array[1];
+		
+		$defopt = $indexv;
+
+		//pass the wma string to the next page
+		$form['wma-string'] = [
+			'#type' => 'hidden',
+			'#value' => $wma_string
+		];
+
+		//pass the fx-baskets to the next page
+		$form['fx-baskets'] = [
+			'#type' => 'hidden',
+			'#value' => ['ch_basket' => $ch_basket,'eur_basket' => $eur_basket]
+		];
+
+	}
+	else {
+		$show = 'default';
+		$defopt = 0;
+	}
+
+	if ($show == 'project') {
+		$title = t('Project @pname balance',['@pname' => $proj_title]);
+	}
+	else {
+		$title = t('Account balance');
+	}
+
+	$chrbal = '<div class="ch-balance-wrapper">';
+	$chrbal .= '<div class="title">';
+	$chrbal .= $title;
+	$chrbal .= '</div>';
+	$chrbal .= '<div class="value">';
+	$chrbal .= $user_chrons . ' ' . t('CH');
+	$chrbal .= '</div>';
+	$chrbal .= '</div>';
+
+	$form['chron-balance'] = array(
+			'#type' => 'markup',
+			'#markup' => $chrbal,
+		);
+
+	$form['eu-ch'] = array(
+			'#type' => 'markup',
+			'#prefix' => '<div class="eu-ch-wrapper">',
+			'#suffix' => '</div>',
+		);
+
+	$widget_text = '<div class="icon euro" style="width: 30px; display: inline-block; margin-right: 7px; top: -3px; position: relative;"><img src="/sites/all/themes/rovas/images/euroIcon.svg"></div>';
+	$widget_text .= '<div class="forex subhead">' . t('Buy Euros') . '</div>';
+
+//	$widget_text .= '<div class="explain-char">' . t('You too can help improve the exchange rate. Ask users of the Rovas projects you are working on, to reward them.') . '</div>';
+	$widget_text .= '<div class="explain-char"></div>';
+
+	$form['eu-ch']['eu-ch-markup'] = array(
+		'#type' => 'markup',
+		'#markup' => $widget_text,
+	);
+
+	if ($showRateSwitch) {
+		$form['eu-ch']['forex-rate'] = array(
+			'#type' => 'select',
+			'#title' => t('Rate'),
+			'#options' => $options,
+			'#default_value' => $defopt,
+			'#attributes' => ['style' => 'width: fit-content'],
+			'#description' => t('Choose the exchange rate you wish to use for the purchase'),
+			'#ajax' => [
+				'callback' => '_rf_update_rate_dependents',
+				'effect' => 'fade',
+				],
+		);
+	}
+	else {
+		$form['forex-rate'] = array(
+				'#type' => 'hidden',
+				'#value' => '0'
+			);
+
+	}
+
+	$form['eu-ch']['eu-ch_value'] = array(
+		'#type' => 'textfield', 
+		'#default_value' => 1,
+		'#field_suffix' => 'CH',
+		'#size' => 60, 
+		'#maxlength' => 128, 
+		'#required' => FALSE,
+	);
+	
+	$amount = empty($form_state['input']['eu-ch_value']) ? 1 : $form_state['input']['eu-ch_value'];
+
+	if (isset($form_state['values']['forex-rate']) && substr($form_state['values']['forex-rate'],0,3) == 'ind') {
+		$eur_result_ary = project_forex ($amount,$ch_basket,$eur_basket,$buy_eur_fee);
+	}
+	else {
+		$eur_result_ary = forex($amount,$ch_basket,$eur_basket,$buy_eur_fee);
+	}
+
+	$eur_result = $eur_result_ary['output'];
+	$result_fee = $eur_result_ary['fee']; //CHR
+	
+	$form['eu-ch']['convert'] = [
+		'#type' => 'button',
+		'#name' => 'con_eu_ch',
+		'#button_type' => 'button',
+		'#value' => '<span class="glyphicon glyphicon-refresh"> </span>', //recalculate icon
+		"#submit" => [],
+		'#ajax' => [
+			'callback' => '_rf_update_rate_dependents',
+			'effect' => 'fade',
+			],
+		];
+
+	$form['eu-ch-converted-value'] = array(
+			'#type' => 'hidden',
+			'#value' => $eur_result
+		);
+
+	$form['eu-ch-fee'] = array(
+			'#type' => 'hidden',
+			'#value' => $result_fee
+		);
+
+	$form['eu-ch']['eu-ch-converted'] = array(
+			'#type' => 'markup',
+			'#prefix' => '<div id="eu-ch-converted">',
+			'#suffix' => '</div>',
+			'#markup' => number_format($eur_result,2,'.',' ') . '<span class="to-unit"> EUR</span>',
+		);
+
+	$usr_obj = entity_metadata_wrapper('user', $user);
+	if($usr_obj->field_bank_account_iban->value() || $usr_obj->field_paypal_email->value() || $usr_obj->field_phone->value()) {
+		$missing_accounts = FALSE;
+	}
+	else {
+		$missing_accounts = TRUE;
+	}
+	
+	//change the Preview order button to Refresh if another person is just submitting an order
+	if ($time_remaining > 0 && $lock_user != $user->uid) {
+		$btn_label = t('Refresh', array(), array('context' => 'Forex'));
+		$btn_name = 'forex_refresh';
+		$lock_note =  t('Another person is ahead of you in the queue to exchange money at this moment.');
+		$lock_note .= '<br>' . t('You can proceed in @minutes minutes, @seconds seconds or sooner, by clicking the Refresh button.',array('@minutes' => 1* date('i',$time_remaining),'@seconds' => 1* date('s',$time_remaining)));
+	}
+
+	else {
+		$btn_label = t('Preview order', array(), array('context' => 'Forex'));
+		$btn_name = 'preview_eu_ch';
+		$lock_note = '';
+	}	
+
+	$balanc_tester = isset($form_state['input']['eu-ch_value']) ? $form_state['input']['eu-ch_value'] : $form['eu-ch']['eu-ch_value']['#default_value'];
+	switch (TRUE) {
+		case $balanc_tester > $user_chrons :
+			$submit_disabled = TRUE;
+			$eu_ch_explain = t('Your account balance of @chrons CH is insufficient to proceed with this order.',array('@chrons' => $user_chrons));
+			break;
+		case $eur_result < $minimum_eur:
+			$submit_disabled = TRUE;
+			$eu_ch_explain = t('To proceed with the order, the Euro amount must be at least @euro €',array('@euro' => $minimum_eur));
+			break;
+		//user does not have paypal account or bank account set up
+		case $missing_accounts:
+			$submit_disabled = TRUE;
+			$eu_ch_explain = t('To proceed with the order, you must have a bank, telephone number, or paypal account information entered in your <a href="@usrprofile">user profile</a>',array('@usrprofile' => '/user/' . $user->uid . '/edit'));
+			break;
+		default :
+			$submit_disabled = FALSE;
+			$eu_ch_explain = '';
+	}
+
+	$form['eu-ch']['submit-explain'] = array(
+		'#type' => 'markup',
+		'#prefix' => '<div id="submit-explain">',
+		'#suffix' => '</div>',
+		'#markup' => ($eu_ch_explain == '') ? $lock_note : $eu_ch_explain,
+	);
+
+	$form['eu-ch']['submit'] = array(
+		'#type' => 'submit',
+		'#name' => $btn_name,
+		'#value' => $btn_label,
+		'#disabled' => $submit_disabled,
+		'#prefix' => '<div id="eu-ch-subbutton">',
+		'#suffix' => '</div>',
+	);
+
+
+/* Buy Merits */
+
+	//payment choice - CHR or EUR
+	$storage = isset($form_state['storage']['old-payment-choice']) ? $form_state['storage']['old-payment-choice'] : -1;
+	$payment_choice = isset($form_state['values']['payment-choice']) ? $form_state['values']['payment-choice'] : 1;
+
+	$widget_default = 1;
+
+	//erase the buy amount when switching currencies
+	if ($storage != $payment_choice) {
+		$paymentChanged = TRUE;
+		$form_state['input']['buy_amount'] = $widget_default;
+		$form_state['values']['buy_amount'] = $widget_default;
+	}
+	else {
+		$paymentChanged = FALSE;
+	}
+
+	$currency = isset($form_state['values']['payment-choice']) ? ((int)$form_state['values']['payment-choice'] === 1 ? 'EUR' : 'CHR') : 'EUR';
+
+	if ($currency == 'EUR') {
+		$merits_btn_name = 'buy_merits_euros';
+		$sub_label = t('Next');
+		$cur_suffix = t('€');
+		$currency_default = 1;
+		$input_displ = 'block';
+		$enforce_value = TRUE;
+
+		//for the forex calculations we are using THE DEFAULT Rovas fees. 
+		//The actual amount of Merits and their price will be different at the end of the ordering process!!
+		if ($paymentChanged || !isset($form_state['values']['buy_amount']) || empty($form_state['values']['buy_amount'])) {
+			$convary = rovas_forex_rules_action_calculate_merits_execute($widget_default);
+		}
+		else {
+			$convary = rovas_forex_rules_action_calculate_merits_execute($form_state['values']['buy_amount']);
+		}
+
+		$merits_purchased = $convary['merits_purchased'];
+		$unit_price = $convary['unit_price'];
+
+		$form['unit_price'] = array(
+				'#type' => 'hidden',
+				'#value' => $unit_price,
+			);
+
+	}
+	else if ($currency == 'CHR') {
+		$merits_btn_name = 'buy_merits_chrons';
+		$sub_label = t('Buy');
+		$cur_suffix = t('CH');
+		$enforce_value = TRUE;
+
+		$chronsary = rules_invoke_component('rules_chrons_actually_available',$user);
+		$chrons = $chronsary[0];
+
+		$currency_default = 0;
+		$input_displ = 'block';
+
+
+		if ($paymentChanged || !isset($form_state['values']['buy_amount']) || empty($form_state['values']['buy_amount'])) {
+			$merits_purchased = _convert_chr_2_merits($widget_default);
+		}
+		else {
+			$merits_purchased = _convert_chr_2_merits($form_state['values']['buy_amount']);
+		}
+	
+	}
+	else {
+		$merits_btn_name = 'default';
+		$sub_label = t('Next');
+		$cur_suffix = NULL;
+		$currency_default = NULL;
+		$input_displ = 'none';
+		$enforce_value = FALSE;
+
+		$merits_purchased = 0;
+	
+	}
+	
+	$form['buy-merits'] = [
+		'#type' => 'markup',
+		'#prefix' => '<div class="buy-merits-wrapper">',
+		'#suffix' => '</div>',
+		'#weight' => 6,
+	];
+
+	$widget_text = '<div class="icon merit" style="width: 30px; display: inline-block; margin-right: 7px; top: -3px; position: relative;"><img src="/sites/all/themes/rovas/images/meritIcon.svg"></div>';
+	$widget_text .= '<div class="forex subhead">' . t('Buy Merits') . '</div>';
+
+//	$widget_text .= '<div class="explain-char">' . t('Get Merits for your donation') . '</div>';
+	$widget_text .= '<div class="explain-char"></div>';
+
+	$form['buy-merits']['buy-merits-markup'] = array(
+		'#type' => 'markup',
+		'#markup' => $widget_text,
+	);
+
+	//payment type selector
+	$form['buy-merits']['payment-choice'] = [
+		'#type' => 'radios',
+		'#title' => t('Select payment type'),
+		'#default_value' => $currency_default,
+		'#options' => [
+			0 => t('Chrons'),
+			1 => t('Euros')
+		],
+		'#ajax' => [
+			'callback' => '_switch_payment_currency_forex',
+			'effect' => 'fade',
+			],
+	];
+
+	$form['buy-merits']['newline'] = [
+		'#markup' => '<div id="newline" style="display:block"></div>',
+	];
+
+	$form['buy-merits']['buy_amount'] = [
+		'#type' => 'textfield', 
+		'#default_value' => $widget_default,
+		'#field_suffix' => $cur_suffix,
+		'#attributes' => [
+			'class' => ['input']
+		],
+		'#size' => 60,
+		'#maxlength' => 128,
+		'#required' => $enforce_value,
+	];
+
+	$form['buy-merits']['convert']['button'] = [
+		'#type' => 'button',
+		'#name' => 'con_merits',
+		'#button_type' => 'button',
+		'#value' => '<span class="glyphicon glyphicon-refresh"> </span>', //recalculate icon
+		"#submit" => [],
+		'#ajax' => [
+			'callback' => '_convert_chr_merits',
+			'effect' => 'fade',
+			],
+	];
+
+	$form['buy-merits']['buy-merits-converted-value'] = array(
+			'#type' => 'hidden',
+			'#value' => $merits_purchased,
+		);
+
+	$form['buy-merits']['buy-merits-converted'] = [
+		'#type' => 'item',
+		'#prefix' => '<div id="buy-merits-converted">',
+		'#suffix' => '</div>',
+		'#markup' => $merits_purchased . '<span class="to-unit"> ' . t('ME') . '</span>',
+	];
+
+	$btn_type = 'btn-success';
+	$css_class = '';
+	$button_note = '';
+
+	if ($paymentChanged || !isset($form_state['values']['buy_amount']) || $form_state['values']['buy_amount'] <= 0) {
+		$sub_act = TRUE;
+	}
+	else if ($currency == 'CHR' && $form_state['values']['buy_amount'] > $chrons) {
+
+		$button_note =  t('Please enter value lower than your account balance of @chr Chrons',array('@chr' => $chrons));
+		$sub_act = TRUE;
+		$css_class = 'color:red;';
+	}
+	else {
+		$sub_act = FALSE;
+		if ($currency == 'CHR') {
+			$button_note = '<div style="font-weight: bold; color:#4cae4c;">' . t('Clicking the button finalizes the transaction') . '</div>';
+ 		}
+ 		else if ($currency == 'EUR') {
+			$button_note = '<div style="font-weight: bold; color:#4cae4c;">' . t('Continue to Payment Information') . '</div>';
+ 		}
+	}	
+
+	$form['buy-merits']['final-note'] = array(
+		'#markup' => $button_note,
+		'#prefix' => '<div id="final-note" style="'.$css_class.'">',
+		'#suffix' => '</div>',
+		'#weight' => 10,
+	);
+
+
+	$form['buy-merits']['submit'] = array(
+		'#type' => 'submit',
+		'#name' => $merits_btn_name,
+		'#value' => $sub_label,
+		'#attributes' => [
+			'id' => ['pay-choice'],
+			'class' => ['btn',$btn_type],
+			'role' => ['button']
+		],
+		'#disabled' => $sub_act,
+		'#prefix' => '<div id="buy-merits-subbutton">',
+		'#suffix' => '</div>',
+		'#weight' => 20,
+	);
+	
+	$old_payment_choice = isset($form_state['values']['payment-choice']) ? $form_state['values']['payment-choice'] : 1;
+	$form_state['storage']['old-payment-choice'] = $old_payment_choice;
+
+
+/* Buy Chrons */
+/*
+	$form['ch-eu'] = array(
+			'#type' => 'markup',
+			'#prefix' => '<div class="ch-eu-wrapper">',
+			'#suffix' => '</div>',
+		);
+
+	$widget_text = '<div class="forex subhead">' . t('Buy Chrons') . '</div>';
+	$widget_text .= '<div class="explain">' . t('Due to the constrains imposed by our payment processor, the amounts calculated below might differ slightly from the amounts actually paid and received. Please advance to the next screen to see the actual rates.') . '</div>';
+
+	$form['ch-eu']['ch-eu-markup'] = array(
+		'#type' => 'markup',
+		'#markup' => $widget_text,
+	);
+
+	$form['ch-eu']['ch-eu_value'] = array(
+		'#type' => 'textfield', 
+		'#default_value' => 1,
+		'#field_suffix' => 'EUR',
+		'#size' => 60, 
+		'#maxlength' => 128, 
+		'#required' => FALSE,
+	);
+
+	$form['ch-eu']['convert-ch-eu'] = array(
+		'#type' => 'button',
+		'#name' => 'con_ch_eu',
+		'#button_type' => 'button',
+//		'#value' => t('recalculate'),
+		'#value' => '<span class="glyphicon glyphicon-refresh"> </span>',
+		"#submit" => array(),
+		'#ajax' => array(
+			'callback' => '_convert_ch_eu',
+			'effect' => 'fade',
+			),
+		);
+
+		$buy_ch_fee = variable_get('buy_ch_fee');
+		$buy_ch_fixed_fee = variable_get('buy_ch_fixed_fee');
+		if(empty($form_state['input']['ch-eu_value'])) {
+			$eur_paid = 1;
+		}
+		else {
+			$eur_paid = $form_state['input']['ch-eu_value'];
+		}
+			$ch_result_ary = forex($eur_paid,$eur_basket,$ch_basket,$buy_ch_fee,$buy_ch_fixed_fee);
+			$ch_result = $ch_result_ary['output'];
+			$ch_result_fee = $ch_result_ary['fee'];
+
+	$form['ch-eu']['ch-eu-converted-value'] = array(
+		'#type' => 'hidden',
+		'#value' => $ch_result
+	);
+
+	$form['ch-eu']['ch-eu-fee'] = array(
+		'#type' => 'hidden',
+		'#value' => $ch_result_fee
+	);
+
+	$form['ch-eu']['ch-eu-converted'] = array(
+		'#type' => 'markup',
+		'#prefix' => '<div id="ch-eu-converted">',
+		'#suffix' => '</div>',
+		'#markup' => number_format($ch_result,2,'.',' ') . '<span class="to-unit"> CH</span>',
+	);
+
+	//change the Preview order button to Refresh if another person is just submitting an order
+	if ($time_remaining > 0 && $lock_user != $user->uid) {
+		$btn_name = 'forex_refresh';
+	}
+	else {
+		$btn_name = 'preview_ch_eu';
+		$sub_explain = '';
+	}	
+
+	$form['ch-eu']['submit-explain'] = array(
+		'#type' => 'markup',
+		'#prefix' => '<div id="submit-explain">',
+		'#suffix' => '</div>',
+		'#markup' => $lock_note,
+	);
+
+	$form['ch-eu']['submit'] = array(
+		'#type' => 'submit',
+		'#name' => $btn_name,
+		'#value' => $btn_label,
+		'#prefix' => '<div id="eu-ch-subbutton">',
+		'#suffix' => '</div>',
+	);
+*/
+	return $form;
+
+}
+
+function rovas_preview_form($form, &$form_state) {
+
+	if (isset($form_state['storage']['page_one_values'])) {
+		$page_one_vals = $form_state['storage']['page_one_values'];
+		$form_state['saved'] = $page_one_vals;
+	}
+	else {
+		$page_one_vals = $form_state['saved'];
+	 }
+
+//dsm($form_state,'start');
+
+	if ($form_state['values']['forex-rate'] === '0') {
+		$forex_baskets = variable_get('forex_baskets');
+		$ch_basket = $forex_baskets['ch_basket'];
+		$eur_basket = $forex_baskets['eur_basket'];
+	}
+	else {
+		$ch_basket = $form_state['values']['fx-baskets']['ch_basket'];
+		$eur_basket = $form_state['values']['fx-baskets']['eur_basket'];
+
+		$wma_string = $form_state['values']['wma-string'];
+		$wmarray = explode('-',$wma_string);
+		$projid = (int)$wmarray[2];
+
+		$form['fx-baskets'] = array(
+				'#type' => 'hidden',
+				'#value' => $form_state['values']['fx-baskets']
+			);
+		
+		$form['forex-rate'] = array(
+				'#type' => 'hidden',
+				'#value' => $form_state['values']['forex-rate']
+			);
+		
+		$form['wma-string'] = array(
+				'#type' => 'hidden',
+				'#value' => $wma_string
+			);
+		
+		$form['project_nid'] = array(
+				'#type' => 'hidden',
+				'#value' => $projid
+			);	
+	}
+
+	switch ($form_state['clicked_button']['#name']) {
+		//converting CH to EUR
+		case 'preview_eu_ch':
+			$buy_eur_fee = variable_get('buy_eur_fee');
+			$curr2convert = $page_one_vals['eu-ch_value'];
+
+			if($form_state['values']['forex-rate'] === '0') {
+				$to_receive_ary = forex($curr2convert,$ch_basket,$eur_basket,$buy_eur_fee);
+			}
+			else {
+				$to_receive_ary = project_forex($curr2convert,$ch_basket,$eur_basket,$buy_eur_fee);
+			}
+
+			$amnt_to_get = $to_receive_ary['output'];
+			$fee_to_pay = $to_receive_ary['fee'];
+			$effective_rate = round(($amnt_to_get + $fee_to_pay) / ($curr2convert/10),2);
+			$input_unit = t('CH');
+			$output_unit = t('EUR');
+			$preview_note = '<span class="">' . t('The effective hourly wage for this conversion is') . ' <strong>' . number_format($effective_rate,2,'.',' ') . ' ' . t('Eur/hour') . '</strong>.</span>';
+			$preview_submit_label = t('Submit order', array(), array('context' => 'Forex'));
+			break;
+		//converting EUR to CH
+		case 'preview_ch_eu':
+			$buy_ch_fee = variable_get('buy_ch_fee');
+			$buy_ch_fixed_fee = variable_get('buy_ch_fixed_fee');
+			
+			$curr2convert = $page_one_vals['ch-eu_value'];
+			$to_receive_ary = forex($curr2convert,$eur_basket,$ch_basket,$buy_ch_fee,$buy_ch_fixed_fee);
+			//rounding the chron amount down to whole numbers
+			$amnt_to_get = round($to_receive_ary['output']); //whole Chrons
+			$fee_to_pay = $to_receive_ary['fee']; //the euro value of the fee
+			$ch_eu_rate = $curr2convert/$amnt_to_get; //ch/eur rounded rate
+			$to_pay_eur = $amnt_to_get*$ch_eu_rate;
+
+
+			global $user;
+
+			$forex_product_nid = variable_get('forex_product_id');
+			$quantity = $amnt_to_get; //chrons we are buying
+			$unit_price = 100*($to_pay_eur / $quantity);
+
+			//delete abandoned orders for this user
+			$statuses = array_keys(commerce_order_statuses());
+			$statuses2delete = array_diff($statuses,array('completed','checkout_complete','pending','processing'));
+			foreach ($statuses2delete as $status) {
+				$order = commerce_order_load_multiple(array(), array('uid' => $user->uid,'status' => $status));
+				commerce_order_delete_multiple(array_keys($order));
+			}
+
+			// Create a new order in checkout
+			$order = commerce_order_new($user->uid, 'checkout_checkout');
+			commerce_order_save($order);
+
+			//modify unit price of the product
+			$product = entity_metadata_wrapper('commerce_product', $forex_product_nid);
+			$product->commerce_price->amount->set($unit_price);
+			$product->commerce_price->currency_code->set('EUR');
+			$product->save();
+
+			// Load whatever product represents the item the customer will be
+			// paying for and create a line item for it.
+			$product = commerce_product_load($forex_product_nid);
+			$line_item = commerce_product_line_item_new($product, $quantity, $order->order_id);
+
+			// Save the line item to get its ID.
+			commerce_line_item_save($line_item);
+
+			// Add the line item to the order
+			$order_wrapper = entity_metadata_wrapper('commerce_order', $order);
+			$order_wrapper->commerce_line_items[] = $line_item;
+			//modify the order
+			$order_wrapper->field_conversion_fee = $fee_to_pay;
+
+			// Save the order again to update its line item reference field.
+			commerce_order_save($order);
+
+			drupal_goto('checkout/' . $order->order_id);
+
+	}
+
+	$summary = '<div class="preview summary">';
+	$summary .= '<div class="preview title">';
+	$summary .= '<span class="label">' . t('Order summary') . '</span>';
+	$summary .= '</div>';
+	$summary .= '<div class="preview paid">';
+	$summary .= '<span class="label">' . t('To pay:') . '</span><span class="value">' . number_format($curr2convert,2,'.',' ') . '</span><span class="unit">' . $input_unit . '</span>';
+	$summary .= '</div>';
+	$summary .= '<div class="preview to_receive">';
+	$summary .= '<span class="label">' . t('To receive:') . '</span><span class="value">' . number_format($amnt_to_get,2,'.',' ') . '</span><span class="unit">' . $output_unit . '</span>';
+	$summary .= '</div>';
+	$summary .= '</div>';
+	$summary .= '<div class="preview note">';
+	$summary .= $preview_note;
+	$summary .= '</div>';
+
+	$form['preview-wrapper'] = array(
+		'#type' => 'markup',
+		'#prefix' => '<div class="preview-wrapper">',
+		'#suffix' => '</div>',
+	);
+
+	$form['preview-wrapper']['preview'] = array(
+		'#type' => 'markup',
+		'#markup' => $summary,
+	);
+
+	$lock_ts = variable_get('forex_lock');
+	$locktime = format_date($lock_ts['time'] + 5*60,'custom','G:i','Europe/Bratislava');
+	
+	$order_explain = t('You have five guaranteed minutes (until @time) to complete this order.',array('@time'=> $locktime));
+
+	$form['preview-wrapper']['order-explain'] = array(
+		'#type' => 'markup',
+		'#prefix' => '<div class="order-explain">',
+		'#suffix' => '</div>',
+		'#markup' => $order_explain,
+	);
+
+	$form['preview-wrapper']['cancel'] = array(
+		'#name' => 'ord_cancel',
+		'#type' => 'submit',
+		'#value' => t('Cancel', array(), array('context' => 'Forex')),
+	);
+
+	$form['preview-wrapper']['input'] = array(
+			'#type' => 'hidden',
+			'#value' => $curr2convert
+		);
+	$form['preview-wrapper']['output'] = array(
+			'#type' => 'hidden',
+			'#value' => $amnt_to_get
+		);
+	$form['preview-wrapper']['fee'] = array(
+			'#type' => 'hidden',
+			'#value' => $fee_to_pay
+		);
+
+	$form['preview-wrapper']['conv-type'] = array(
+			'#type' => 'hidden',
+			'#value' => $form_state['clicked_button']['#name']
+		);
+
+	$form['preview-wrapper']['submit'] = array(
+		'#name' => 'order_submit',
+		'#type' => 'submit',
+		'#attributes' => array('class' => array('btn-primary')),
+		'#value' => $preview_submit_label,
+	);
+
+return $form;
+
+}
+
+function rovas_forex_form_submit($form, &$form_state) {
+	global $user;
+	$uid = $user->uid;
+
+	switch (TRUE) {
+		// preview_eu_ch -> converting CH to EUR
+		// preview_ch_eu -> converting EUR to CH 
+		case ($form_state['clicked_button']['#name'] == 'preview_eu_ch' || $form_state['clicked_button']['#name'] == 'preview_ch_eu'):
+			//if another user has a lock already, we need to refresh the form instead of proceeding
+			$lock_ts = variable_get('forex_lock') ? variable_get('forex_lock') : array('uid' => -1,'time' => 0);
+			$time_remaining = $lock_ts['time'] - (time() - 5*60);
+			$lock_user = $lock_ts['uid'];
+
+			if ($time_remaining > 0 && $lock_user != $uid) {
+				$form_state["rebuild"] = TRUE;
+				break;
+			}
+
+			$form_state['storage']['page_two'] = TRUE;
+			$form_state['storage']['page_one_values'] = $form_state['values'];
+			$form_state["rebuild"] = TRUE;
+
+			//updating the baskets to reflect this particular conversion
+			if ($form_state['values']['forex-rate'] === '0') {
+					$old_basket = variable_get('forex_baskets');
+			}
+				else {
+					$old_basket = $form_state['values']['fx-baskets'];
+			}
+
+			if ($form_state['clicked_button']['#name'] == 'preview_eu_ch') {
+				if ($form_state['values']['forex-rate'] === '0') {
+					$new_basket = array(
+					'ch_basket' => $old_basket['ch_basket'] + ($form_state['values']['eu-ch_value'] - $form_state['values']['eu-ch-fee']),
+					'eur_basket' => $old_basket['eur_basket'] - $form_state['values']['eu-ch-converted-value']
+					);
+				}
+				else {
+					$new_basket = array(
+					'ch_basket' => $old_basket['ch_basket'] - ($form_state['values']['eu-ch_value'] - $form_state['values']['eu-ch-fee']),
+					'eur_basket' => $old_basket['eur_basket'] - $form_state['values']['eu-ch-converted-value']
+					);
+				}
+			}
+			else {
+				$new_basket = array(
+				'ch_basket' => $old_basket['ch_basket'] - $form_state['values']['ch-eu-converted-value'],
+				'eur_basket' => $old_basket['eur_basket'] + $form_state['values']['ch-eu_value'] - $form_state['values']['ch-eu-fee']
+				);
+			}
+			variable_set('forex_lock',array('uid' => $uid, 'time' => time()));
+			variable_set('forex_baskets_temp',$new_basket); //to be liquidated when forex_lock expires
+
+			break;
+		case ($form_state['clicked_button']['#name'] == 'order_submit'):
+
+			//the choice of the forex rate determines the "order" parameter of the rules_process_forex_order call
+			if (isset($form_state['values']['forex-rate']) && $form_state['values']['forex-rate'] != '0') {
+
+				$wma_string = $form_state['values']['wma-string'];
+				$wmarray = explode('-',$wma_string);
+				$projid = -1 * (int)$wmarray[2];
+ 
+				$forex_basket_old = $form_state['values']['fx-baskets'];
+ 			}
+			else {
+				$forex_basket_old = variable_get('forex_baskets');
+
+				$projid = 0;
+			}
+
+			$forex_lock = variable_get('forex_lock');
+
+			//first let's make sure the lock is still ours
+			//we pass the project nid via the "order" parameter of the rules_process_forex_order as a negative number
+			if ($forex_lock['uid'] == $uid) {
+				$result = rules_invoke_component(
+					'rules_process_forex_order',
+					$uid,
+					'chrons_to_euros',
+					$form_state['values']['input'],
+					$form_state['values']['output'],
+					$form_state['values']['fee'],
+					$forex_basket_old['ch_basket'],
+					$forex_basket_old['eur_basket'],
+					$projid,
+					0
+				);
+				$the_message = NULL;
+
+				if (isset($form_state['values']['forex-rate']) && $form_state['values']['forex-rate'] != '0') {
+	
+					$project_nid = $form_state['values']['project_nid'];
+	
+					forex_complete_order_fxs ($the_message,'/forex',$project_nid);
+				}
+				else {
+					forex_complete_order($the_message,'/forex');
+				}
+
+			}
+			else {
+				$the_message = t('Your order was not completed within the allowed time.') . '<br>' . t('Please try again with a new order');
+			}
+			lost_lock($the_message);
+			break;
+		case ($form_state['clicked_button']['#name'] == 'ord_cancel'):
+			lost_lock();
+			break;
+		case ($form_state['clicked_button']['#name'] == 'buy_merits_chrons'):
+
+			$chrons = -1 * $form_state['values']['buy_amount'];
+			$merits = $form_state['values']['buy-merits-converted-value'];
+			$calcMerits = _convert_chr_2_merits($form_state['values']['buy_amount']);
+			
+			if ($calcMerits == $merits) {
+				_rovas_forex_grant_merits($user,$merits,$chrons);
+				$message = t('Conversion of @chrons Chrons to @merits Merits was completed',['@chrons' => $form_state['values']['buy_amount'], '@merits' => $merits]);
+				$type = 'status';
+			}
+			else {
+				$message = t('The order can not be submitted, because you did not recalculate the Merit value after changing the Chron value.');
+				$type = 'error';
+			}
+			drupal_set_message($message,$type);
+
+			break;
+		case ($form_state['clicked_button']['#name'] == 'buy_merits_euros'):
+
+			$euros = $form_state['values']['buy_amount'];
+			$merits = $form_state['values']['buy-merits-converted-value'];
+			$unit_price = $form_state['values']['unit_price'];
+	
+			$product_obj = commerce_product_load_by_sku('merits');
+			$product_nid = $product_obj->product_id;
+		
+			$quantity = $merits;	
+
+			$fee_variable = variable_get('buy_ch_fee');
+			$fee_fixed = variable_get('buy_ch_fixed_fee');
+			$fee = $fee_fixed + $fee_variable * $quantity * $unit_price;
+	
+			$unit_price = 100*$unit_price;
+
+			if ($unit_price > 2147483647 || $quantity*$unit_price > 2147483647) {
+				$message = t('The amount paid can not be processed. Please split your payment into multiple smaller amounts.');
+				$mestyp = 'status';
+				$dest = FALSE;
+			}
+			else {
+				// Creating a new order in checkout
+				$order = commerce_order_new($uid, 'checkout_checkout');
+				commerce_order_save($order);
+	
+				//modify unit price of the product
+				$product = entity_metadata_wrapper('commerce_product', $product_nid);
+				$product->commerce_price->amount->set($unit_price);
+				$product->commerce_price->currency_code->set('EUR');
+				$product->save();
+	
+				$product = commerce_product_load($product_nid);
+				$line_item = commerce_product_line_item_new($product, $quantity, $order->order_id);
+	
+				// Save the line item to get its ID.
+				commerce_line_item_save($line_item);
+	
+				// Add the line item to the order
+				$order_wrapper = entity_metadata_wrapper('commerce_order', $order);
+				$order_wrapper->commerce_line_items[] = $line_item;
+	
+				$order_wrapper->field_conversion_fee = $fee;
+	
+				$order_wrapper->field_payer_type = 'user';
+				$order_wrapper->field_payment_recipient = $uid;
+	
+				commerce_order_save($order);
+				commerce_cart_order_session_save($order->order_id);
+	
+				drupal_goto('checkout/' . $order->order_id);
+			}
+
+				break;
+		default : //user clicked the refresh button
+			$form_state["rebuild"] = TRUE;
+	}
+}
+
+//callback to recalculate EUR -> CH conversion rate
+function _convert_ch_eu($form, $form_state) {
+	return array(
+		'#type' => 'ajax',
+		'#commands' => array(
+			ajax_command_replace("#ch-eu-converted", render($form['ch-eu']['ch-eu-converted'])),
+		)
+	);
+}
+
+//callback to recalculate CH -> EUR conversion rate or to update dependents of forex rate
+function _rf_update_rate_dependents ($form, $form_state) {
+//watchdog('module','rovas_forex ' . print_r($form_state['values'],1));
+	return [
+		'#type' => 'ajax',
+		'#commands' => [
+			ajax_command_replace(".ch-balance-wrapper", render($form['chron-balance'])),
+			ajax_command_replace("#eu-ch-converted", render($form['eu-ch']['eu-ch-converted'])),
+			ajax_command_replace("#eu-ch-subbutton", render($form['eu-ch']['submit'])),
+			ajax_command_replace("#submit-explain", render($form['eu-ch']['submit-explain'])),
+		]
+	];
+}
+
+//callback to switch gui for the chosen currency
+function _switch_payment_currency_forex ($form,&$form_state) {
+
+	$commands = [
+		ajax_command_replace("buy-merits-subbutton", render($form['submit'])),
+		ajax_command_replace(".form-item-buy-amount", render($form['buy-merits']['buy_amount'])),
+		ajax_command_css(".form-item-buy-amount", ['display' => 'inline-block']),
+		ajax_command_css("#edit-button", ['display' => 'inline-block']),
+		ajax_command_replace("#buy-merits-converted", render($form['buy-merits']['buy-merits-converted'])),
+		ajax_command_css("#buy-merits-converted", ['display' => 'inline-block']),
+		ajax_command_replace("#final-note", render($form['buy-merits']['final-note'])),
+		ajax_command_replace("#buy-merits-subbutton", render($form['buy-merits']['submit'])),
+	];
+
+	return [
+		'#type' => 'ajax',
+		'#commands' => $commands
+	];
+}
+
+//callback to recalculate CH/EUR -> merits
+function _convert_chr_merits($form, $form_state) {
+	return array(
+		'#type' => 'ajax',
+		'#commands' => array(
+			ajax_command_replace("#buy-merits-converted", render($form['buy-merits']['buy-merits-converted'])),
+			ajax_command_css("#buy-merits-converted", ['display' => 'inline-block']),
+			ajax_command_replace("#final-note", render($form['buy-merits']['final-note'])),
+			ajax_command_replace("#buy-merits-subbutton", render($form['buy-merits']['submit'])),
+		)
+	);
+}
+
+//function that converts Chrons to Merits
+function _convert_chr_2_merits($chrons) {
+	return $chrons;
+}
+
+/*
+grant merits to self-rewarding user
+it is expected the @chrons parameter is a negative number, in order to subtract from the user's Chron account
+*/
+function _rovas_forex_grant_merits($user,$merits,$chrons) {
+
+	$uid = $user->uid;
+
+	//spend and destroy the Chrons
+	$reschr = rules_invoke_component('rules_update_user_chron_account',$user,$chrons);
+
+	//grant Merits to the buyer
+	$description = t('Purchase of Merits for Chrons');
+	$rewent = $user; //the user is the REWarded ENTity as they are rewarding themselves
+	$rewent = entity_metadata_wrapper('user', $user);
+	$resmerusr = rules_invoke_component('rules_give_merits_to_user',$user,$merits,$rewent,$description,'Insert');
+	
+	//create Merit purchase record
+	$note = '';
+	$merprec = rules_invoke_component('rules_create_merit_purchase_record',$user,$merits,$note);
+
+	//create Merit disbursement record
+	$merdibrec = rules_invoke_component('rules_create_merit_disbursement',$merprec[0],$uid,$merits);
+
+	//update the user expertise
+	$nace_areas = _rb_user_time_in_nace_codes($uid);
+	
+	foreach ($nace_areas as $labl => $nace_tid) {
+		$cat = $labl;
+		$time_share = $nace_tid['percent'];
+		$rndsum = round($merits*$time_share);
+		if ($rndsum > 0){
+			$result = rules_invoke_component('rules_update_user_expertise',$time_share,$merits,$cat,$uid);
+		}
+	}
+
+}
+
+//for the current user, deletes the lock and temp basket
+function lost_lock($message = NULL) {
+	global $user;
+	$forex_lock = variable_get('forex_lock');
+	if ($forex_lock['uid'] == $user->uid) {
+		variable_del('forex_lock');
+		variable_del('forex_baskets_temp');
+	}
+	if (is_null($message)) {$message = t('Order canceled');}
+	drupal_set_message($message);
+
+	//deleting the canceled order
+	$order = commerce_cart_order_load($user->uid);
+	if (isset($order->order_number)) {
+		$ordr_id = $order->order_number;
+		$order = commerce_order_load_multiple(array($ordr_id));
+
+		//if time shares are purchased, return to the "Project investing" page
+		$paymentRecipient = $order[$ordr_id]->field_payment_recipient[LANGUAGE_NONE][0]['value'];
+		$lineItemID = $order[$ordr_id]->commerce_line_items[LANGUAGE_NONE][0]['line_item_id'];
+		$lineItem = commerce_line_item_load($lineItemID);
+		
+		$productID = $lineItem->commerce_product['und'][0]['product_id'];
+
+		if ($productID == 2) {
+			$destination = '/buyshares/' . $paymentRecipient;
+		}
+		else {
+			$destination = '/forex';
+		}
+
+		commerce_order_delete_multiple(array_keys($order));
+	}
+	else {
+		$destination = '/forex';
+	}
+	drupal_goto($destination);
+}
+
+//for the current user, deletes the lock and temp basket
+function forex_complete_order($message = NULL, $path = NULL) {
+	$forex_basket = variable_get('forex_baskets_temp');
+	
+	if ($message) {
+		drupal_set_message($message, 'status', FALSE);
+	}
+
+	// Exit early if forex_baskets_temp is empty or doesn't exist
+	if (empty($forex_basket)) {
+		if ($path) {
+			drupal_goto($path);
+		}
+		return;
+	}
+	
+	variable_set('forex_baskets', $forex_basket);
+	variable_del('forex_baskets_temp');
+	variable_del('forex_lock');
+	
+	if ($path) {
+		drupal_goto($path);
+	}
+}
+
+/*
+for the current user
+	- deletes the lock and temp basket
+	- updates the sandbox project baskets
+*/
+function forex_complete_order_fxs ($message = NULL, $path=NULL,$project_nid) {
+	$forex_basket = variable_get('forex_baskets_temp');
+
+	//update the project baskets
+	$projob = entity_metadata_wrapper('node', $project_nid);
+	$projob->field_euro_basket->set($forex_basket['eur_basket']);
+	$projob->field_chron_basket->set($forex_basket['ch_basket']);
+	$projob->save();
+
+	variable_del('forex_baskets_temp');
+	variable_del('forex_lock');
+	if ($message) {drupal_set_message($message,'status',FALSE);}
+	if ($path) {drupal_goto($path);}
+}
+
+/*
+* the forex core function for converting one currency to another
+* derived from the bancor formula
+* @input = the amount of currency we have and want to exchange
+* @input_balance = the amount of input currency in the Rovas reserve basket for that currency
+* @output_balance = the amount of currency in the Rovas reserve basket for the target currency
+* @fee = the fee between 0 and 1 we want to charge for the conversion
+* @fixedfee = fixed base amount to be added to the fee
+*/
+function forex ($input,$input_balance,$output_balance,$fee,$fixedfee = 0) {
+
+	if (!$input_balance) {
+		return ['output' => null, 'fee' => null];
+	}
+
+	$tt_balance=1;
+	$input_weight=0.5;
+	$output_weight=1-$input_weight;
+	
+	$allfees = $input * $fee + $fixedfee;
+
+	$input_adjusted = $input - $allfees;
+	
+	if ($fee < 0 || $input <= $allfees || $fee > 1) {
+		$calc_output = 0;
+	}
+	else {
+		$smartt = $tt_balance*(pow((1+$input_adjusted/$input_balance),$input_weight)-1);
+		$calc_output = $output_balance*(pow((1-$smartt/($tt_balance+$smartt)),(1/$output_weight))-1)*(-1);
+	}
+
+	return ['output' => $calc_output, 'fee' => abs($allfees)];
+	
+}
+
+/*
+forex for fx-sandbox project currency conversions
+*/
+function project_forex ($input,$input_balance,$output_balance,$fee,$fixedfee = 0) {
+	$rate = $input_balance > 0 ? ($output_balance/$input_balance) : 0;
+	$feeoutput = $input*$fee + $fixedfee; //[€]
+	$calc_output = $rate * $input - $feeoutput; //[€]
+
+	return array('output' => $calc_output, 'fee' => $feeoutput);
+}
+
+/*
+* derived from the bancor formula
+* for a given amount we want to get on the output, this function returns the amount we need to pay.
+* the @input must be lower than the input balance
+* @input = the amount of currency we have and want to exchange
+* @input_balance = the amount of input currency in the Rovas reserve basket for that currency
+* @output_balance = the amount of currency in the Rovas reserve basket for the target currency
+* @fee = the fee we want to charge for the conversion
+*/
+function forex_reverse ($input,$input_balance,$output_balance,$fee) {
+
+	$tt_balance=1;
+	$input_weight=0.5;
+	$output_weight=1-$input_weight;
+
+if ($input_balance > $fee*$input_balance + $input) {
+
+	$K = pow($input/($input_balance*($fee-1)) + 1,$input_weight);
+	$inc = ($tt_balance * (1 - $K))/$K;
+	$output = $output_balance*(pow($inc/($tt_balance*(1-$fee)) + 1,1/$output_weight) -1);
+}
+else {
+	$output = -1;
+}	
+	$calc_fee = $fee*($output/(1-$fee));
+	
+	return array('output' => $output, 'fee' => $calc_fee);
+	
+}
+
+/**
+ * Custom validation handler to check session expiration.
+ */
+function rovas_forex_session_expiration_validate($form, &$form_state) {
+
+//	watchdog('rovas_forex_module','validating (form state content) <pre>' . print_r($form_state,1) . '</pre>');
+
+  if (isset($form_state['rovas_session_data']) && !isset($form_state['triggering_element']['#ajax'])) {
+    $expiration = $form_state['rovas_session_data']['expiration'];
+    $callbackurl = $form_state['rovas_session_data']['callbackurl'];
+    $curtime = time();
+    
+    if ($expiration < $curtime) {
+      drupal_goto($callbackurl . '?error=timeout');
+    }
+  }
+}
+
+function _rovas_commerce_payment_pane_checkout_form_details_refresh($form, $form_state) {
+	return 
+		array(
+		'#type' => 'ajax',
+		'#commands' => array(
+			ajax_command_replace("#payment-details", render($form['commerce_payment']['payment_details'])),
+			ajax_command_replace("#continue-button", render($form['buttons']['continue'])),
+		),
+	);
+}
+
+/*
+function _override_submit(&$form, &$form_state) {
+	$the_message = t('Your order has not been completed within the allowed time.') . '<br>' . t('Please try again with a new order');
+	lost_lock($the_message);
+}
+*/
+
+/**
+ * Implements hook_commerce_checkout_router().
+function rovas_forex_commerce_checkout_router($order, $checkout_page) {
+	drupal_set_message('fired');
+}
+*/
+
+function _override_cancel(&$form, &$form_state) {
+	lost_lock();
+}
+
+/* 
+* convert the fee to euro and assign it to the forex admin
+* update the forex currency baskets
+* the @conversion_fee -> transaction fee in Chrons
+*/
+function _process_fee_update_baskets ($conversion_fee) {
+
+	//convert the conversion fee to Euros
+	$forex_basket = variable_get('forex_baskets_temp');
+	if ($forex_basket) {
+		variable_set('forex_baskets',$forex_basket);
+		variable_del('forex_baskets_temp');
+	}
+	$buy_ch_fee = variable_get('buy_ch_fee') ? variable_get('buy_ch_fee') : 0;
+	$buy_ch_fixed_fee = variable_get('buy_ch_fixed_fee') ? variable_get('buy_ch_fixed_fee') : 0;
+
+	$to_receive_ary = forex($conversion_fee,$forex_basket['ch_basket'],$forex_basket['eur_basket'],$buy_ch_fee,$buy_ch_fixed_fee);
+	$amnt_to_get = $to_receive_ary['output'];
+	$fee_to_pay = $to_receive_ary['fee']; //in EUR
+
+	$new_basket = array(
+	'ch_basket' => $forex_basket['ch_basket'] + $conversion_fee,
+	'eur_basket' => $forex_basket['eur_basket'] - $amnt_to_get - $fee_to_pay
+	);
+	$forex_basket_temp = variable_set('forex_baskets_temp',$new_basket);
+
+	$rovas_admin_uid = variable_get('rovas_admin_uid');
+
+	$adm_user = user_load($rovas_admin_uid);
+
+	//put the conversion fee temporarily into the Rovas account
+	$update_user_ch = rules_invoke_component(
+		'rules_update_user_chron_account',
+		1,
+		$conversion_fee
+	);
+
+	//send the conversion fee money from the Rovas account to the Rovas Forex admin account.
+	//This will create a money transfer record for the Rovas Forex admin
+	$update_user_ch = rules_invoke_component(
+		'rules_make_money_transfer',
+		user_load(1),
+		$adm_user,
+		$conversion_fee,
+		t('A fee received from forex conversion when a user bought Chrons.')
+	);
+
+	//convert the fee into euros
+	$result_fee_proc = rules_invoke_component(
+		'rules_process_forex_order',
+		$rovas_admin_uid,
+		'chrons_to_euros',
+		$conversion_fee, //CH paid
+		$amnt_to_get, //EUR received
+		$fee_to_pay,
+		$forex_basket['ch_basket'],
+		$forex_basket['eur_basket'],
+		0,
+		0
+	);
+	
+	return $result_fee_proc;
+	
+}
+
+/*
+* needed to get PayPal credentials from a protected object in the rules config
+*/
+function accessProtected($obj, $prop) {
+  $reflection = new ReflectionClass($obj);
+  $property = $reflection->getProperty($prop);
+  $property->setAccessible(true);
+  return $property->getValue($obj);
+}
+
+/**
+ * @param string      $transactType  'chr_to_eur' | 'eur_to_chr' (default 'eur_to_chr').
+ * @param float       $input         Input amount.
+ * @param float				$processor_fee Payment processor fee
+*/
+function calculate_forex_transaction_params ($transactType, $input, $processor_fee = null, $charge_fees = TRUE) {
+
+    $forexBaskets    = variable_get('forex_baskets');
+    $base_buy_ch_fee = variable_get('base_buy_ch_fee');
+
+		//very unlikely - we do not have forex baskets
+    if (empty($forexBaskets) || !is_array($forexBaskets)) {
+			$chInit  = (float) variable_get('ch_basket_init');
+			$eurInit = (float) variable_get('eu_basket_init');
+			$forexBaskets = array(
+					'ch_basket'  => $chInit,
+					'eur_basket' => $eurInit,
+			);
+			variable_set('forex_baskets', $forexBaskets);
+    }
+
+    // use temp baskets if lock is set
+    $forexBasketsTemp  = (array) variable_get('forex_baskets_temp');
+    $lockTs            = (array) variable_get('forex_lock');
+    $lockTimeRemaining = isset($lockTs['time']) ? ((int)$lockTs['time']) - (time() - 5 * 60) : -1;
+    $lockUserId        = isset($lockTs['uid']) ? $lockTs['uid'] : null;
+
+    global $user;
+
+    $useTempBaskets = ($lockTimeRemaining > 0) && ($lockUserId != $user->uid) ? 1 : 0;
+
+    if ($useTempBaskets) {
+			$chBasket  = isset($forexBasketsTemp['ch_basket'])  ? (float)$forexBasketsTemp['ch_basket']
+								 : (isset($forexBaskets['ch_basket'])     ? (float)$forexBaskets['ch_basket'] : 0.0);
+			$eurBasket = isset($forexBasketsTemp['eur_basket']) ? (float)$forexBasketsTemp['eur_basket']
+								 : (isset($forexBaskets['eur_basket'])    ? (float)$forexBaskets['eur_basket'] : 0.0);
+    }
+    else {
+			$chBasket  = isset($forexBaskets['ch_basket'])  ? (float)$forexBaskets['ch_basket']  : 0.0;
+			$eurBasket = isset($forexBaskets['eur_basket']) ? (float)$forexBaskets['eur_basket'] : 0.0;
+    }
+
+    $type = strtolower($transactType);
+    $type = ($type === 'chr_to_eur') ? 'chr_to_eur' : 'eur_to_chr';
+
+    $variableFee = 0.0;
+    $fixedFee    = 0.0;
+    $output      = 0.0;
+
+    if ($type === 'chr_to_eur') {
+    	if ($charge_fees) {
+				$variableFee = (float) variable_get('buy_eur_fee');
+				$fixedFee    = 0.0;	
+			}
+			else {
+				$variableFee = 0.0;
+				$fixedFee    = 0.0;
+			}
+			$res    = forex($input, $chBasket, $eurBasket, $variableFee, $fixedFee);
+			$output = isset($res['output']) ? (float) $res['output'] : 0.0;
+    }
+    else {
+    	if ($charge_fees) {
+				if ($processor_fee) {
+					$variableFee = $base_buy_ch_fee;
+					$fixedFee    = $processor_fee < 0 ? 0 : $processor_fee; //negative values (like -1) indicate payment methods that do not charge fees (like bank transfer)
+				}
+				else {
+					$variableFee = (float) variable_get('buy_ch_fee');
+					$fixedFee    = (float) variable_get('buy_ch_fixed_fee');
+				}
+			}
+			else {
+				$variableFee = 0.0;
+				$fixedFee    = 0.0;
+			}
+
+			$res    = forex($input, $eurBasket, $chBasket, $variableFee, $fixedFee);
+			$output = isset($res['output']) ? (float) $res['output'] : 0.0;
+    }
+
+    return array(
+			'eur_basket'       => (float) $eurBasket,
+			'chr_basket'       => (float) $chBasket,
+			'xfee'             => (float) $variableFee,
+			'output'           => (float) $output,
+			'fixed_fee'        => (float) $fixedFee,
+			'use_temp_baskets' => $useTempBaskets,
+    );
+}
+
+
+/**
+ * Implements hook_rules_action_info().
+ */
+function rovas_forex_rules_action_info() {
+  return array(
+    'rovas_forex_calculate' => array(
+      'label' => t('Forex calculation'),
+      'group' => t('Rovas'),
+      'parameter' => array(
+        'input' => array(
+          'type' => 'decimal',
+          'label' => t('Input amount'),
+          'description' => t('The input amount for the forex calculation.'),
+        ),
+        'input_balance' => array(
+          'type' => 'decimal',
+          'label' => t('Input basket'),
+          'description' => t('The input currency basket for the forex calculation.'),
+        ),
+        'output_balance' => array(
+          'type' => 'decimal',
+          'label' => t('Output basket'),
+          'description' => t('The output currency basket for the forex calculation.'),
+        ),
+        'fee' => array(
+          'type' => 'decimal',
+          'label' => t('Fee percentage'),
+          'description' => t('The fee percentage (as decimal, e.g., 0.01 for 1%).'),
+        ),
+        'fixed_fee' => array(
+          'type' => 'decimal',
+          'label' => t('Fixed fee'),
+          'description' => t('The fixed fee amount.'),
+          'default value' => 0,
+          'optional' => TRUE,
+        ),
+      ),
+      'provides' => array(
+        'calc_output' => array(
+          'type' => 'decimal',
+          'label' => t('Calculated output'),
+        ),
+        'total_fee' => array(
+          'type' => 'decimal',
+          'label' => t('Total fee'),
+        ),
+      ),
+    ),
+    'rovas_forex_transaction_params' => array(
+      'label' => t('Calculate forex transaction parameters'),
+      'group' => t('Rovas'),
+      'parameter' => array(
+        'transact_type' => array(
+          'type' => 'text',
+          'label' => t('Transaction type'),
+          'description' => t('Transaction type: "chr_to_eur" or "eur_to_chr".'),
+          'default value' => 'eur_to_chr',
+          'options list' => 'rovas_forex_transaction_types_options',
+        ),
+        'input' => array(
+          'type' => 'decimal',
+          'label' => t('Input amount'),
+          'description' => t('The input amount for the transaction.'),
+        ),
+        'processor_fee' => array(
+          'type' => 'decimal',
+          'label' => t('Payment processor fee'),
+          'description' => t('Payment processor fee. Leave empty to use default fees.'),
+          'optional' => TRUE,
+        ),
+        'charge_fees' => array(
+          'type' => 'boolean',
+          'label' => t('Charge fees'),
+          'description' => t('Whether to charge fees for this transaction.'),
+          'default value' => TRUE,
+          'optional' => TRUE,
+        ),
+      ),
+      'provides' => array(
+        'eur_basket' => array(
+          'type' => 'decimal',
+          'label' => t('EUR basket amount'),
+        ),
+        'chr_basket' => array(
+          'type' => 'decimal',
+          'label' => t('CHR basket amount'),
+        ),
+        'variable_fee' => array(
+          'type' => 'decimal',
+          'label' => t('Variable fee percentage'),
+        ),
+        'output_amount' => array(
+          'type' => 'decimal',
+          'label' => t('Output amount'),
+        ),
+        'fixed_fee_amount' => array(
+          'type' => 'decimal',
+          'label' => t('Fixed fee amount'),
+        ),
+        'use_temp_baskets' => array(
+          'type' => 'boolean',
+          'label' => t('Using temporary baskets'),
+        ),
+      ),
+    ),
+    'rovas_forex_rules_action_calculate_merits_execute' => array(
+      'label' => t('Calculate merits purchase parameters'),
+      'group' => t('Rovas'),
+      'parameter' => array(
+        'buy_amount' => array(
+          'type' => 'decimal',
+          'label' => t('Buy amount (EUR)'),
+          'description' => t('The amount in EUR to convert to CHR.'),
+        ),
+        'processor_fee' => array(
+          'type' => 'decimal',
+          'label' => t('Payment processor fee'),
+          'description' => t('Payment processor fee. Leave empty to use default fees.'),
+          'optional' => TRUE,
+        ),
+        'charge_fees' => array(
+          'type' => 'boolean',
+          'label' => t('Charge fees'),
+          'description' => t('Whether to charge fees for this transaction.'),
+          'default value' => TRUE,
+          'optional' => TRUE,
+        ),
+      ),
+      'provides' => array(
+        'merits_purchased' => array('type' => 'decimal', 'label' => t('Merits purchased')),
+        'unit_price' => array('type' => 'decimal', 'label' => t('Unit price (CHR per EUR)')),
+      ),
+    ),
+  );
+}
+
+/**
+ * Options callback for transaction types.
+ */
+function rovas_forex_transaction_types_options() {
+  return array(
+    'eur_to_chr' => t('EUR to CHR'),
+    'chr_to_eur' => t('CHR to EUR'),
+  );
+}
+
+/**
+ * Action callback for forex calculation.
+ */
+function rovas_forex_calculate($input, $input_balance, $output_balance, $fee, $fixed_fee = 0) {
+  $result = forex($input, $input_balance, $output_balance, $fee, $fixed_fee);
+  
+  return array(
+    'calc_output' => $result['output'],
+    'total_fee' => $result['fee'],
+  );
+}
+
+/**
+ * Action callback for forex transaction parameters calculation.
+ */
+function rovas_forex_transaction_params($transact_type, $input, $processor_fee = NULL, $charge_fees = TRUE) {
+  $result = calculate_forex_transaction_params($transact_type, $input, $processor_fee, $charge_fees);
+  
+  return array(
+    'eur_basket' => $result['eur_basket'],
+    'chr_basket' => $result['chr_basket'],
+    'variable_fee' => $result['xfee'],
+    'output_amount' => $result['output'],
+    'fixed_fee_amount' => $result['fixed_fee'],
+    'use_temp_baskets' => $result['use_temp_baskets'],
+  );
+}
+
+
+/**
+ * Calculate merits purchased and unit price.
+ *
+ * @param float $buy_amount
+ *   Amount in EUR.
+ */
+function rovas_forex_rules_action_calculate_merits_execute($buy_amount,$processor_fee = null, $charge_fees = TRUE) {
+  $forex_params = calculate_forex_transaction_params('eur_to_chr', $buy_amount,$processor_fee, $charge_fees);
+  $convary = _rovas_purchase_shares_stripe_convertor($buy_amount, $forex_params['output']);
+
+  return array(
+    'merits_purchased' => $convary['units'],
+    'unit_price' => $convary['unit_price'],
+  );
+}
+

@@ -1,0 +1,42 @@
+<?php
+
+function rovas_money_transfer_form_alter(&$form, $form_state, $form_id) {
+	if ($form_id == 'money_transfer_node_form') {
+		global $user;
+		$usrchrons = rules_invoke_component('rules_chrons_actually_available',$user);
+		if ($usrchrons > 0) {
+			$form['instructions'] = array(
+				'#markup' => '<div class="form-instruct"><strong>' . t('Chrons in your account: ') . $usrchrons[0] . '</strong><br/><span>' . t('To send money, select the recipient and the amount. Optionally add a note about the transfer.') . '</span></div>',
+				'#weight' => -10
+			);
+		}
+		else {
+			$form['instructions'] = array(
+				'#markup' => '<div class="form-instruct"><strong>' . t('Chrons in your account: ') . $usrchrons[0] . '</strong><br/><span>' . t('There is not enough money in your account to make a transfer.') . '</span></div>',
+				'#weight' => -10
+			);
+			$form['actions'] = '';
+			$form['field_recipient'] = '';
+			$form['field_amount'] = '';
+			$form['body'] = '';
+		}		
+	$form['actions']['submit']['#value'] = t('Send');
+	$form['#validate'][] = '_my_transfer_validator';
+	}
+}
+
+function _my_transfer_validator($form, &$form_state) {
+
+	$recipient = user_load($form_state['values']['field_recipient']['und'][0]['target_id']);
+	if (!isset($recipient->uid)) {
+			form_set_error('field_recipient', t('Please enter a valid user name'));
+	}
+	
+	global $user;
+	$chrons = rules_invoke_component('rules_chrons_actually_available',$user);
+
+	if ($form_state['values']['field_amount']['und'][0]['value'] > $chrons[0]) {
+			form_set_error('field_amount', t('Please enter a value lower than the number of Chrons you have.'));
+	}
+	
+}

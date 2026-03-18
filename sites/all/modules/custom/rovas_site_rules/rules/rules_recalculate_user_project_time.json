@@ -1,0 +1,56 @@
+{ "rules_recalculate_user_project_time" : {
+    "LABEL" : "recalculate user project time",
+    "PLUGIN" : "rule",
+    "OWNER" : "rules",
+    "REQUIRES" : [ "rules", "php", "views_bulk_operations", "rules_conditional" ],
+    "USES VARIABLES" : {
+      "uid" : { "label" : "user id", "type" : "integer" },
+      "project_nid" : { "label" : "project id", "type" : "integer" },
+      "hours" : { "label" : "hours", "type" : "decimal", "parameter" : false }
+    },
+    "DO" : [
+      { "data_set" : { "data" : [ "hours" ], "value" : "0" } },
+      { "variable_add" : {
+          "USING" : {
+            "type" : "text",
+            "value" : "\u003C?php\r\n$result = db_query(\u0022\r\nSELECT SUM(h.field_hours_worked_value) AS hours\r\nFROM {node} node\r\nLEFT JOIN {field_data_field_project} p ON node.nid = p.entity_id\r\nLEFT JOIN {field_data_field_hours_worked} h ON node.nid = h.entity_id\r\nWHERE p.field_project_target_id = :proj_nid\r\nAND node.uid = :uid\r\nAND node.status = \u00271\u0027\r\nAND node.type IN (\u0027work_report\u0027)\r\n\u0022, array(\u0027:uid\u0027 =\u003E $uid, \u0027:proj_nid\u0027 =\u003E $project_nid));\r\n\r\n$record = $result-\u003EfetchAssoc();\r\necho $record[\u0027hours\u0027];\r\n\r\n?\u003E"
+          },
+          "PROVIDE" : { "variable_added" : { "hours_worked" : "hours worked" } }
+        }
+      },
+      { "data_convert" : {
+          "USING" : { "type" : "decimal", "value" : [ "hours-worked" ] },
+          "PROVIDE" : { "conversion_result" : { "time" : "time" } }
+        }
+      },
+      { "views_bulk_operations_action_load_list" : {
+          "USING" : {
+            "view" : "project_user_shareholder|default",
+            "args" : "[project-nid:value]\r\n[uid:value]"
+          },
+          "PROVIDE" : { "entity_list" : { "merit_allocations" : "merit allocations" } }
+        }
+      },
+      { "CONDITIONAL" : [
+          {
+            "IF" : { "entity_is_of_bundle" : {
+                "entity" : [ "merit-allocations:0" ],
+                "type" : "node",
+                "bundle" : { "value" : { "co_worker_merit_allocation" : "co_worker_merit_allocation" } }
+              }
+            },
+            "DO" : [
+              { "data_set" : {
+                  "data" : [ "merit-allocations:0:field-total-hours-worked" ],
+                  "value" : [ "time" ]
+                }
+              },
+              { "data_set" : { "data" : [ "hours" ], "value" : [ "time" ] } }
+            ]
+          }
+        ]
+      }
+    ],
+    "PROVIDES VARIABLES" : [ "hours" ]
+  }
+}

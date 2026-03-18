@@ -1,0 +1,238 @@
+<?php
+/**
+ * @file
+ * Module for displaying wallet fullness as a visual indicator.
+ */
+
+/**
+ * Implements hook_field_formatter_info().
+ */
+function rovas_wallet_fullness_field_formatter_info() {
+  return array(
+    'rovas_wallet_fullness_gauge' => array(
+      'label' => t('Wallet Fullness Gauge'),
+      'field types' => array('number_integer', 'number_decimal', 'number_float'),
+      'settings' => array(
+        'threshold_field' => '',
+        'display_values' => TRUE,
+        'color_scheme' => 'default',
+      ),
+    ),
+  );
+}
+
+/**
+ * Implements hook_field_formatter_settings_form().
+ */
+function rovas_wallet_fullness_field_formatter_settings_form($field, $instance, $view_mode, $form, &$form_state) {
+  $display = $instance['display'][$view_mode];
+  $settings = $display['settings'];
+  $element = array();
+
+  // Remove debugging watchdog call
+  // watchdog('rovas_wallet_fullness','instance <pre>' . print_r($instance,1) . '</pre>');
+
+  // Get all number fields available in this entity type
+  $fields = field_info_fields();
+  $threshold_options = array('' => t('- None -'));
+  
+  foreach ($fields as $field_name => $field_info) {
+    if (in_array($field_info['type'], array('number_integer', 'number_decimal', 'number_float'))) {
+      $threshold_options[$field_name] = $field_name;
+    }
+  }
+  
+  $element['threshold_field'] = array(
+    '#type' => 'select',
+    '#title' => t('Threshold Field'),
+    '#options' => $threshold_options,
+    '#default_value' => $settings['threshold_field'],
+    '#description' => t('Select the field that contains the threshold value.'),
+    '#required' => TRUE,
+  );
+  
+  $element['display_values'] = array(
+    '#type' => 'checkbox',
+    '#title' => t('Display numeric values on click'),
+    '#default_value' => $settings['display_values'],
+    '#description' => t('Enable to show actual values when clicking on the gauge.'),
+  );
+  
+  $element['color_scheme'] = array(
+    '#type' => 'select',
+    '#title' => t('Color Scheme'),
+    '#options' => array(
+      'default' => t('Default (Blue)'),
+      'green' => t('Green'),
+      'red' => t('Red-Yellow-Green'),
+    ),
+    '#default_value' => $settings['color_scheme'],
+    '#description' => t('Choose a color scheme for the gauge.'),
+  );
+  
+  return $element;
+}
+
+/**
+ * Implements hook_field_formatter_settings_summary().
+ */
+function rovas_wallet_fullness_field_formatter_settings_summary($field, $instance, $view_mode) {
+  $display = $instance['display'][$view_mode];
+  $settings = $display['settings'];
+  
+  $summary = array();
+  
+  if (!empty($settings['threshold_field'])) {
+    $summary[] = t('Threshold field: @field', array('@field' => $settings['threshold_field']));
+  }
+  else {
+    $summary[] = t('No threshold field selected');
+  }
+  
+  $summary[] = $settings['display_values'] ? t('Show values on click: Yes') : t('Show values on click: No');
+  
+  $color_schemes = array(
+    'default' => t('Default (Blue)'),
+    'green' => t('Green'),
+    'red' => t('Red-Yellow-Green'),
+  );
+  $summary[] = t('Color scheme: @scheme', array('@scheme' => $color_schemes[$settings['color_scheme']]));
+  
+  return implode('<br />', $summary);
+}
+
+/**
+ * Implements hook_field_formatter_view().
+ */
+function rovas_wallet_fullness_field_formatter_view($entity_type, $entity, $field, $instance, $langcode, $items, $display) {
+  $element = array();
+  $settings = $display['settings'];
+  
+  // Check if threshold field is set
+  if (empty($settings['threshold_field'])) {
+    return $element;
+  }
+  
+  // Get threshold field value
+  $threshold_field = $settings['threshold_field'];
+  $threshold_items = field_get_items($entity_type, $entity, $threshold_field);
+  
+  if (!$threshold_items || empty($threshold_items[0]['value'])) {
+    return $element;
+  }
+  
+  $threshold_value = $threshold_items[0]['value'];
+  
+  // Add JS and CSS - FIX: use correct paths to the files
+  drupal_add_js(drupal_get_path('module', 'rovas_wallet_fullness') . '/rovas_wallet_fullness.js');
+  drupal_add_css(drupal_get_path('module', 'rovas_wallet_fullness') . '/rovas_wallet_fullness.css');
+  
+  // Generate a unique ID for this gauge
+  $gauge_id = 'wallet-gauge-' . $field['field_name'] . '-' . $entity->nid;
+  
+  foreach ($items as $delta => $item) {
+    $current_value = $item['value'];
+    // Add check to prevent division by zero
+    $percentage = ($threshold_value > 0) ? min(100, ($current_value / $threshold_value) * 100) : 0;
+    
+    // Set color class based on percentage and color scheme
+    $color_class = 'default';
+    if ($settings['color_scheme'] == 'green') {
+      $color_class = 'green';
+    }
+    elseif ($settings['color_scheme'] == 'red') {
+      if ($percentage < 33) {
+        $color_class = 'red';
+      }
+      elseif ($percentage < 66) {
+        $color_class = 'yellow';
+      }
+      else {
+        $color_class = 'green';
+      }
+    }
+    
+    $element[$delta] = array(
+      '#type' => 'markup',
+      '#markup' => theme('rovas_wallet_fullness_gauge', array(
+        'current_value' => $current_value,
+        'threshold_value' => $threshold_value,
+        'percentage' => $percentage,
+        'display_values' => $settings['display_values'],
+        'gauge_id' => $gauge_id,
+        'color_class' => $color_class,
+      )),
+    );
+  }
+  
+  return $element;
+}
+
+/**
+ * Implements hook_theme().
+ */
+function rovas_wallet_fullness_theme() {
+  return array(
+    'rovas_wallet_fullness_gauge' => array(
+      'variables' => array(
+        'current_value' => 0,
+        'threshold_value' => 100,
+        'percentage' => 0,
+        'display_values' => TRUE,
+        'gauge_id' => '',
+        'color_class' => 'default',
+      ),
+    ),
+  );
+}
+
+/**
+ * Theme function for wallet fullness gauge - vertical version.
+ */
+function theme_rovas_wallet_fullness_gauge($variables) {
+  $current_value = $variables['current_value'];
+  $threshold_value = $variables['threshold_value'];
+  $percentage = $variables['percentage'];
+  $display_values = $variables['display_values'];
+  $gauge_id = $variables['gauge_id'];
+  $color_class = $variables['color_class'];
+  
+  // Format the percentage to integer for cleaner display
+  $percentage_formatted = (int)$percentage;
+  
+  $output = '<div class="wallet-fullness-container vertical" id="' . $gauge_id . '">';
+  
+  // Add percentage display
+//  $output .= '<div class="wallet-percentage-display">' . $percentage_formatted . '%</div>';
+  
+  $output .= '<div class="wallet-gauge-wrapper vertical">';
+  
+  // Create vertical gauge
+  $output .= '<div class="wallet-gauge-bar-container vertical">';
+  
+  $output .= '<div class="wallet-gauge-fill wallet-gauge-' . $color_class . '" style="height: ' . $percentage . '%"></div>';
+  
+  // Add indicator for current level
+  $output .= '<div class="wallet-gauge-indicator" style="bottom: ' . $percentage . '%"></div>';
+  
+  // Add markers 
+  $output .= '<div class="wallet-gauge-markers">';
+  $output .= '<div class="wallet-gauge-marker" style="bottom: 0%">0%</div>';
+  $output .= '<div class="wallet-gauge-marker" style="bottom: 25%">25%</div>';
+  $output .= '<div class="wallet-gauge-marker" style="bottom: 50%">50%</div>';
+  $output .= '<div class="wallet-gauge-marker" style="bottom: 75%">75%</div>';
+  $output .= '<div class="wallet-gauge-marker" style="bottom: 100%">100%</div>';
+  $output .= '</div>';
+  
+  $output .= '</div>';
+
+  $output .= '<div class="wallet-gauge-values">';
+  $output .= '<div class="wallet-threshold-value">' . $threshold_value . ' €</div>';
+  $output .= '<div class="wallet-current-value">' . $current_value . ' €</div>';
+  $output .= '</div>';
+  
+  $output .= '</div>';
+  $output .= '</div>';
+  
+  return $output;
+}

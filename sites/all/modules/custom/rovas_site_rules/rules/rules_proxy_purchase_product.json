@@ -1,0 +1,81 @@
+{ "rules_proxy_purchase_product" : {
+    "LABEL" : "proxy - purchase product",
+    "PLUGIN" : "rule",
+    "OWNER" : "rules",
+    "TAGS" : [ "api", "purchase" ],
+    "REQUIRES" : [ "rules", "rules_conditional" ],
+    "USES VARIABLES" : {
+      "note" : { "label" : "note", "type" : "text" },
+      "amount_paid" : { "label" : "Amount paid", "type" : "decimal" },
+      "result" : { "label" : "result", "type" : "integer", "parameter" : false },
+      "product_id" : { "label" : "Product ID", "type" : "integer" }
+    },
+    "DO" : [
+      { "data_set" : { "data" : [ "result" ], "value" : "1" } },
+      { "CONDITIONAL" : [
+          {
+            "IF" : { "data_is" : { "data" : [ "amount-paid" ], "op" : "\u003E", "value" : "0" } },
+            "DO" : [
+              { "component_rules_retrieve_user_id_from_api_key_and_token" : { "USING" : {}, "PROVIDE" : { "uid" : { "uid" : "user id" } } } },
+              { "entity_fetch" : {
+                  "USING" : { "type" : "user", "id" : [ "uid" ] },
+                  "PROVIDE" : { "entity_fetched" : { "found_user" : "found user" } }
+                }
+              },
+              { "component_rules_chrons_actually_available" : {
+                  "USING" : { "user_object" : [ "found-user" ] },
+                  "PROVIDE" : { "chrons_available" : { "chrons_available" : "Chrons available" } }
+                }
+              },
+              { "CONDITIONAL" : [
+                  {
+                    "IF" : { "data_is" : {
+                        "data" : [ "amount-paid" ],
+                        "op" : "\u003C",
+                        "value" : [ "chrons-available" ]
+                      }
+                    },
+                    "DO" : [
+                      { "entity_fetch" : {
+                          "USING" : { "type" : "node", "id" : [ "product-id" ], "revision_id" : "0" },
+                          "PROVIDE" : { "entity_fetched" : { "purchased_product" : "purchased product" } }
+                        }
+                      },
+                      { "CONDITIONAL" : [
+                          {
+                            "IF" : { "entity_is_of_bundle" : {
+                                "entity" : [ "purchased-product" ],
+                                "type" : "node",
+                                "bundle" : { "value" : { "project" : "project" } }
+                              }
+                            },
+                            "DO" : [
+                              { "component_rules_process_purchase_core" : {
+                                  "USING" : {
+                                    "purchased_product_id" : [ "product-id" ],
+                                    "amount_paid" : [ "amount-paid" ],
+                                    "logged_in_user" : [ "found-user" ],
+                                    "note" : [ "note" ]
+                                  },
+                                  "PROVIDE" : { "p_receipt_id" : { "p_receipt_id" : "Purchase receipt ID" } }
+                                }
+                              }
+                            ]
+                          },
+                          { "ELSE" : [ { "data_set" : { "data" : [ "result" ], "value" : "-3" } } ] }
+                        ]
+                      }
+                    ]
+                  },
+                  { "ELSE" : [ { "data_set" : { "data" : [ "result" ], "value" : "-2" } } ] }
+                ]
+              }
+            ]
+          },
+          { "ELSE" : [ { "data_set" : { "data" : [ "result" ], "value" : "-1" } } ] }
+        ]
+      }
+    ],
+    "PROVIDES VARIABLES" : [ "result" ]
+  }
+}

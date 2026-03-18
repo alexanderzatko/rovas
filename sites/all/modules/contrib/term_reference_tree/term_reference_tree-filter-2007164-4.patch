@@ -1,0 +1,95 @@
+diff --git a/term_reference_tree.js b/term_reference_tree.js
+index 61e5ed9b..2dfa3a7f 100644
+--- a/term_reference_tree.js
++++ b/term_reference_tree.js
+@@ -11,6 +11,49 @@ Drupal.behaviors.termReferenceTree = {
+       $(this).siblings('ul').slideToggle('fast');
+     });
+ 
++    // Search filtering.
++    $('.term-reference-tree-filter', context).once('term-reference-tree-filter').bind('keyup click', function() {
++      var searchTerms = $(this).val().toLowerCase();
++      var tree = $(this).closest('.term-reference-tree').children('ul');
++      // Remove term-reference-tree-filter-match class from all label tags.
++      $(tree).find('label').removeClass('term-reference-tree-filter-match');
++      if (searchTerms.length > 2) {
++        $(tree).find('li').each(function() {
++          var hasMatch = $(this).text().toLowerCase().indexOf(searchTerms) >= 0;
++          var button = $(this).children('.term-reference-tree-button');
++          if (hasMatch) {
++            $(button).removeClass('term-reference-tree-collapsed');
++            $(button).siblings('ul').slideDown('fast');
++          }
++          else {
++            if (!$(this).find('input:checkbox:checked').length) {
++              $(button).addClass('term-reference-tree-collapsed');
++              $(button).siblings('ul').slideUp('fast');
++            }
++          }
++        });
++
++        // Highlight labels matching the search.
++        $(tree).find('label').each(function () {
++          var hasMatch = $(this).text().toLowerCase().indexOf(searchTerms) >= 0;
++          if (hasMatch) {
++            $(this).addClass('term-reference-tree-filter-match');
++          }
++        });
++      }
++      else {
++        var unselected = $(tree).find('li').filter(function() {
++          return !$(this).find('input:checkbox:checked').length;
++        });
++        $(unselected).each(function() {
++          var button = $(this).children('.term-reference-tree-button');
++          $(button).addClass('term-reference-tree-collapsed');
++          $(button).siblings('ul').slideUp('fast');
++          $(this).removeClass('term-reference-tree-filter-match');
++        });
++      }
++    });
++
+     // An expand all button (unimplemented)
+     /*
+     $('.expandbutton').click(function() {
+diff --git a/term_reference_tree.widget.inc b/term_reference_tree.widget.inc
+index 1685a433..7437bebf 100644
+--- a/term_reference_tree.widget.inc
++++ b/term_reference_tree.widget.inc
+@@ -22,6 +22,7 @@ function term_reference_tree_field_widget_info() {
+         'token_display' => '',
+         'parent_term_id' => '',
+         'max_depth' => '',
++        'search' => 0,
+       ),
+     ),
+   );
+@@ -142,6 +143,12 @@ function term_reference_tree_field_widget_settings_form($field, $instance) {
+       '#size' => 8,
+       '#return_value' => 1,
+     );
++
++    $form['search'] = array(
++      '#type' => 'checkbox',
++      '#title' => t('Display a search field to filter results'),
++      '#default_value' => $settings['search'],
++    );
+   }
+ 
+   return $form;
+@@ -526,6 +533,15 @@ function term_reference_tree_field_widget_form(&$form, &$form_state, $field, $in
+     '#properties' => $properties,
+   );
+ 
++  $element['filter'] = array(
++    '#type' => module_exists('elements') ? 'searchfield' : 'textfield',
++    '#title' => t('Filter terms'),
++    '#size' => 30,
++    '#weight' => -1,
++    '#attributes' => array('class' => array('term-reference-tree-filter')),
++    '#access' => $settings['search'],
++  );
++
+   return $element;
+ }
+ 

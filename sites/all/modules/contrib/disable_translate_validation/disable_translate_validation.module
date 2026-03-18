@@ -1,0 +1,39 @@
+<?php
+
+/**
+ * @file
+ * Disables translate validation for individual strings.
+ */
+
+
+/**
+ * Implements hook_form_i18n_string_locale_translate_edit_form_alter().
+ */
+function disable_translate_validation_form_i18n_string_locale_translate_edit_form_alter(&$form, &$form_state, $form_id) {
+  $form['disable_validation'] = array(
+  '#type' => 'checkbox',
+  '#title' => t('Disable validation'),
+ );
+  unset($form['#validate']);
+  $form['#validate'][] = '_disable_string_translate_validation';
+}
+
+/**
+ * Custom validation handler for disable_translate_validation_form_i18n_string_locale_translate_edit_form_alter.
+ */
+function _disable_string_translate_validation(&$form, &$form_state) {
+
+  if ($form_state['values']['disable_validation'] != TRUE) {
+    // Run the default checks if disable translation validation is not checked.
+    if (empty($form_state['values']['i18n_string_context']) || empty($form_state['values']['i18n_string_context']->format)) {
+      // If not text format use regular validation for all strings
+      $copy_state = $form_state;
+      $copy_state['values']['textgroup'] = 'default';
+      module_load_include('admin.inc', 'locale');
+      locale_translate_edit_form_validate($form, $copy_state);
+    }
+    elseif (!i18n_string_translate_access($form_state['values']['i18n_string_context'])) {
+      form_set_error('translations', t('You are not allowed to translate or edit texts with this text format.'));
+    }
+  }
+}

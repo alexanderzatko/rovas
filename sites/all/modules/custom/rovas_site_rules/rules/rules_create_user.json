@@ -1,0 +1,155 @@
+{ "rules_create_user" : {
+    "LABEL" : "create user",
+    "PLUGIN" : "rule",
+    "OWNER" : "rules",
+    "TAGS" : [ "hybridauth", "rest", "user" ],
+    "REQUIRES" : [ "rules", "rules_conditional", "services_auth_apikeys", "php" ],
+    "USES VARIABLES" : {
+      "user_name" : { "label" : "user name", "type" : "text" },
+      "user_id" : { "label" : "user ID", "type" : "integer" },
+      "user_email" : { "label" : "user email", "type" : "text" },
+      "user_country" : { "label" : "user country", "type" : "text" },
+      "user_language" : { "label" : "user language", "type" : "text" },
+      "server_url" : { "label" : "server url", "type" : "text" },
+      "rovas_uid" : { "label" : "rovas uid", "type" : "integer", "parameter" : false },
+      "api_key" : { "label" : "api key", "type" : "text", "parameter" : false },
+      "token" : { "label" : "token", "type" : "text", "parameter" : false }
+    },
+    "DO" : [
+      { "variable_add" : {
+          "USING" : { "type" : "text", "value" : "rovas_endpoint" },
+          "PROVIDE" : { "variable_added" : { "service_endpoint" : "service endpoint" } }
+        }
+      },
+      { "variable_add" : {
+          "USING" : { "type" : "text", "value" : "Nabezky" },
+          "PROVIDE" : { "variable_added" : { "provider" : "provider" } }
+        }
+      },
+      { "entity_query" : {
+          "USING" : {
+            "type" : "user",
+            "property" : "mail",
+            "value" : [ "user-email" ],
+            "limit" : "1"
+          },
+          "PROVIDE" : { "entity_fetched" : { "existing_user" : "existing user" } }
+        }
+      },
+      { "CONDITIONAL" : [
+          {
+            "IF" : { "data_is_empty" : { "data" : [ "existing-user:0" ] } },
+            "DO" : [
+              { "entity_fetch" : {
+                  "USING" : { "type" : "country", "id" : [ "user-country" ] },
+                  "PROVIDE" : { "entity_fetched" : { "country_obj" : "country object" } }
+                }
+              },
+              { "entity_create" : {
+                  "USING" : {
+                    "type" : "user",
+                    "param_field_country" : [ "country-obj" ],
+                    "param_name" : [ "user-name" ],
+                    "param_mail" : [ "user-email" ]
+                  },
+                  "PROVIDE" : { "entity_created" : { "user_created" : "Created user" } }
+                }
+              },
+              { "CONDITIONAL" : [
+                  {
+                    "IF" : { "text_matches" : { "text" : [ "user-language" ], "match" : "sk", "operation" : "starts" } },
+                    "DO" : [
+                      { "data_set" : { "data" : [ "user-created:language" ], "value" : "sk" } }
+                    ]
+                  },
+                  {
+                    "ELSE IF" : { "text_matches" : { "text" : [ "user-language" ], "match" : "cs", "operation" : "starts" } },
+                    "DO" : [
+                      { "data_set" : { "data" : [ "user-created:language" ], "value" : "sk" } }
+                    ]
+                  },
+                  { "ELSE" : [
+                      { "data_set" : { "data" : [ "user-created:language" ], "value" : "en" } }
+                    ]
+                  }
+                ]
+              },
+              { "entity_save" : { "data" : [ "user-created" ], "immediate" : "1" } },
+              { "user_unblock" : { "account" : [ "user-created" ] } },
+              { "data_set" : { "data" : [ "rovas-uid" ], "value" : [ "user-created:uid" ] } },
+              { "services_auth_apikeys_rules_action_generate_token_api_key" : {
+                  "USING" : {
+                    "user_id" : [ "rovas-uid" ],
+                    "service_endpoint" : [ "service_endpoint" ]
+                  },
+                  "PROVIDE" : {
+                    "generated_api_key" : { "generated_api_key" : "API Key Generated" },
+                    "generated_token" : { "generated_token_akey" : "Token Generated\/API Key Generated" }
+                  }
+                }
+              },
+              { "php_eval" : { "code" : "\/\/add \u0022nabezky\u0022 hybridauth provider to the Rovas user\u0027s account. This will allow a nabezky user to log into Rovas with nabezky credentials\r\n\r\n$dataarray = array (\r\n\t\u0027identifier\u0027 =\u003E $user_id,\r\n\t\u0027username\u0027 =\u003E $user_name,\r\n\t\u0027photoURL\u0027 =\u003E \u0027\u0027,\r\n\t\u0027emailVerified\u0027 =\u003E $user_email,\r\n\t\u0027email\u0027 =\u003E $user_email,\r\n\t\u0027language\u0027 =\u003E $user_language,\r\n\t\u0027profileURL\u0027 =\u003E $server_url . \u0027user\/\u0027 . $user_id,\r\n\t\u0027provider\u0027 =\u003E $provider,\r\n);\r\n\r\n$data = serialize($dataarray);\r\n\r\n$record = db_insert(\u0027hybridauth_identity\u0027)\r\n-\u003Efields(array(\r\n  \u0027uid\u0027 =\u003E $rovas_uid,\r\n  \u0027provider\u0027 =\u003E $provider,\r\n  \u0027provider_identifier\u0027 =\u003E $user_id,\r\n  \u0027data\u0027 =\u003E $data,\r\n))\r\n-\u003Eexecute();\r\n\r\n$data = $user_created-\u003Edata;\r\nif (!isset($data[\u0027hybridauth\u0027])) {\r\n$edit[\u0027data\u0027] = array(\u0027hybridauth\u0027 =\u003E $dataarray);\r\nuser_save($user_created,$edit);\r\n}" } },
+              { "component_rules_send_welcome_email" : { "user_object" : [ "user-created" ] } }
+            ]
+          },
+          { "ELSE" : [
+              { "data_set" : { "data" : [ "rovas-uid" ], "value" : [ "existing-user:0:uid" ] } },
+              { "component_rules_retrieve_user_s_api_key_and_token" : {
+                  "USING" : { "uid" : [ "user-id" ], "service_endpoint" : [ "service-endpoint" ] },
+                  "PROVIDE" : {
+                    "api_key" : { "check_api_key" : "check api key" },
+                    "token" : { "check_token" : "check token" }
+                  }
+                }
+              },
+              { "CONDITIONAL" : [
+                  {
+                    "IF" : { "data_is_empty" : { "data" : [ "check-api-key" ] } },
+                    "DO" : [
+                      { "services_auth_apikeys_rules_action_generate_token_api_key" : {
+                          "USING" : {
+                            "user_id" : [ "rovas-uid" ],
+                            "service_endpoint" : [ "service_endpoint" ]
+                          },
+                          "PROVIDE" : {
+                            "generated_api_key" : { "generated_api_key" : "API Key Generated" },
+                            "generated_token" : { "bla" : "bla" }
+                          }
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              { "variable_add" : {
+                  "USING" : { "type" : "user", "value" : [ "existing-user:0" ] },
+                  "PROVIDE" : { "variable_added" : { "user_object" : "user object" } }
+                }
+              },
+              { "CONDITIONAL" : [
+                  {
+                    "IF" : { "php_eval" : { "code" : "$result = db_query(\u0022SELECT provider FROM {hybridauth_identity} WHERE uid = :uid AND provider = :provider\u0022,array(\u0027:uid\u0027 =\u003E $user_object-\u003Euid,\u0027:provider\u0027 =\u003E $provider));\r\n\r\n$record = $result-\u003EfetchAssoc();\r\nreturn empty($record);" } },
+                    "DO" : [
+                      { "php_eval" : { "code" : "$dataarray = array (\r\n\t\u0027identifier\u0027 =\u003E $user_id,\r\n\t\u0027username\u0027 =\u003E $user_name,\r\n\t\u0027photoURL\u0027 =\u003E \u0027\u0027,\r\n\t\u0027emailVerified\u0027 =\u003E $user_email,\r\n\t\u0027email\u0027 =\u003E $user_email,\r\n\t\u0027language\u0027 =\u003E $user_language,\r\n\t\u0027profileURL\u0027 =\u003E $server_url . \u0027user\/\u0027 . $user_id,\r\n\t\u0027provider\u0027 =\u003E $provider,\r\n);\r\n\r\n$data = serialize($dataarray);\r\n\r\n$record = db_insert(\u0027hybridauth_identity\u0027)\r\n-\u003Efields(array(\r\n  \u0027uid\u0027 =\u003E $rovas_uid,\r\n  \u0027provider\u0027 =\u003E $provider,\r\n  \u0027provider_identifier\u0027 =\u003E $user_id,\r\n  \u0027data\u0027 =\u003E $data,\r\n))\r\n-\u003Eexecute();" } }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      { "component_rules_retrieve_user_s_api_key_and_token" : {
+          "USING" : { "uid" : [ "rovas-uid" ], "service_endpoint" : [ "service-endpoint" ] },
+          "PROVIDE" : {
+            "api_key" : { "retrieved_api_key" : "retrieved api key" },
+            "token" : { "retrieved_token" : "retrieved token" }
+          }
+        }
+      },
+      { "data_set" : { "data" : [ "api-key" ], "value" : [ "retrieved-api-key" ] } },
+      { "data_set" : { "data" : [ "token" ], "value" : [ "retrieved-token" ] } }
+    ],
+    "PROVIDES VARIABLES" : [ "rovas_uid", "api_key", "token" ]
+  }
+}

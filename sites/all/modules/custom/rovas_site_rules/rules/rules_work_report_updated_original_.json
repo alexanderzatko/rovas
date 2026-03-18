@@ -1,0 +1,50 @@
+{ "rules_work_report_updated_original_" : {
+    "LABEL" : "Work report updated",
+    "PLUGIN" : "reaction rule",
+    "OWNER" : "rules",
+    "TAGS" : [ "chrons", "work report" ],
+    "REQUIRES" : [ "rules", "php" ],
+    "ON" : { "node_update--work_report" : { "bundle" : "work_report" } },
+    "IF" : [
+      { "node_is_published" : { "node" : [ "node" ] } },
+      { "NOT AND" : [
+          { "php_eval" : { "code" : "\/\/had to do this with php, because comparison with the rules-provided action was not comparing the same values for unchanged \u0022irrational\u0022 numbers, like 0.3333333333 vs 0.33333\r\nreturn round($node-\u003Efield_hours_worked[\u0027und\u0027][0][\u0027value\u0027],2) == round($node_unchanged-\u003Efield_hours_worked[\u0027und\u0027][0][\u0027value\u0027],2);" } },
+          { "php_eval" : { "code" : "\/\/had to do this with php, because comparison with the rules-provided action was not comparing the same values for unchanged \u0022irrational\u0022 numbers, like 0.3333333333 vs 0.33333\r\nreturn round($node-\u003Efield_chrons_to_grant[\u0027und\u0027][0][\u0027value\u0027],2) == round($node_unchanged-\u003Efield_chrons_to_grant[\u0027und\u0027][0][\u0027value\u0027],2);" } }
+        ]
+      }
+    ],
+    "DO" : [
+      { "component_rules_calculate_work_hours_per_day" : {
+          "USING" : { "user_to_check" : [ "node:author" ] },
+          "PROVIDE" : { "hours_per_day" : { "hours_per_day" : "hours per day" } }
+        }
+      },
+      { "component_rules_check_time_validity_when_work_report_is_saved" : { "work_report" : [ "node" ], "wr_hours" : [ "hours-per-day" ] } },
+      { "data_calc" : {
+          "USING" : {
+            "input_1" : [ "node:field-chrons-to-grant" ],
+            "op" : "-",
+            "input_2" : [ "node-unchanged:field-chrons-to-grant" ]
+          },
+          "PROVIDE" : { "result" : { "chrons_diff" : "Chron difference" } }
+        }
+      },
+      { "data_calc" : {
+          "USING" : {
+            "input_1" : [ "node:field-hours-worked" ],
+            "op" : "-",
+            "input_2" : [ "node-unchanged:field-hours-worked" ]
+          },
+          "PROVIDE" : { "result" : { "time_delta" : "Time delta" } }
+        }
+      },
+      { "component_rules_update_user_s_labor_count_for_a_project_" : {
+          "project_id" : [ "node-unchanged:field-project:nid" ],
+          "user_obj" : [ "node-unchanged:author" ],
+          "hours_delta" : [ "time-delta" ]
+        }
+      },
+      { "redirect" : { "url" : [ "node:field-project:url" ] } }
+    ]
+  }
+}

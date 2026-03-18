@@ -1,0 +1,83 @@
+{ "rules_determine_verification_outcome" : {
+    "LABEL" : "determine verification outcome",
+    "PLUGIN" : "rule",
+    "OWNER" : "rules",
+    "TAGS" : [ "work report" ],
+    "REQUIRES" : [ "rules", "rules_conditional" ],
+    "USES VARIABLES" : {
+      "wr_object" : { "label" : "work report", "type" : "node" },
+      "outcome" : { "label" : "outcome", "type" : "integer", "parameter" : false },
+      "count" : { "label" : "count", "type" : "integer", "parameter" : false }
+    },
+    "IF" : [
+      { "entity_is_of_bundle" : {
+          "entity" : [ "wr-object" ],
+          "type" : "node",
+          "bundle" : { "value" : { "work_report" : "work_report" } }
+        }
+      }
+    ],
+    "DO" : [
+      { "data_set" : { "data" : [ "count" ], "value" : "0" } },
+      { "variable_add" : {
+          "USING" : { "type" : "integer", "value" : "0" },
+          "PROVIDE" : { "variable_added" : { "test" : "test" } }
+        }
+      },
+      { "LOOP" : {
+          "USING" : { "list" : [ "wr-object:field-verification-slip" ] },
+          "ITEM" : { "this_slip" : "this slip" },
+          "DO" : [
+            { "CONDITIONAL" : [
+                {
+                  "IF" : { "entity_is_of_bundle" : {
+                      "entity" : [ "this-slip" ],
+                      "type" : "node",
+                      "bundle" : { "value" : { "verification" : "verification" } }
+                    }
+                  },
+                  "DO" : [
+                    { "data_set" : {
+                        "data" : [ "count" ],
+                        "value" : { "select" : "count", "num_offset" : { "value" : "1" } }
+                      }
+                    },
+                    { "variable_add" : {
+                        "USING" : { "type" : "boolean", "value" : [ "this-slip:field-verdict" ] },
+                        "PROVIDE" : { "variable_added" : { "this_verdict" : "this verdict" } }
+                      }
+                    },
+                    { "data_convert" : {
+                        "USING" : { "type" : "integer", "value" : [ "this-verdict" ] },
+                        "PROVIDE" : { "conversion_result" : { "this_verdict_int" : "this verdict int" } }
+                      }
+                    },
+                    { "data_calc" : {
+                        "USING" : { "input_1" : [ "test" ], "op" : "+", "input_2" : [ "this-verdict-int" ] },
+                        "PROVIDE" : { "result" : { "tempc" : "tempc" } }
+                      }
+                    },
+                    { "data_set" : { "data" : [ "test" ], "value" : [ "tempc" ] } }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      },
+      { "CONDITIONAL" : [
+          {
+            "IF" : { "data_is" : { "data" : [ "test" ], "op" : "\u003E", "value" : "1" } },
+            "DO" : [ { "data_set" : { "data" : [ "outcome" ], "value" : "1" } } ]
+          },
+          {
+            "ELSE IF" : { "data_is" : { "data" : [ "test" ], "value" : "1" } },
+            "DO" : [ { "data_set" : { "data" : [ "outcome" ], "value" : "-1" } } ]
+          },
+          { "ELSE" : [ { "data_set" : { "data" : [ "outcome" ], "value" : "0" } } ] }
+        ]
+      }
+    ],
+    "PROVIDES VARIABLES" : [ "outcome", "count" ]
+  }
+}

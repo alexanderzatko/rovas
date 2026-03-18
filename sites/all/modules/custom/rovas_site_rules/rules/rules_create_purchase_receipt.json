@@ -1,0 +1,84 @@
+{ "rules_create_purchase_receipt" : {
+    "LABEL" : "create purchase receipt",
+    "PLUGIN" : "rule",
+    "OWNER" : "rules",
+    "TAGS" : [ "purchase" ],
+    "REQUIRES" : [ "rules", "rules_conditional", "rovas_base" ],
+    "USES VARIABLES" : {
+      "buyer_uid" : { "label" : "buyer uid", "type" : "integer" },
+      "product_id" : { "label" : "purchased product ID", "type" : "integer" },
+      "total_reward" : { "label" : "total reward amount", "type" : "decimal" },
+      "description" : { "label" : "Description", "type" : "text" },
+      "wreport_id" : {
+        "label" : "rewarded report ID",
+        "type" : "integer",
+        "allow null" : true
+      },
+      "receipt_id" : { "label" : "receipt id", "type" : "integer", "parameter" : false }
+    },
+    "DO" : [
+      { "data_set" : { "data" : [ "receipt-id" ], "value" : "0" } },
+      { "entity_fetch" : {
+          "USING" : { "type" : "user", "id" : [ "buyer-uid" ] },
+          "PROVIDE" : { "entity_fetched" : { "buyer_object" : "buyer object" } }
+        }
+      },
+      { "entity_fetch" : {
+          "USING" : { "type" : "node", "id" : [ "product-id" ], "revision_id" : "0" },
+          "PROVIDE" : { "entity_fetched" : { "purchased_object" : "purchased product object" } }
+        }
+      },
+      { "entity_create" : {
+          "USING" : {
+            "type" : "node",
+            "param_type" : "purchase_receipt",
+            "param_title" : "ignore",
+            "param_author" : "1"
+          },
+          "PROVIDE" : { "entity_created" : { "receipt_created" : "Created purchase receipt" } }
+        }
+      },
+      { "entity_modify" : {
+          "entity" : [ "receipt-created" ],
+          "properties" : { "value" : {
+              "field_buyer" : "field_buyer",
+              "field_receipt_project" : "field_receipt_project",
+              "field_amount_paid" : "field_amount_paid",
+              "field_note" : "field_note",
+              "language" : "language",
+              "body" : "body"
+            }
+          },
+          "param_field_buyer" : [ "buyer-object" ],
+          "param_field_receipt_project" : [ "purchased-object" ],
+          "param_field_amount_paid" : [ "total-reward" ],
+          "param_field_note" : [ "description" ],
+          "param_language" : [ "purchased-object:author:language" ],
+          "param_body" : [ "receipt-created:body" ]
+        }
+      },
+      { "CONDITIONAL" : [
+          {
+            "IF" : { "data_is" : { "data" : [ "wreport-id" ], "op" : "\u003E", "value" : "0" } },
+            "DO" : [
+              { "entity_fetch" : {
+                  "USING" : { "type" : "node", "id" : [ "wreport-id" ] },
+                  "PROVIDE" : { "entity_fetched" : { "work_report" : "work report" } }
+                }
+              },
+              { "data_set" : {
+                  "data" : [ "receipt-created:field-rewarded-report" ],
+                  "value" : [ "work-report" ]
+                }
+              }
+            ]
+          }
+        ]
+      },
+      { "rules_set_fresh_timestamps" : { "node" : [ "receipt-created" ] } },
+      { "entity_save" : { "data" : [ "receipt-created" ], "immediate" : "1" } },
+      { "data_set" : { "data" : [ "receipt-id" ], "value" : [ "receipt-created:nid" ] } }
+    ],
+    "PROVIDES VARIABLES" : [ "receipt_id" ]
+  }
+}

@@ -1,0 +1,74 @@
+{ "rules_create_aur" : {
+    "LABEL" : "Create AUR",
+    "PLUGIN" : "rule",
+    "OWNER" : "rules",
+    "TAGS" : [ "aur" ],
+    "REQUIRES" : [ "rules", "rules_conditional" ],
+    "USES VARIABLES" : {
+      "owner_project" : { "label" : "Owner project", "type" : "node" },
+      "usage_fee" : { "label" : "Asset usage fee", "type" : "decimal" },
+      "consumer" : { "label" : "Consumer", "type" : "user" },
+      "note" : { "label" : "Note", "type" : "text", "allow null" : true },
+      "work_report" : { "label" : "Work report", "type" : "node", "allow null" : true },
+      "result" : { "label" : "Result", "type" : "integer", "parameter" : false }
+    },
+    "DO" : [
+      { "entity_create" : {
+          "USING" : {
+            "type" : "node",
+            "param_type" : "asset_usage_record",
+            "param_title" : "temp",
+            "param_author" : "1"
+          },
+          "PROVIDE" : { "entity_created" : { "aur" : "aur" } }
+        }
+      },
+      { "CONDITIONAL" : [
+          {
+            "IF" : { "data_is_empty" : { "data" : [ "work-report" ] } },
+            "DO" : [
+              { "entity_modify" : {
+                  "entity" : [ "aur" ],
+                  "properties" : { "value" : {
+                      "field__asset_owning_project" : "field__asset_owning_project",
+                      "field_asset_usage_fee" : "field_asset_usage_fee",
+                      "field_note" : "field_note",
+                      "field_usager" : "field_usager"
+                    }
+                  },
+                  "param_field__asset_owning_project" : [ "owner-project" ],
+                  "param_field_asset_usage_fee" : [ "usage-fee" ],
+                  "param_field_note" : [ "note" ],
+                  "param_field_usager" : [ "consumer" ]
+                }
+              }
+            ]
+          },
+          { "ELSE" : [
+              { "entity_modify" : {
+                  "entity" : [ "aur" ],
+                  "properties" : { "value" : {
+                      "field__asset_owning_project" : "field__asset_owning_project",
+                      "field_work_report" : "field_work_report",
+                      "field_asset_usage_fee" : "field_asset_usage_fee",
+                      "field_usager" : "field_usager",
+                      "field_note" : "field_note"
+                    }
+                  },
+                  "param_field_work_report" : [ "work-report" ],
+                  "param_field__asset_owning_project" : [ "owner-project" ],
+                  "param_field_asset_usage_fee" : [ "usage-fee" ],
+                  "param_field_note" : [ "note" ],
+                  "param_field_usager" : [ "consumer" ]
+                }
+              }
+            ]
+          }
+        ]
+      },
+      { "entity_save" : { "data" : [ "aur" ], "immediate" : "1" } },
+      { "data_set" : { "data" : [ "result" ], "value" : [ "aur:nid" ] } }
+    ],
+    "PROVIDES VARIABLES" : [ "result" ]
+  }
+}

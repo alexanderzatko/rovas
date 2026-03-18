@@ -1,0 +1,48 @@
+{ "rules_do_not_allow_change_of_status_if_product_was_purchased_or_" : {
+    "LABEL" : "Do not allow change of status if product was purchased or expired",
+    "PLUGIN" : "reaction rule",
+    "OWNER" : "rules",
+    "TAGS" : [ "project" ],
+    "REQUIRES" : [ "rules" ],
+    "ON" : { "node_update--project" : { "bundle" : "project" } },
+    "IF" : [
+      { "NOT data_is_empty" : { "data" : [ "node-unchanged" ] } },
+      { "OR" : [
+          { "AND" : [
+              { "data_is" : { "data" : [ "node-unchanged:field-status" ], "value" : "3" } },
+              { "NOT data_is" : { "data" : [ "node:field-status" ], "value" : "3" } },
+              { "NOT user_has_role" : {
+                  "account" : [ "site:current-user" ],
+                  "roles" : { "value" : { "3" : "3" } },
+                  "operation" : "OR"
+                }
+              }
+            ]
+          },
+          { "AND" : [
+              { "data_is" : { "data" : [ "node-unchanged:field-status" ], "value" : "2" } },
+              { "NOT data_is" : { "data" : [ "node:field-status" ], "value" : "2" } },
+              { "NOT user_has_role" : {
+                  "account" : [ "site:current-user" ],
+                  "roles" : { "value" : { "3" : "3" } }
+                }
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "DO" : [
+      { "data_set" : {
+          "data" : [ "node:field-status" ],
+          "value" : [ "node-unchanged:field-status" ]
+        }
+      },
+      { "drupal_message" : {
+          "message" : "Status of sold or expired products can not be changed.",
+          "type" : "error"
+        }
+      }
+    ]
+  }
+}

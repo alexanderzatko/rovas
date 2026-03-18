@@ -1,0 +1,4 @@
+name = Rovas common functions
+description = Generic functions common to all Rovas functionality
+core = 7.x
+package = Rovas

@@ -1,0 +1,36 @@
+{ "rules_change_user_role_when_merits_is_negative" : {
+    "LABEL" : "change user role when merits is negative",
+    "PLUGIN" : "reaction rule",
+    "OWNER" : "rules",
+    "TAGS" : [ "logic" ],
+    "REQUIRES" : [ "rules", "userpoints_rules" ],
+    "ON" : { "userpoints_event_points_awarded_after" : [] },
+    "IF" : [
+      { "user_has_role" : {
+          "account" : [ "userpoints-transaction:user" ],
+          "roles" : { "value" : { "4" : "4" } }
+        }
+      },
+      { "component_rules_merit_score_is_negative" : { "user" : [ "userpoints-transaction:user" ] } }
+    ],
+    "DO" : [
+      { "user_add_role" : {
+          "account" : [ "userpoints-transaction:user" ],
+          "roles" : { "value" : { "5" : "5" } }
+        }
+      },
+      { "user_remove_role" : {
+          "account" : [ "userpoints-transaction:user" ],
+          "roles" : { "value" : { "4" : "4" } }
+        }
+      },
+      { "mail" : {
+          "to" : [ "userpoints-transaction:user:mail" ],
+          "subject" : "Rovas - privileges lost",
+          "message" : "[userpoints-transaction:user:name],\r\n\r\nYou have lost some important privileges in Rovas. The reason is either not verifying the work of other users, or submitting problematic work reports.\r\nYou can regain lost privileges by increasing your merit rating.\r\n\r\nPlease see the \u003Ca href=\u0022https:\/\/rovas.app\/rules\u0022\u003ENEO rules\u003C\/a\u003E for more information.",
+          "language" : [ "userpoints-transaction:user:language" ]
+        }
+      }
+    ]
+  }
+}

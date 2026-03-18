@@ -1,0 +1,11 @@
+.page-transfer-report .text {
+    margin-bottom: 30px;
+}
+
+.page-transfer-report select#edit-target-project {
+    width: fit-content;
+}
+
+.page-transfer-report .form-item-target-project {
+    margin-bottom: 30px;
+}

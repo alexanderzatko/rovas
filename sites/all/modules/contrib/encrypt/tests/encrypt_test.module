@@ -1,0 +1,28 @@
+<?php
+
+/**
+ * @file
+ * Declares a bogus encryption method and key provider for testing purposes.
+ */
+
+/**
+ * Implements hook_help().
+ */
+function encrypt_test_help($path, $arg) {
+  switch ($path) {
+    case 'admin/help#encrypt_test':
+      $output = '<p>'
+        . t('This module declares a bogus encryption method and key provider for testing purposes.')
+        . '</p>';
+      return $output;
+  }
+}
+
+/**
+ * Implements hook_ctools_plugin_directory().
+ */
+function encrypt_test_ctools_plugin_directory($module, $plugin) {
+  if ($module == 'encrypt') {
+    return 'plugins/' . $plugin;
+  }
+}

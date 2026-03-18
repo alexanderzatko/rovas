@@ -1,0 +1,90 @@
+diff --git a/includes/rules.core.inc b/sites/all/modules/rules/includes/rules.core.inc
+index c308d00d..2d0ee099 100644
+--- a/includes/rules.core.inc
+++ b/includes/rules.core.inc
+@@ -713,6 +713,9 @@ abstract class RulesPlugin extends RulesExtendable {
+       elseif (isset($args[$name])) {
+         $state->addVariable($name, $args[$name], $info);
+       }
++      elseif (!empty($info['allow null']) && $info['type'] != 'hidden') {
++        $state->addVariable($name, NULL, $info);
++      }
+       elseif (empty($info['optional']) && $info['type'] != 'hidden') {
+         throw new RulesEvaluationException('Argument %name is missing.', array('%name' => $name), $this, RulesLog::ERROR);
+       }
+diff --git a/modules/php.eval.inc b/sites/all/modules/rules/modules/php.eval.inc
+index 9e705465..85571d27 100644
+--- a/modules/php.eval.inc
++++ b/modules/php.eval.inc
+@@ -39,11 +39,14 @@ class RulesPHPEvaluator extends RulesDataInputEvaluator {
+    * the PHP code is responsible for behaving appropriately.
+    */
+   public function evaluate($text, $options, RulesState $state) {
++    $var_info = $state->varInfo();
+     $vars['eval_options'] = $options;
++    $info = array();
+     foreach ($this->setting as $key => $var_name) {
+       $vars[$var_name] = $state->get($var_name);
++      $info[$var_name] = $var_info[$var_name];
+     }
+-    return rules_php_eval($text, rules_unwrap_data($vars));
++    return rules_php_eval($text, rules_unwrap_data($vars, $info));
+   }
+ 
+   public static function help($var_info) {
+diff --git a/ui/ui.core.inc b/sites/all/modules/rules/ui/ui.core.inc
+index a51c6af1..744d83ec 100644
+--- a/ui/ui.core.inc
++++ b/ui/ui.core.inc
+@@ -590,6 +590,9 @@ class RulesPluginUI extends FacesExtender implements RulesPluginUIInterface {
+           if (!$item['usage'][0]) {
+             $vars[$item['name']]['parameter'] = FALSE;
+           }
++          elseif (empty($item['required'])) {
++            $vars[$item['name']]['allow null'] = TRUE;
++          }
+           if ($item['usage'][1] && isset($provides)) {
+             $provides[] = $item['name'];
+           }
+@@ -657,6 +660,20 @@ class RulesPluginUI extends FacesExtender implements RulesPluginUIInterface {
+     if ($this->element instanceof RulesConditionContainer) {
+       $form['usage']['#disabled'] = TRUE;
+     }
++    $usage_class = drupal_html_id('rules-variable-usage' . ($name ? "-$name" : ''));
++    $form['usage']['#attributes']['class'][] = $usage_class;
++    $form['required'] = array(
++      '#type' => 'checkbox',
++      '#default_value' => empty($info['allow null']),
++      '#states' => array(
++        'enabled' => array(
++          "select.$usage_class:enabled" => array(
++            array('value' => '10'),
++            array('value' => '11'),
++          ),
++        ),
++      ),
++    );
+ 
+     // Just set the weight #default_value for the returned form.
+     $form['weight'] = array(
+diff --git a/ui/ui.theme.inc b/sites/all/modules/rules/ui/ui.theme.inc
+index 42bf6e82..c6cd0aca 100644
+--- a/ui/ui.theme.inc
++++ b/ui/ui.theme.inc
+@@ -64,7 +64,7 @@ function theme_rules_ui_variable_form($variables) {
+   $elements = $variables['element'];
+ 
+   $table['#theme'] = 'table';
+-  $table['#header'] = array(t('Data type'), t('Label'), t('Machine name'), t('Usage'), array('data' => t('Weight'), 'class' => array('tabledrag-hide')));
++  $table['#header'] = array(t('Data type'), t('Label'), t('Machine name'), t('Usage'), t('Required'), array('data' => t('Weight'), 'class' => array('tabledrag-hide')));
+   $table['#attributes']['id'] = 'rules-' . drupal_html_id($elements['#title']) . '-id';
+ 
+   foreach (element_children($elements['items']) as $key) {
+@@ -77,6 +77,7 @@ function theme_rules_ui_variable_form($variables) {
+     $row[] = array('data' => $element['label']);
+     $row[] = array('data' => $element['name']);
+     $row[] = array('data' => $element['usage']);
++    $row[] = array('data' => $element['required']);
+     $row[] = array('data' => $element['weight']);
+     $row = array('data' => $row) + $element['#attributes'];
+     $row['class'][] = 'draggable';

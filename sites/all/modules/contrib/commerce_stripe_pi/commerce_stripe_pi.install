@@ -1,0 +1,85 @@
+<?php
+
+/**
+ * @file
+ * Contains requirements function for Commerce Stripe.
+ */
+
+/**
+ * Implements hook_requirements().
+ */
+function commerce_stripe_pi_requirements($phase) {
+  $requirements = array();
+
+  if ($phase === 'runtime') {
+    $t = get_t();
+    // Check for the Stripe PHP library.
+    if (file_exists(libraries_get_path('stripe-php') . '/lib/Stripe.php')) {
+      $requirements['commerce_stripe_pi_php'] = array(
+        'value' => $t('Installed'),
+        'severity' => REQUIREMENT_OK,
+      );
+    }
+    else {
+      $requirements['commerce_stripe_pi_php'] = array(
+        'value' => $t('Missing!'),
+        'severity' => REQUIREMENT_ERROR,
+        'description' => $t('Stripe library missing. Download the Stripe library from <a href="@url">https://github.com/stripe/stripe-php</a> and place it in to sites/all/libraries/stripe-php', array('@url' => 'https://github.com/stripe/stripe-php')),
+      );
+    }
+    $requirements['commerce_stripe_pi_php']['title'] = $t('Stripe PHP library');
+
+    // Check for Commerce currency.
+    if (in_array(commerce_default_currency(), array(
+      'USD',
+      'CAD',
+      'EUR',
+      'GBP',
+      'AUD',
+      'CHF',
+    ))) {
+      $requirements['commerce_stripe_pi_currency'] = array(
+        'value' => $t('Valid currency'),
+        'severity' => REQUIREMENT_OK,
+      );
+    }
+    else {
+      $requirements['commerce_stripe_pi_currency'] = array(
+        'value' => $t('Invalid default currency!'),
+        'severity' => REQUIREMENT_ERROR,
+        'description' => $t('Stripe currently supports only USD, CAD, EUR, GBP, AUD and CHF as a currency.'),
+      );
+    }
+    $requirements['commerce_stripe_pi_currency']['title'] = $t('Stripe currency check');
+
+    $message = 'Commerce Stripe is currently tested with stripe-php library versions @minimum_version through @maximum_version. Your version: @installed_version.';
+    $library = libraries_load('stripe-php');
+    $detected = $library['version'];
+    $minimum_version = '6.40.0';
+    $maximum_version = '7.0.0';
+    $status = REQUIREMENT_OK;
+    $variables = array(
+      '@minimum_version' => $minimum_version,
+      '@maximum_version' => $maximum_version,
+      '@installed_version' => $detected,
+    );
+    if (version_compare($library['version'], $maximum_version, '>')) {
+      $variables['@upgrade_or_downgrade'] = 'Downgrading';
+      $status = REQUIREMENT_ERROR;
+      watchdog('commerce_stripe', $message, $variables, WATCHDOG_WARNING);
+    }
+    if (version_compare($library['version'], $minimum_version, '<')) {
+      $variables['@upgrade_or_downgrade'] = 'Upgrading';
+      $status = REQUIREMENT_ERROR;
+      watchdog('commerce_stripe', $message, $variables, WATCHDOG_WARNING);
+    }
+    $requirements['commerce_stripe_pi_php_version'] = array(
+      'title' => $t('Stripe PHP Library Version'),
+      'value' => $detected,
+      'severity' => $status,
+      'description' => $t($message, $variables),
+    );
+  }
+
+  return $requirements;
+}

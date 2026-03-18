@@ -1,0 +1,315 @@
+{ "rules_deleting_verification" : {
+    "LABEL" : "Deleting verification",
+    "PLUGIN" : "reaction rule",
+    "OWNER" : "rules",
+    "TAGS" : [ "verification", "work report" ],
+    "REQUIRES" : [ "rules", "rules_conditional", "php", "pathrules" ],
+    "ON" : { "node_delete--verification" : { "bundle" : "verification" } },
+    "IF" : [
+      { "entity_is_of_bundle" : {
+          "entity" : [ "node:field-work-report" ],
+          "type" : "node",
+          "bundle" : { "value" : { "work_report" : "work_report" } }
+        }
+      }
+    ],
+    "DO" : [
+      { "variable_add" : {
+          "USING" : { "type" : "boolean", "value" : "0" },
+          "PROVIDE" : { "variable_added" : { "blank_slot" : "blank slot" } }
+        }
+      },
+      { "variable_add" : {
+          "USING" : {
+            "type" : "list\u003Cnode\u003E",
+            "value" : [ "node:field-work-report:field-verification-slip" ]
+          },
+          "PROVIDE" : { "variable_added" : { "verification_slips" : "verification slips" } }
+        }
+      },
+      { "list_remove" : { "list" : [ "verification-slips" ], "item" : [ "node" ] } },
+      { "data_set" : {
+          "data" : [ "node:field-work-report:field-verification-slip" ],
+          "value" : [ "verification-slips" ]
+        }
+      },
+      { "variable_add" : {
+          "USING" : {
+            "type" : "decimal",
+            "value" : [ "node:field-work-report:author:field-chrons-balance" ]
+          },
+          "PROVIDE" : { "variable_added" : { "wr_author_orig_ch_balance" : "wr author orig CH balance" } }
+        }
+      },
+      { "variable_add" : {
+          "USING" : {
+            "type" : "integer",
+            "value" : [ "node:field-work-report:author:field-verification-score" ]
+          },
+          "PROVIDE" : { "variable_added" : { "verif_score_original" : "verif score original" } }
+        }
+      },
+      { "variable_add" : {
+          "USING" : {
+            "type" : "integer",
+            "value" : [ "node:field-work-report:field-verification-status" ]
+          },
+          "PROVIDE" : { "variable_added" : { "verif_status_original" : "original verif status" } }
+        }
+      },
+      { "component_rules_determine_verification_outcome" : {
+          "USING" : { "wr_object" : [ "node:field-work-report" ] },
+          "PROVIDE" : { "outcome" : { "outcome" : "outcome" }, "count" : { "count" : "count" } }
+        }
+      },
+      { "CONDITIONAL" : [
+          {
+            "IF" : { "data_is" : { "data" : [ "count" ], "op" : "\u003C", "value" : "2" } },
+            "DO" : [
+              { "data_set" : {
+                  "data" : [ "node:field-work-report:field-verification-status" ],
+                  "value" : "0"
+                }
+              },
+              { "CONDITIONAL" : [
+                  {
+                    "IF" : { "data_is" : { "data" : [ "verif-status-original" ], "value" : "2" } },
+                    "DO" : [
+                      { "data_set" : {
+                          "data" : [ "node:field-work-report:author:field-verification-score" ],
+                          "value" : { "select" : "verif-score-original", "num_offset" : { "value" : "1" } }
+                        }
+                      },
+                      { "component_rules_update_user_s_labor_count_for_a_project_" : {
+                          "project_id" : [ "node:field-work-report:field-project:nid" ],
+                          "user_obj" : [ "node:field-work-report:author" ],
+                          "hours_delta" : [ "node:field-work-report:field-hours-worked" ]
+                        }
+                      },
+                      { "component_rules_update_total_labor_count_for_a_project" : { "project_id" : [ "node:field-work-report:field-project:nid" ] } }
+                    ]
+                  },
+                  {
+                    "ELSE IF" : { "data_is" : { "data" : [ "verif-status-original" ], "value" : "1" } },
+                    "DO" : [
+                      { "data_set" : {
+                          "data" : [ "node:field-work-report:author:field-verification-score" ],
+                          "value" : { "select" : "verif-score-original", "num_offset" : { "value" : "-1" } }
+                        }
+                      },
+                      { "component_rules_update_user_chron_account" : {
+                          "user_object" : [ "node:field-work-report:author" ],
+                          "chrons_to_add" : {
+                            "select" : "node:field-work-report:field-chrons-to-grant",
+                            "php" : { "code" : "return -1 * $value;" }
+                          },
+                          "fxsp_id" : {
+                            "select" : "site:current-user:uid",
+                            "php" : { "code" : "return NULL;" }
+                          }
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "ELSE IF" : { "data_is" : { "data" : [ "outcome" ], "value" : "-1" } },
+            "DO" : [
+              { "data_set" : {
+                  "data" : [ "node:field-work-report:field-verification-status" ],
+                  "value" : "0"
+                }
+              },
+              { "CONDITIONAL" : [
+                  {
+                    "IF" : { "data_is" : { "data" : [ "verif-status-original" ], "value" : "2" } },
+                    "DO" : [
+                      { "data_set" : {
+                          "data" : [ "node:field-work-report:author:field-verification-score" ],
+                          "value" : { "select" : "verif-score-original", "num_offset" : { "value" : "1" } }
+                        }
+                      },
+                      { "component_rules_update_total_labor_count_for_a_project" : { "project_id" : [ "node:field-work-report:field-project:nid" ] } },
+                      { "component_rules_update_user_s_labor_count_for_a_project_" : {
+                          "project_id" : [ "node:field-work-report:field-project:nid" ],
+                          "user_obj" : [ "node:field-work-report:author" ],
+                          "hours_delta" : [ "node:field-work-report:field-hours-worked" ]
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "ELSE IF" : { "data_is" : { "data" : [ "verif-status-original" ], "value" : "1" } },
+                    "DO" : [
+                      { "data_set" : {
+                          "data" : [ "node:field-work-report:author:field-verification-score" ],
+                          "value" : { "select" : "verif-score-original", "num_offset" : { "value" : "-1" } }
+                        }
+                      },
+                      { "component_rules_update_user_chron_account" : {
+                          "user_object" : [ "node:field-work-report:author" ],
+                          "chrons_to_add" : {
+                            "select" : "node:field-work-report:field-chrons-to-grant",
+                            "php" : { "code" : "return -1 * $value;" }
+                          },
+                          "fxsp_id" : {
+                            "select" : "site:current-user:uid",
+                            "php" : { "code" : "return NULL;" }
+                          }
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              { "variable_add" : {
+                  "USING" : { "type" : "boolean", "value" : "1" },
+                  "PROVIDE" : { "variable_added" : { "blank_slot" : "blank slot" } }
+                }
+              }
+            ]
+          }
+        ]
+      },
+      { "data_convert" : {
+          "USING" : { "type" : "text", "value" : [ "node:url" ] },
+          "PROVIDE" : { "conversion_result" : { "node_url_as_text" : "node url as text" } }
+        }
+      },
+      { "entity_query" : {
+          "USING" : {
+            "type" : "node",
+            "property" : "field_web_address",
+            "value" : [ "node-url-as-text" ],
+            "limit" : "1"
+          },
+          "PROVIDE" : { "entity_fetched" : { "system_verification_wr" : "system verification wr" } }
+        }
+      },
+      { "CONDITIONAL" : [
+          {
+            "IF" : { "NOT data_is_empty" : { "data" : [ "system-verification-wr:0" ] } },
+            "DO" : [
+              { "entity_fetch" : {
+                  "USING" : { "type" : "node", "id" : [ "system-verification-wr:0:nid" ] },
+                  "PROVIDE" : { "entity_fetched" : { "system_wr" : "system wr" } }
+                }
+              },
+              { "CONDITIONAL" : [
+                  {
+                    "IF" : { "entity_is_of_bundle" : {
+                        "entity" : [ "system-wr" ],
+                        "type" : "node",
+                        "bundle" : { "value" : { "work_report" : "work_report" } }
+                      }
+                    },
+                    "DO" : [
+                      { "variable_add" : {
+                          "USING" : { "type" : "text" },
+                          "PROVIDE" : { "variable_added" : { "note" : "note" } }
+                        }
+                      },
+                      { "component_rules_delete_work_report" : { "node" : [ "system-wr" ], "triggering_actor" : [ "node:author:uid" ] } }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      { "variable_add" : {
+          "USING" : {
+            "type" : "uri",
+            "value" : [ "node:field-work-report:field-project:url" ]
+          },
+          "PROVIDE" : { "variable_added" : { "project_url" : "project url" } }
+        }
+      },
+      { "component_rules_rectify_dispute_object" : { "node" : [ "node" ], "triggering_actor" : "schedule" } },
+      { "entity_create" : {
+          "USING" : {
+            "type" : "node",
+            "param_type" : "verification_slot",
+            "param_title" : "Verification slot",
+            "param_author" : [ "node:field-verifier" ]
+          },
+          "PROVIDE" : { "entity_created" : { "slot" : "slot" } }
+        }
+      },
+      { "CONDITIONAL" : [
+          {
+            "IF" : { "data_is" : {
+                "data" : [ "node:field-verifier:field-verification-score" ],
+                "op" : "\u003C",
+                "value" : "0"
+              }
+            },
+            "DO" : [
+              { "variable_add" : {
+                  "USING" : { "type" : "date", "value" : "+12 hours" },
+                  "PROVIDE" : { "variable_added" : { "date" : "date" } }
+                }
+              }
+            ]
+          },
+          { "ELSE" : [
+              { "variable_add" : {
+                  "USING" : { "type" : "date", "value" : "+1 day" },
+                  "PROVIDE" : { "variable_added" : { "date" : "date" } }
+                }
+              }
+            ]
+          }
+        ]
+      },
+      { "data_set" : {
+          "data" : [ "node:field-verifier:field-verification-score" ],
+          "value" : {
+            "select" : "node:field-verifier:field-verification-score",
+            "num_offset" : { "value" : "-1" }
+          }
+        }
+      },
+      { "CONDITIONAL" : [
+          {
+            "IF" : { "php_eval" : { "code" : "return $count == 1 \u0026\u0026 !($verif_status_original \u003E 0);" } },
+            "DO" : [
+              { "data_set" : {
+                  "data" : [ "slot:field-slip-owner" ],
+                  "value" : [ "node:field-verifier" ]
+                }
+              }
+            ]
+          },
+          { "ELSE" : [
+              { "entity_modify" : {
+                  "entity" : [ "slot" ],
+                  "properties" : { "value" : {
+                      "field_verify_date" : "field_verify_date",
+                      "field_report_to_verify" : "field_report_to_verify",
+                      "field_slip_owner" : "field_slip_owner"
+                    }
+                  },
+                  "param_field_slip_owner" : [ "node:field-verifier" ],
+                  "param_field_report_to_verify" : [ "node:field-work-report" ],
+                  "param_field_verify_date" : [ "date" ]
+                }
+              }
+            ]
+          }
+        ]
+      },
+      { "CONDITIONAL" : [
+          {
+            "IF" : { "pathrules_checkpath" : { "path" : "delete" } },
+            "DO" : [ { "redirect" : { "url" : [ "project-url" ] } } ]
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -1,0 +1,4 @@
+name = Hybridauth - Drupal OAuth server connector
+description = Implements enhancements making authentication to Drupal OAuth server possible
+core = 7.x
+package = Rovas

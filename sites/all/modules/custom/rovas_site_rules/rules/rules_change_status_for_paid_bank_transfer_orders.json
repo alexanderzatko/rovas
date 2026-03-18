@@ -1,0 +1,15 @@
+{ "rules_change_status_for_paid_bank_transfer_orders" : {
+    "LABEL" : "change status for paid bank transfer orders",
+    "PLUGIN" : "reaction rule",
+    "OWNER" : "rules",
+    "TAGS" : [ "forex" ],
+    "REQUIRES" : [ "commerce_payment", "commerce_order" ],
+    "ON" : { "commerce_payment_order_paid_in_full" : [] },
+    "IF" : [
+      { "commerce_payment_selected_payment_method" : { "commerce_order" : [ "commerce_order" ], "method_id" : "bank_transfer" } }
+    ],
+    "DO" : [
+      { "commerce_order_update_status" : { "commerce_order" : [ "commerce_order" ], "order_status" : "completed" } }
+    ]
+  }
+}

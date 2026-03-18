@@ -1,0 +1,10 @@
+{ "rules_prevent_anonymous_view_orders" : {
+    "LABEL" : "prevent anonymous view orders",
+    "PLUGIN" : "reaction rule",
+    "OWNER" : "rules",
+    "REQUIRES" : [ "pathrules", "rules" ],
+    "ON" : { "init" : [] },
+    "IF" : [ { "pathrules_checkpath" : { "path" : "user\/0\/orders\/" } } ],
+    "DO" : [ { "redirect" : { "url" : "access-denied" } } ]
+  }
+}

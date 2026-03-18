@@ -1,0 +1,35 @@
+{ "rules_add_merit_allocation_for_public_project" : {
+    "LABEL" : "Add merit allocation for public project",
+    "PLUGIN" : "reaction rule",
+    "OWNER" : "rules",
+    "REQUIRES" : [ "pathrules", "php", "rules" ],
+    "ON" : { "node_view" : [] },
+    "IF" : [
+      { "pathrules_checkpath" : { "path" : "addmyself" } },
+      { "php_eval" : { "code" : "$prodobj = node_load(arg(1));\r\n$wrapper = entity_metadata_wrapper(\u0027node\u0027, $prodobj);\r\n$ownership = $wrapper-\u003Efield_participation-\u003Evalue();\r\nglobal $user;\r\n\r\n$result = db_query(\u0022SELECT *\r\nFROM {field_data_field_coworker} w, {field_data_field_project} p, {node} n\r\nWHERE w.entity_id = p.entity_id\r\nAND p.field_project_target_id = n.nid\r\nAND p.bundle = \u0027co_worker_merit_allocation\u0027\r\nAND n.nid =:node\r\nAND w.field_coworker_target_id =:usr\u0022, array(\u0027:node\u0027 =\u003E arg(1), \u0027:usr\u0027 =\u003E $user-\u003Euid));\r\n$resarray = $result-\u003EfetchAll();\r\n\r\nreturn ($ownership == 1 || $ownership == 2) \u0026\u0026 $resarray == NULL;" } }
+    ],
+    "DO" : [
+      { "entity_create" : {
+          "USING" : {
+            "type" : "node",
+            "param_type" : "co_worker_merit_allocation",
+            "param_title" : "\u003C?php return \u0022\u0022; ?\u003E",
+            "param_author" : [ "site:current-user" ]
+          },
+          "PROVIDE" : { "entity_created" : { "new_merit_alloc_record" : "The new merit alloc record" } }
+        }
+      },
+      { "data_set" : {
+          "data" : [ "new-merit-alloc-record:field-coworker" ],
+          "value" : [ "site:current-user" ]
+        }
+      },
+      { "data_set" : {
+          "data" : [ "new-merit-alloc-record:field-project" ],
+          "value" : [ "node" ]
+        }
+      },
+      { "drupal_message" : { "message" : "Success! You can start working on this product." } }
+    ]
+  }
+}

@@ -1,0 +1,20 @@
+name = Custom Formatters
+description = Allows users to easily define custom CCK Formatters.
+dependencies[] = ctools
+dependencies[] = field
+package = Fields
+configure = admin/structure/formatters
+core = 7.x
+
+
+
+; Tests
+
+files[] = tests/custom_formatters.general.test
+files[] = tests/custom_formatters.test
+; Information added by Drupal.org packaging script on 2016-07-21
+version = "7.x-2.4+7-dev"
+core = "7.x"
+project = "custom_formatters"
+datestamp = "1469080141"
+

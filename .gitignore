@@ -1,0 +1,14 @@
+# Drupal runtime
+sites/*/files/
+sites/*/private/
+sites/*/tmp/
+
+# Secrets / per-env settings
+sites/*/settings.php
+sites/*/settings.local.php
+
+# OS / editor
+.DS_Store
+
+# Vendor bins (optional)
+sites/all/vendor/bin/

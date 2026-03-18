@@ -1,0 +1,13 @@
+#express-checkout-container {
+    width: fit-content;
+    max-width: 100% !important;
+}
+
+.paymethods {
+/*    margin-top: 30px; */
+    margin-bottom: 10px;
+}
+
+.express-checkout {
+    margin-bottom: -20px;
+}

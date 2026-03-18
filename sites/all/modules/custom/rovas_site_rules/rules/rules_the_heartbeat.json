@@ -1,0 +1,252 @@
+{ "rules_the_heartbeat" : {
+    "LABEL" : "The heartbeat",
+    "PLUGIN" : "rule set",
+    "OWNER" : "rules",
+    "TAGS" : [ "schedule" ],
+    "REQUIRES" : [
+      "views_bulk_operations",
+      "rules_conditional",
+      "rules",
+      "php",
+      "privatemsg_rules",
+      "rules_scheduler"
+    ],
+    "RULES" : [
+      { "RULE" : {
+          "PROVIDE" : { "entity_list" : { "nodes" : "nodes" } },
+          "DO" : [
+            { "views_bulk_operations_action_load_list" : {
+                "USING" : { "view" : "expired_projects|default" },
+                "PROVIDE" : { "entity_list" : { "nodes" : "nodes" } }
+              }
+            },
+            { "LOOP" : {
+                "USING" : { "list" : [ "nodes" ] },
+                "ITEM" : { "node" : "node" },
+                "DO" : [
+                  { "CONDITIONAL" : [
+                      {
+                        "IF" : { "entity_is_of_bundle" : {
+                            "entity" : [ "node" ],
+                            "type" : "node",
+                            "bundle" : { "value" : { "project" : "project" } }
+                          }
+                        },
+                        "DO" : [ { "data_set" : { "data" : [ "node:field-status" ], "value" : "3" } } ]
+                      }
+                    ]
+                  }
+                ]
+              }
+            },
+            { "php_eval" : { "code" : "watchdog(\u0027debug\u0027, \u0027heartbeat - Expire projects rule executed\u0027);" } }
+          ],
+          "LABEL" : "Expire projects"
+        }
+      },
+      { "RULE" : {
+          "DO" : [
+            { "component_rules_process_asset_usage_records" : [] },
+            { "php_eval" : { "code" : "watchdog(\u0027debug\u0027, \u0027heartbeat - AURs processed\u0027);" } }
+          ],
+          "LABEL" : "process AURs"
+        }
+      },
+      { "RULE" : {
+          "PROVIDE" : { "entity_fetched" : { "open_disputes" : "open disputes" } },
+          "DO" : [
+            { "php_eval" : { "code" : "watchdog(\u0027debug\u0027,\u0027starting rule \u0022heartbeat - Allocate penalty for a dispute\u0022\u0027);" } },
+            { "entity_query" : {
+                "USING" : {
+                  "type" : "node",
+                  "property" : "field_dispute_status",
+                  "value" : "0",
+                  "limit" : "1000000000"
+                },
+                "PROVIDE" : { "entity_fetched" : { "open_disputes" : "open disputes" } }
+              }
+            },
+            { "LOOP" : {
+                "USING" : { "list" : [ "open-disputes" ] },
+                "ITEM" : { "this_dispute" : "this dispute" },
+                "DO" : [
+                  { "CONDITIONAL" : [
+                      {
+                        "IF" : { "entity_is_of_bundle" : {
+                            "entity" : [ "this-dispute" ],
+                            "type" : "node",
+                            "bundle" : { "value" : { "dispute" : "dispute" } }
+                          }
+                        },
+                        "DO" : [
+                          { "data_convert" : {
+                              "USING" : { "type" : "integer", "value" : [ "site:current-date" ] },
+                              "PROVIDE" : { "conversion_result" : { "now" : "now" } }
+                            }
+                          },
+                          { "data_convert" : {
+                              "USING" : {
+                                "type" : "integer",
+                                "value" : [ "this-dispute:field-dispute-start-date" ]
+                              },
+                              "PROVIDE" : { "conversion_result" : { "started" : "started" } }
+                            }
+                          },
+                          { "data_calc" : {
+                              "USING" : { "input_1" : [ "now" ], "op" : "-", "input_2" : [ "started" ] },
+                              "PROVIDE" : { "result" : { "difference" : "difference" } }
+                            }
+                          },
+                          { "CONDITIONAL" : [
+                              {
+                                "IF" : { "data_is" : { "data" : [ "difference" ], "op" : "\u003E", "value" : "259200" } },
+                                "DO" : [
+                                  { "variable_add" : {
+                                      "USING" : {
+                                        "type" : "integer",
+                                        "value" : {
+                                          "select" : "this-dispute:nid",
+                                          "php" : { "code" : "$sql=\u0022SELECT SUM(p.points) AS sum\r\nFROM {node} node\r\nLEFT JOIN {users} users_node ON node.uid = users_node.uid\r\nLEFT JOIN {field_data_field_dispute} d ON node.nid = d.entity_id AND (d.entity_type = \u0027node\u0027 AND d.deleted = \u00270\u0027)\r\nLEFT JOIN {field_data_field_position} pos ON node.nid = pos.entity_id AND (pos.entity_type = \u0027node\u0027 AND pos.deleted = \u00270\u0027)\r\nLEFT JOIN {userpoints_total} p ON node.uid = p.uid\r\nWHERE d.field_dispute_target_id = :dispute\r\nAND pos.field_position_value = :position\r\nAND node.status = \u00271\u0027\r\nAND node.type = \u0027dispute_party\u0027\u0022;\r\n\r\n$result = db_query($sql, array(\u0027:dispute\u0027 =\u003E $value,\u0027:position\u0027 =\u003E 1));\r\n$resarray = $result-\u003EfetchAll();\r\nwatchdog(\u0027rules\u0027,\u0027supporters: \u0027 . $resarray[0]-\u003Esum);\r\n$sup = $resarray[0]-\u003Esum;\r\n\r\n$sql=\u0022SELECT SUM(p.points) AS sum\r\nFROM {node} node\r\nLEFT JOIN {users} users_node ON node.uid = users_node.uid\r\nLEFT JOIN {field_data_field_dispute} d ON node.nid = d.entity_id AND (d.entity_type = \u0027node\u0027 AND d.deleted = \u00270\u0027)\r\nLEFT JOIN {field_data_field_position} pos ON node.nid = pos.entity_id AND (pos.entity_type = \u0027node\u0027 AND pos.deleted = \u00270\u0027)\r\nLEFT JOIN {userpoints_total} p ON node.uid = p.uid\r\nWHERE d.field_dispute_target_id = :dispute\r\nAND pos.field_position_value = :position\r\nAND node.status = \u00271\u0027\r\nAND node.type = \u0027dispute_party\u0027\u0022;\r\n\r\n$result = db_query($sql, array(\u0027:dispute\u0027 =\u003E $value,\u0027:position\u0027 =\u003E 2));\r\n$resarray = $result-\u003EfetchAll();\r\nwatchdog(\u0027rules\u0027,\u0027defenders: \u0027 . $resarray[0]-\u003Esum);\r\n$def = $resarray[0]-\u003Esum;\r\n\r\nreturn $sup - $def;" }
+                                        }
+                                      },
+                                      "PROVIDE" : { "variable_added" : { "merit_diff" : "Merit difference" } }
+                                    }
+                                  },
+                                  { "variable_add" : {
+                                      "USING" : {
+                                        "type" : "integer",
+                                        "value" : [ "this-dispute:field-accused:field-verification-score" ]
+                                      },
+                                      "PROVIDE" : { "variable_added" : { "verification_score" : "accuseds verification score" } }
+                                    }
+                                  },
+                                  { "CONDITIONAL" : [
+                                      {
+                                        "IF" : { "data_is" : { "data" : [ "merit-diff" ], "op" : "\u003E", "value" : "0" } },
+                                        "DO" : [
+                                          { "CONDITIONAL" : [
+                                              {
+                                                "IF" : { "entity_is_of_bundle" : {
+                                                    "entity" : [ "this-dispute:field-object-of-complaint" ],
+                                                    "type" : "node",
+                                                    "bundle" : { "value" : { "project" : "project" } }
+                                                  }
+                                                },
+                                                "DO" : [
+                                                  { "component_rules_delete_project" : {
+                                                      "project_node" : [ "this-dispute:field-object-of-complaint" ],
+                                                      "triggering_actor" : "schedule"
+                                                    }
+                                                  }
+                                                ]
+                                              },
+                                              {
+                                                "ELSE IF" : { "entity_is_of_bundle" : {
+                                                    "entity" : [ "this-dispute:field-object-of-complaint" ],
+                                                    "type" : "node",
+                                                    "bundle" : { "value" : { "work_report" : "work_report" } }
+                                                  }
+                                                },
+                                                "DO" : [
+                                                  { "component_rules_delete_work_report" : {
+                                                      "node" : [ "this-dispute:field-object-of-complaint" ],
+                                                      "triggering_actor" : "schedule"
+                                                    }
+                                                  }
+                                                ]
+                                              },
+                                              {
+                                                "ELSE IF" : { "entity_is_of_bundle" : {
+                                                    "entity" : [ "this-dispute" ],
+                                                    "type" : "node",
+                                                    "bundle" : { "value" : { "verification" : "verification" } }
+                                                  }
+                                                },
+                                                "DO" : [ { "entity_delete" : { "data" : [ "this-dispute" ] } } ]
+                                              },
+                                              { "ELSE" : [
+                                                  { "privatemsg_rules_new" : {
+                                                      "USING" : {
+                                                        "recipient" : "1",
+                                                        "author" : "1",
+                                                        "subject" : "Illegal value found during schedule run",
+                                                        "body" : "During execution of the rules_the_punisher rule a dispute object was found of unexpected type. Here are the details:\r\ndispute: \u003Ca href=\u0022\/node\/[this-dispute:nid]\u0022\u003E[this-dispute:title]\u003C\/a\u003E\r\ndispute object type: [this-dispute:field_object_of_complaint_type]"
+                                                      },
+                                                      "PROVIDE" : { "thread_id" : { "thread_id" : "ID of new thread" } }
+                                                    }
+                                                  }
+                                                ]
+                                              }
+                                            ]
+                                          }
+                                        ]
+                                      },
+                                      {
+                                        "ELSE IF" : { "data_is" : { "data" : [ "merit-diff" ], "value" : "0" } },
+                                        "DO" : [
+                                          { "data_set" : {
+                                              "data" : [ "this-dispute:field-accused:field-verification-score" ],
+                                              "value" : { "select" : "verification-score", "num_offset" : { "value" : "1" } }
+                                            }
+                                          },
+                                          { "data_set" : { "data" : [ "this-dispute:field-dispute-status" ], "value" : "5" } },
+                                          { "component_rules_set_role_for_the_accused" : {
+                                              "affected_dispute" : [ "this-dispute" ],
+                                              "role_to_set" : { "value" : [ "4" ] }
+                                            }
+                                          },
+                                          { "component_rules_send_email_to_dispute_parties" : {
+                                              "dispute_node" : [ "this-dispute" ],
+                                              "message_body" : "The three day contest period for dispute \u003Ca href=\u0022\/node\/[this-dispute:nid]\u0022\u003E[this-dispute:title]\u003C\/a\u003E in which you took part expired and the dispute was closed.\r\n\r\nPlease do not respond to this message, as the sender account is not monitored.",
+                                              "user_to_skip" : [ "site:current-user" ]
+                                            }
+                                          }
+                                        ]
+                                      },
+                                      { "ELSE" : [
+                                          { "data_set" : {
+                                              "data" : [ "this-dispute:field-accused:field-verification-score" ],
+                                              "value" : { "select" : "verification-score", "num_offset" : { "value" : "1" } }
+                                            }
+                                          },
+                                          { "data_set" : { "data" : [ "this-dispute:field-dispute-status" ], "value" : "3" } },
+                                          { "component_rules_set_role_for_the_accused" : {
+                                              "affected_dispute" : [ "this-dispute" ],
+                                              "role_to_set" : { "value" : [ "4" ] }
+                                            }
+                                          },
+                                          { "component_rules_send_email_to_dispute_parties" : {
+                                              "dispute_node" : [ "this-dispute" ],
+                                              "message_body" : "The three day contest period for dispute \u003Ca href=\u0022\/node\/[this-dispute:nid]\u0022\u003E[this-dispute:title]\u003C\/a\u003E in which you took part expired and the dispute was closed.\r\n\r\nPlease do not respond to this message, as the sender account is not monitored.",
+                                              "user_to_skip" : [ "site:current-user" ]
+                                            }
+                                          }
+                                        ]
+                                      }
+                                    ]
+                                  }
+                                ]
+                              }
+                            ]
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              }
+            },
+            { "schedule" : {
+                "component" : "rules_the_heartbeat",
+                "date" : { "select" : "site:current-date", "date_offset" : { "value" : 600 } },
+                "identifier" : "h-beat"
+              }
+            },
+            { "php_eval" : { "code" : "watchdog(\u0027debug\u0027,\u0027rule \u0022heartbeat - Allocate penalty for a dispute\u0022 executed\u0027);" } }
+          ],
+          "LABEL" : "Allocate penalty for a dispute"
+        }
+      }
+    ]
+  }
+}

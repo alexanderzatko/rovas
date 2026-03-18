@@ -1,0 +1,37 @@
+{ "rules_create_co_worker_merit_allocation_node_for_new_project" : {
+    "LABEL" : "New PRIVATE project - create Worker Merit allocation rec.",
+    "PLUGIN" : "reaction rule",
+    "OWNER" : "rules",
+    "TAGS" : [ "logic" ],
+    "REQUIRES" : [ "rules" ],
+    "ON" : { "node_insert--project" : { "bundle" : "project" } },
+    "IF" : [
+      { "NOT data_is" : {
+          "data" : [ "node:field-participation" ],
+          "op" : "IN",
+          "value" : { "value" : { "1" : "1", "2" : "2" } }
+        }
+      }
+    ],
+    "DO" : [
+      { "entity_create" : {
+          "USING" : {
+            "type" : "node",
+            "param_type" : "co_worker_merit_allocation",
+            "param_title" : "Worker on project",
+            "param_author" : [ "node:author" ]
+          },
+          "PROVIDE" : { "entity_created" : { "entity_created" : "Created entity" } }
+        }
+      },
+      { "data_set" : {
+          "data" : [ "entity-created:field-coworker" ],
+          "value" : [ "entity-created:author" ]
+        }
+      },
+      { "data_set" : { "data" : [ "entity-created:field-merit-allocation" ], "value" : "100" } },
+      { "data_set" : { "data" : [ "entity-created:field-project" ], "value" : [ "node" ] } },
+      { "entity_save" : { "data" : [ "entity-created" ], "immediate" : "1" } }
+    ]
+  }
+}

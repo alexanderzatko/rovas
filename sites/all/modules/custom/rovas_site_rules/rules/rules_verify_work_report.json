@@ -1,0 +1,317 @@
+{ "rules_verify_work_report" : {
+    "LABEL" : "Verify work report",
+    "PLUGIN" : "reaction rule",
+    "OWNER" : "rules",
+    "TAGS" : [ "verification" ],
+    "REQUIRES" : [
+      "rules_url_argument",
+      "rules",
+      "rules_conditional",
+      "php",
+      "rules_i18n"
+    ],
+    "ON" : { "node_insert--verification" : { "bundle" : "verification" } },
+    "IF" : [
+      { "OR" : [
+          { "rules_url_argument_argument_exists" : { "argument" : "wrnid" } },
+          { "data_is" : { "data" : [ "node:field-verification-source" ], "value" : "1" } }
+        ]
+      }
+    ],
+    "DO" : [
+      { "variable_add" : {
+          "USING" : { "type" : "integer", "value" : "0" },
+          "PROVIDE" : { "variable_added" : { "send_notification" : "send notification" } }
+        }
+      },
+      { "variable_add" : {
+          "USING" : { "type" : "text" },
+          "PROVIDE" : { "variable_added" : { "note" : "note" } }
+        }
+      },
+      { "entity_fetch" : {
+          "USING" : { "type" : "node", "id" : [ "node:field-work-report:nid" ] },
+          "PROVIDE" : { "entity_fetched" : { "work_report" : "work report" } }
+        }
+      },
+      { "CONDITIONAL" : [
+          {
+            "IF" : { "entity_is_of_bundle" : {
+                "entity" : [ "work-report" ],
+                "type" : "node",
+                "bundle" : { "value" : { "work_report" : "work_report" } }
+              }
+            },
+            "DO" : [
+              { "variable_add" : {
+                  "USING" : {
+                    "type" : "decimal",
+                    "value" : {
+                      "select" : "work-report:field-hours-worked",
+                      "php" : { "code" : "return $value * 10;" }
+                    }
+                  },
+                  "PROVIDE" : { "variable_added" : { "chrons_for_wr" : "chrons for wr" } }
+                }
+              },
+              { "variable_add" : {
+                  "USING" : {
+                    "type" : "decimal",
+                    "value" : {
+                      "select" : "chrons-for-wr",
+                      "php" : { "code" : "return $value * 0.01;" }
+                    }
+                  },
+                  "PROVIDE" : { "variable_added" : { "rovas_fee" : "rovas fee" } }
+                }
+              },
+              { "list_add" : {
+                  "list" : [ "work-report:field-verification-slip" ],
+                  "item" : [ "node" ],
+                  "unique" : "1"
+                }
+              },
+              { "component_rules_determine_verification_outcome" : {
+                  "USING" : { "wr_object" : [ "work-report" ] },
+                  "PROVIDE" : { "outcome" : { "outcome" : "outcome" }, "count" : { "count" : "count" } }
+                }
+              },
+              { "variable_add" : {
+                  "USING" : {
+                    "type" : "integer",
+                    "value" : [ "work-report:author:field-verification-score" ]
+                  },
+                  "PROVIDE" : { "variable_added" : { "verif_score" : "verif score" } }
+                }
+              },
+              { "CONDITIONAL" : [
+                  {
+                    "IF" : { "data_is" : { "data" : [ "outcome" ], "value" : "1" } },
+                    "DO" : [
+                      { "data_set" : { "data" : [ "work-report:field-verification-status" ], "value" : "1" } },
+                      { "data_set" : {
+                          "data" : [ "work-report:author:field-verification-score" ],
+                          "value" : [ "verif-score" ]
+                        }
+                      },
+                      { "data_set" : {
+                          "data" : [ "work-report:field-chrons-to-grant" ],
+                          "value" : [ "chrons-for-wr" ]
+                        }
+                      },
+                      { "component_rules_update_user_chron_account" : {
+                          "user_object" : [ "work-report:author" ],
+                          "chrons_to_add" : [ "chrons-for-wr" ],
+                          "fxsp_id" : {
+                            "select" : "site:current-user:uid",
+                            "php" : { "code" : "return NULL;" }
+                          }
+                        }
+                      },
+                      { "component_rules_create_aur" : {
+                          "USING" : {
+                            "owner_project" : "1992",
+                            "usage_fee" : [ "rovas-fee" ],
+                            "consumer" : [ "work-report:author" ],
+                            "note" : "Rovas use fee of [rovas-fee:value] CH",
+                            "work_report" : [ "work_report" ]
+                          },
+                          "PROVIDE" : { "result" : { "result" : "Result" } }
+                        }
+                      },
+                      { "CONDITIONAL" : [
+                          {
+                            "IF" : { "data_is" : { "data" : [ "result" ], "value" : "0" } },
+                            "DO" : [
+                              { "mail" : {
+                                  "to" : [ "site:mail" ],
+                                  "subject" : "Could not create AUR for Rovas usage",
+                                  "message" : "It seems not enough funds were available to pay for Rovas usage, when user [work-report:author] created verified work report [work-report:menu-link].",
+                                  "from" : [ "site:mail" ],
+                                  "language" : "en"
+                                }
+                              },
+                              { "drupal_watchdog" : {
+                                  "type" : "Verify work report",
+                                  "message" : "failed to collect fee for Rovas usage when work repor [work-report:menu-link] was found valid",
+                                  "severity" : "6"
+                                }
+                              }
+                            ]
+                          }
+                        ]
+                      },
+                      { "data_set" : { "data" : [ "send-notification" ], "value" : "1" } },
+                      { "component_rules_delete_voluntary_verification_slips" : { "work_report" : [ "work_report" ] } },
+                      { "component_rules_process_fx_sandbox_project" : {
+                          "project" : [ "work-report:field-project" ],
+                          "work_report" : [ "work_report" ]
+                        }
+                      }
+                    ]
+                  },
+                  { "ELSE" : [
+                      { "data_calc" : {
+                          "USING" : { "input_1" : [ "outcome" ], "op" : "+", "input_2" : [ "count" ] },
+                          "PROVIDE" : { "result" : { "tester" : "tester" } }
+                        }
+                      },
+                      { "CONDITIONAL" : [
+                          {
+                            "IF" : { "data_is" : { "data" : [ "tester" ], "op" : "\u003E", "value" : "1" } },
+                            "DO" : [
+                              { "data_set" : { "data" : [ "work-report:field-verification-status" ], "value" : "2" } },
+                              { "data_set" : {
+                                  "data" : [ "work-report:author:field-verification-score" ],
+                                  "value" : { "select" : "verif-score", "num_offset" : { "value" : "-1" } }
+                                }
+                              },
+                              { "component_rules_update_user_s_labor_count_for_a_project_" : {
+                                  "project_id" : [ "work-report:field-project:nid" ],
+                                  "user_obj" : [ "work-report:author" ],
+                                  "hours_delta" : {
+                                    "select" : "work-report:field-hours-worked",
+                                    "php" : { "code" : "return $value * -1;" }
+                                  }
+                                }
+                              },
+                              { "data_set" : { "data" : [ "send-notification" ], "value" : "2" } },
+                              { "component_rules_delete_voluntary_verification_slips" : { "work_report" : [ "work_report" ] } }
+                            ]
+                          },
+                          {
+                            "ELSE IF" : { "data_is" : { "data" : [ "count" ], "value" : "2" } },
+                            "DO" : [
+                              { "entity_save" : { "data" : [ "node" ], "immediate" : "1" } },
+                              { "component_rules_find_verifier" : {
+                                  "USING" : { "wr_object" : [ "work-report" ] },
+                                  "PROVIDE" : { "verifier_found" : { "verifier_found" : "verifier found" } }
+                                }
+                              }
+                            ]
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              },
+              { "CONDITIONAL" : [
+                  {
+                    "IF" : { "data_is" : {
+                        "data" : [ "work-report:author:field-verification-notify" ],
+                        "value" : "1"
+                      }
+                    },
+                    "DO" : [
+                      { "CONDITIONAL" : [
+                          {
+                            "IF" : { "data_is" : { "data" : [ "send-notification" ], "value" : "1" } },
+                            "DO" : [
+                              { "mail" : {
+                                  "to" : [ "node:field-work-report:author:mail" ],
+                                  "subject" : "Your work report was approved",
+                                  "message" : "Your work report [node:field-work-report:title] was approved and your account was credited with [chrons-for-wr:value] Chrons. The Rovas fee of [rovas-fee:value] CH will be subtracted from your Chron balance.\r\n\r\nYou can turn off these notifications in your \u003Ca href=\u0022[node:field-work-report:author:edit-url]\u0022\u003Euser profile\u003C\/a\u003E.",
+                                  "language" : [ "node:field-work-report:language" ]
+                                }
+                              }
+                            ]
+                          },
+                          {
+                            "ELSE IF" : { "data_is" : { "data" : [ "send-notification" ], "value" : "2" } },
+                            "DO" : [
+                              { "mail" : {
+                                  "to" : [ "work-report:author:mail" ],
+                                  "subject" : "Work report rejected",
+                                  "message" : "Your work report [node:field-work-report:title] was rejected. The verifiers might have left comments and\/or notes attached to the report, or to the verification slips. The report page is:\r\n\r\n[node:field-work-report:url]\r\n\r\nYou can turn off these notifications in your \u003Ca href=\u0022[node:field-work-report:author:edit-url]\u0022\u003Euser profile\u003C\/a\u003E.",
+                                  "language" : [ "work-report:language" ]
+                                }
+                              }
+                            ]
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      { "CONDITIONAL" : [
+          {
+            "IF" : { "NOT data_is" : { "data" : [ "node:field-verification-source" ], "value" : "1" } },
+            "DO" : [
+              { "redirect" : { "url" : "\u003C?php echo \u0027node\/\u0027 . $work_report-\u003Enid ; ?\u003E" } }
+            ]
+          }
+        ]
+      },
+      { "data_set" : {
+          "data" : [ "node:author:field-verification-score" ],
+          "value" : {
+            "select" : "node:author:field-verification-score",
+            "num_offset" : { "value" : "1" }
+          }
+        }
+      },
+      { "entity_query" : {
+          "USING" : {
+            "type" : "node",
+            "property" : "field_slip_owner",
+            "value" : [ "node:field-verifier" ],
+            "limit" : "100"
+          },
+          "PROVIDE" : { "entity_fetched" : { "fetched_slots" : "fetched slots" } }
+        }
+      },
+      { "LOOP" : {
+          "USING" : { "list" : [ "fetched-slots" ] },
+          "ITEM" : { "slot" : "slot" },
+          "DO" : [
+            { "CONDITIONAL" : [
+                {
+                  "IF" : { "entity_is_of_bundle" : {
+                      "entity" : [ "slot" ],
+                      "type" : "node",
+                      "bundle" : { "value" : { "verification_slot" : "verification_slot" } }
+                    }
+                  },
+                  "DO" : [
+                    { "CONDITIONAL" : [
+                        {
+                          "IF" : { "data_is" : {
+                              "data" : [ "slot:field-report-to-verify" ],
+                              "value" : [ "node:field-work-report" ]
+                            }
+                          },
+                          "DO" : [ { "entity_delete" : { "data" : [ "slot" ] } } ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      },
+      { "CONDITIONAL" : [
+          {
+            "IF" : { "NOT data_is_empty" : { "data" : [ "node:field-verification-note" ] } },
+            "DO" : [
+              { "mail" : {
+                  "to" : [ "work-report:author:mail" ],
+                  "subject" : "Rovas: You have a new verification note",
+                  "message" : "[work-report:author]\r\n\r\nThe verifier [node:author] attached a note for you into their \u003Ca href=\u0022[node:url]\u0022\u003EVerification\u003C\/a\u003E for the \u003Ca href=\u0022[work-report:url]\u0022\u003E[work-report:title]\u003C\/a\u003E work report",
+                  "language" : [ "work-report:language" ]
+                }
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

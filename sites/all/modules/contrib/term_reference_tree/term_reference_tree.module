@@ -1,0 +1,262 @@
+<?php
+
+module_load_include('inc', 'term_reference_tree', 'term_reference_tree.field');
+module_load_include('inc', 'term_reference_tree', 'term_reference_tree.widget');
+
+/**
+ * Implements hook_element_info().
+ */
+function term_reference_tree_element_info() {
+  $types = array(
+    'checkbox_tree' => array(
+      '#input' => TRUE,
+      '#process' => array('term_reference_tree_process_checkbox_tree'),
+      '#theme' => array('checkbox_tree'),
+      '#pre_render' => array('form_pre_render_conditional_form_element'),
+    ),
+    'checkbox_tree_level' => array(
+      '#input' => FALSE,
+      '#theme' => array('checkbox_tree_level'),
+      '#pre_render' => array('form_pre_render_conditional_form_element'),
+    ),
+    'checkbox_tree_item' => array(
+      '#input' => FALSE,
+      '#theme' => array('checkbox_tree_item'),
+      '#pre_render' => array('form_pre_render_conditional_form_element'),
+    ),
+    'checkbox_tree_label' => array(
+      '#input' => FALSE,
+      '#theme' => array('checkbox_tree_label'),
+      '#pre_render' => array('form_pre_render_conditional_form_element'),
+    ),
+    'checkbox_tree_track_list' => array(
+      '#input' => FALSE,
+      '#theme' => array('checkbox_tree_track_list'),
+      '#pre_render' => array('form_pre_render_conditional_form_element'),
+    ),
+  );
+
+  return $types;
+}
+
+/**
+ * Implements hook_theme().
+ */
+function term_reference_tree_theme() {
+  return array(
+    'checkbox_tree' => array(
+      'render element' => 'element',
+    ),
+    'checkbox_tree_level' => array(
+      'render element' => 'element',
+    ),
+    'checkbox_tree_item' => array(
+      'render element' => 'element',
+    ),
+    'checkbox_tree_label' => array(
+      'render element' => 'element',
+    ),
+    'checkbox_tree_track_list' => array(
+      'render element' => 'element',
+    ),
+    'term_tree_list' => array(
+      'render element' => 'element',
+    ),
+  );
+}
+
+/**
+ * This function returns a taxonomy term hierarchy in a nested array.
+ *
+ * @param int $tid
+ *   The ID of the root term.
+ * @param int $vid
+ *   The vocabulary ID to restrict the child search.
+ * @param array $allowed
+ *   (Optional) An array of allowed tids.
+ * @param array $expanded
+ *   (Optional) An array of parent tids to expand.
+ * @param bool $use_ajax
+ *   (Optional) TRUE if using ajax mode, default to FALSE.
+ * @param int $max_depth
+ *   (Optional) The max depth, default to NULL (unlimited).
+ *
+ * @return array
+ *   A nested array of the term's child objects.
+ */
+function _term_reference_tree_get_term_hierarchy($tid, $vid, $allowed = array(), $expanded = array(), $use_ajax = FALSE, $max_depth = NULL) {
+  $tree = _term_reference_tree_taxonomy_get_tree($vid);
+  if (!empty($allowed)) {
+    $tree['terms'] = array_intersect_key($tree['terms'], $allowed);
+  }
+
+  return _term_reference_tree_get_term_hierarchy_recursive($tid, $tree, $expanded, $use_ajax, $max_depth);
+}
+
+/**
+ * Recursive helper function for _term_reference_tree_get_term_hierarchy().
+ */
+function _term_reference_tree_get_term_hierarchy_recursive($parent_tid, $tree, $expanded, $use_ajax, $max_depth, $depth = 1) {
+  $terms = array();
+
+  if (isset($tree['children'][$parent_tid])) {
+    foreach ($tree['children'][$parent_tid] as $child_tid) {
+      $term = $tree['terms'][$child_tid];
+      $term->has_children = isset($tree['children'][$term->tid]);
+
+      if ($term->has_children) {
+        // Process children if:
+        // Max depth is not reached
+        // And we don't use ajax OR if this term must be expanded.
+        $max_depth_reached = isset($max_depth) && $depth >= $max_depth;
+        if (!$max_depth_reached && (!$use_ajax || in_array($term->tid, $expanded))) {
+          $term->children = _term_reference_tree_get_term_hierarchy_recursive($term->tid, $tree, $expanded, $use_ajax, $max_depth, $depth + 1);
+        }
+      }
+
+      $terms[$term->tid] = $term;
+    }
+  }
+
+  return $terms;
+}
+
+/**
+ * Gets all terms and their parent and children hierarchy for a given vid.
+ *
+ * @param int $vid
+ *   The taxonomy vocabulary ID.
+ *
+ * @return array
+ *   An array containing all terms, children and parent hierarchy.
+ */
+function _term_reference_tree_taxonomy_get_tree($vid) {
+  $tree = &drupal_static(__FUNCTION__, array());
+
+  if (!isset($tree[$vid])) {
+    $query = db_select('taxonomy_term_data', 't');
+    $query->join('taxonomy_term_hierarchy', 'h', 'h.tid = t.tid');
+    $query->join('taxonomy_vocabulary', 'v', 't.vid = v.vid');
+    $query->addField('v', 'machine_name', 'vocabulary_machine_name');
+    $result = $query->addTag('translatable')
+      ->addTag('taxonomy_term_access')
+      ->fields('t')
+      ->fields('h', array('parent'))
+      ->condition('t.vid', $vid)
+      ->orderBy('t.weight')
+      ->orderBy('t.name')
+      ->execute();
+
+    foreach ($result as $term) {
+      $tree[$vid]['children'][$term->parent][] = $term->tid;
+      $tree[$vid]['parents'][$term->tid][] = $term->parent;
+      $tree[$vid]['terms'][$term->tid] = $term;
+    }
+  }
+
+  drupal_alter('term_reference_get_children', $tree[$vid]);
+
+  return $tree[$vid];
+}
+
+/**
+ * Gets all parent tids for a given vid and children tids.
+ *
+ * @param int $vid
+ *   The taxonomy vocabulary ID.
+ * @param array $children_tids
+ *   An array of tids for which to retrieve the parents.
+ *
+ * @return array
+ *   All parent tids of the given children tids.
+ */
+function _term_reference_tree_taxonomy_get_parents_all($vid, $children_tids) {
+  $tree = _term_reference_tree_taxonomy_get_tree($vid);
+  return _term_reference_tree_taxonomy_get_parents_all_recursive($vid, $children_tids, $tree);
+}
+
+/**
+ * Helper function for _term_reference_tree_taxonomy_get_parents_all().
+ */
+function _term_reference_tree_taxonomy_get_parents_all_recursive($vid, $children_tids, $tree) {
+  $parents = array();
+  foreach ($children_tids as $child_tid) {
+    if (isset($tree['parents'][$child_tid])) {
+      foreach ($tree['parents'][$child_tid] as $parent_tid) {
+        $parents[$parent_tid] = $parent_tid;
+      }
+      $parents += _term_reference_tree_taxonomy_get_parents_all_recursive($vid, $tree['parents'][$child_tid], $tree);
+    }
+   }
+  return $parents;
+}
+
+/**
+ * Resolves the label to use in the widget for the given taxonomy terms.
+ *
+ * @param array $terms
+ *   The array of taxonomy terms.
+ */
+function _term_reference_tree_taxonomy_resolve_labels($terms, $token_display) {
+  if (!empty($token_display) && module_exists('token')) {
+    $loaded = entity_load('taxonomy_term', array_keys($terms));
+    foreach ($loaded as $term) {
+      $terms[$term->tid]->term_reference_tree_token = token_replace($token_display, array('term' => $term), array('clear' => TRUE));
+    }
+  }
+  elseif (module_exists('locale')) {
+    $to_resolve = array();
+    foreach ($terms as $term) {
+      if (!isset($term->term_reference_tree_label)) {
+        $to_resolve[$term->tid] = $term->tid;
+      }
+    }
+
+    $loaded = entity_load('taxonomy_term', array_keys($to_resolve));
+    foreach ($loaded as $term) {
+      $terms[$term->tid]->term_reference_tree_label = entity_label('taxonomy_term', $term);
+    }
+  }
+}
+
+function _term_reference_tree_hierarchy_flatten($terms_hierarchy) {
+  $terms = array();
+  foreach ($terms_hierarchy as $term) {
+    $terms[$term->tid] = $term;
+    if (!empty($term->children)) {
+      $terms += _term_reference_tree_hierarchy_flatten($term->children);
+
+    }
+  }
+  return $terms;
+}
+
+function _term_reference_tree_get_parent($tid) {
+  $q = db_query_range("SELECT h.parent FROM {taxonomy_term_hierarchy} h WHERE h.tid = :tid", 0, 1, array(':tid' => $tid));
+
+  $t = 0;
+  foreach ($q as $term) {
+    $t = $term->parent;
+  }
+
+  return $t;
+}
+
+/**
+ * Recursively go through the option tree and return a flat array of
+ * options
+ */
+function _term_reference_tree_flatten($element, &$form_state) {
+  $output = array();
+  $children = element_children($element);
+  foreach ($children as $c) {
+    $child = $element[$c];
+    if (array_key_exists('#type', $child) && ($child['#type'] == 'radio' || $child['#type'] == 'checkbox')) {
+      $output[] = $child;
+    }
+    else {
+      $output = array_merge($output, _term_reference_tree_flatten($child, $form_state));
+    }
+  }
+  return $output;
+}

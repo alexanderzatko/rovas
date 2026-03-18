@@ -1,0 +1,39 @@
+diff --git a/comment_notify.inc b/comment_notify.inc
+index 17632a2..859f73f 100644
+--- a/comment_notify.inc
++++ b/comment_notify.inc
+@@ -301,9 +301,9 @@ function comment_notify_unsubscribe_by_hash($hash) {
+ /**
+  * Helper function to centralize variable management and defaults.
+  *
+- * All variables fall under the "comment_notify" psuedo namespace.  This ensures
+- * consistancy, and eliminates some verbosity in the calling code.  In addition
+- * by storing all of the variables in one place, we avoid repeating duplicate
++ * All variables fall under the "comment_notify" pseudo namespace.  This ensures
++ * consistency, and eliminates some verbosity in the calling code.  In addition
++ * to storing all of the variables in one place, we avoid repeating duplicate
+  * defaults which are harder to maintain.
+  *
+  * @param string $name
+@@ -311,18 +311,18 @@ function comment_notify_unsubscribe_by_hash($hash) {
+  */
+ function comment_notify_variable_registry_get($name) {
+   $variables = array();
+-  $variables['author_subject'] = t('[site:name] :: new comment for your post.');
++  $variables['author_subject'] = t('[site:name]: new comment to your post "[comment:node:title]"');
+   $variables['available_alerts'] = array(COMMENT_NOTIFY_NODE, COMMENT_NOTIFY_COMMENT);
+   $variables['default_anon_mailalert'] = COMMENT_NOTIFY_NODE;
+   $variables['node_notify_default_mailtext'] = AUTHOR_MAILTEXT;
+   $variables['default_registered_mailalert'] = COMMENT_NOTIFY_DISABLED;
+   $variables['node_notify_default_mailalert'] = 0;
+-  $variables['watcher_subject'] = '[site:name] :: new comment on [comment:node:title]';
++  $variables['watcher_subject'] = t('[site:name]: new comment to post "[comment:node:title]"');
+   $variables['comment_notify_default_mailtext'] = DEFAULT_MAILTEXT;
+   $variables['node_types'] = array('article' => 'article');
+ 
+   // Errors
+-  $variables['error_anonymous_email_missing'] = 'If you want to subscribe to comments you must supply a valid e-mail address.';
++  $variables['error_anonymous_email_missing'] = t('If you want to subscribe to comments you must supply a valid e-mail address.');
+   return variable_get("comment_notify_" . $name, $variables[$name]);
+ }
+ 

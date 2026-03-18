@@ -1,0 +1,28 @@
+{ "rules_set_role_for_the_accused" : {
+    "LABEL" : "Set role for the accused",
+    "PLUGIN" : "rule",
+    "OWNER" : "rules",
+    "TAGS" : [ "dispute" ],
+    "REQUIRES" : [ "php", "rules" ],
+    "USES VARIABLES" : {
+      "affected_dispute" : { "label" : "The affected dispute", "type" : "node" },
+      "role_to_set" : { "label" : "User role to set", "type" : "list\u003Cinteger\u003E" }
+    },
+    "IF" : [
+      { "php_eval" : { "code" : "\/\/check if OPEN disputes other than the one being deleted\/edited exist, where the accused is the same as the accused from the deleted\/edited dispute\r\n\r\n$dispwrp = entity_metadata_wrapper(\u0027node\u0027, $affected_dispute);\r\n\r\nif($dispwrp-\u003Efield_accused-\u003EgetIdentifier()) {\r\n\t$accused_id = $dispwrp-\u003Efield_accused-\u003Euid-\u003Evalue();\r\n\r\n\t$sql=\u0022SELECT COUNT(node.nid) AS cnt\r\n\tFROM {node} node\r\n\tINNER JOIN {field_data_field_dispute_status} s ON node.nid = s.entity_id \r\n\tAND s.entity_type = \u0027node\u0027 \r\n\tAND s.deleted = \u00270\u0027\r\n\tLEFT JOIN {field_data_field_accused} a ON node.nid = a.entity_id\r\n\tAND a.entity_type = \u0027node\u0027\r\n\tAND a.deleted = \u00270\u0027\r\n\tWHERE node.nid != :exnode\r\n\tAND node.status = \u00271\u0027\r\n\tAND node.type = \u0027dispute\u0027\r\n\tAND s.field_dispute_status_value = \u00270\u0027\r\n\tAND a.field_accused_target_id = :acc\u0022;\r\n\r\n\t$result = db_query($sql, array(\u0027:acc\u0027 =\u003E $accused_id,\u0027:exnode\u0027 =\u003E $affected_dispute-\u003Enid));\r\n\t$resarray = $result-\u003EfetchAll();\r\n\t$cnt = $resarray[0]-\u003Ecnt;\r\n\treturn ($cnt == 0) ? 1 : 0;\r\n}\r\nelse\r\n\treturn false;" } },
+      { "entity_is_of_bundle" : {
+          "entity" : [ "affected-dispute" ],
+          "type" : "node",
+          "bundle" : { "value" : { "dispute" : "dispute" } }
+        }
+      }
+    ],
+    "DO" : [
+      { "data_set" : {
+          "data" : [ "affected-dispute:field-accused:roles" ],
+          "value" : [ "role-to-set" ]
+        }
+      }
+    ]
+  }
+}

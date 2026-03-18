@@ -1,0 +1,266 @@
+diff --git a/modules/entity.eval.inc b/modules/entity.eval.inc
+index 73be318c..be1bf955 100644
+--- a/modules/entity.eval.inc
++++ b/modules/entity.eval.inc
+@@ -145,6 +145,63 @@ function rules_action_entity_delete($wrapper, $settings, $state, $element) {
+   }
+ }
+ 
++/**
++ * Action: Update entity.
++ */
++function rules_action_entity_modify($args, $element) {
++  $wrapper = $args['entity'];
++  if (isset($args['properties']) && is_array($args['properties']) && ($wrapper instanceof EntityDrupalWrapper)) {
++    foreach ($args['properties'] as $name => $label) {
++      try {
++        // Update the value of each property, if possible.
++        $prop = $wrapper->get($name);
++        $prop->set($args['param_' . $name]);
++      }
++      catch (EntityMetadataWrapperException $e) {
++        throw new RulesEvaluationException('Unable to modify the "@label" property for "@selector": ' . $e->getMessage(), array('@label' => $label, '@selector' => $element->settings['entity:select']));
++      }
++    }
++  }
++}
++
++/**
++ * Info alter callback for the entity_modify action.
++ */
++function rules_action_entity_modify_info_alter(&$element_info, $element) {
++  $element->settings += array('entity:select' => NULL);
++  if ($wrapper = $element->applyDataSelector($element->settings['entity:select'])) {
++    $label = $wrapper->type();
++    if ($wrapper->getPropertyInfo()) {
++      $element_info['parameter']['properties'] = array (
++        'type' => 'list<text>',
++        'label' => t('Properties'),
++        'description' => t('Check the properties that you would like to modify for this entity.'),
++        'options list' => 'rules_action_entity_modify_properties_list_options_list',
++        'default value' => array(),
++        'restriction' => 'input',
++      );
++    }
++    if (isset($element->settings['properties']) && !empty($element->settings['properties'])) {
++      // Add the entity type's selected properties to modify.
++      foreach ($wrapper as $name => $child) {
++        $childinfo = $child->info();
++        if (!empty($element->settings['properties'][$name])) {
++          $childinfo += array('type' => 'text');
++          // Prefix parameter names to avoid name clashes with existing parameters.
++          $element_info['parameter']['param_' . $name] = array_intersect_key($childinfo, array_flip(array('type', 'label', 'description')));
++          $element_info['parameter']['param_' . $name]['options list']  = $child->optionsList() ? 'rules_action_entity_modify_parameter_options_list' : FALSE;
++          //If we don't allow this parameter to accept null values then this action can fail. So we let it be null.
++          $element_info['parameter']['param_' . $name]['allow null'] = TRUE;
++          $element_info['parameter']['param_' . $name]['default mode'] = 'selector';
++        } elseif (isset($element->settings['properties'][$name])) {
++          //When saving make it look like a select box again.
++          unset($element->settings['properties'][$name]);
++        }
++      }
++    }
++  }
++}
++
+ /**
+  * Condition: Entity is new.
+  */
+diff --git a/modules/entity.rules.inc b/modules/entity.rules.inc
+index daeb8d23..b5c46cbb 100644
+--- a/modules/entity.rules.inc
++++ b/modules/entity.rules.inc
+@@ -179,6 +179,23 @@ function rules_entity_action_info() {
+       'access' => 'rules_action_entity_savedelete_access',
+     ),
+   );
++
++  $return['entity_modify'] = array(
++    'label' => t('Modify entity'),
++    'named parameter' => TRUE,
++    'parameter' => array(
++      'entity' => array(
++        'type' => 'entity',
++        'label' => t('Entity'),
++        'description' => t('Choose the entity to modify.'),
++        'restriction' => 'selector',
++        'wrapped' => TRUE,
++      ),
++      // Further needed parameters depends on the entity selected.
++    ),
++    'group' => t('Entities'),
++    'base' => 'rules_action_entity_modify',
++  );
+   return $return;
+ }
+ 
+@@ -302,6 +319,150 @@ function rules_entity_bundle_options(RulesAbstractPlugin $element) {
+   return $bundles;
+ }
+ 
++/**
++ * Options list callback for a parameter of entity_modify.
++ */
++function rules_action_entity_modify_parameter_options_list(RulesPlugin $element, $param_name) {
++  // Remove the parameter name prefix 'param_'.
++  $property_name = substr($param_name, 6);
++  if ($wrapper = $element->applyDataSelector($element->settings['entity:select'])) {
++    // The possible values of the "parameter" are those of the particular entity "property".
++    if (isset($wrapper->$property_name)) {
++      return $wrapper->$property_name->optionsList();
++    }
++  }
++  return FALSE;
++}
++
++/**
++ * Returns the options list of available properties for the chosen entity in entity_modify.
++ */
++function rules_action_entity_modify_properties_list_options_list(RulesAbstractPlugin $element, $param_name=null) {
++  $options = array();
++  if ($wrapper = $element->applyDataSelector($element->settings['entity:select'])) {
++    foreach ($wrapper as $name => $child) {
++      $childinfo = $child->info();
++      $access = $child->access('edit');
++      if (!(FALSE === $access) && !empty($childinfo['setter callback'])){
++        $options[$name] = $childinfo['label'];
++      }
++    }
++  }
++  return $options;
++}
++
++/**
++ * Form alter callback for the entity_modify action.
++ */
++function rules_action_entity_modify_form_alter(&$form, &$form_state, $options, RulesAbstractPlugin $element) {
++  $first_step = empty($element->settings['entity:select']);
++  $second_step = (!$first_step && empty($element->settings['properties']));
++  $form['reload'] = array(
++    '#weight' => 5,
++    '#type' => 'submit',
++    '#name' => 'reload',
++    '#value' => $first_step ? t('Continue') : t('Reload form'),
++    '#limit_validation_errors' => array(array('parameter', 'entity')),
++    '#submit' => array('rules_form_submit_rebuild'),
++    '#ajax' => rules_ui_form_default_ajax(),
++    '#description' => $first_step ? '' : t('Reload the form to correct the displayed property fields.'),
++  );
++  // Use ajax and trigger as the reload button.
++  $form['parameter']['entity']['settings']['entity:select']['#ajax'] = $form['reload']['#ajax'] + array(
++    'event' => 'change',
++    'trigger_as' => array('name' => 'reload'),
++  );
++
++  if ($first_step || $second_step) {
++    // In the first step and second step only show relevant parameters.
++    foreach (element_children($form['parameter']) as $key) {
++      if (($key != 'entity') && !($second_step && ($key == 'properties'))) {
++        unset($form['parameter'][$key]);
++      }
++    }
++    unset($form['submit']);
++  } else {
++    // Remove parameters that should no longer be included in the form.
++    foreach (element_children($form['parameter']) as $key) {
++      if (($key != 'entity') && ($key != 'properties') && !isset($element->settings['properties'][substr($key, 6)])) {
++        unset($form['parameter'][$key]);
++      }
++    }
++    // Change the entity parameter to be not editable.
++    $form['parameter']['entity']['settings']['#access'] = FALSE;
++    // TODO: improve display
++    $form['parameter']['entity']['info'] = array(
++      '#prefix' => '<p>',
++      '#markup' => t('<strong>Selected entity:</strong> %selector', array('%selector' => $element->settings['entity:select'])),
++      '#suffix' => '</p>',
++    );
++
++    // Hide the reload button in case js is enabled and it's not the first step.
++    $form['reload']['#attributes'] = array('class' => array('rules-hide-js'));
++  }
++
++  if(isset($form['parameter']['properties'])) {
++    // Add #ajax to the property selection dropdown to reload the form.
++    $form['parameter']['properties']['#ajax'] = rules_ui_form_default_ajax() + array(
++      'event' => 'change',
++      'trigger_as' => array('name' => 'reload'),
++    );
++    // Transform the select box into a set of checkboxes to make it more user friendly.
++    $form['parameter']['properties']['settings']['properties']['#type'] = 'checkboxes';
++    $form['parameter']['properties']['settings']['properties']['#prefix'] = '<div class="rules-modify-properties">';
++    $form['parameter']['properties']['settings']['properties']['#suffix'] = '</div>';
++  }
++
++  // Disable #ajax for the 'entity:select' as it has troubles with lazy-loaded JS.
++  // @todo: Re-enable once JS lazy-loading is fixed in core.
++  unset($form['parameter']['entity']['settings']['entity:select']['#ajax']);
++}
++
++/**
++ * Custom access check for entity_modify action.
++ */
++function rules_action_entity_modify_access(RulesAbstractPlugin $element) {
++  if (isset($element->settings['entity:select']) && $wrapper = $element->applyDataSelector($element->settings['entity:select'])) {
++    if (!($wrapper instanceof EntityDrupalWrapper && ($access = $wrapper->access('edit') || !(isset($access))))) {
++      return FALSE;
++    }
++    if (isset($element->settings['properties'])) {
++      foreach ($element->settings['properties'] as $name => $label) {
++        try {
++          // Check access for each property, if possible.
++          if (!(($property = $wrapper->get($name)) && $property instanceof EntityMetadataWrapper && ($access = $property->access('edit') || !(isset($access))))) {
++            return FALSE;
++          }
++        }
++        catch (EntityMetadataWrapperException $e) {
++          throw new RulesIntegrityException(t('There is no "@label" property for this entity.', array('@label' => $label)), array($element, 'parameter', 'properties'));
++        }
++      }
++    }
++    return TRUE;
++  }
++}
++
++/**
++ * Custom validation callback for the entity_modify action.
++ */
++function rules_action_entity_modify_validate(RulesAbstractPlugin $element) {
++  if (isset($element->settings['entity:select']) && $wrapper = $element->applyDataSelector($element->settings['entity:select'])) {
++    foreach ($element->settings['properties'] as $name => $label) {
++      try {
++        $info = $wrapper->get($name)->info();
++        // Check that each can be modified.
++        if (empty($info['setter callback'])) {
++          throw new RulesIntegrityException(t("The selected property doesn't support writing."), array($element, 'parameter', 'param_' . $name));
++        }
++      }
++      catch (EntityMetadataWrapperException $e) {
++        throw new RulesIntegrityException(t('There is no "@label" property for this entity.', array('@label' => $label)), array($element, 'parameter', 'properties'));
++      }
++    }
++  }
++}
++
+ /**
+  * Entity actions access callback.
+  *
+diff --git a/ui/rules.ui.css b/ui/rules.ui.css
+index df21e701..247bedc5 100644
+--- a/ui/rules.ui.css
++++ b/ui/rules.ui.css
+@@ -197,6 +197,14 @@ ul.rules-autocomplete .ui-corner-all {
+   display: none;
+ }
+ 
++/**
++ * Make the entity modify action's parameter checkboxes multi-column.
++ */
++.rules-modify-properties .form-type-checkbox {
++  float: left;
++  width: 33%;
++}
++
+ /* IE 6 hack for max-height. */
+ * html ul.rule-autocomplete {
+   height: 23em;

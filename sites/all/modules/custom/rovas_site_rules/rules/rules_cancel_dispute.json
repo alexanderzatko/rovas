@@ -1,0 +1,38 @@
+{ "rules_cancel_dispute" : {
+    "LABEL" : "Cancel dispute",
+    "PLUGIN" : "rule",
+    "OWNER" : "rules",
+    "TAGS" : [ "dispute" ],
+    "REQUIRES" : [ "rules" ],
+    "USES VARIABLES" : { "dispute_node" : { "label" : "Dispute node", "type" : "node" } },
+    "IF" : [
+      { "entity_is_of_bundle" : {
+          "entity" : [ "dispute-node" ],
+          "type" : "node",
+          "bundle" : { "value" : { "dispute" : "dispute" } }
+        }
+      }
+    ],
+    "DO" : [
+      { "data_set" : { "data" : [ "dispute-node:field-dispute-status" ], "value" : "1" } },
+      { "variable_add" : {
+          "USING" : { "type" : "integer", "value" : "0" },
+          "PROVIDE" : { "variable_added" : { "open_dispute_id" : "Open dispute id" } }
+        }
+      },
+      { "component_rules_set_role_for_the_accused" : {
+          "affected_dispute" : [ "dispute-node" ],
+          "role_to_set" : { "value" : [ "4" ] }
+        }
+      },
+      { "component_rules_send_email_to_dispute_parties" : {
+          "dispute_node" : [ "dispute_node" ],
+          "message_body" : "The Dispute \u003Ca href=\u0022[dispute-node:url]\u0022\u003E[dispute-node:title]\u003C\/a\u003E where you are a participant has been canceled by the Complainant.\r\n\r\nPlease do not respond to this message, as the sender account is not monitored.",
+          "user_to_skip" : [ "site:current-user" ]
+        }
+      },
+      { "data_set" : { "data" : [ "dispute-node:comment" ], "value" : "0" } },
+      { "redirect" : { "url" : "disputes" } }
+    ]
+  }
+}

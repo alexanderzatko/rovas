@@ -1,0 +1,23 @@
+name = Rovas Site Rules
+description = Site-wide Rules configurations for Rovas, stored as portable JSON in rules/ subdirectory.
+core = 7.x
+package = Rovas
+
+dependencies[] = entity
+dependencies[] = rules
+dependencies[] = commerce
+dependencies[] = commerce_payment
+dependencies[] = commerce_order
+dependencies[] = rovas_forex
+dependencies[] = commerce_invoice_receipt
+dependencies[] = rules_conditional
+dependencies[] = rules_reldate
+dependencies[] = php
+dependencies[] = rovas_repmerger
+dependencies[] = rules_i18n
+dependencies[] = rules_variable_get
+dependencies[] = commerce_checkout
+dependencies[] = views_bulk_operations
+dependencies[] = node
+dependencies[] = user
+dependencies[] = system

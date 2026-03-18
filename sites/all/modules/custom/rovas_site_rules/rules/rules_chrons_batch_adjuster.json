@@ -1,0 +1,108 @@
+{ "rules_chrons_batch_adjuster" : {
+    "LABEL" : "chrons batch adjuster",
+    "PLUGIN" : "rule",
+    "OWNER" : "rules",
+    "REQUIRES" : [
+      "views_bulk_operations",
+      "php",
+      "rules",
+      "rules_conditional",
+      "rules_i18n"
+    ],
+    "DO" : [
+      { "views_bulk_operations_action_load_list" : {
+          "USING" : { "view" : "users_by_activity|default" },
+          "PROVIDE" : { "entity_list" : { "users" : "users" } }
+        }
+      },
+      { "LOOP" : {
+          "USING" : { "list" : [ "users" ] },
+          "ITEM" : { "user" : "Current user" },
+          "DO" : [
+            { "variable_add" : {
+                "USING" : {
+                  "type" : "text",
+                  "value" : "\u003C?php\r\n\r\n$uid = $user-\u003Euid;\r\n$vdata = views_embed_view(\u0027money_transfers\u0027,\u0027page_1\u0027,$uid,$uid,$uid);\r\n$res = preg_match(\u0027\/\u003Cdiv class=\u0022label\u0022\u003E.+\u003C\\\/div\u003E(.+)\u003C\\\/td\u003E\/\u0027,$vdata, $matches, PREG_OFFSET_CAPTURE);\r\nif ($res) {\r\n\techo round($matches[1][0],2);\r\n}\r\nelse {\r\n\techo \u0027no match\u0027;\r\n}\r\n\r\n?\u003E"
+                },
+                "PROVIDE" : { "variable_added" : { "real_chrons" : "real chron total" } }
+              }
+            },
+            { "data_convert" : {
+                "USING" : { "type" : "decimal", "value" : [ "real-chrons" ] },
+                "PROVIDE" : { "conversion_result" : { "realchr_int" : "real chrons int" } }
+              }
+            },
+            { "CONDITIONAL" : [
+                {
+                  "IF" : { "data_is" : {
+                      "data" : [ "user:field-chrons-balance" ],
+                      "op" : "\u003E",
+                      "value" : [ "realchr-int" ]
+                    }
+                  },
+                  "DO" : [
+                    { "data_calc" : {
+                        "USING" : {
+                          "input_1" : [ "user:field-chrons-balance" ],
+                          "op" : "-",
+                          "input_2" : [ "realchr-int" ]
+                        },
+                        "PROVIDE" : { "result" : { "chr_diff" : "chrons difference" } }
+                      }
+                    }
+                  ]
+                },
+                { "ELSE" : [
+                    { "data_calc" : {
+                        "USING" : {
+                          "input_1" : [ "realchr-int" ],
+                          "op" : "-",
+                          "input_2" : [ "user:field-chrons-balance" ]
+                        },
+                        "PROVIDE" : { "result" : { "chr_diff" : "chrons difference" } }
+                      }
+                    }
+                  ]
+                }
+              ]
+            },
+            { "drupal_message" : { "message" : "\u003Ca href=\u0022[user:url]\u0022\u003E[user:name]\u003C\/a\u003E: [realchr-int:value] vs [user:field-chrons-balance]" } },
+            { "CONDITIONAL" : [
+                {
+                  "IF" : { "data_is" : { "data" : [ "chr-diff" ], "op" : "\u003E", "value" : "2" } },
+                  "DO" : [
+                    { "rules_i18n_t" : {
+                        "USING" : {
+                          "text" : "Rovas - your Chron balance was adjusted",
+                          "language" : [ "user:language" ]
+                        },
+                        "PROVIDE" : { "text" : { "subject_translated" : "subject translated" } }
+                      }
+                    },
+                    { "rules_i18n_t" : {
+                        "USING" : {
+                          "text" : "Hello [user:name],\r\n\r\nDue to a software error, the balance of your Chron account might have been incorrect and in that case was adjusted. \r\nThe original balance was [user:field_chrons_balance] CH.\r\nThe new balance was set to [real-chrons:value] CH.\r\n\r\nIn order to allow you to verify our calculations, you might visit a new, temporary \u003Ca href=\u0022[user:url]\/sumchrons\u0022\u003Epage in your profile\u003C\/a\u003E, which shows all transaction on one page, together with a summary. If you are a long-time user and made a lot of transactions, the page might be slow to show up (up to a minute, maybe longer).\r\n\r\nWe apologize for the inconvenience.",
+                          "language" : [ "user:language" ]
+                        },
+                        "PROVIDE" : { "text" : { "translated_messsage" : "translated messsage" } }
+                      }
+                    },
+                    { "component_rules_send_email" : {
+                        "recipient" : [ "user:mail" ],
+                        "subject" : [ "subject-translated" ],
+                        "message" : [ "translated-messsage" ],
+                        "language" : [ "user:language" ]
+                      }
+                    },
+                    { "data_set" : { "data" : [ "user:field-chrons-balance" ], "value" : [ "realchr-int" ] } },
+                    { "drupal_message" : { "message" : "[subject-translated:value]" } }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      }
+    ]
+  }
+}

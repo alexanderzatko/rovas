@@ -1,0 +1,403 @@
+<?php
+
+/**
+ * @file
+ * Main module file for Rovas Stripe Webhooks.
+ */
+
+/**
+ * Implements hook_menu().
+ */
+function rovas_stripe_webhooks_menu() {
+  $items = array();
+
+  // Webhook endpoint
+  $items['stripe/webhook'] = array(
+    'title' => 'Stripe Webhook Endpoint',
+    'page callback' => 'rovas_stripe_webhooks_process_webhook',
+    'access callback' => TRUE,
+    'type' => MENU_CALLBACK,
+  );
+
+  // Admin configuration page
+  $items['admin/config/services/rovas-stripe-webhooks'] = array(
+    'title' => 'Rovas Stripe Webhooks',
+    'description' => 'Configure Stripe webhook settings',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('rovas_stripe_webhooks_admin_form'),
+    'access arguments' => array('administer site configuration'),
+    'type' => MENU_NORMAL_ITEM,
+    'file' => 'rovas_stripe_webhooks.admin.inc',
+  );
+
+  // Admin webhook list page
+  $items['admin/config/services/rovas-stripe-webhooks/list'] = array(
+    'title' => 'View Webhooks',
+    'description' => 'View received Stripe webhooks',
+    'page callback' => 'rovas_stripe_webhooks_admin_list',
+    'access arguments' => array('administer site configuration'),
+    'type' => MENU_LOCAL_TASK,
+    'file' => 'rovas_stripe_webhooks.admin.inc',
+  );
+
+  // Individual webhook view page
+  $items['admin/config/services/rovas-stripe-webhooks/view/%'] = array(
+    'title' => 'View Webhook',
+    'page callback' => 'rovas_stripe_webhooks_view_webhook',
+    'page arguments' => array(5),
+    'access arguments' => array('administer site configuration'),
+    'type' => MENU_CALLBACK,
+    'file' => 'rovas_stripe_webhooks.admin.inc',
+  );
+
+  return $items;
+}
+
+/**
+ * Implements hook_permission().
+ */
+function rovas_stripe_webhooks_permission() {
+  return array(
+    'administer rovas stripe webhooks' => array(
+      'title' => t('Administer Rovas Stripe Webhooks'),
+      'description' => t('Configure Stripe webhook settings and view webhook data'),
+    ),
+  );
+}
+
+/**
+ * Page callback for processing Stripe webhooks.
+ */
+function rovas_stripe_webhooks_process_webhook() {
+
+  watchdog('rovas_stripe_webhooks', 'Webhook endpoint accessed', array(), WATCHDOG_INFO);
+
+  // Set proper headers
+  drupal_add_http_header('Content-Type', 'application/json');
+  
+  $method = $_SERVER['REQUEST_METHOD'];
+  
+  // Only accept POST requests
+  if ($method !== 'POST') {
+    drupal_add_http_header('Status', '405 Method Not Allowed');
+    drupal_json_output(array('error' => 'Method not allowed'));
+    drupal_exit();
+  }
+
+  // Get the raw POST data (must be exact bytes Stripe signed; do not parse or modify).
+  // If php://input was already read earlier in the request, this can be empty and signature will fail.
+  $payload = file_get_contents('php://input');
+  $sig_header = isset($_SERVER['HTTP_STRIPE_SIGNATURE']) ? $_SERVER['HTTP_STRIPE_SIGNATURE'] : '';
+
+  // Some servers/proxies pass multiple headers as array; Stripe only sends one signature header.
+  if (is_array($sig_header)) {
+    $sig_header = (isset($sig_header[0]) && is_string($sig_header[0])) ? $sig_header[0] : '';
+  }
+  $sig_header = is_string($sig_header) ? trim($sig_header) : '';
+
+  $debug = variable_get('rovas_stripe_webhooks_debug', 0);
+  if ($debug) {
+    watchdog('rovas_stripe_webhooks', 'Webhook request: payload length=@len, sig_header length=@siglen', array(
+      '@len' => strlen($payload),
+      '@siglen' => strlen($sig_header),
+    ), WATCHDOG_DEBUG);
+    if (strlen($sig_header) > 0 && strlen($sig_header) <= 200) {
+      watchdog('rovas_stripe_webhooks', 'Sig header: @sig', array('@sig' => $sig_header), WATCHDOG_DEBUG);
+    }
+  }
+
+  if (strlen($payload) === 0) {
+    watchdog('rovas_stripe_webhooks', 'Invalid webhook: request body was empty. Stripe signs the raw body; if something else reads the request first, body is empty and verification fails.', array(), WATCHDOG_WARNING);
+    drupal_add_http_header('Status', '400 Bad Request');
+    drupal_json_output(array('error' => 'Empty body'));
+    return;
+  }
+
+  // Verify the webhook signature
+  $endpoint_secret = variable_get('rovas_stripe_webhooks_endpoint_secret', '');
+  
+  if (!empty($endpoint_secret) && !rovas_stripe_webhooks_verify_signature($payload, $sig_header, $endpoint_secret)) {
+    $reason = _rovas_stripe_webhooks_signature_failure_reason($payload, $sig_header, $endpoint_secret);
+    watchdog('rovas_stripe_webhooks', 'Invalid webhook signature. @reason Endpoint secret must match the webhook in Stripe Dashboard (or Stripe CLI) for this URL.', array('@reason' => $reason), WATCHDOG_WARNING);
+    drupal_add_http_header('Status', '400 Bad Request');
+    drupal_json_output(array('error' => 'Invalid signature'));
+    return;
+  }
+
+  // Decode the JSON payload
+  $event = json_decode($payload, TRUE);
+  
+  if (json_last_error() !== JSON_ERROR_NONE) {
+    watchdog('rovas_stripe_webhooks', 'Invalid JSON payload: @error', array('@error' => json_last_error_msg()), WATCHDOG_ERROR);
+    drupal_add_http_header('Status', '400 Bad Request');
+    drupal_json_output(array('error' => 'Invalid JSON'));
+    drupal_exit();
+  }
+
+  // Validate required fields
+  if (!isset($event['id']) || !isset($event['type'])) {
+    watchdog('rovas_stripe_webhooks', 'Missing required fields in webhook payload', array(), WATCHDOG_ERROR);
+    drupal_add_http_header('Status', '400 Bad Request');
+    drupal_json_output(array('error' => 'Missing required fields'));
+    drupal_exit();
+  }
+
+  // Check if we've already processed this webhook
+  $existing = db_select('rovas_stripe_webhooks', 'rsw')
+    ->fields('rsw', array('id'))
+    ->condition('webhook_id', $event['id'])
+    ->execute()
+    ->fetchField();
+
+  if ($existing) {
+    // Already processed, return success
+    drupal_json_output(array('status' => 'already_processed'));
+    drupal_exit();
+  }
+
+  // Store the webhook data
+  try {
+    $record = array(
+      'webhook_id' => $event['id'],
+      'event_type' => $event['type'],
+      'webhook_data' => $payload,
+      'processed' => 0,
+      'created' => REQUEST_TIME,
+      'stripe_created' => isset($event['created']) ? $event['created'] : NULL,
+    );
+
+    $result = drupal_write_record('rovas_stripe_webhooks', $record);
+
+    if ($result === SAVED_NEW) {
+      watchdog('rovas_stripe_webhooks', 'Webhook @id (@type) stored successfully', 
+        array('@id' => $event['id'], '@type' => $event['type']), WATCHDOG_INFO);
+
+			header('HTTP/1.1 200 OK');
+			drupal_json_output(array('status' => 'success'));
+			if (function_exists('fastcgi_finish_request')) {
+				fastcgi_finish_request();
+			}
+
+      $record['id'] = db_query("SELECT id FROM {rovas_stripe_webhooks} WHERE webhook_id = :wid", array(':wid' => $event['id']))->fetchField();
+      _rovas_safe_dispatch_webhook($event, $record);
+      
+      drupal_exit();
+    } else {
+      throw new Exception('Failed to save webhook to database');
+    }
+  }
+  catch (Exception $e) {
+    watchdog('rovas_stripe_webhooks', 'Error storing webhook: @error', 
+      array('@error' => $e->getMessage()), WATCHDOG_ERROR);
+    drupal_add_http_header('Status', '500 Internal Server Error');
+    drupal_json_output(array('error' => 'Internal server error'));
+    drupal_exit();
+  }
+}
+
+/**
+ * Verify Stripe webhook signature.
+ *
+ * Uses Stripe PHP SDK Webhook::constructEvent when available; otherwise
+ * verifies manually. Caller must ensure $sig_header is a string (not an array).
+ *
+ * @param string $payload
+ *   The raw webhook payload (exact bytes received).
+ * @param string $sig_header
+ *   The Stripe-Signature header value.
+ * @param string $endpoint_secret
+ *   The webhook endpoint secret (whsec_...).
+ *
+ * @return bool
+ *   TRUE if signature is valid, FALSE otherwise.
+ */
+function rovas_stripe_webhooks_verify_signature($payload, $sig_header, $endpoint_secret) {
+  if ($sig_header === '' || $endpoint_secret === '') {
+    return FALSE;
+  }
+
+  // Prefer Stripe SDK when available (handles v0/v1 and edge cases).
+  $stripe_lib = DRUPAL_ROOT . '/sites/all/libraries/stripe-php/init.php';
+  if (file_exists($stripe_lib)) {
+    require_once $stripe_lib;
+    if (class_exists('Stripe\Webhook')) {
+      try {
+        \Stripe\Webhook::constructEvent($payload, $sig_header, $endpoint_secret);
+        return TRUE;
+      }
+      catch (Exception $e) {
+        return FALSE;
+      }
+    }
+  }
+
+  // Manual verification (Stripe docs: t=timestamp,v1=hmac,v0=test only).
+  $elements = explode(',', $sig_header);
+  $timestamp = NULL;
+  $signatures = array();
+
+  foreach ($elements as $element) {
+    $element = trim($element);
+    if (strpos($element, 't=') === 0) {
+      $timestamp = trim(substr($element, 2));
+    }
+    elseif (strpos($element, 'v1=') === 0) {
+      $signatures[] = trim(substr($element, 3));
+    }
+  }
+
+  if ($timestamp === '' || $timestamp === NULL || empty($signatures)) {
+    return FALSE;
+  }
+
+  $timestamp = (int) $timestamp;
+  if (abs(REQUEST_TIME - $timestamp) > 300) {
+    return FALSE;
+  }
+
+  $signed_payload = $timestamp . '.' . $payload;
+  $expected_signature = hash_hmac('sha256', $signed_payload, $endpoint_secret);
+
+  foreach ($signatures as $signature) {
+    if (hash_equals($expected_signature, $signature)) {
+      return TRUE;
+    }
+  }
+
+  return FALSE;
+}
+
+/**
+ * Returns a short, safe reason for signature verification failure (for logging).
+ */
+function _rovas_stripe_webhooks_signature_failure_reason($payload, $sig_header, $endpoint_secret) {
+  $stripe_lib = DRUPAL_ROOT . '/sites/all/libraries/stripe-php/init.php';
+  if (file_exists($stripe_lib)) {
+    require_once $stripe_lib;
+    if (class_exists('Stripe\Webhook')) {
+      try {
+        \Stripe\Webhook::constructEvent($payload, $sig_header, $endpoint_secret);
+      }
+      catch (Exception $e) {
+        return $e->getMessage();
+      }
+    }
+  }
+
+  $elements = explode(',', $sig_header);
+  $ts = NULL;
+  $has_v1 = FALSE;
+  foreach ($elements as $el) {
+    $el = trim($el);
+    if (strpos($el, 't=') === 0) {
+      $ts = (int) trim(substr($el, 2));
+      break;
+    }
+  }
+  foreach ($elements as $el) {
+    if (strpos(trim($el), 'v1=') === 0) {
+      $has_v1 = TRUE;
+      break;
+    }
+  }
+
+  if (!$has_v1) {
+    return 'No v1 signature in header.';
+  }
+  if ($ts === NULL) {
+    return 'No timestamp in header.';
+  }
+  $diff = abs(REQUEST_TIME - $ts);
+  if ($diff > 300) {
+    return 'Timestamp outside tolerance (diff ' . $diff . 's).';
+  }
+  return 'HMAC mismatch (check endpoint secret and that request body is unmodified).';
+}
+
+if (!function_exists('hash_equals')) {
+  function hash_equals($a, $b) {
+    if (strlen($a) !== strlen($b)) {
+      return false;
+    }
+    $res = $a ^ $b;
+    $ret = 0;
+    for ($i = strlen($res) - 1; $i >= 0; $i--) {
+      $ret |= ord($res[$i]);
+    }
+    return $ret === 0;
+  }
+}
+
+
+/**
+ * Gets or sets a flag indicating that webhook processing is in progress.
+ *
+ * Used by other modules (e.g. rovas_project_reward) to suppress side-effects
+ * that are only appropriate in an interactive browser session, such as
+ * drupal_goto() redirects inside Rules actions.
+ *
+ * @param bool|null $set
+ *   Pass TRUE or FALSE to set the flag; omit (NULL) to just read it.
+ *
+ * @return bool
+ */
+function rovas_stripe_webhooks_set_processing_flag($set = NULL) {
+  static $processing = FALSE;
+  if ($set !== NULL) {
+    $processing = (bool) $set;
+  }
+  return $processing;
+}
+
+function _rovas_safe_dispatch_webhook(array $event, array $record) {
+  $lvl = ob_get_level();
+  ob_start();
+
+  $prev = set_error_handler(function($severity, $message, $file, $line) {
+    throw new ErrorException($message, 0, $severity, $file, $line);
+  });
+
+  $processed_ok = FALSE;
+
+  try {
+    if (isset($event['type']) && $event['type'] === 'payment_intent.succeeded') {
+      module_load_include('inc', 'rovas_stripe_webhooks', 'includes/processor');
+      $processed_ok = rovas_stripe_webhooks_process_payment_intent_succeeded($event, $record);
+    }
+
+    module_invoke_all('rovas_stripe_webhook_received', $event, $record);
+  }
+  catch (Exception $e) {
+    watchdog('rovas_stripe_webhooks', 'Webhook processing failed: @err', array('@err' => $e->getMessage()), WATCHDOG_ERROR);
+  }
+
+  if ($prev !== NULL) {
+    restore_error_handler();
+  }
+  while (ob_get_level() > $lvl) {
+    ob_end_clean();
+  }
+
+  // Mark webhook record as processed after handling (Phase 4).
+  if (!empty($record['id'])) {
+    db_update('rovas_stripe_webhooks')
+      ->fields(array('processed' => 1))
+      ->condition('id', $record['id'])
+      ->execute();
+  }
+}
+
+
+/**
+ * Implements hook_help().
+ */
+function rovas_stripe_webhooks_help($path, $arg) {
+  switch ($path) {
+    case 'admin/help#rovas_stripe_webhooks':
+      return '<p>' . t('The Rovas Stripe Webhooks module provides a webhook endpoint for receiving and storing Stripe webhook events. Configure your webhook settings and view received webhooks through the administration interface.') . '</p>';
+    
+    case 'admin/config/services/rovas-stripe-webhooks':
+      $webhook_url = url('stripe/webhook', array('absolute' => TRUE));
+      return '<p>' . t('Configure your Stripe webhook settings below. Your webhook URL is: <strong>@url</strong>', array('@url' => $webhook_url)) . '</p>';
+  }
+}

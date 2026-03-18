@@ -1,0 +1,22 @@
+diff --git a/composer_manager.admin.inc b/composer_manager.admin.inc
+index aebe5ffb6cbc567ef720bb19ab85230a1580bca7..182a7bd5b3dbd7a0bedaf3e211d4746f41916753 100644
+--- a/composer_manager.admin.inc
++++ b/composer_manager.admin.inc
+@@ -317,7 +317,7 @@ function composer_manager_installed_packages() {
+     $installed = array();
+ 
+     $json = composer_manager_installed_packages_load();
+-    foreach ($json as $package) {
++    foreach ($json['packages'] as $package) {
+       $installed[$package['name']] = array(
+         'version' => $package['version'],
+         'description' => !empty($package['description']) ? $package['description'] : '',
+@@ -343,7 +343,7 @@ function composer_manager_package_dependents() {
+   $dependents = array();
+ 
+   $json = composer_manager_installed_packages_load();
+-  foreach ($json as $package) {
++  foreach ($json['packages'] as $package) {
+     if (!empty($package['require'])) {
+       foreach ($package['require'] as $dependent => $version) {
+         $dependents[$dependent][] = $package['name'];

@@ -1,0 +1,23 @@
+{ "rules_redirect_to_dashboard" : {
+    "LABEL" : "Redirect to dashboard",
+    "PLUGIN" : "reaction rule",
+    "OWNER" : "rules",
+    "TAGS" : [ "user" ],
+    "REQUIRES" : [ "rules", "pathrules" ],
+    "ON" : { "node_view--page" : { "bundle" : "page" } },
+    "IF" : [
+      { "user_has_role" : {
+          "account" : [ "site:current-user" ],
+          "roles" : { "value" : { "2" : "2", "3" : "3", "4" : "4" } },
+          "operation" : "OR"
+        }
+      },
+      { "OR" : [
+          { "pathrules_checkpath" : { "path" : "welcome-to-rovas" } },
+          { "pathrules_checkpath" : { "path" : "\u003Cfront\u003E", "operation" : "equals" } }
+        ]
+      }
+    ],
+    "DO" : [ { "redirect" : { "url" : "dash" } } ]
+  }
+}

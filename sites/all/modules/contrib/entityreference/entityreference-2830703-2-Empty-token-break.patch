@@ -1,0 +1,28 @@
+From 6946ec3d5b03a48f852d29324a4c076e13bf62c8 Mon Sep 17 00:00:00 2001
+From: Axel Rutz <axel.rutz@clever-systems.net>
+Date: Sat, 26 Nov 2016 20:39:50 +0100
+Subject: [PATCH] Issue #2830703: Empty token entity selection view arguments
+ break
+
+---
+ plugins/selection/EntityReference_SelectionHandler_Views.class.php | 4 ++++
+ 1 file changed, 4 insertions(+)
+
+diff --git a/plugins/selection/EntityReference_SelectionHandler_Views.class.php b/plugins/selection/EntityReference_SelectionHandler_Views.class.php
+index 68e6a6d..328ee12 100644
+--- a/plugins/selection/EntityReference_SelectionHandler_Views.class.php
++++ b/plugins/selection/EntityReference_SelectionHandler_Views.class.php
+@@ -223,6 +223,10 @@ class EntityReference_SelectionHandler_Views implements EntityReference_Selectio
+     // Replace tokens for each argument.
+     foreach ($args as $key => $arg) {
+       $args[$key] = token_replace($arg, $data, $options);
++      // Replace all empty strings with 0, this will prevent Views from choking.
++      if (empty($args[$key])) {
++        $args[$key] = 0;
++      }
+     }
+     return $args;
+   }
+-- 
+2.7.4
+

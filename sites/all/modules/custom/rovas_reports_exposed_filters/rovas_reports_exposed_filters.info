@@ -1,0 +1,4 @@
+name = Rovas Reports Exposed Filters
+description = Shows only the actualy used tags in the categories list
+core = 7.x
+package = Rovas

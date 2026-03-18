@@ -1,0 +1,111 @@
+{ "rules_check_verifier_by_access_tokens" : {
+    "LABEL" : "Check verifier by access tokens",
+    "PLUGIN" : "action set",
+    "OWNER" : "rules",
+    "REQUIRES" : [ "rules", "rules_conditional" ],
+    "USES VARIABLES" : {
+      "access_token" : { "label" : "Content access token", "type" : "text" },
+      "uid" : { "label" : "User token", "type" : "integer" },
+      "verify_allow" : {
+        "label" : "Verification allowed",
+        "type" : "boolean",
+        "parameter" : false
+      },
+      "verifier_obj" : { "label" : "Verifier object", "type" : "user", "parameter" : false },
+      "wr_obj" : { "label" : "Work report object", "type" : "node", "parameter" : false },
+      "slot_object" : {
+        "label" : "Verification slot object",
+        "type" : "node",
+        "parameter" : false
+      }
+    },
+    "ACTION SET" : [
+      { "data_set" : { "data" : [ "verify-allow" ], "value" : "0" } },
+      { "CONDITIONAL" : [
+          {
+            "IF" : { "data_is" : { "data" : [ "uid" ], "op" : "\u003E", "value" : "0" } },
+            "DO" : [
+              { "CONDITIONAL" : [
+                  {
+                    "IF" : { "NOT data_is_empty" : { "data" : [ "access-token" ] } },
+                    "DO" : [
+                      { "entity_query" : {
+                          "USING" : {
+                            "type" : "node",
+                            "property" : "field_content_access_token",
+                            "value" : [ "access-token" ]
+                          },
+                          "PROVIDE" : { "entity_fetched" : { "node_fetched" : "node fetched" } }
+                        }
+                      },
+                      { "CONDITIONAL" : [
+                          {
+                            "IF" : { "entity_is_of_bundle" : {
+                                "entity" : [ "node-fetched:0" ],
+                                "type" : "node",
+                                "bundle" : { "value" : { "work_report" : "work_report" } }
+                              }
+                            },
+                            "DO" : [
+                              { "entity_query" : {
+                                  "USING" : {
+                                    "type" : "node",
+                                    "property" : "field_report_to_verify",
+                                    "value" : [ "node-fetched:0" ]
+                                  },
+                                  "PROVIDE" : { "entity_fetched" : { "slots_fetched" : "Fetched verification slots" } }
+                                }
+                              },
+                              { "entity_fetch" : {
+                                  "USING" : { "type" : "user", "id" : [ "uid" ] },
+                                  "PROVIDE" : { "entity_fetched" : { "user_fetched" : "Fetched user" } }
+                                }
+                              },
+                              { "LOOP" : {
+                                  "USING" : { "list" : [ "slots-fetched" ] },
+                                  "ITEM" : { "slot" : "slot" },
+                                  "DO" : [
+                                    { "CONDITIONAL" : [
+                                        {
+                                          "IF" : { "entity_is_of_bundle" : {
+                                              "entity" : [ "slot" ],
+                                              "type" : "node",
+                                              "bundle" : { "value" : { "verification_slot" : "verification_slot" } }
+                                            }
+                                          },
+                                          "DO" : [
+                                            { "CONDITIONAL" : [
+                                                {
+                                                  "IF" : { "data_is" : { "data" : [ "slot:field-slip-owner" ], "value" : [ "user-fetched" ] } },
+                                                  "DO" : [
+                                                    { "data_set" : { "data" : [ "verify-allow" ], "value" : "1" } },
+                                                    { "data_set" : { "data" : [ "verifier-obj" ], "value" : [ "user-fetched" ] } },
+                                                    { "data_set" : { "data" : [ "wr-obj" ], "value" : [ "node-fetched:0" ] } },
+                                                    { "data_set" : { "data" : [ "slot-object" ], "value" : [ "slot" ] } }
+                                                  ]
+                                                }
+                                              ]
+                                            }
+                                          ]
+                                        }
+                                      ]
+                                    }
+                                  ]
+                                }
+                              }
+                            ]
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "PROVIDES VARIABLES" : [ "verify_allow", "verifier_obj", "wr_obj", "slot_object" ]
+  }
+}

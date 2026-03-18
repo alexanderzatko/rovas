@@ -1,0 +1,140 @@
+{ "rules_delete_work_report" : {
+    "LABEL" : "delete work report",
+    "PLUGIN" : "rule",
+    "OWNER" : "rules",
+    "TAGS" : [ "work report" ],
+    "REQUIRES" : [ "rules", "rules_conditional", "php", "commerce", "pathrules" ],
+    "USES VARIABLES" : {
+      "node" : { "label" : "work report node", "type" : "node" },
+      "triggering_actor" : { "label" : "Triggering actor", "type" : "text" }
+    },
+    "IF" : [
+      { "entity_is_of_bundle" : {
+          "entity" : [ "node" ],
+          "type" : "node",
+          "bundle" : { "value" : { "work_report" : "work_report" } }
+        }
+      }
+    ],
+    "DO" : [
+      { "CONDITIONAL" : [
+          {
+            "IF" : { "data_is" : { "data" : [ "node:field-verification-status" ], "value" : "1" } },
+            "DO" : [
+              { "component_rules_update_user_chron_account" : {
+                  "user_object" : [ "node:author" ],
+                  "chrons_to_add" : {
+                    "select" : "node:field-chrons-to-grant",
+                    "php" : { "code" : "return $value * -1;" }
+                  },
+                  "fxsp_id" : {
+                    "select" : "site:current-user:uid",
+                    "php" : { "code" : "return NULL;" }
+                  }
+                }
+              },
+              { "CONDITIONAL" : [
+                  {
+                    "IF" : { "entity_exists" : {
+                        "type" : "node",
+                        "property" : "nid",
+                        "value" : [ "node:field-project:nid" ]
+                      }
+                    },
+                    "DO" : [
+                      { "component_rules_update_user_s_labor_count_for_a_project_" : {
+                          "project_id" : [ "node:field-project:nid" ],
+                          "user_obj" : [ "node:author" ],
+                          "hours_delta" : {
+                            "select" : "node:field-hours-worked",
+                            "php" : { "code" : "return $value * -1;" }
+                          }
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "ELSE IF" : { "data_is" : { "data" : [ "node:field-verification-status" ], "value" : "0" } },
+            "DO" : [
+              { "CONDITIONAL" : [
+                  {
+                    "IF" : { "entity_exists" : {
+                        "type" : "node",
+                        "property" : "nid",
+                        "value" : [ "node:field-project:nid" ]
+                      }
+                    },
+                    "DO" : [
+                      { "component_rules_update_user_s_labor_count_for_a_project_" : {
+                          "project_id" : [ "node:field-project:nid" ],
+                          "user_obj" : [ "node:author" ],
+                          "hours_delta" : {
+                            "select" : "node:field-hours-worked",
+                            "php" : { "code" : "return $value * -1;" }
+                          }
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      { "component_rules_rectify_dispute_object" : { "node" : [ "node" ], "triggering_actor" : [ "triggering_actor" ] } },
+      { "entity_delete" : { "data" : [ "node" ] } },
+      { "entity_query" : {
+          "USING" : {
+            "type" : "node",
+            "property" : "field_report_to_verify",
+            "value" : [ "node" ]
+          },
+          "PROVIDE" : { "entity_fetched" : { "verification_slots" : "verification slots" } }
+        }
+      },
+      { "LOOP" : {
+          "USING" : { "list" : [ "verification-slots" ] },
+          "ITEM" : { "slot" : "slot" },
+          "DO" : [
+            { "CONDITIONAL" : [
+                {
+                  "IF" : { "entity_is_of_bundle" : {
+                      "entity" : [ "slot" ],
+                      "type" : "node",
+                      "bundle" : { "value" : { "verification_slot" : "verification_slot" } }
+                    }
+                  },
+                  "DO" : [
+                    { "data_set" : { "data" : [ "slot:field-verify-date" ] } },
+                    { "data_set" : { "data" : [ "slot:field-report-to-verify" ] } },
+                    { "entity_save" : { "data" : [ "slot" ], "immediate" : "1" } },
+                    { "mail" : {
+                        "to" : "alexander.zatko@freemap.sk",
+                        "subject" : "Rovas - request to verify was cancelled",
+                        "message" : "The \u003Cstrong\u003E[node:title]\u003C\/strong\u003E report (ID = [node:nid]) you were asked to verify, was deleted. Please disregard the request to verify this report, that was sent to you previously.",
+                        "language" : [ "slot:field-slip-owner:language" ]
+                      }
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      },
+      { "php_eval" : { "code" : "\/\/delete up to two verify slots for each deleted work report\r\n$graceper = date(\u0027c\u0027,time());\r\n$slots = _find_user_verif_slots($node-\u003Euid,NULL,$graceper);\r\nwatchdog(\u0027rule\u0027,\u0027rules_delete_work_report \u0027 . print_r($slots,TRUE));\r\nif (isset($slots[0])) {\r\n\tnode_delete($slots[0]);\r\n}\r\nif (isset($slots[1])) {\r\n\tnode_delete($slots[1]);\r\n}" } },
+      { "CONDITIONAL" : [
+          {
+            "IF" : { "pathrules_checkpath" : { "path" : "delete" } },
+            "DO" : [ { "redirect" : { "url" : [ "node:field-project:url" ] } } ]
+          }
+        ]
+      }
+    ]
+  }
+}

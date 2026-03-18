@@ -1,0 +1,22 @@
+<?php
+/**
+ * @file
+ * Module to switch OpenLayers 3 tile sources based on zoom level.
+ */
+
+/**
+ * Implements hook_init().
+ */
+function rovas_ol_zoom_source_switcher_init() {
+
+  $path = drupal_get_path('module', 'rovas_ol_zoom_source_switcher');
+  drupal_add_js($path . '/js/zoom_source_switcher.js');
+  
+  drupal_add_js(array(
+    'rovasOlZoomSourceSwitcher' => array(
+      'zoomThreshold' => 15,
+      'lowZoomUrl' => 'https://c.tile.opentopomap.org/{z}/{x}/{y}.png',
+      'highZoomUrl' => 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+    ),
+  ), 'setting');
+}

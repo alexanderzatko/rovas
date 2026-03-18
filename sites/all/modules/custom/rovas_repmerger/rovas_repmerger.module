@@ -1,0 +1,162 @@
+<?php
+
+/* 
+* Report merger for the Openstreetmap project - ID 1998
+*/
+function _rovas_repmerger_osm ($field_name,$existing,$newdata,$params=NULL) {
+
+	if ($field_name == 'field-web-address') {
+		//extract changeset ID from the new report website URL
+		$tary = explode('=',$newdata);
+		$tary = explode('&',$tary[1]);
+		$chset_id = is_numeric($tary[0]) ? $tary[0] : -1;
+
+		//the new URL poits to the achavi service
+		if ($chset_id > 0) {
+
+			if (strpos($existing,'achavi')) {
+
+				$tary = explode('=',$existing);
+				$tary = explode('&',$tary[1]);
+				$old_chset_id = is_numeric($tary[0]) ? $tary[0] : -1;
+
+				$osmchaset = new stdClass();
+				$id = new stdClass();
+				$id->label = $old_chset_id;
+				$id->value = $old_chset_id;
+				$osmchaset->ids[] = $id;
+
+				$restring = rovas_repmerge_omcha_url($chset_id,$osmchaset);
+			}
+			//the URL poits to the OSMcha service
+			else if (strpos($existing,'osmcha.org')) {
+			
+				$pos = strpos($existing,'?filters={');
+				$filter_plus = substr($existing,$pos + 9);
+				$tary = explode('&',$filter_plus);
+				$enc_osmchaset = $tary[0];
+				
+				$osmchaset = json_decode($enc_osmchaset);
+
+				$restring = rovas_repmerge_omcha_url($chset_id,$osmchaset);
+			}
+			else {
+				$restring = $newdata ? $existing . '<br>' . $newdata : $existing;
+			}
+		}
+		else {
+			$restring = $newdata ? $existing . '<br>' . $newdata : $existing;
+		}
+		
+		return $restring;
+
+	}
+
+	if ($field_name == 'field-name-body') {
+	
+		$title = isset($params['title']) ? $params['title'] : '';
+    
+		$restring = '<div>';
+		$restring .= t('This work report is the result of multiple working sessions merged together.');
+		$restring .= '<br>';
+		$restring .= t('To learn how to verify the report, read the instructions shown on the project page');
+		$restring .= '<div>';
+
+    if (preg_match('/\s[iI][dD]$/', $title)) {
+			$restring .= t('The individual work sessions this report consists off were created by the <a href="https://github.com/dp7x/rovas-id-timetracker">Rovas connector Chrome extension for ID</a>');
+    } else {
+			$restring .= t('The individual work sessions this report consists off were created by the <a href="https://wiki.openstreetmap.org/wiki/JOSM/Plugins/RovasConnector">Rovas connector plugin for JOSM</a>');
+    }
+		$restring .= '</div>';
+
+		return $restring;
+
+	}
+}
+
+// function that builds the OSMcha URL
+function rovas_repmerge_omcha_url ($chset_id,$filter_object) {
+	$id = new stdClass();
+	$id->label = $chset_id;
+	$id->value = $chset_id;
+	$filter_object->ids[] = $id;
+	if (!isset($filter_object->date__gte)) {
+		$date__gte = new stdClass();
+		$date__gte->label = "";
+		$date__gte->value = "";
+		$filter_object->date__gte[] = $date__gte;
+	}
+	$enc_osmchaset = json_encode($filter_object);
+	$restring = 'https://osmcha.org/changesets/';
+	$restring .= $chset_id;
+	$restring .= '?filters=';
+	$restring .= $enc_osmchaset;
+	
+	return $restring;
+}
+
+/**
+ * Implements hook_rules_action_info().
+ */
+function rovas_repmerger_rules_action_info() {
+  return array(
+    '_rovas_repmerger_manipulateUrlWorkReport' => array(
+      'label' => t('Merge a new OSM URL into the existing list'),
+      'group' => t('Rovas'),
+      'parameter' => array(
+        'node' => array(
+          'type' => 'node', 
+          'label' => t('Node'),
+          'save' => FALSE,
+        ),
+        'newUrl' => array(
+          'type' => 'text', 
+          'label' => t('New URL to add')
+        ),
+        'mergeFunc' => array(
+          'type' => 'text', 
+          'label' => t('Name of the merger function')
+        ),
+      ),
+      'provides' => array(
+        'url_list' => array(
+          'type' => 'list<text>',
+          'label' => t('Updated URL list'),
+        ),
+      ),
+    ),
+  );
+}
+
+/**
+ * $node      – fully-loaded work-report node object (Drupal 7)
+ * $newUrl    – freshly submitted URL string
+ * $mergeFunc – callable(string $fieldName, string $old, string $new):string
+ *
+ * Returns: flat array of unique URLs that should be written back into
+ * the node’s field_web_address field.
+ */
+function _rovas_repmerger_manipulateUrlWorkReport(stdClass $node, $newUrl, $mergeFunc) {
+    if (empty($newUrl) && empty($node->field_web_address)) {
+        return array();
+    }
+
+    $wrapper = entity_metadata_wrapper('node', $node);
+
+    $list = $wrapper->field_web_address->value() ?: [];
+
+    $recent = end($list) ?: '';
+
+    $merged = $mergeFunc('field-web-address', $recent, $newUrl);
+
+    if (strlen($merged) >= 1000) {
+        if ($newUrl && !in_array($newUrl, $list, true)) {
+            $list[] = $newUrl;
+        }
+				return array('url_list' => array_values(array_unique($list)));
+    }
+
+    $list[count($list) - 1] = $merged;
+
+  return array('url_list' => array_values(array_unique($list)));
+}

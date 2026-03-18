@@ -1,0 +1,12 @@
+{ "rules_update_total_labor_count_for_a_project" : {
+    "LABEL" : "Update total labor count for a project",
+    "PLUGIN" : "rule",
+    "OWNER" : "rules",
+    "TAGS" : [ "project" ],
+    "REQUIRES" : [ "php", "rules" ],
+    "USES VARIABLES" : { "project_id" : { "label" : "Project ID", "type" : "integer" } },
+    "DO" : [
+      { "php_eval" : { "code" : "\/\/NOT USED AT THIS TIME!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\r\n\/\/the project field value is being recalculated every time project is read\r\n\r\n\/\/find total hours from worker and product merit allocation records for given project and insert it into the project\u0027s \u0022field_total_labor\u0022 field\r\n\/*\r\n$result = db_query(\u0022SELECT sum( h.field_total_hours_worked_value ) AS wtotalhours\r\nFROM {field_data_field_total_hours_worked} h, {field_data_field_project} p\r\nWHERE h.bundle = \u0027co_worker_merit_allocation\u0027\r\nAND p.field_project_target_id = :proj\r\nAND h.entity_id = p.entity_id\u0022, array(\u0027:proj\u0027 =\u003E $project_id));\r\n\r\n$resarray = $result-\u003EfetchAll();\r\n$total_hours = $resarray[0]-\u003Ewtotalhours;\r\n\r\n$projob = node_load($project_id);\r\n$obj = entity_metadata_wrapper(\u0027node\u0027, $projob);\r\n$obj-\u003Efield_project_total_hours = $total_hours;\r\n$obj-\u003Esave();\r\n\r\nwatchdog(\u0027debug\u0027, \u0027recalculated total labor time for project \u0027 . $project_id . \u0027 The value is \u0027 . $total_hours);\r\n*\/" } }
+    ]
+  }
+}

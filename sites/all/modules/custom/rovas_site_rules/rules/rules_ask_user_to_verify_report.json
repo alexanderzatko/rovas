@@ -1,0 +1,97 @@
+{ "rules_ask_user_to_verify_report" : {
+    "LABEL" : "ask user to verify report",
+    "PLUGIN" : "rule",
+    "OWNER" : "rules",
+    "REQUIRES" : [ "rules", "php", "views_bulk_operations", "rules_conditional" ],
+    "USES VARIABLES" : {
+      "work_report" : { "label" : "work report", "type" : "node" },
+      "uid" : { "label" : "found user id", "type" : "integer", "parameter" : false }
+    },
+    "IF" : [
+      { "entity_is_of_bundle" : {
+          "entity" : [ "work-report" ],
+          "type" : "node",
+          "bundle" : { "value" : { "work_report" : "work_report" } }
+        }
+      },
+      { "data_is" : { "data" : [ "work-report:status" ], "value" : "1" } }
+    ],
+    "DO" : [
+      { "variable_add" : {
+          "USING" : {
+            "type" : "text",
+            "value" : "\u003C?php\r\n$usrary = _rv_excluded_users($work_report-\u003Enid);\r\necho implode (\u0027+\u0027,$usrary);\r\n?\u003E"
+          },
+          "PROVIDE" : { "variable_added" : { "excluded_users" : "excluded users" } }
+        }
+      },
+      { "views_bulk_operations_action_load_list" : {
+          "USING" : {
+            "view" : "top_compliant_users|default",
+            "args" : "[excluded-users:value]\r\n[work-report:language]"
+          },
+          "PROVIDE" : { "entity_list" : { "user_pool" : "user pool" } }
+        }
+      },
+      { "variable_add" : {
+          "USING" : {
+            "type" : "text",
+            "value" : "\u003C?php\r\n    shuffle($user_pool);\r\n    $randomIndex = rand(0, count($user_pool) - 1);\r\n$fuser = isset($user_pool[$randomIndex]) ? $user_pool[$randomIndex]-\u003Euid : 0;\r\n    echo $fuser;\r\n ?\u003E"
+          },
+          "PROVIDE" : { "variable_added" : { "random_user" : "random user" } }
+        }
+      },
+      { "data_convert" : {
+          "USING" : { "type" : "integer", "value" : [ "random-user" ] },
+          "PROVIDE" : { "conversion_result" : { "rand_uid" : "random user uid" } }
+        }
+      },
+      { "CONDITIONAL" : [
+          {
+            "IF" : { "data_is" : { "data" : [ "rand-uid" ], "op" : "\u003E", "value" : "0" } },
+            "DO" : [
+              { "entity_fetch" : {
+                  "USING" : { "type" : "user", "id" : [ "rand-uid" ] },
+                  "PROVIDE" : { "entity_fetched" : { "user" : "user" } }
+                }
+              },
+              { "component_rules_create_verify_slot" : {
+                  "USING" : {
+                    "uid" : [ "rand-uid" ],
+                    "report_nid" : [ "work-report:nid" ],
+                    "due_date_offset" : "\u003C?php\r\n\techo variable_get(\u0027rv_normal_period\u0027) ? variable_get(\u0027rv_normal_period\u0027) : 24;\r\n?\u003E",
+                    "voluntary" : "1"
+                  },
+                  "PROVIDE" : { "slot_nid" : { "slot_nid" : "slot nid" } }
+                }
+              },
+              { "variable_add" : {
+                  "USING" : {
+                    "type" : "text",
+                    "value" : "Rovas: help needed with verifying a report"
+                  },
+                  "PROVIDE" : { "variable_added" : { "subject" : "subject" } }
+                }
+              },
+              { "component_rules_send_email" : {
+                  "recipient" : [ "user:mail" ],
+                  "subject" : "\u003C?php\r\n\r\n$language = $user-\u003Elanguage;\r\n\r\necho t(\u0027Rovas: help needed with verifying a report\u0027,[],[\u0027langcode\u0027 =\u003E $language]);\r\n?\u003E",
+                  "message" : "\u003C?php\r\n\r\n$language = $user-\u003Elanguage;\r\n\r\n$usrname = $user-\u003Ename;\r\n$replink = \u0027\/node\/\u0027 . $work_report-\u003Enid;\r\n\r\n$message = t(\u0027Hello @user\u0027,[\u0027@user\u0027 =\u003E $usrname],[\u0027langcode\u0027 =\u003E $language]);\r\n$message .= \u0027\u003Cbr\u003E\u003Cbr\u003E\u0027;\r\n$message .= t(\u0027A \u003Ca href=\u0022@replink\u0022\u003Ereport was filed in Rovas\u003C\/a\u003E, for which we can not find a verifier with the right expertise. Would you be willing to help and verify the report?\u0027,[\u0027@replink\u0027 =\u003E $replink],[\u0027langcode\u0027 =\u003E $language]);\r\n$message .= \u0027\u003Cbr\u003E\u003Cbr\u003E\u0027;\r\n$message .= t(\u0027You can refuse to do it for any reason without penalties, but we would appreciate if you could indicate your choice on \u003Ca href=\u0022@replink\u0022\u003Ethe report page\u003C\/a\u003E, so we can find another user to do the verification.\u0027,[\u0027@replink\u0027 =\u003E $replink],[\u0027langcode\u0027 =\u003E $language]);\r\n$message .= \u0027\u003Cbr\u003E\u003Cbr\u003E\u0027;\r\n$message .= t(\u0027Thank you.\u0027,[],[\u0027langcode\u0027 =\u003E $language]);\r\n$message .= \u0027\u003Cbr\u003E\u003Cbr\u003E\u003Cbr\u003E\u003Cbr\u003E\u0027;\r\n\r\n$message .= t(\u0027These requests can be turned off in \u003Ca href=\u0022\/user\/@uid\/edit\u0022\u003Eyour user profile\u003C\/a\u003E\u0027,[\u0027@uid\u0027 =\u003E $user-\u003Euid],[\u0027langcode\u0027 =\u003E $language]);\r\n\r\necho $message;\r\n?\u003E",
+                  "language" : "en"
+                }
+              },
+              { "data_set" : { "data" : [ "uid" ], "value" : [ "rand-uid" ] } },
+              { "drupal_watchdog" : {
+                  "type" : "rule",
+                  "message" : "rules_ask_user_to_verify_report - [user:name] - [user:language] - [translated-body:value]"
+                }
+              }
+            ]
+          },
+          { "ELSE" : [ { "data_set" : { "data" : [ "uid" ] } } ] }
+        ]
+      }
+    ],
+    "PROVIDES VARIABLES" : [ "uid" ]
+  }
+}

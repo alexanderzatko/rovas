@@ -1,0 +1,43 @@
+{ "rules_get_merits_for_projects" : {
+    "LABEL" : "get merits for projects",
+    "PLUGIN" : "rule",
+    "OWNER" : "rules",
+    "TAGS" : [ "api", "merits", "project" ],
+    "REQUIRES" : [ "rules", "rules_conditional", "php" ],
+    "USES VARIABLES" : {
+      "project_ids" : { "label" : "project IDs", "type" : "text" },
+      "project_merits" : { "label" : "project merits", "type" : "text", "parameter" : false }
+    },
+    "DO" : [
+      { "component_rules_retrieve_user_id_from_api_key_and_token" : { "USING" : {}, "PROVIDE" : { "uid" : { "uid" : "user id" } } } },
+      { "CONDITIONAL" : [
+          {
+            "IF" : { "php_eval" : { "code" : "\/\/test if proj. IDs string exists\r\n$prid_array = explode(\u0027|\u0027,$project_ids);\r\n\r\nreturn $prid_array \u0026\u0026 is_numeric($prid_array[0]);\r\n" } },
+            "DO" : [
+              { "variable_add" : {
+                  "USING" : {
+                    "type" : "text",
+                    "value" : "\u003C?php \r\n\r\n$query = \u0022SELECT node.nid AS nid, m.field_merit_reward_value AS merits\r\nFROM {node} node\r\nLEFT JOIN {field_data_field_merit_reward} m ON node.nid = m.entity_id\r\nWHERE node.nid IN (:nids)\r\nAND node.status = 1\r\nAND node.type = \u0027project\u0027\u0022;\r\n$replaced = explode(\u0027|\u0027,$project_ids);\r\n\r\n$result = db_query($query,array(\u0027:nids\u0027 =\u003E $replaced));\r\n$resarray = $result-\u003EfetchAll();\r\n\r\n\/\/watchdog(\u0027rule\u0027,\u0027rules_get_merits_for_projects \u0027 . print_r($resarray,TRUE));\r\n\r\necho json_encode($resarray);\r\n\r\n?\u003E"
+                  },
+                  "PROVIDE" : { "variable_added" : { "serialized_resultset" : "serialized resultset" } }
+                }
+              },
+              { "data_set" : { "data" : [ "project-merits" ], "value" : [ "serialized-resultset" ] } }
+            ]
+          },
+          { "ELSE" : [
+              { "data_set" : { "data" : [ "project-merits" ], "value" : "-1" } },
+              { "drupal_watchdog" : {
+                  "type" : "rule",
+                  "message" : "rules_get_merits_for_projects: the IDs supplied - \u0022[project-ids:value]\u0022 - are not in the desired format",
+                  "severity" : "3"
+                }
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "PROVIDES VARIABLES" : [ "project_merits" ]
+  }
+}

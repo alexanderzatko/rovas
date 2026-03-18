@@ -1,0 +1,100 @@
+{ "rules_send_email_on_mention" : {
+    "LABEL" : "send email on mention",
+    "PLUGIN" : "reaction rule",
+    "OWNER" : "rules",
+    "TAGS" : [ "email", "mentions" ],
+    "REQUIRES" : [
+      "php",
+      "rules",
+      "views_bulk_operations",
+      "rules_conditional",
+      "mentions"
+    ],
+    "ON" : { "mentions_insert" : [] },
+    "IF" : [
+      { "php_eval" : { "code" : "\/\/the mentioned user is not the comment\u0027s parent node author\r\nreturn $mention-\u003Euid != $mention-\u003Eentity-\u003Euid;" } },
+      { "NOT data_is" : { "data" : [ "mention:uid:field-mentions-notifications" ], "value" : "1" } },
+      { "AND" : [
+          { "php_eval" : { "code" : "return $mention-\u003Eentity_type == \u0027comment\u0027;" } },
+          { "NOT views_bulk_operations_condition_result_count" : {
+              "view" : "all_comment_authors|default",
+              "args" : "\u003C?php \r\n\/\/ watchdog(\u0027rule\u0027,\u0027rules_send_email_on_mention \u0027 . print_r($mention,TRUE));\r\necho $mention-\u003Eentity-\u003Enid . \u0027\r\n\u0027 . $mention-\u003Euid;\r\n?\u003E",
+              "minimum" : "1"
+            }
+          }
+        ]
+      }
+    ],
+    "DO" : [
+      { "variable_add" : {
+          "USING" : { "type" : "text", "value" : [ "mention:auid:name" ] },
+          "PROVIDE" : { "variable_added" : { "mentioner_name" : "mentioner name" } }
+        }
+      },
+      { "variable_add" : {
+          "USING" : {
+            "type" : "text",
+            "value" : "\u003C?php\r\n$result = db_query(\u0027SELECT entity_id\r\nFROM `mentions`\r\nWHERE mid =:mid\u0027, array(\u0027:mid\u0027 =\u003E $mention-\u003Emid));\r\n$record = $result-\u003EfetchAssoc();\r\n\r\necho $record[\u0027entity_id\u0027];\r\n?\u003E"
+          },
+          "PROVIDE" : { "variable_added" : { "entity_id_text" : "entity ID text" } }
+        }
+      },
+      { "data_convert" : {
+          "USING" : { "type" : "integer", "value" : [ "entity-id-text" ] },
+          "PROVIDE" : { "conversion_result" : { "entity_id" : "entity id" } }
+        }
+      },
+      { "variable_add" : {
+          "USING" : {
+            "type" : "text",
+            "value" : "\u003C?php\r\n$result = db_query(\u0027SELECT entity_type\r\nFROM `mentions`\r\nWHERE mid =:mid\u0027, array(\u0027:mid\u0027 =\u003E $mention-\u003Emid));\r\n$record = $result-\u003EfetchAssoc();\r\n\r\necho $record[\u0027entity_type\u0027];\r\n?\u003E"
+          },
+          "PROVIDE" : { "variable_added" : { "entity_type" : "entity type" } }
+        }
+      },
+      { "CONDITIONAL" : [
+          {
+            "IF" : { "data_is" : { "data" : [ "entity-type" ], "value" : "comment" } },
+            "DO" : [
+              { "variable_add" : {
+                  "USING" : {
+                    "type" : "text",
+                    "value" : "\u003C?php\r\n$comment = comment_load($entity_id);\r\n$node = node_load($comment-\u003Enid);\r\necho $node-\u003Etitle;\r\n?\u003E"
+                  },
+                  "PROVIDE" : { "variable_added" : { "entity_title" : "entity title" } }
+                }
+              },
+              { "mail" : {
+                  "to" : [ "mention:uid:mail" ],
+                  "subject" : "You were mentioned on the [site:name] portal",
+                  "message" : "User [mentioner-name:value] mentioned you in a comment to post \u003Ca href=\u0022\/comment\/[entity-id:value]#comment-[entity-id:value]\u0022\u003E[entity-title:value]\u003C\/a\u003E\r\n\r\n\u0022Mentions\u0022 notifications like this one can be disabled on your \u003Ca href=\u0022\/user\/[mention:uid]\/edit\u0022\u003Euser profile page\u003C\/a\u003E",
+                  "language" : [ "mention:uid:language" ]
+                }
+              }
+            ]
+          },
+          {
+            "ELSE IF" : { "data_is" : { "data" : [ "entity-type" ], "value" : "node" } },
+            "DO" : [
+              { "variable_add" : {
+                  "USING" : {
+                    "type" : "text",
+                    "value" : "\u003C?php\r\n$node = node_load($entity_id);\r\necho $node-\u003Etitle;\r\n?\u003E"
+                  },
+                  "PROVIDE" : { "variable_added" : { "entity_title" : "entity title" } }
+                }
+              },
+              { "mail" : {
+                  "to" : [ "mention:uid:mail" ],
+                  "subject" : "You were mentioned on the [site:name] portal",
+                  "message" : "User [mentioner-name:value] mentioned you in post \u003Ca href=\u0022\/comment\/[entity-id:value]#comment-[entity-id:value]\u0022\u003E[entity-title:value]\u003C\/a\u003E\r\n\r\n\u0022Mentions\u0022 notifications like this one can be disabled on your \u003Ca href=\u0022\/user\/[mention:uid]\/edit\u0022\u003Euser profile page\u003C\/a\u003E",
+                  "language" : [ "mention:uid:language" ]
+                }
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

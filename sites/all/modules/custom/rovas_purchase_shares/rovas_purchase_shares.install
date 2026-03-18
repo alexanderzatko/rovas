@@ -1,0 +1,94 @@
+<?php
+
+
+include_once 'rovas_purchase_shares.field_base.inc';
+include_once 'rovas_purchase_shares.field_instance.inc';
+
+/*
+*
+* Implements hook_install(). 
+*/
+function rovas_purchase_shares_install () {
+
+  node_types_rebuild();
+
+  foreach (rovas_purchase_shares_field_default_field_bases() as $field) {
+    field_create_field($field);
+  }
+
+  foreach (rovas_purchase_shares_field_default_field_instances() as $fieldinstance) {
+    field_create_instance($fieldinstance);
+	}
+}
+
+/*
+* implements hook_uninstall() 
+*/
+function rovas_purchase_shares_uninstall() {
+	if($instance = field_info_instance('node', 'body', 'time_share')) {
+		field_delete_instance($instance);
+	}
+	if($instance = field_info_instance('node', 'field_category', 'time_share')) {
+		field_delete_instance($instance);
+	}
+	if($instance = field_info_instance('node', 'field_chrons_paid', 'time_share')) {
+		field_delete_instance($instance);
+	}
+	if($instance = field_info_instance('node', 'field_chrons_paid', 'time_share')) {
+		field_delete_instance($instance);
+	}
+	if($instance = field_info_instance('node', 'field_hours_purchased', 'time_share')) {
+		field_delete_instance($instance);
+	}
+	if($instance = field_info_instance('node', 'field_project', 'time_share')) {
+		field_delete_instance($instance);
+	}
+	if($instance = field_info_instance('node', 'field_purchase_proof', 'time_share')) {
+		field_delete_instance($instance);
+	}
+	if($instance = field_info_instance('node', 'body', 'timeshare_merit_allocation')) {
+		field_delete_instance($instance);
+	}
+	if($instance = field_info_instance('node', 'field_coworker', 'timeshare_merit_allocation')) {
+		field_delete_instance($instance);
+	}
+	if($instance = field_info_instance('node', 'field_merit_allocation', 'timeshare_merit_allocation')) {
+		field_delete_instance($instance);
+	}
+	if($instance = field_info_instance('node', 'field_merits_earned', 'timeshare_merit_allocation')) {
+		field_delete_instance($instance);
+	}
+	if($instance = field_info_instance('node', 'field_project', 'timeshare_merit_allocation')) {
+		field_delete_instance($instance);
+	}
+	if($instance = field_info_instance('node', 'field_total_hours_worked', 'timeshare_merit_allocation')) {
+		field_delete_instance($instance);
+	}
+	if($instance = field_info_instance('node', 'field_allow_purchasing_shares', 'project')) {
+		field_delete_instance($instance);
+	}
+	if($instance = field_info_instance('node', 'field_minimum_time', 'project')) {
+		field_delete_instance($instance);
+	}
+	if($instance = field_info_instance('node', 'field_rate', 'project')) {
+		field_delete_instance($instance);
+	}
+
+
+  // Gather all the example content that might have been created while this
+  // module was enabled.  Simple selects still use db_query().
+  // http://api.drupal.org/api/function/db_query/7
+  $sql = "SELECT nid FROM {node} n WHERE n.type IN (:type)";
+  $result = db_query($sql, array(':type' => array('time_share','timeshare_merit_allocation')));
+  $nids = array();
+  foreach ($result as $row) {
+    $nids[] = $row->nid;
+  }
+  // Delete all the nodes at once
+  // http://api.drupal.org/api/function/node_delete_multiple/7
+  node_delete_multiple($nids);
+  // Delete our content type
+  // http://api.drupal.org/api/function/node_type_delete/7
+  node_type_delete('time_share');
+  node_type_delete('timeshare_merit_allocation');
+}

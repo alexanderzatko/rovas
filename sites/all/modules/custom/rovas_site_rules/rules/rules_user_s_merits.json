@@ -1,0 +1,64 @@
+{ "rules_user_s_merits" : {
+    "LABEL" : "user\u0027s merits",
+    "PLUGIN" : "rule",
+    "OWNER" : "rules",
+    "TAGS" : [ "api", "merits", "user" ],
+    "REQUIRES" : [ "rules", "php", "userpoints_rules" ],
+    "USES VARIABLES" : {
+      "total_merits" : { "label" : "total merits", "type" : "decimal", "parameter" : false },
+      "nace_id" : { "label" : "NACE term ID", "type" : "integer", "allow null" : true },
+      "term_merits" : { "label" : "term merits", "type" : "decimal", "parameter" : false }
+    },
+    "DO" : [
+      { "component_rules_retrieve_user_id_from_api_key_and_token" : { "USING" : {}, "PROVIDE" : { "uid" : { "uid" : "user id" } } } },
+      { "entity_fetch" : {
+          "USING" : { "type" : "user", "id" : [ "uid" ] },
+          "PROVIDE" : { "entity_fetched" : { "user_fetched" : "found user" } }
+        }
+      },
+      { "variable_add" : {
+          "USING" : {
+            "type" : "text",
+            "value" : "\u003C?php \r\n$qry = \u0022\r\nSELECT SUM(mr.field_merit_reward_value) AS merits\r\nFROM {node} node\r\nLEFT JOIN {field_data_field_merit_reward} mr ON node.nid = mr.entity_id \u0022;\r\nif ($nace_id) {\r\n\t$qry .= \u0022\r\n\tLEFT JOIN {field_data_field_classification} c ON node.nid = c.entity_id\r\n\tWHERE node.status = \u00271\u0027\r\n\tAND node.uid = :uid \r\n\tAND c.field_classification_tid = :nace \u0022;\r\n\t$ary = array(\u0027:nace\u0027 =\u003E $nace_id, \u0027:uid\u0027 =\u003E $uid);\r\n}\r\nelse {\r\n\t$qry .= \u0022\r\n\tWHERE node.status = \u00271\u0027\r\n\tAND node.uid = :uid \u0022;\r\n\t$ary = array(\u0027:uid\u0027 =\u003E $uid);\r\n}\r\n$qry .= \u0022\r\nAND node.type =\u0027work_report\u0027 \r\nAND mr.field_merit_reward_value IS NOT NULL\u0022;\r\n\r\n$result = db_query($qry,$ary);\r\n\r\n$resarray = $result-\u003EfetchAssoc();\r\necho $resarray[\u0027merits\u0027];\r\n?\u003E"
+          },
+          "PROVIDE" : { "variable_added" : { "term_merits_resultset" : "term merits resultset" } }
+        }
+      },
+      { "variable_add" : {
+          "USING" : { "type" : "text", "value" : [ "term-merits-resultset" ] },
+          "PROVIDE" : { "variable_added" : { "term_merits_text" : "term merits text" } }
+        }
+      },
+      { "data_convert" : {
+          "USING" : { "type" : "decimal", "value" : [ "term-merits-text" ] },
+          "PROVIDE" : { "conversion_result" : { "term_merits_dec" : "term merits dec" } }
+        }
+      },
+      { "data_set" : { "data" : [ "term-merits" ], "value" : [ "term-merits-dec" ] } },
+      { "variable_add" : {
+          "USING" : {
+            "type" : "decimal",
+            "value" : [ "user-fetched:field-merit-decimal-part" ]
+          },
+          "PROVIDE" : { "variable_added" : { "merits_decimal" : "merits decimal" } }
+        }
+      },
+      { "userpoints_rules_get_current_points" : {
+          "USING" : { "user" : [ "user-fetched" ], "tid" : "all" },
+          "PROVIDE" : { "loaded_points" : { "loaded_points" : "Number of merits in the specified category." } }
+        }
+      },
+      { "data_calc" : {
+          "USING" : {
+            "input_1" : [ "loaded-points" ],
+            "op" : "+",
+            "input_2" : [ "merits-decimal" ]
+          },
+          "PROVIDE" : { "result" : { "user_total_merits" : "user total merits" } }
+        }
+      },
+      { "data_set" : { "data" : [ "total-merits" ], "value" : [ "user-total-merits" ] } }
+    ],
+    "PROVIDES VARIABLES" : [ "total_merits", "term_merits" ]
+  }
+}

@@ -1,0 +1,2526 @@
+<?php
+/**
+* Implementation of hook_menu().
+*/
+function rovas_project_reward_menu() {
+  $items = array();
+
+  $items['rewpro'] = array(
+    'title' => t('Purchase Details')	,
+    'description' => t('Reward a project'),
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('rovas_project_reward_form'),
+    'access callback' => TRUE,
+  );
+
+  return $items;
+}
+
+function rovas_project_reward_form ($form, &$form_state) {
+
+	global $user, $language;
+
+	$text = '';
+	$weight_text = 1;
+	$text2 = '';
+	$weight_text2 = 3;
+	$disbld = FALSE;
+	$chrnote = '';
+	$neo_how = '';
+	$weight_neohow = 4;
+	$access_neo_how = FALSE;
+	$payment_field_weight = 2;
+	$show_pay_field = TRUE;
+	$switch_disbld = FALSE;
+	$show_currency_switch = TRUE;
+	$available_chrons = 0;
+	$chrnote_weight = 2;
+	$payment_amount = 0;
+	$callbackurl = null;
+
+	$ch_balance_show = '';
+
+  $parameters = drupal_get_query_parameters();
+  
+	watchdog('rovas_project_reward','form state 1 <pre>' . print_r($form_state,1) . '</pre>');
+
+	// Check if this is an AJAX request (Drupal 7 method)
+	$is_ajax = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest';
+	
+	// Only set original_url on initial page load (not AJAX requests)
+	// Also check if we haven't already captured the URL in this session
+	if (!$is_ajax && empty($form_state['rebuild'])) {
+			// Initial page load - capture URL parameters
+			$current_url = url($_GET['q'], array(
+					'query' => $parameters,
+					'absolute' => TRUE
+			));
+			$parameters['original_url'] = $current_url;
+			
+			// Store parameters in form_state for AJAX persistence
+			$form_state['stored_parameters'] = $parameters;
+			
+	}
+	else if ($is_ajax && isset($form_state['stored_parameters'])) {
+			// AJAX call - restore parameters from form_state
+			$parameters = array_merge($parameters, $form_state['stored_parameters']);
+			
+	}
+	else if (!$is_ajax && isset($form_state['stored_parameters'])) {
+			// Form rebuild (non-AJAX) - merge current with stored
+			$parameters = array_merge($form_state['stored_parameters'], $parameters);
+	}
+
+	$vals = isset($form_state['values']) ? $form_state['values'] : 'vo values';
+
+	watchdog('rovas_project_reward','form state <pre>' . print_r([$parameters,$vals],1) . "</pre>");
+
+	$currency = isset($form_state['values']['payment-currency']) ? $form_state['values']['payment-currency'] : 'CHR';
+//	$payment_suffix = $currency == 'EUR' ? ' €' : ' ' . t('Chrons');
+	$payment_suffix = $currency == 'EUR' ? ' €' : ' ' . t('Chrons',[],['context' => 'reward project']);
+
+	$altunit = $currency == 'EUR' ? ' ' . t('chrons') : ' €';
+
+	if (isset($parameters['paytype']) && ($parameters['paytype'] == 'user' || $parameters['paytype'] == 'project' || $parameters['paytype'] == 'wreport')) {
+		$paytype = $parameters['paytype'];
+	}
+	else if (isset($form_state['values']['paytype'])) {
+		$paytype =  $form_state['values']['paytype'];
+	}
+	else {
+		$paytype = '';
+	}
+
+	if (isset($parameters['recipient']) && is_numeric($parameters['recipient'])) {
+		$recipient = $parameters['recipient'];
+		$form['recipient'] = [
+			'#type' => 'hidden',
+			'#value' => $parameters['recipient']
+		];
+	}
+	else if (isset($form_state['values']['recipient'])) {
+		$recipient =  $form_state['values']['recipient'];
+	}
+	else {
+		$recipient = '';
+	}
+
+	$form['paytype'] = ['#type' => 'hidden','#value' => $paytype];
+	$form['recipient'] = ['#type' => 'hidden','#value' => $recipient];
+	$form['currency'] = ['#type' => 'hidden','#value' => $currency];
+
+	//product name from URL
+	if (isset($parameters['name'])) {
+		$product_name = $parameters['name'];
+		$form['name'] = [
+			'#type' => 'hidden',
+			'#value' => $parameters['name']
+		];
+	}
+	else if (isset($form_state['values']['name'])) {
+		$product_name =  $form_state['values']['name'];
+	}
+	else {
+		$product_name = '';
+	}
+
+	if (!empty($product_name)) {
+		$form['name'] = [
+			'#type' => 'hidden',
+			'#value' => $product_name
+		];
+	}
+
+	//product description from URL
+	if (isset($parameters['description'])) {
+		$product_description = $parameters['description'];
+		$form['description'] = [
+			'#type' => 'hidden',
+			'#value' => $parameters['description']
+		];
+	}
+	else if (isset($form_state['values']['description'])) {
+		$product_description =  $form_state['values']['description'];
+	}
+	else {
+		$product_description = '';
+	}
+
+	if (!empty($product_description)) {
+		$form['description'] = [
+			'#type' => 'hidden',
+			'#value' => $product_description
+		];
+	}
+
+	if ($paytype == 'project' && is_numeric($recipient) && isset($parameters['signature'])) {
+
+    // Skip signature verification on AJAX requests - use stored validation
+    if ($is_ajax && isset($form_state['signature_validated'])) {
+        $requestIsValid = $form_state['signature_validated'];
+    }
+    else {
+        // Use original_url if available, otherwise request_uri()
+        $url = isset($parameters['original_url']) ? $parameters['original_url'] : request_uri();
+        
+        $message = remove_signature_from_url_string($url);
+        $signature = $parameters['signature'];
+        $project = node_load($recipient);
+
+        $owner_uid = $project->uid;
+        $service_endpoint = 'rovas_endpoint';				
+        $keys = rules_invoke_component('rules_retrieve_user_s_api_key_and_token',$owner_uid,$service_endpoint);
+        $secret = $keys[0];
+
+        $requestIsValid = verifySignature($message, $secret, $signature);
+        
+        // Store validation result for AJAX requests
+        $form_state['signature_validated'] = $requestIsValid;
+    }
+
+    //for debugging
+    $requestIsValid = TRUE;
+
+		if (!$requestIsValid) {
+			drupal_set_message(t('Access denied: Invalid signature'), 'error');
+			return;
+		}
+	}
+	else {
+		$requestIsValid = FALSE;
+	}
+
+	//EUR price override from URL
+	if ($requestIsValid && isset($parameters['price_eur']) && is_numeric($parameters['price_eur'])) {
+		$real_eur_price = (int)$parameters['price_eur'] / 100;
+	}
+	else {
+		$real_eur_price = null;
+	}
+
+	//CHR price override from URL
+	if ($requestIsValid && isset($parameters['price_chr']) && is_numeric($parameters['price_chr'])) {
+		$real_chr_price = $parameters['price_chr'];
+	}
+	else {
+		$real_chr_price = null;
+	}
+
+	// Check if we have stored overrides from previous AJAX calls
+	if (isset($form_state['price_overrides'])) {
+			$real_eur_price = $form_state['price_overrides']['eur'];
+			$real_chr_price = $form_state['price_overrides']['chr'];
+	}
+
+	// Store override prices in form state
+	if ($real_eur_price !== null || $real_chr_price !== null) {
+			$form_state['price_overrides'] = [
+					'eur' => $real_eur_price,
+					'chr' => $real_chr_price
+			];
+	}
+
+	$form['#validate'][] = 'rovas_forex_session_expiration_validate';
+	$form['#validate'][] = 'rovas_project_reward_form_validate';
+
+	//callbackurl - URL of the site where user wants to buy access/subscription
+	if (isset($parameters['callbackurl']) && valid_url($parameters['callbackurl'],TRUE) && isset($parameters['token']) && isset($parameters['expiration'])) {
+
+		$callbackurl = $parameters['callbackurl'];
+
+		$form_state['rovas_session_data'] = $parameters;
+
+		// Only update session on initial load or when parameters change
+		if (!$is_ajax || !isset($form_state['session_set'])) {
+				rovas_project_reward_session_set('rovas_project_reward', $parameters);
+				$form_state['session_set'] = TRUE;
+		}
+	}
+	else if (isset($form_state['rovas_session_data']['callbackurl'])) {
+		$callbackurl = $form_state['rovas_session_data']['callbackurl'];
+	}
+	else if (isset($parameters['original_url']) && !$is_ajax) {
+		rovas_project_reward_session_set('rovas_project_reward', $parameters);
+	}
+	else if (!$is_ajax) {
+		//delete any existing session
+		rovas_project_reward_session_set('rovas_project_reward',[]);
+		$callbackurl = '';
+	}
+
+	//test validity of the submitted beneficiary object
+	if ($recipient) {
+		switch ($paytype) {
+			case 'project':
+				$node = node_load($recipient);
+				$test = isset($node->type);
+				break;
+			case 'wreport':
+				$node = node_load($recipient);
+				$test = isset($node->type);
+				break;
+			case 'user':
+				$usert = user_load($recipient);
+				$test = isset($usert->uid);
+				break;
+			default:
+				$test = FALSE;			
+			}
+	}
+	else {
+		$test = FALSE;			
+	}
+
+	if ($test) {
+
+		$chrons = '';
+		$euros = '';
+
+		//produce variables holding the project price in EUR and CHR
+		if ($paytype == 'project') {
+			$obj = entity_metadata_wrapper('node', $recipient); //recipient is project
+
+			//price in CHR
+			if ($real_eur_price && $real_chr_price) {
+				$price = $real_chr_price;
+			}
+			else if ($real_eur_price) {
+				//calculate chron price with forex
+				$eur_result_ary = rovas_project_reward_forex_convert($real_eur_price);
+				$price = round($eur_result_ary['output'],0);
+			}
+			else {
+				$price = $obj->field_price->value();
+			}
+			$euro_price = $real_eur_price ? $real_eur_price : $obj->field_price_in_eur->value();
+			$website_check = $obj->field_asset_web_address->value();
+
+			if (isset($website_check)) {
+				$website = $obj->field_asset_web_address->value->value();
+			}
+			else {
+				$website = '';
+			}
+
+			//determining the price in CHR and EUR
+			if ($euro_price && $price) {
+				$chrons = round($price,0);
+				$euros = $euro_price;
+			}
+
+			//the price in Chrons is provided; we will calculate the euro equivalent
+			else if ($price) {
+			
+				$result = calculate_forex_transaction_params('chr_to_eur',$price);
+
+				$ch_basket = $result['chr_basket'];
+				$eur_basket = $result['eur_basket'];
+				$fee = $result['xfee'];
+
+				$euro_price_ary = forex_reverse ($price,$ch_basket,$eur_basket,$fee);
+				$euros = round($euro_price_ary['output'],2);
+				$chrons = round($price,2);
+			}
+			else {
+				$chrons = '';
+				$euros = '';
+			}
+		}
+		else if ($paytype == 'wreport') {
+			$obj = entity_metadata_wrapper('node', $recipient); //recipient is work report nid
+		}
+		else if ($paytype == 'user') {
+			$obj = entity_metadata_wrapper('user', $recipient);
+		}
+
+		$neo_how = '<div class="neo-how">';
+		$neo_how .= '<div class="label">';
+		$neo_how .= t('How to pay with own time?');
+		$neo_how .= '</div>';
+		$neo_how .= '<div class="body">';
+		$neo_how .= t('<strong>Chron</strong> is the currency of the economic system NEO. It is granted for work on any volunteer, crowdsourced or FOSS project that already exist, or a new one you conceive yourself.');
+		$neo_how .= ' ';
+		$neo_how .= t('Work on the <strong>Openstreetmap</strong>, <strong>Wikipedia</strong>, any <strong>FOSS project</strong> and a number of others, all qualify for the chron reward.',array('@this' => $obj->label()));
+		$neo_how .= '<div style="margin-top: 5px;">';
+		$neo_how .= t('Read the <strong><a href="@rulesurl" target="_blank">NEO rules <span class="glyphicon glyphicon-new-window"></span></a></strong> to find out more.',array('@rulesurl' => '/rules'));
+
+		$payment_amount = $currency == 'EUR' ? $euros : $chrons;
+		$altpayment = $currency == 'EUR' ? $chrons : $euros;
+
+		$time = round($chrons/10,2);
+
+		if ($user->uid == 0) {
+
+			$neo_how .= '<br><br>';
+			$neo_how .= '<a href="/user/register" class="register-link">' . t('Register to earn Chrons') . '</a>';
+			$neo_how .= '</div></div>';
+			$neo_how .= '</div>';
+
+			$currency = 'EUR';
+			$payment_suffix = ' €';
+
+			if ($paytype == 'project') {
+				$text = '<strong>';
+				$text .= t('Project') . ': ';
+				$text .= '</strong>';
+				$text .= '<a href="/node/' . $recipient . '">' . $obj->label() . '</a>';
+				$text .= '<br><br>';
+
+				//incoming from a third-party application to process a subscription-like payment
+				if ($callbackurl && !$euros) {
+					$urlerror = t('Your request can not be processed, because this project does not have a price.');
+					drupal_set_message($urlerror,'error');
+					drupal_goto('node/' . $recipient);
+				}
+				else if ($callbackurl) {
+
+					$text .= t('To get <strong>@prodname</strong>, you need to <strong>pay @euro euro</strong>, or more.',['@prodname' => $product_name,'@euro' => $euros]);
+					$text .= '<br>';
+					$text .= t('You can pay also with @chrons Chrons, which can be earned for volunteer work (see below).',['@chrons' => $chrons]);
+					$text .= '<br><br>';
+					$text .= '<strong>' . t('Product details') . ':</strong>';
+					$text .= '<br>';
+					$text .= $product_description;
+
+					$payment_amount = $euros;
+					
+					$weight_text2 = 9;
+					$payment_field_weight = 2;
+				}
+				else {
+					$payment_amount = 0;
+					$text .= '<strong>';
+					$text .= t('Thank you for rewarding this project.');
+					$text .= '</strong><br>';
+					$text .= t(' You can pay with Euros, or with Chrons, that can be earned for volunteer work (see below).');
+					$text .= '';
+					
+					if(is_numeric($chrons) || is_numeric($euros)) {
+						$text .= '<div class="premium-note">';
+						$text .= t('Please note: this project offers premium features to users who pay @fee or more chrons or @eurofee or more euros.', array('@fee' => $chrons, '@eurofee' => $euros));
+						$text .= '<span class="benefits-inst">';
+						$text .= t('To claim these benefits, you have to initiate the order from the project web site: <a href="@url" target="_blank">@url</a>', array('@url' => $website));
+						$text .= '</span>';
+						$text .= '</div>';
+						$text .= '<br/>';
+					}
+					$weight_text2 = 9;
+					$payment_field_weight = 2;
+				}
+				$access_neo_how = TRUE;
+				$weight_neohow = 30;
+			}
+			else if ($paytype == 'wreport') {
+				$text = '<strong>';
+				$text .= t('Work report') . ': ';
+				$text .= '</strong>';
+				$text .= '<a href="/node/' . $recipient . '">' . $obj->label() . '</a>';
+				$text .= '<br>';
+
+				$payment_amount = 0;
+				$rewarded_worker = $obj->author->name->value();
+				$rewarded_worker_uid = $obj->author->uid->value();
+				$text .= '<strong>' . t('Report author') . ': </strong><a href="/user/' . $rewarded_worker_uid . '" target="_blank">' . $rewarded_worker . '</a><br/>';
+				
+				$text .= '<br>';
+				$text .= t('You can pay with Euros to reward this work report.');
+				$text .= '<br>';
+				$text2 = '<div class="text2">';
+				$text2 .= t('To pay with Chrons instead, <a href="@login">log in</a>, or <a href="@register">register</a>.',array('@login' => '/user?destination=/rewpro&paytype=wreport&recipient=' . $recipient,'@register' => '/user/register'));
+				$text2 .= '</div><br>';
+				
+				// Enable the payment field for anonymous users
+				$disbld = FALSE;
+				$show_pay_field = TRUE;
+				$access_neo_how = TRUE;
+				$weight_text2 = 8;
+				$weight_neohow = 9;
+				$payment_field_weight = 2;
+				$currency = 'EUR'; // Set default currency to EUR for anonymous users
+				$payment_suffix = ' €';
+			}
+			else if ($paytype == 'user') {
+				$obj = entity_metadata_wrapper('user', $recipient);
+				$text = '<strong>';
+				$text .= t('Rewarded user') . ': ';
+				$text .= '</strong>';
+				$text .= $obj->label() . ' (' . t('ID') . ': '. $recipient .')';
+				$text .= '<br><br>';
+				$payment_amount = 0;
+			}
+			else {
+				$disbld = TRUE;
+				$text = '';
+			}
+		}
+		else {
+			$available_chrons = rules_invoke_component('rules_chrons_actually_available',$user);
+			$ch_balance_show = $currency == 'EUR' ? '' : '<strong>' . t('You have') . ': </strong>' . $available_chrons[0] . ' ' . $payment_suffix . '<br/><br/>';
+
+			if ($paytype == 'project') {
+				$usr = entity_metadata_wrapper('user', $user);
+
+				$text = '<strong>';
+				$text .= t('Project') . ': ';
+				$text .= '</strong>';
+				$text .= '<a href="/node/' . $recipient . '">' . $obj->label() . '</a>';
+				$text .= '<br><br>';
+
+				$form['prodinfo'] = array(
+					'#type' => 'markup',
+					'#markup' => $text,
+				);
+
+				$access_neo_how = TRUE;
+				$weight_neohow = 30;
+
+				if (!empty($callbackurl)) {
+				
+					//override the currency when not enough Chrons
+					if($chrons > $available_chrons[0]) {
+						$orig_pamount = $payment_amount;
+						$orig_unit = $payment_suffix;
+						
+						//big switcheroo
+						$currency = 'EUR';
+						$payment_suffix = $altunit;
+						$payment_amount = $altpayment;
+						$altunit = $orig_unit;
+						$altpayment = $orig_pamount;
+						
+						$switch_disbld = TRUE;
+
+						$chrnote = '<span style="color:red; font-weight:bold">';
+						$chrnote .= t('The Chron balance in your account is lower than the requested price.<br>You can continue with payment in euros');
+						$chrnote .= '</span>';
+						$chrnote .= '</br>';
+						if ((int)$available_chrons[0] === 0) {
+							$chrnote .= '<span class="get-chr"><a href="/rules">';
+							$chrnote .= t('Learn how to earn Chrons');
+							$chrnote .= '</a></span>';
+							$chrnote .= '</br>';
+						}
+					}
+					else {
+						$disbld = FALSE;
+						$chrnote = $currency == 'EUR' ? '</br>' : t('Clicking the button below will complete your payment') . '</br>';
+						$chrnote_weight = 6;
+					}
+
+					//if price for product is known
+					if(is_numeric($payment_amount)) {
+						$text = t('To get <strong>@prodname</strong>, you need to <strong>pay at least @payment_amount @unit</strong> (@altpayment @altunit), or more.',[
+							'@prodname' => $product_name, 
+							'@payment_amount' => $payment_amount, 
+							'@unit' => $payment_suffix, 
+							'@altpayment' => $altpayment,
+							'@altunit' => $altunit
+							]);
+						$text .= '<br><br>';
+						$text .= '<strong>' . t('Product details') . ':</strong>';
+						$text .= '<br>';
+						$text .= $product_description;
+						$text .= '<br><br>';
+					}
+					//price for product is unknown - allow user to enter it
+					else {
+						$text = t('The project does not have a firm price. You can pay any amount of your choosing.') . '<br/><br/>';
+					}
+				}
+				else {
+					$text = '<strong>';
+					$text .= t('The project does not have a firm price. You can pay any amount of your choosing.');
+					$text .= '</strong>';
+					if(is_numeric($chrons)) {
+						$text .= '<div class="premium-note">';
+						$text .= t('Please note: this project offers premium features to users who pay @fee or more chrons or @eurofee or more euros.', array('@fee' => $chrons, '@eurofee' => $euros));
+						$text .= '<span class="benefits-inst">';
+						$text .= t('To claim these benefits, you have to initiate the order from the project web site: <a href="@url" target="_blank">@url</a>', array('@url' => $website));
+						$text .= '</span>';
+						$text .= '</div>';
+					}
+					$text .= '<br/>';
+
+					if($chrons > $available_chrons[0]) {
+						$currency = 'EUR';
+						$payment_suffix = ' €';
+						$switch_disbld = TRUE;
+
+						$payment_amount = $euros;
+
+						$chrnote = '<span style="color:red; font-weight:bold">';
+						$chrnote .= t('The Chron balance in your account is lower than the requested price.<br>You can continue with payment in euros');
+						$chrnote .= '</span>';
+						$chrnote .= '</br>';
+						if ((int)$available_chrons[0] === 0) {
+							$chrnote .= '<span class="get-chr"><a href="/rules">';
+							$chrnote .= t('Learn how to earn Chrons');
+							$chrnote .= '</a></span>';
+							$chrnote .= '</br>';
+						}
+					}
+					else {
+						//user can pay with either Euros or Chrons
+						$disbld = FALSE;
+						$chrnote = $currency == 'EUR' ? '</br>' : t('Clicking the button below will complete your payment') . '</br>';
+						$chrnote_weight = 6;
+					}
+				}
+			}
+			else if ($paytype == 'wreport') {
+
+				$usr = entity_metadata_wrapper('user', $user);
+				$obj = entity_metadata_wrapper('node', $recipient); //recipient is work report nid
+				$repinfo = '<strong>' . t('Work report') . ': </strong><a href="/node/' . $obj->getIdentifier() . '" target="_blank">' . $obj->label() . '</a><br/>';
+
+				$form['prodinfo'] = array(
+					'#type' => 'markup',
+					'#markup' => $repinfo,
+				);
+
+				$rewarded_worker = $obj->author->name->value();
+				$rewarded_worker_uid = $obj->author->uid->value();
+
+				$text = '<strong>' . t('Report author') . ': </strong><a href="/user/' . $rewarded_worker_uid . '" target="_blank">' . $rewarded_worker . '</a><br/>';
+				$text .= '<br/><br/>';
+
+				//do not allow to continue if the rewarding user is the report author
+				if ($user->uid == $node->uid) {
+					$text2 = t('You can not reward your own work');
+					$text2 .= '<br><br>';
+					$disbld = TRUE;
+					$show_pay_field = FALSE;
+					$show_currency_switch = FALSE;
+				}
+				else {
+/*
+					$available_chrons = rules_invoke_component('rules_chrons_actually_available',$user);
+
+					//show user Chron balance
+					$form['chrblnc'] = array(
+						'#type' => 'markup',
+						'#prefix' => '<div id="ch-balance">',
+						'#suffix' => '</div>',
+						'#markup' => '<strong>' . t('You have') . ': </strong>' . $available_chrons[0] . ' CH<br/><br/>',
+						'#weight' => 4,
+					);
+*/
+				}
+			}
+			else if ($paytype == 'user') {
+				//send user to the existing interface for sending chrons to another user
+				drupal_goto('/node/add/money-transfer');
+			}
+			else {
+				$disbld = TRUE;
+				$text = '';
+			}
+		}
+	}
+	else {
+		$text = t('The recipient, or the type of recipient are missing. The payment can not be executed.');
+	}
+
+
+	if ($test && $user->uid == 0) {
+		$ptitle = t('Payment amount') . ':';
+		$pdescription = '';
+		$payprefix = '<div class="custom-eur-amt-noweb">';
+		$paysuffix = '</div>';
+		$show_currency_switch = FALSE;
+
+		$access_neo_how = TRUE;
+		$weight_neohow = 30;
+	}
+	else if ($test) {
+		$ptitle = t('Payment amount') . ':';
+		$pdescription = t('Enter the payment amount');
+		$payprefix = '';
+		$paysuffix = '';
+	}
+	else {
+		$ptitle = '';
+		$pdescription = '';
+		$payprefix = '';
+		$paysuffix = '';
+		$show_pay_field = FALSE;
+		$show_currency_switch = FALSE;
+	}
+
+	//the form elements
+
+	$form['text'] = array(
+		'#type' => 'markup',
+		'#prefix' => '<div id="text-1">',
+		'#suffix' => '</div>',
+		'#markup' => $text,
+		'#weight' => $weight_text,
+	);
+
+	//show user Chron balance
+	$form['chrblnc'] = [
+		'#type' => 'markup',
+		'#prefix' => '<div id="ch-balance">',
+		'#suffix' => '</div>',
+		'#markup' => $ch_balance_show,
+		'#weight' => 2,
+	];
+
+
+	$form['text2'] = array(
+		'#type' => 'markup', 
+		'#markup' => $text2,
+		'#weight' => $weight_text2,
+	);
+
+	$form['neo'] = array(
+		'#type' => 'markup', 
+		'#markup' => $neo_how,
+		'#access' => $access_neo_how,
+		'#weight' => $weight_neohow,
+	);
+	
+	$form['final'] = array(
+		'#type' => 'markup',
+		'#prefix' => '<div id="final_text">',
+		'#suffix' => '</div>',
+		'#markup' => $chrnote,
+		'#weight' => $chrnote_weight,
+	);
+
+	$form['payment-currency'] = [
+		'#type' => 'radios',
+		'#title' => t('Pay with'),
+		'#default_value' => $currency,
+		'#options' => ['CHR' => t('Chrons',[],['context' => 'reward project currency unit']),'EUR' => t('Euros',[],['context' => 'reward project'])],
+		'#description' => t('Choose the way you want to pay'),
+		'#access' => $show_currency_switch,
+		'#disabled' => $switch_disbld,
+		'#ajax' => [
+			'callback' => '_rpr_currency_switcher',
+			'wrapper' => 'payment-wrapper',
+			'method' => 'replace',
+			'effect' => 'fade',
+		],
+		'#weight' => 3,
+	];
+
+	$form['payment_wrapper'] = [
+		'#prefix' => '<div id="payment-wrapper">',
+		'#suffix' => '<div style="color:red; position:relative; top: -10px; margin-bottom: 15px;" id="payment-error"></div></div>',
+		'#type' => 'container',
+		'#weight' => 5,
+	];
+
+	$form['payment_wrapper']['pprice'] = [
+			'#type' => 'hidden',
+			'#value' => $payment_amount
+	];
+
+	if (!$user->uid) {
+
+		//set defualt value for email if known
+		if (isset($parameters['email']) && !empty($parameters['email'])) {
+			$email = $parameters['email'];
+		}
+		else if (isset($form_state['values']['email'])) {
+			$email =  $form_state['values']['email'];
+		}
+		else {
+			$email = '';
+		}
+	
+		$form['email'] = [
+			'#type' => 'textfield',
+			'#title' => t('E-mail address'),
+			'#default_value' => $email,
+			'#description' => t('We will send order confirmation to this email'),
+			'#size' => 12,
+			'#maxlength' => 120,
+			'#required' => TRUE,
+			'#weight' => 5,
+        '#attributes' => [
+            'type' => 'email',
+            'inputmode' => 'email'
+        ],
+		];
+	}
+	
+	$form['payment_wrapper']['payment'] = [
+		'#type' => 'textfield',
+		'#title' => $ptitle,
+		'#description' => $pdescription,
+		'#prefix' => $payprefix,
+		'#suffix' => $paysuffix,
+		'#field_suffix' => $payment_suffix,
+		'#size' => 12,
+		'#maxlength' => 24,
+		'#required' => TRUE,
+		'#access' => $show_pay_field,
+    '#attributes' => [
+        'type' => 'number',
+				'step'     => '1',
+        'inputmode' => 'numeric',
+        'pattern' => '[0-9]*',
+        'class' => ['edit-payment']
+    ],
+	];
+
+	$form['payment_wrapper']['payment']['#attributes']['class'][] = 'edit-payment';
+
+
+	if ($user->uid > 0 && !empty($user->language)) {
+		$user_language = $user->language;
+	}
+	else {
+		$user_language = $language->language;
+	}
+
+	if ($currency == 'EUR') {
+		if ($user_language != 'en') {
+			$butn_label = '<span class="icon glyphicon glyphicon-credit-card" aria-hidden="true"></span> ' . t('Pay with credit card');
+		} 
+		else {
+			$butn_label = t('Pay with credit card');
+		}
+		$disbld_bank = FALSE;
+		$access_bank = TRUE;
+	}
+	else {
+		$butn_label = t('Confirm');
+		$disbld_bank = TRUE;
+		$access_bank = FALSE;
+	}
+
+	$form['submit'] = [
+		'#prefix' => '<div id="submit-buttons">',
+		'#suffix' => '</div>',
+		'#type' => 'container',
+		'#weight' => 10,
+	];
+	
+	$form['submit']['card'] = [
+		'#type' => 'submit',
+		'#value' => $butn_label,
+		'#attributes' => [
+			'id' => ['pay-choice-card'],
+			'class' => ['btn', 'btn-primary', 'btn-credit-card', 'icon-before'],
+			'role' => ['button'],
+		],
+		'#access' => TRUE,
+		'#weight' => 10,
+		'#disabled' => $disbld,
+		'#html' => TRUE,
+	];
+
+	$form['submit']['bank'] = [
+		'#type' => 'submit',
+		'#value' => '<span class="icon glyphicon glyphicon-briefcase" aria-hidden="true"></span> ' . t('Pay with bank transfer'),
+		'#attributes' => [
+			'id' => ['pay-choice-bank'],
+			'class' => ['btn', 'btn-success', 'btn-credit-bank', 'icon-before'],
+			'role' => ['button'],
+		],
+		'#access' => $access_bank,
+		'#weight' => 11,
+		'#disabled' => $disbld_bank,
+		'#html' => TRUE,
+	];
+
+	$sessary = rovas_project_reward_session_get('rovas_project_reward', array());
+
+	$expiration = isset($sessary['expiration']) ? $sessary['expiration'] : INF;
+	$curtime = time();
+	
+	if ($expiration >= $curtime) {
+		$stripe_pub_key = check_plain(variable_get('stripe_publishable_key', 'pk_test_default'));
+	
+		$express_text = '<div class="express-checkout">';
+		$express_text .= '<div class="paymethods">';
+		$express_text .= t('Pay faster with:');
+		$express_text .= '</div>';
+		$express_text .= '<div id="ece-loading-indicator" style="display:none;">';
+		$express_text .= '<span class="spinner-border" role="status" aria-hidden="true"></span> ';
+		$express_text .= t('Loading payment options...');
+		$express_text .= '</div>';
+		
+		$express_text .= '<script>';
+		$express_text .= "var stripePublicKey = '" . $stripe_pub_key . "';";
+		$express_text .= '</script>';
+		$express_text .= '<div id="express-checkout-element"></div>';
+	
+		$express_text .= '<div class="payment-separator" style="margin: 20px 0; text-align: center; color: #666;">';
+		$express_text .= '<hr style="border: none; border-top: 1px solid #ddd; margin: 10px 0;">';
+		$express_text .= '<span style="background: white; padding: 0 15px;">' . t('or') . '</span>';
+		$express_text .= '</div>';
+		$express_text .= '</div>';
+	
+		rovas_stripe_express_checkout_add_js();
+		$form['express-checkout'] = array(
+			'#type' => 'markup',
+			'#prefix' => '<div id="express-checkout-container" style="display:none;">',
+			'#suffix' => '</div>',
+			'#markup' => $express_text,
+			'#weight' => 6,
+			// Visibility controlled by JS - #states removed, it hid the block from DOM on full URL.
+		);
+	}
+
+//dsm($form);
+	return $form;
+}
+
+//ajax callback
+function _rpr_currency_switcher ($form, $form_state) {
+	return array(
+		'#type' => 'ajax',
+		'#commands' => array(
+			ajax_command_replace("#payment-wrapper", render($form['payment_wrapper'])),
+			ajax_command_replace("#final_text", render($form['final'])),
+			ajax_command_replace(".form-item-payment-currency", render($form['payment-currency'])),
+			ajax_command_replace("#submit-buttons", render($form['submit'])),
+			ajax_command_replace("#text-1", render($form['text'])),
+			ajax_command_replace("#ch-balance", render($form['chrblnc'])),
+		)
+	);
+}
+
+//validate the form
+function rovas_project_reward_form_validate($form, &$form_state) {
+
+//watchdog('rovas_project_reward','normal validation <pre>' . print_r($form_state['values'],1) . '</pre>');
+  global $user;
+
+  // Get necessary values
+  $paid_amt = isset($form_state['values']['payment']) ? $form_state['values']['payment'] : '';
+  $pprice = isset($form_state['values']['pprice']) ? $form_state['values']['pprice'] : 0;
+  $pid = $form_state['values']['recipient'];
+  $paytype = $form_state['values']['paytype'];
+  $currency = isset($form_state['values']['payment-currency']) ? $form_state['values']['payment-currency'] : 'CHR';
+  
+	$callbackurl = isset($form_state['rovas_session_data']['callbackurl']) ? $form_state['rovas_session_data']['callbackurl'] : NULL;
+
+  // Validate payment amount
+  if ($paid_amt <= 0) {
+    form_set_error('payment', t('Please enter amount greater than 0'));
+  }
+  elseif ($callbackurl && $paid_amt < $pprice) {
+    form_set_error('payment', t('The price for this product is') . ' ' . $pprice . ' ' . 
+                             ($currency == 'EUR' ? '€' : 'CH') . '. ' . 
+                             t('However, you are sending only') . ' ' . $paid_amt);
+  }
+  
+  // Validate user authentication for CHR payments
+  if ($currency == 'CHR' && $user->uid == 0) {
+    form_set_error('payment', t('You must be logged in to make payments with Chrons.'));
+    return;
+  }
+  
+  // For logged-in users, validate sufficient balance
+  if ($user->uid > 0 && $currency == 'CHR') {
+    $chronsary = rules_invoke_component('rules_chrons_actually_available', $user);
+    $chrons = $chronsary[0];
+    
+    if ($chrons < $paid_amt) {
+      $unit = $currency == 'EUR' ? '€' : 'Chrons';
+      form_set_error('payment', t('You are trying to pay @paid_amt @unit, but you have only @chrons @unit in your account!', array('@paid_amt' => $paid_amt, '@chrons' => $chrons, '@unit' => $unit)));
+    }
+  }
+  
+  // For anonymous EUR payments, verify required fields
+  if ($currency == 'EUR' && $user->uid == 0) {
+    if (empty($paytype) || empty($pid) || !is_numeric($paid_amt)) {
+      form_set_error('', t('One, or all of the recipient, euro amount, or the type of recipient are missing. The payment cannot be executed.'));
+    }
+    
+    // Check for integer overflow in payment amount
+    if (isset($unit_price) && ($unit_price > 2147483647 || $quantity * $unit_price > 2147483647)) {
+      form_set_error('payment', t('The amount paid cannot be processed. Please split your payment into multiple smaller amounts.'));
+    }
+  }
+  
+  if (isset($form_state['values']['email'])) {
+		$email = trim($form_state['values']['email']);
+		if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+			form_set_error('email', t('Please enter a valid email address.'));
+		}
+  }
+  
+}
+
+//process the purchase
+function rovas_project_reward_form_submit($form, &$form_state) {
+  global $user;
+  //watchdog('rovas_project_reward','<pre>' . print_r($form_state,1) . '</pre>');
+  
+  // Extract form values once
+  $values = $form_state['values'];
+  $pid = $values['recipient'];
+  $paytype = $values['paytype'];
+  $paid_amt = isset($values['payment']) ? $values['payment'] : '';
+  $pprice = isset($values['pprice']) ? $values['pprice'] : 0;
+  $currency = isset($values['payment-currency']) ? $values['payment-currency'] : 'CHR';
+  $email = isset($values['email']) ? $values['email'] : '';
+  $uid = $user->uid;
+  
+  // Get session data
+  $sessary = rovas_project_reward_session_get('rovas_project_reward', array());
+  $callbackurl = isset($sessary['callbackurl']) ? $sessary['callbackurl'] : '';
+  
+  // Process EUR payment
+  if ($currency === 'EUR') {
+    $order = rpr_create_commerce_order($uid, $paid_amt, $paytype, $pid);
+    $pay_method = isset($form_state['clicked_button']['#attributes']['id'][0]) ? 
+                  $form_state['clicked_button']['#attributes']['id'][0] : NULL;
+    
+    // Set payment method data: rpr_paytype is the single source of truth; Commerce method is derived.
+    $order->data['rpr_paytype'] = $pay_method;
+    $commerce_method = _rovas_project_reward_commerce_method_for_rpr_paytype($pay_method);
+    if ($commerce_method !== NULL) {
+      $order->data['payment_method'] = $commerce_method;
+      $order->data['rovas_payment_method'] = $commerce_method;
+    }
+
+    // Handle anonymous user email
+    if ($uid == 0 && !empty($email)) {
+      $order->mail = $email;
+      $order->field_buyer_email[LANGUAGE_NONE][0]['value'] = $email;
+    }
+    
+    // Handle different payment methods
+    if ($pay_method === 'pay-choice-bank') {
+      // Attach billing profile and update status for bank payments
+      rpr_attach_billing_profile_to_order($order, $uid);
+      $order = commerce_order_status_update($order, 'checkout_review', TRUE);
+      commerce_order_save($order);
+      
+      $target = commerce_checkout_order_uri($order);
+      drupal_goto($target);
+    }
+    else {
+      // Standard checkout flow
+      commerce_order_save($order);
+      drupal_goto('checkout/' . $order->order_id);
+    }
+  }
+  // Process Chron payments (logged-in users only)
+  elseif ($uid > 0) {
+    // Load node and prepare common variables
+    $node = node_load($pid);
+    $lang = $user->language;
+    $node_url = '/node/' . $node->nid;
+    $node_title = isset($node->title_field[$lang][0]['value']) ? 
+                  $node->title_field[$lang][0]['value'] : $node->title;
+    $user_email = $user->mail;
+    
+    // Process based on payment type
+    if ($paytype === 'wreport') {
+      $msg = _process_work_report_reward($user->uid, $pid, $paid_amt, $node_url, $node_title,'CHR');
+    }
+    else {
+      $msg = _process_project_subscription($node, $paid_amt, $user, $node_url, $node_title);
+    }
+    
+    // Handle response based on callback URL
+    if (empty($callbackurl)) {
+      drupal_set_message($msg, 'status', FALSE);
+      drupal_goto('/node/' . $pid);
+    }
+    else {
+      rovas_project_reward_notify_purchase($node, $paid_amt, $currency, $user_email);
+    }
+  }
+  // If we reach here: anonymous user with non-EUR currency
+  // Let the form submission complete normally without additional processing
+}
+
+/**
+ * Helper function to process work report rewards
+ */
+function _process_work_report_reward($uid, $pid, $paid_amt, $node_url, $node_title, $currency = 'CHR') {
+  $note = t('Reward for the <a href="@projurl">@repname</a> work report', 
+            array('@projurl' => $node_url, '@repname' => $node_title));
+  
+  $process_reward = rules_invoke_component('rules_reward_work_report', $uid, $pid, $paid_amt, $note,$currency);
+  
+  return $process_reward[0] ? 
+    t('The reward was successfully processed') : 
+    $process_reward[1];
+}
+
+/**
+ * Helper function to process project subscriptions
+ */
+function _process_project_subscription($node, $paid_amt, $user, $node_url, $node_title) {
+  $note = t('Subscription, or payment for the <a href="@projurl">@projname</a> project', 
+            array('@projurl' => $node_url, '@projname' => $node_title));
+  
+  rules_invoke_component('rules_create_aur', $node, $paid_amt, $user, $note);
+  
+  return t('The purchase will be completed in a couple of minutes. You might want to refresh this page after a while');
+}
+
+/**
+ * Single source of truth: map rewpro payment choice (rpr_paytype) to Commerce payment method instance id.
+ *
+ * @param string $rpr_paytype
+ *   One of 'pay-choice-card', 'pay-choice-bank'.
+ * @return string|null
+ *   The Commerce payment method instance id, or NULL if unknown.
+ */
+function _rovas_project_reward_commerce_method_for_rpr_paytype($rpr_paytype) {
+  $map = array(
+    'pay-choice-card' => 'commerce_stripe_pi|commerce_payment_commerce_stripe_pi',
+    'pay-choice-bank' => 'bank_transfer|commerce_payment_bank_transfer',
+  );
+  return isset($map[$rpr_paytype]) ? $map[$rpr_paytype] : NULL;
+}
+
+/**
+ * Ensure a billing customer profile is attached to the order.
+ *
+ * @param object $order
+ *   Commerce order entity (loaded).
+ * @param int $uid
+ *   User ID (0 pre anonymného).
+ * @param array $address
+ *   (optional) Addressfield value for $profile->commerce_customer_address[LANGUAGE_NONE][0].
+ *   keys: country, administrative_area, locality, postal_code, thoroughfare,
+ *   premise, organisation_name, given_name, family_name, name_line, ...
+ *
+ * @return int|false
+ */
+function rpr_attach_billing_profile_to_order($order, $uid, array $address = array()) {
+  $profile = NULL;
+  if ($uid > 0) {
+    $profiles = commerce_customer_profile_load_multiple(array(), array(
+      'uid'    => $uid,
+      'type'   => 'billing',
+      'status' => 1,
+    ));
+    if (!empty($profiles)) {
+      $profile = reset($profiles);
+    }
+  }
+
+  if (!$profile) {
+    $profile = commerce_customer_profile_new('billing', $uid);
+    if (!empty($address)) {
+      $profile->commerce_customer_address[LANGUAGE_NONE][0] = $address;
+    }
+    $profile->status = 1;
+    commerce_customer_profile_save($profile);
+  }
+
+  if (empty($profile) || empty($profile->profile_id)) {
+    watchdog('rpr', 'Nepodarilo sa získať alebo vytvoriť billing profil.', array(), WATCHDOG_ERROR);
+    return FALSE;
+  }
+
+  try {
+    $wrapper = entity_metadata_wrapper('commerce_order', $order);
+    $wrapper->commerce_customer_billing->set($profile);
+    $wrapper->save();
+  }
+  catch (Exception $e) {
+    watchdog('rpr', 'Chyba pri pripájaní billing profilu k objednávke: @msg', array('@msg' => $e->getMessage()), WATCHDOG_ERROR);
+    return FALSE;
+  }
+
+  return (int) $profile->profile_id;
+}
+
+
+// start a commercial order process for euro payment
+function rpr_process_commerce_order($uid,$paid_amt,$paytype,$pid) {
+
+	$order = rpr_create_commerce_order($uid,$paid_amt,$paytype,$pid);
+
+	drupal_goto('checkout/' . $order->order_id);
+}
+
+
+/*
+create a commerce order
+ * Example usage:
+ * 
+ * $billing_data = array(
+ *     'first_name' => 'John',
+ *     'last_name' => 'Doe',
+ *     'company' => 'Acme Corp',
+ *     'thoroughfare' => '123 Main Street',
+ *     'premise' => 'Apt 4B',
+ *     'locality' => 'New York',
+ *     'administrative_area' => 'NY',
+ *     'postal_code' => '10001',
+ *     'country' => 'US',
+ *     'phone' => '+1-555-123-4567'
+ * );
+ * 
+ * $order = rpr_create_commerce_order(1, 100, 'project', 123, 'john@example.com', $billing_data);
+*/
+function rpr_create_commerce_order($uid, $paid_amt, $paytype, $pid, $email = NULL, $billing = NULL) {
+
+    watchdog('rpr', 'creating order for user with uid ' . $uid);
+
+    $product_obj = commerce_product_load_by_sku('subs-paymnt');
+    $product_nid = $product_obj->product_id;
+    $fp = calculate_forex_transaction_params('eur_to_chr', $paid_amt);
+    $quantity = 1;
+    $unit_price = $paid_amt * 100;
+    $convfee = $paid_amt * $fp['xfee'] + $fp['fixed_fee'];
+    
+    $order = commerce_order_new($uid, 'checkout_checkout');
+    
+    if (!empty($email)) {
+        $order->mail = $email;
+    }
+
+		$order->placed = REQUEST_TIME;
+    commerce_order_save($order);
+    
+    // Create customer profile if billing information is provided
+    if (!empty($billing) && is_array($billing)) {
+        $customer_profile = rpr_create_customer_profile($billing, $order->order_id);
+        if ($customer_profile) {
+            // Associate the customer profile with the order
+            $order_wrapper = entity_metadata_wrapper('commerce_order', $order);
+            $order_wrapper->commerce_customer_billing = $customer_profile;
+            commerce_order_save($order);
+        }
+    }
+    
+    // Modify unit price of the product
+    $product = entity_metadata_wrapper('commerce_product', $product_nid);
+    $product->commerce_price->amount->set($unit_price);
+    $product->commerce_price->currency_code->set('EUR');
+    $product->save();
+    
+    // Load whatever product represents the item the customer will be
+    // paying for and create a line item for it.
+    $product = commerce_product_load($product_nid);
+    $line_item = commerce_product_line_item_new($product, $quantity, $order->order_id);
+    
+    // Save the line item to get its ID.
+    commerce_line_item_save($line_item);
+        
+    // Add the line item to the order
+    $order_wrapper = entity_metadata_wrapper('commerce_order', $order);
+    $order_wrapper->commerce_line_items[] = $line_item;
+    $order_wrapper->field_conversion_fee = $convfee;
+    $order_wrapper->field_payer_type = $paytype == 'wreport' ? 'report' : $paytype;
+    $order_wrapper->field_payment_recipient = $pid;
+    
+    commerce_order_save($order);
+    commerce_cart_order_session_save($order->order_id);
+    
+    return $order;
+}
+
+/**
+ * Create a customer profile from billing information
+ * 
+ * @param array $billing_info Associative array with billing details
+ * @param int $order_id The order ID to associate with the profile
+ * @return object|FALSE The customer profile object or FALSE on failure
+ */
+
+function rpr_create_customer_profile($billing_info, $order_id) {
+    // Validate required fields
+    $required_fields = array('first_name', 'last_name', 'thoroughfare', 'locality', 'country');
+    foreach ($required_fields as $field) {
+        if (empty($billing_info[$field])) {
+            watchdog('rpr_commerce', 'Missing required billing field: @field', array('@field' => $field), WATCHDOG_ERROR);
+            return FALSE;
+        }
+    }
+    
+    try {
+        // Create a new customer profile
+        $profile = commerce_customer_profile_new('billing');
+        $profile->uid = 0; // Anonymous user for now, can be changed if needed
+        
+        // Create address field array
+        $address = array(
+            'country' => $billing_info['country'],
+            'administrative_area' => isset($billing_info['administrative_area']) ? $billing_info['administrative_area'] : '',
+            'locality' => $billing_info['locality'],
+            'postal_code' => isset($billing_info['postal_code']) ? $billing_info['postal_code'] : '',
+            'thoroughfare' => $billing_info['thoroughfare'],
+            'premise' => isset($billing_info['premise']) ? $billing_info['premise'] : '',
+            'first_name' => $billing_info['first_name'],
+            'last_name' => $billing_info['last_name'],
+            'organisation_name' => isset($billing_info['company']) ? $billing_info['company'] : '',
+        );
+        
+        // Set the address field
+        $profile_wrapper = entity_metadata_wrapper('commerce_customer_profile', $profile);
+        $profile_wrapper->commerce_customer_address->set($address);
+        
+        // Add phone number if available and if field exists
+        if (isset($billing_info['phone']) && !empty($billing_info['phone'])) {
+            // Check if phone field exists on the profile
+            $field_info = field_info_instance('commerce_customer_profile', 'field_phone', 'billing');
+            if ($field_info) {
+                $profile_wrapper->field_phone->set($billing_info['phone']);
+            }
+        }
+        
+        // Save the profile
+        commerce_customer_profile_save($profile);
+        
+        watchdog('rpr_commerce', 'Created customer profile @profile_id for order @order_id', 
+                array('@profile_id' => $profile->profile_id, '@order_id' => $order_id), WATCHDOG_INFO);
+        
+        return $profile;
+        
+    } catch (Exception $e) {
+        watchdog('rpr_commerce', 'Error creating customer profile: @error', 
+                array('@error' => $e->getMessage()), WATCHDOG_ERROR);
+        return FALSE;
+    }
+}
+
+/*
+* implements hook_form_alter() 
+*/
+function rovas_project_reward_form_alter(&$form, &$form_state, $form_id) {
+
+  if ($form_id !== 'commerce_checkout_form_checkout' && $form_id !== 'commerce_checkout_form_review') {
+    return;
+  }
+
+  global $user;
+  
+  $sessary = rovas_project_reward_session_get('rovas_project_reward', array());
+  $callbackurl = isset($sessary['callbackurl']) ? $sessary['callbackurl'] : '';
+  $expiration = isset($sessary['expiration']) ? $sessary['expiration'] : INF;
+  
+  // session expiration validation for callback URLs
+  if ($callbackurl && $expiration != INF) {
+    if (isset($form['buttons']['continue']['#validate'])) {
+      $form['buttons']['continue']['#validate'][] = 'rovas_forex_session_expiration_validate';
+    } else {
+      $form['#validate'][] = 'rovas_forex_session_expiration_validate';
+    }
+    $form_state['rovas_session_data'] = array(
+      'expiration' => $expiration,
+      'callbackurl' => $callbackurl,
+    );
+  }
+
+  // Handle form-specific modifications
+  switch ($form_id) {
+    case 'commerce_checkout_form_checkout':
+      _handle_checkout_form_modifications($form, $form_state, $user);
+      break;
+      
+    case 'commerce_checkout_form_review':
+			//make sure to re-fetch and update the PI after order is submitted
+			if (isset($form['buttons']['continue'])) {
+				$form['buttons']['continue']['#submit'][] = 'rovas_project_reward_review_finalize_payment';
+			}
+      _handle_review_form_modifications($form, $form_state);
+      break;
+  }
+}
+
+/**
+ * Handle checkout form modifications
+ */
+function _handle_checkout_form_modifications(&$form, &$form_state, $user) {
+
+  // Common checkout form modifications
+  unset($form['cart_contents']['#title']);
+  unset($form['buttons']['cancel']['#prefix']);
+  unset($form['buttons']['cancel']['#attributes']['class']);
+  $form['buttons']['cancel']['#weight'] = -1;
+
+	$form['buttons']['cancel']['#submit'] = array('rovas_project_reward_cancel');
+
+  // Anonymous user specific modifications
+  if ($user->uid == 0) {
+    $order = commerce_cart_order_load(0);
+
+    if (isset($order->order_number)) {
+      $summary = _rovas_project_reward_anonymous_order_summary_data($order);
+      if ($summary !== NULL) {
+        // Hide cart contents and add custom message
+        $form['cart_contents']['#access'] = FALSE;
+        $msg = rowas_anonym_render_order_info($summary['paytype'], $summary['recipient'], $summary['euro_price'], $summary['chr'], $summary['pay_method']);
+        $msg .= '</br></br>' . t('Please fill-in your billing information');
+        
+        // Hide email field if already set in order
+        if (isset($order->mail)) {
+          $form['account']['#access'] = FALSE;
+        }
+        
+        $form['msg'] = array(
+          '#type' => 'markup',
+          '#markup' => $msg,
+          '#prefix' => '<div class="msg">',
+          '#suffix' => '</div>',
+          '#weight' => -10
+        );
+        
+        $form['account']['#title'] = t('Contact information');
+
+        // Disable form elements if no payment type
+        if (!$summary['paytype']) {
+          $form['mail']['#disabled'] = TRUE;
+          $form['customer_profile_billing']['#disabled'] = TRUE;
+          $form['buttons']['continue']['#disabled'] = TRUE;
+        }
+
+        $form['buttons']['#weight'] = 2;
+      }
+    }
+  }
+
+}
+
+/**
+ * Handle review form modifications
+ */
+function _handle_review_form_modifications(&$form, &$form_state) {
+
+	// Do nothing on POST – let Commerce + Stripe submit handlers run.
+	if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+		return;
+	}
+
+  global $user;
+
+	$order_id = $form_state['order']->order_id;
+	$order = commerce_order_load($order_id);
+
+  // Common review form modifications
+  $form['checkout_review']['review']['#data']['cart_contents']['title'] = '';
+  unset($form['buttons']['back']['#prefix']);
+  unset($form['buttons']['back']['#attributes']['class']);
+  $form['buttons']['back']['#weight'] = -1;
+  
+  $form['buttons']['continue']['#prefix'] = '<div id="continue-button">';
+  $form['buttons']['continue']['#suffix'] = '</div>';
+
+	//do not show the account info - ever
+	unset($form['checkout_review']['review']['#data']['account']);
+
+	//hide the "review order before submitting" message
+	$form['help']['#access'] = FALSE;
+  
+  // Remove credit card issue field if present
+  if (isset($form['commerce_payment']['payment_details']['credit_card']['issue'])) {
+    unset($form['commerce_payment']['payment_details']['credit_card']['issue']);
+  }
+  
+  // Customize PayPal option text
+  if (isset($form['commerce_payment']['payment_method']['#options']['paypal_checkout|commerce_payment_paypal_checkout'])) {
+    $form['commerce_payment']['payment_method']['#options']['paypal_checkout|commerce_payment_paypal_checkout'] = t('Credit cards, or PayPal');
+  }
+  
+	//the payment detail pane switcher
+  if (isset($form['commerce_payment'])) {
+    
+    if ($order && isset($order->data['rpr_paytype'])) {
+      $preferred_method = $order->data['rpr_paytype'];
+      $single_method = _rovas_project_reward_commerce_method_for_rpr_paytype($preferred_method);
+
+      // Get all available payment methods
+      $payment_methods = commerce_payment_methods();
+      $filtered_methods = array();
+
+      if ($preferred_method === 'pay-choice-card') {
+        $allowed_methods = array('commerce_stripe_pi', 'paypal_wpp', 'paypal_checkout', 'paypal_ec', 'paypal_wps');
+        foreach ($payment_methods as $method_id => $method) {
+          if (in_array($method_id, $allowed_methods)) {
+            $filtered_methods[$method_id] = $method;
+          }
+        }
+      }
+      elseif ($preferred_method === 'pay-choice-bank') {
+        unset($form['checkout_review']['review']['#data']['customer_profile_billing']);
+        $form['buttons']['back']['#value'] = t('Cancel');
+        $form['buttons']['back']['#submit'] = array('rovas_project_reward_cancel');
+        foreach ($payment_methods as $method_id => $method) {
+          if ($method_id === 'bank_transfer') {
+            $filtered_methods[$method_id] = $method;
+          }
+        }
+      }
+
+			if (!empty($filtered_methods)) {
+				// Temporarily override the payment methods
+				$original_methods = &drupal_static('commerce_payment_methods');
+				$backup_methods = $original_methods;
+				$original_methods = $filtered_methods;
+				
+				// Rebuild the commerce payment pane
+				$checkout_pane = commerce_checkout_pane_load('commerce_payment');
+				$pane_form = commerce_payment_pane_checkout_form($form, $form_state, $checkout_pane, $order);
+				
+				if (is_array($pane_form)) {
+					$form['commerce_payment'] = $pane_form;
+				}
+				
+				// Restore original methods
+				$original_methods = $backup_methods;
+			}
+
+			// Set appropriate button text
+			_set_continue_button_text($form, $single_method);
+
+			$form['commerce_payment']['payment_method']['#default_value'] = $single_method;
+			$form['commerce_payment']['payment_method']['#value'] = $single_method;
+
+			// Hide the payment method selector since there's only one option
+			$form['commerce_payment']['payment_method']['#attributes']['class'][] = 'element-invisible';
+			$form['commerce_payment']['payment_method']['#prefix'] = '<div style="display:none">';
+			$form['commerce_payment']['payment_method']['#suffix'] = '</div>';
+
+    }
+    else {
+			// Default behavior when no payment method is predetermined
+			$form['commerce_payment']['payment_method']['#ajax']['callback'] = '_rovas_commerce_payment_pane_checkout_form_details_refresh';
+			
+			// Handle manual payment method switching
+			$formdefault = isset($form['commerce_payment']['payment_method']['#default_value']) ? 
+										 $form['commerce_payment']['payment_method']['#default_value'] : NULL;
+			$switcher = isset($form_state['triggering_element']['#value']) ? 
+									$form_state['triggering_element']['#value'] : $formdefault;
+			
+			// Set continue button text based on payment method
+			if ($switcher) {
+				_set_continue_button_text($form, $switcher);
+			}
+    }
+  }
+
+  // Anonymous user specific modifications for review form
+  if ($user->uid == 0 && isset($order->order_number)) {
+    $summary = _rovas_project_reward_anonymous_order_summary_data($order);
+    if ($summary !== NULL) {
+      if (!$summary['pay_method']) {
+        $msg = rowas_anonym_render_order_info($summary['paytype'], $summary['recipient'], $summary['euro_price'], $summary['chr']);
+        $msg .= '</br>';
+        $msg .= t('Please select a payment method.');
+      }
+      else {
+        $msg = rowas_anonym_render_order_info($summary['paytype'], $summary['recipient'], $summary['euro_price'], $summary['chr'], $summary['pay_method']);
+        $msg .= '</br>';
+      }
+
+      $form['msg'] = array(
+        '#type' => 'markup',
+        '#markup' => $msg,
+        '#prefix' => '<div class="msg">',
+        '#suffix' => '</div>',
+        '#weight' => -10
+      );
+    }
+  }
+}
+
+/**
+ * Prevent express checkout JS from loading on Commerce checkout review.
+ */
+function rovas_project_reward_js_alter(&$javascript) {
+  if (arg(0) === 'checkout' && arg(2) === 'review') {
+    foreach ($javascript as $path => $asset) {
+      if (strpos($path, 'rovas_stripe_express_checkout/js/express_checkout.js') !== FALSE) {
+        unset($javascript[$path]);
+      }
+    }
+  }
+}
+
+/**
+ * Stores or retrieves a pending redirect URL for post-payment navigation.
+ *
+ * rovas_project_reward_notify_purchase() must never call drupal_goto() directly
+ * because it is invoked from inside a Rules action triggered by
+ * hook_commerce_payment_transaction_insert. Calling drupal_goto() (exit) there
+ * aborts the process before Commerce saves paid_in_full_invoked, causing the
+ * Stripe webhook to fire paid_in_full a second time and produce duplicate
+ * emails and forex nodes.
+ *
+ * Instead, notify_purchase() calls this function to queue the redirect URL, and
+ * rovas_project_reward_review_finalize_payment() executes it after the
+ * transaction creation—and all its hooks—have fully completed.
+ *
+ * @param string|null $url
+ *   Pass a URL to store it; omit to just read the stored value.
+ *
+ * @return string|null
+ */
+function _rovas_project_reward_queue_redirect($url = NULL) {
+  static $redirect = NULL;
+  if ($url !== NULL) {
+    $redirect = $url;
+  }
+  return $redirect;
+}
+
+// Make sure the most recent PI is attached to the order, then execute any
+// deferred redirect that was queued during payment processing.
+function rovas_project_reward_review_finalize_payment($form, &$form_state) {
+
+  $order = $form_state['order'];
+  if (empty($order->data['stripe_pi']['payment_intent'])) {
+    watchdog('rpr', 'No PI on order data; aborting', [], WATCHDOG_WARNING);
+    return;
+  }
+
+  // Get the PI id from order->data (it can be an array or a client_secret string).
+  $stored = $order->data['stripe_pi']['payment_intent'];
+  if (is_array($stored) && !empty($stored['id'])) {
+    $pi_id = $stored['id'];
+  }
+  else {
+    // e.g. "pi_..._secret_..." -> take the part before "_secret_".
+    $pi_id = preg_replace('/_secret_.*/', '', (string) $stored);
+  }
+
+  if (!commerce_stripe_pi_load_library()) {
+    watchdog('rpr', 'Stripe library not loaded', [], WATCHDOG_ERROR);
+    return;
+  }
+
+  // Load payment method instance and the PI object from Stripe.
+  $pm = commerce_payment_method_instance_load('commerce_stripe_pi|commerce_payment_commerce_stripe_pi');
+  $pi = \Stripe\PaymentIntent::retrieve($pi_id);
+
+  // Create the Commerce payment transaction if status is OK.
+  // NOTE: this triggers hook_commerce_payment_transaction_insert which invokes
+  // commerce_payment_order_paid_in_full (Rules) which calls
+  // rovas_project_reward_notify_purchase(). That function queues a redirect URL
+  // via _rovas_project_reward_queue_redirect() instead of calling drupal_goto()
+  // immediately, so that Commerce can save paid_in_full_invoked = TRUE before
+  // we exit. We execute the deferred redirect below, after all hooks complete.
+  $ok = commerce_stripe_pi_create_transaction($order->order_id, $pi, $pm);
+  watchdog('rpr', 'Finalize payment result: @ok for PI @pi (status=@st)', [
+    '@ok' => $ok ? 'OK' : 'FAIL',
+    '@pi' => $pi->id,
+    '@st' => $pi->status,
+  ]);
+
+  // Run Stripe fee processing (which invokes rules_process_recipient_order_core)
+  // in this same PHP request, mirroring what the Stripe webhook does for express
+  // checkout. This guarantees the rule runs even if the webhook arrives before
+  // the order is findable, or never arrives at all.
+  //
+  // processor.inc is normally loaded only inside the webhook request via
+  // module_load_include(); we must load it explicitly here so the function is
+  // available in the checkout-form request context.
+  //
+  // _rovas_process_stripe_fees_for_order() is idempotent: it checks
+  // field_payment_status and returns early if already set to 1, so a later
+  // webhook call will be a harmless no-op.
+  if ($ok) {
+    module_load_include('inc', 'rovas_stripe_webhooks', 'includes/processor');
+    // Ensure the Stripe API key is set for the balance-transaction retrieval
+    // inside _rovas_stripe_webhooks_add_balance_fees_and_process(). In the
+    // webhook request the key is set by its own bootstrap; in the checkout-form
+    // request we must set it explicitly after loading the library.
+    if (class_exists('Stripe\Stripe')) {
+      \Stripe\Stripe::setApiKey(variable_get('stripe_secret_key', ''));
+    }
+    $fresh_order = commerce_order_load($order->order_id);
+    if ($fresh_order && function_exists('_rovas_stripe_webhooks_add_balance_fees_and_process')) {
+      _rovas_stripe_webhooks_add_balance_fees_and_process($fresh_order, array('id' => $pi_id));
+    }
+    elseif (!function_exists('_rovas_stripe_webhooks_add_balance_fees_and_process')) {
+      watchdog('rpr', 'Fee processing function not found after module_load_include — processor.inc may be missing.', array(), WATCHDOG_ERROR);
+    }
+  }
+
+  // Execute the redirect that was queued by rovas_project_reward_notify_purchase()
+  // during the transaction-insert hook chain above. At this point
+  // paid_in_full_invoked has been saved by Commerce, so the Stripe webhook will
+  // find it set and skip its own paid_in_full invocation, preventing duplicates.
+  $redirect = _rovas_project_reward_queue_redirect();
+  if ($redirect) {
+    drupal_goto($redirect);
+  }
+}
+
+
+/**
+ * Returns anonymous order summary data for rewpro orders, or NULL if order is not suitable.
+ *
+ * Single place to extract paytype, recipient, amounts, and pay method from an order
+ * for use with rowas_anonym_render_order_info().
+ *
+ * @param object $order
+ *   Commerce order entity.
+ * @return array|null
+ *   Keys: paytype, recipient, euro_price, chr, pay_method. NULL if data missing.
+ */
+function _rovas_project_reward_anonymous_order_summary_data($order) {
+  if (empty($order->order_id)) {
+    return NULL;
+  }
+  $wrapper = entity_metadata_wrapper('commerce_order', $order);
+  $euro_price = $wrapper->commerce_order_total->amount->value() / 100;
+  $recipient = $wrapper->field_payment_recipient->value();
+  $paytype = $wrapper->field_payer_type->value();
+  if (!isset($paytype) || !isset($recipient) || !isset($euro_price)) {
+    return NULL;
+  }
+  $line_items = $wrapper->commerce_line_items->value();
+  $chr = isset($line_items[0]->quantity) ? $line_items[0]->quantity : 0;
+  $pay_method = isset($order->data['rpr_paytype']) ? $order->data['rpr_paytype'] : NULL;
+  return array(
+    'paytype' => $paytype,
+    'recipient' => $recipient,
+    'euro_price' => $euro_price,
+    'chr' => $chr,
+    'pay_method' => $pay_method,
+  );
+}
+
+/**
+ * Renders text containing the recipient name and the amount being sent.
+ *
+ * Single centralized function for anonymous order summary (checkout and review).
+ *
+ * @param string $paytype
+ *   project|wreport|user.
+ * @param int|string $recipient
+ *   Node or user ID.
+ * @param float $euro_price
+ *   Order total in euros.
+ * @param float $chrons
+ *   Chron equivalent (e.g. from line item quantity).
+ * @param string|null $pay_method
+ *   pay-choice-card|pay-choice-bank or NULL.
+ * @return string
+ *   HTML message.
+ */
+function rowas_anonym_render_order_info($paytype, $recipient, $euro_price, $chrons, $pay_method = NULL) {
+
+	switch ($paytype) {
+		case 'project':
+
+			if (!is_numeric($recipient)) {
+				$msg = t('Project not found for the supplied project ID');
+			}
+			elseif ($pay_method) {
+				$msg = '';
+			}
+			else {
+				$titl = t('Rewarding project');
+				drupal_set_title($titl);
+
+				$project = entity_metadata_wrapper('node', $recipient);
+
+				$msg = '<div class="payment-main">';
+				$msg .= t(
+					'You are sending a reward of <strong>@eur €</strong> to project <a href="@url">@projname</a>.',
+					[
+						'@eur'     => $euro_price,
+						'@url'     => '/node/' . $recipient,
+						'@projname'=> $project->label(),
+					]
+				);
+			}
+
+			break;
+		case 'wreport':
+			$titl = t('Rewarding work report');
+			drupal_set_title($titl);
+			if (is_numeric($recipient)) {
+				$report = entity_metadata_wrapper('node', $recipient);
+			
+				$msg = '<div class="payment-main">';
+				$msg .= t('You are sending a reward of <strong>@eur €</strong> to work report <a href="@url">@repname</a>.',array('@eur' => $euro_price,'@url' => '/node/' . $recipient,'@repname' => $report->label()));
+				$msg .= '</div><div class="payment-xplain">(';
+				$msg .= t('The amount being paid was adjusted, to acommodate requirements of our payment processor.');
+				$msg .= ')</div>';
+			}
+			else {
+				$msg = t('Work report not found for the supplied ID');
+			}
+			break;
+		case 'user':
+			$titl = t('Sending money to user');
+			drupal_set_title($titl);
+
+			if (is_numeric($recipient)) {
+				$userobj = entity_metadata_wrapper('user', $recipient);
+				$msg = t('You are sending @eur € (@chr Chrons) to <strong>@usrname</strong>',array('@eur' => $euro_price,'@usrname' => $userobj->label(),'@chr' => $chrons));
+							}
+			else {
+				$msg = t('User not found for the supplied user ID');
+			}
+
+			break;
+		default:
+			$msg = t('Recipient must be specified when sending money');
+		}
+
+	return $msg;
+
+}
+
+/**
+ * Set continue button text based on payment method
+ */
+function _set_continue_button_text(&$form, $switcher) {
+  $button_texts = array(
+    'bank_transfer|commerce_payment_bank_transfer' => t('Submit order'),
+    'paypal_wpp|commerce_payment_paypal_wpp' => t('Submit order'),
+    'paypal_checkout|commerce_payment_paypal_checkout' => t('Continue to next step'),
+    'commerce_stripe_pi|commerce_payment_commerce_stripe_pi' => t('Submit order'),
+  );
+  
+  $form['buttons']['continue']['#value'] = isset($button_texts[$switcher]) ? 
+                                           $button_texts[$switcher] : t('Submit order');
+}
+
+/**
+ * Unified submit handler for canceling/going back from checkout.
+ * Used for both cancel button on checkout page and back button on review page for bank payments.
+ * Cleans up the commerce order object and redirects to startup page.
+ */
+function rovas_project_reward_cancel($form, &$form_state) {
+  global $user;
+
+  // Prefer order from form_state; fall back to the active cart.
+  $order = !empty($form_state['order']) ? $form_state['order'] : commerce_cart_order_load($user->uid);
+
+  // Clean up and get redirect URL.
+  $redirect_url = _rovas_cleanup_order_and_get_redirect_url($order);
+
+  if (!empty($redirect_url)) {
+    // Use form_state redirect in submit context.
+    $form_state['redirect'] = $redirect_url;
+    return;
+  }
+
+  // Fallback behavior for Commerce checkout.
+  if (isset($form_state['checkout_page'])) {
+    // Get the current checkout page info
+    $checkout_page = $form_state['checkout_page'];
+    $checkout_pages = commerce_checkout_pages();
+    
+    // Find the previous page
+    $previous_page_id = NULL;
+    $page_ids = array_keys($checkout_pages);
+    $current_index = array_search($checkout_page['page_id'], $page_ids);
+    
+    if ($current_index !== FALSE && $current_index > 0) {
+      $previous_page_id = $page_ids[$current_index - 1];
+    }
+    
+    // Redirect to previous page or cart
+    if ($previous_page_id) {
+      $form_state['redirect'] = 'checkout/' . $order->order_id . '/' . $previous_page_id;
+    } else {
+      $form_state['redirect'] = 'cart';
+    }
+  } else {
+    // If not in checkout context, just send to cart.
+    $form_state['redirect'] = 'cart';
+  }
+}
+
+/**
+ * Clean up order and return redirect URL.
+ * 
+ * @param object $order
+ *   The commerce order object to clean up
+ * @return string|FALSE
+ *   The redirect URL or FALSE if unable to determine redirect
+ */
+function _rovas_cleanup_order_and_get_redirect_url($order) {
+
+  if (!$order || empty($order->order_id)) {
+    return FALSE;
+  }
+  
+  // Get session data
+  $session = rovas_project_reward_session_get('rovas_project_reward', array());
+
+watchdog('rovas_project_reward', 'session when canceling <pre>' . print_r($session,1) . '</pre>');
+	
+  // Try to get redirect URL from session first
+  $redirect_url = isset($session['original_url']) ? $session['original_url'] : NULL;
+  
+  // If no stored URL, try to build from session data with order fallbacks
+  if (!$redirect_url && !empty($session)) {
+    $query_params = $session;
+    
+    // Add fallback data from order if not in session
+    if (!isset($query_params['paytype']) && isset($order->field_payer_type[LANGUAGE_NONE][0]['value'])) {
+      $query_params['paytype'] = $order->field_payer_type[LANGUAGE_NONE][0]['value'];
+    }
+    if (!isset($query_params['recipient']) && isset($order->field_payment_recipient[LANGUAGE_NONE][0]['value'])) {
+      $query_params['recipient'] = $order->field_payment_recipient[LANGUAGE_NONE][0]['value'];
+    }
+    
+    $redirect_url = url('rewpro', array('query' => $query_params));
+  }
+  
+  // If we have a valid redirect URL, clean up the order, cart, and session.
+  if ($redirect_url) {
+    // Log the order deletion for debugging/audit purposes
+    watchdog('rovas_project_reward', 'Deleting abandoned order @order_id for redirect to startup page',
+      array('@order_id' => $order->order_id), WATCHDOG_INFO);
+
+    // Delete the order and its associated data
+    commerce_order_delete($order->order_id);
+
+    // Clear any order-related session data
+    if (isset($_SESSION['commerce_cart_orders'])) {
+      foreach ($_SESSION['commerce_cart_orders'] as $key => $session_order_id) {
+        if ($session_order_id == $order->order_id) {
+          unset($_SESSION['commerce_cart_orders'][$key]);
+          break;
+        }
+      }
+    }
+
+    // Clear payment method filter so user is not stuck with card/bank choice on next visit
+    unset($_SESSION['commerce_payment_method_filter']);
+
+    // Clear the cart for anonymous users
+    global $user;
+    if ($user->uid == 0) {
+      commerce_cart_order_session_delete($order->order_id);
+    }
+  }
+
+  return $redirect_url;
+}
+
+//converting EUR to CHR
+function rovas_project_reward_forex_convert($input) {
+
+	$result = calculate_forex_transaction_params('eur_to_chr',$input);
+	$eur_basket = $result['eur_basket'];
+	$ch_basket = $result['chr_basket'];
+	$buy_ch_fee = $result['xfee'];
+	$buy_ch_fixed_fee = $result['fixed_fee'];
+
+	return forex($input,$eur_basket,$ch_basket,$buy_ch_fee,$buy_ch_fixed_fee);
+}
+
+/**
+ * Notifies external service after successful payment and handles response logic.
+ *
+ * @param object $rewarded_project
+ *   The project or work report object with at least ->uid and ->nid.
+ * @param object $paid_amt
+ *   The amount actually paid.
+ * @param object $currency
+ *   The currency in which the payment was made
+ * @param object $email
+ *   The order email (might be different from user email if user is registered)
+ */
+function rovas_project_reward_notify_purchase($rewarded_project,$paid_amt,$currency,$email) {
+	$sessary = rovas_project_reward_session_get('rovas_project_reward', array());
+
+//watchdog('rovas_project_reward', 'sessary <pre>' . print_r($sessary,1) . '</pre>');
+//watchdog('rovas_project_reward', 'params <pre>' . print_r([$rewarded_project,$paid_amt,$currency,$email],1) . '</pre>');
+
+	if (empty($sessary['callbackurl']) || empty($sessary['token'])) {
+    // Queue a redirect to the project node. drupal_goto() must NOT be called
+    // here because this function is invoked from inside a Rules action that is
+    // itself triggered by hook_commerce_payment_transaction_insert. Calling
+    // drupal_goto() (which calls exit) at this point would abort the process
+    // before Commerce can save the paid_in_full_invoked flag, causing the
+    // webhook to fire paid_in_full a second time and produce duplicate emails
+    // and forex nodes. The redirect is executed later from
+    // rovas_project_reward_review_finalize_payment, after all hooks complete.
+    $msg = t('Thank you for the payment. It might take a couple of minutes to have it completely processed.');
+    drupal_set_message($msg, 'status', FALSE);
+    _rovas_project_reward_queue_redirect('node/' . $rewarded_project->nid);
+		return;
+	}
+	
+	// Prepare validation data.
+	$token = $sessary['token'];
+  
+	$owner_uid = $rewarded_project->uid;
+	$service_endpoint = 'rovas_endpoint';				
+	$keys = rules_invoke_component('rules_retrieve_user_s_api_key_and_token',$owner_uid,$service_endpoint);
+	$secret = $keys[0];
+	
+//watchdog('rovas_project_reward', 'token and secret <pre>' . print_r([$token,$secret],1) . '</pre>');
+
+	$signature = strtolower(hash_hmac('sha256', $token, $secret));
+
+	$endpoint = isset($rewarded_project->field_webhook_url[LANGUAGE_NONE][0]['value']) ? $rewarded_project->field_webhook_url[LANGUAGE_NONE][0]['value'] : '';
+
+	$options = [
+		'method' => 'POST',
+		'data' => drupal_json_encode([
+			'token' => $token,
+			'signature' => $signature,
+			'amount_paid' => $paid_amt,
+			'currency' => $currency,
+			'email' => $email
+		]),
+		'headers' => [
+			'Content-Type' => 'application/json',
+		],
+		'timeout' => 5,
+	];
+	
+	$response = drupal_http_request($endpoint, $options);
+
+watchdog('rovas_project_reward', 'response <pre>' . print_r($response,1) . '</pre>');
+
+//	if (FALSE) {
+	if ((int)$response->code === 204) {
+    // Queue the callback redirect; see note in the empty-sessary block above.
+    _rovas_project_reward_queue_redirect($sessary['callbackurl']);
+	}
+	else {
+		$project_name = $rewarded_project->title;
+		drupal_set_message(t('<p>Thank you for the payment.</p><p><strong>Due to a temporary problem, the premium features at @project could not be immediately activated.</strong></p><p>We will remedy the problem, and notify you as soon as possible.</p>',['@project' => $project_name]), 'error');
+
+		$message = 'Unusual response from the receiving server when rewarding project <a href="/node/'.$rewarded_project->nid.'">' . $rewarded_project->nid . '</a>.<p>The response is <pre>' . print_r($response,1) . '</pre></p>';
+		rules_invoke_component('rules_send_email','alexanderz@neofund.sk','Payment failure',$message,'en');
+
+//		watchdog('rovas_project_reward', $message);
+	}
+}
+
+/**
+ * Manages reward allocation between a beneficiary's wallet and the
+ * project's preferred allocation threshold. It updates the project's current allocation
+ * level and the beneficiary's euro balance accordingly. Supports variable 
+ * percentage-based allocation in addition to fixed thresholds.
+ *
+ * @param object $project
+ *   The project node object.
+ * @param float $reward_amount
+ *   The initial reward amount value.
+ *
+ * @return float
+ *   The remaining reward amount after allocation processing.
+ */
+function process_preferred_allocation_payment($project, $reward_amount) {
+  $project_wrapper = entity_metadata_wrapper('node', $project);
+  
+  if ($project_wrapper->getBundle() == 'project' && $project_wrapper->field_reward_target->value() == 2) {
+        
+		$beneficiary_user = $project_wrapper->field_chron_beneficiary->value();
+		$valid_beneficiary = FALSE;
+		
+		if ($beneficiary_user) {
+			$beneficiary_account = $beneficiary_user;
+			$beneficiary_uid = $beneficiary_user->uid;
+			$valid_beneficiary = TRUE;
+		}
+
+    // If no valid beneficiary, use the project author as beneficiary
+    if (!$valid_beneficiary) {
+      $beneficiary_uid = $project_wrapper->author->uid->value();
+      $beneficiary_account = user_load($beneficiary_uid);
+      if (!$beneficiary_account) {
+        return $reward_amount;
+      }
+    }
+    
+    // Get fixed allocation threshold
+    $fixed_allocation = $project_wrapper->field_preferred_allocation_thres->value() ?: 0;
+    
+    // Get variable allocation percentage
+    $variable_allocation_percentage = $project_wrapper->field_variable_allocation->value() ?: 0;
+    
+    // Calculate the effective allocation threshold
+    $allocation = $fixed_allocation;
+    
+    // If variable allocation percentage is set, calculate percentage-based allocation
+    if ($variable_allocation_percentage > 0) {
+      // Get the running total of all payments and add current reward
+      $current_running_total = $project_wrapper->field_runing_total->value() ?: 0;
+      $total_payments = $current_running_total + $reward_amount;
+      
+      $percentage_based_allocation = ($variable_allocation_percentage / 100) * $total_payments;
+      
+      // Use whichever is higher: fixed allocation or percentage-based allocation
+      $allocation = max($fixed_allocation, $percentage_based_allocation);
+    }
+    
+    if ($allocation > 0) {
+      $beneficiary_wrapper = entity_metadata_wrapper('user', $beneficiary_uid);
+      $beneficiary_euros = $beneficiary_wrapper->field_euro_balance->value() ?: 0;
+      
+      $current_alloc_level = $project_wrapper->field_pa_wallet_current_level->value() ?: 0;
+      
+      if ($current_alloc_level < $allocation) {
+        // Calculate how much more is needed to reach the allocation threshold
+        $diff = $allocation - $current_alloc_level;
+        
+        if ($reward_amount <= $diff) {
+          // If reward amount is less than or equal to what's needed, allocate everything
+          $new_reward = $reward_amount;
+          $rest_reward = 0;
+        }
+        else {
+          // If reward amount exceeds what's needed, allocate only what's needed
+          $new_reward = $diff;
+          $rest_reward = $reward_amount - $new_reward;
+        }
+      }
+      else {
+        // Allocation threshold already met, don't allocate anything new
+        $new_reward = 0;
+        $rest_reward = $reward_amount;
+      }
+      
+      // Update project's current allocation level
+      $new_cal = $current_alloc_level + $new_reward;
+      $project_wrapper->field_pa_wallet_current_level->set($new_cal);
+      
+      // Update the running total of all payments
+      $current_running_total = $project_wrapper->field_runing_total->value() ?: 0;
+      $project_wrapper->field_runing_total->set($current_running_total + $reward_amount);
+
+      // Save the project
+      $project_wrapper->save();
+      
+      // Update the user's euro balance - adding only the new reward amount
+      $beneficiary_wrapper->field_euro_balance->set($beneficiary_euros + $new_reward);
+      
+      // Save the user
+      $beneficiary_wrapper->save();
+      return $rest_reward;
+    }
+  }
+  
+  return $reward_amount;
+}
+
+/**
+ * Returns TRUE if a forex_transaction node exists linked to the given order.
+ */
+function _rovas_project_reward_forex_node_exists_for_order($order_id) {
+  $query = new EntityFieldQuery();
+  $query->entityCondition('entity_type', 'node')
+    ->entityCondition('bundle', 'forex_transaction')
+    ->fieldCondition('field_order_record', 'target_id', $order_id);
+  $result = $query->execute();
+  return !empty($result['node']);
+}
+
+/**
+ * Creates a forex_transaction node for an order (e.g. express checkout) so fee processing can run.
+ * No-op if order is not a rewpro order or if Rules/forex are unavailable.
+ */
+function _rovas_project_reward_ensure_forex_node_for_order($order) {
+  if (empty($order->order_id) || !module_exists('rules') || !function_exists('rovas_forex_transaction_params')) {
+    return;
+  }
+  $wrapper = entity_metadata_wrapper('commerce_order', $order);
+  if ($wrapper->field_payer_type->value() === 'user') {
+    return;
+  }
+  if (function_exists('commerce_order_rules_contains_product') && commerce_order_rules_contains_product($order, 'time-share', '>=', 1)) {
+    return;
+  }
+  $recipient = $wrapper->field_payment_recipient->value();
+  if (!isset($recipient) || $recipient === '' || $recipient === NULL) {
+    return;
+  }
+  $order_total = $wrapper->commerce_order_total->amount->value() / 100;
+  $forex_params = rovas_forex_transaction_params('eur_to_chr', $order_total, 0, TRUE);
+  $eur_basket = $forex_params['eur_basket'];
+  $chr_basket = $forex_params['chr_basket'];
+  $output_amount = $forex_params['output_amount'];
+  $config = rules_config_load('rules_process_forex_order');
+  if (!$config || !$config->active) {
+    return;
+  }
+  $result = rules_invoke_component(
+    'rules_process_forex_order',
+    $order->order_id,
+    0,
+    $eur_basket,
+    $chr_basket,
+    'euros_to_chrons',
+    $order_total,
+    $output_amount,
+    0,
+    $order->uid
+  );
+  if (!empty($result)) {
+    watchdog('rovas_project_reward', 'Created forex node for express order @order_id (forex_nid: @nid).', array(
+      '@order_id' => $order->order_id,
+      '@nid' => is_array($result) ? (isset($result['forex_nid']) ? $result['forex_nid'] : reset($result)) : $result,
+    ), WATCHDOG_INFO);
+  }
+}
+
+/**
+ * Process Stripe processor fees for an order: update forex node, baskets, and recipient.
+ *
+ * Replaces the Rules reaction "Update nodes with processor fees". Called directly
+ * from the webhook fee-processing flow (no Rules event).
+ *
+ * Conditions (same as rule): order is commerce_order, payer type != "user",
+ * order does NOT contain product with SKU "time-share".
+ *
+ * @param object $order
+ *   The commerce order.
+ * @param string $payment_intent_id
+ *   Stripe payment intent ID.
+ * @param float $fee_amount
+ *   Processor fee amount (decimal).
+ * @param string $currency
+ *   Currency code.
+ * @param float $net_amount
+ *   Net amount after processor fees (decimal).
+ *
+ * @return bool
+ *   TRUE if processing succeeded, FALSE otherwise.
+ */
+function _rovas_process_stripe_fees_for_order($order, $payment_intent_id, $fee_amount, $currency, $net_amount) {
+  // Validate order bundle.
+  if (empty($order) || !isset($order->order_id)) {
+    return FALSE;
+  }
+
+  $wrapper = entity_metadata_wrapper('commerce_order', $order);
+
+  // Condition: payer type != "user".
+  $payer_type = $wrapper->field_payer_type->value();
+  if ($payer_type === 'user') {
+    return FALSE;
+  }
+
+  // Condition: order does NOT contain time-share product.
+  if (module_exists('commerce') && function_exists('commerce_order_rules_contains_product')) {
+    if (commerce_order_rules_contains_product($order, 'time-share', '>=', 1)) {
+      return FALSE;
+    }
+  }
+  else {
+    // Fallback: check line items manually.
+    $product_id = db_query("SELECT product_id FROM {commerce_product} WHERE sku = :sku", array(':sku' => 'time-share'))->fetchField();
+    if ($product_id && !empty($order->commerce_line_items)) {
+      $items = field_get_items('commerce_order', $order, 'commerce_line_items');
+      if ($items) {
+        foreach ($items as $item) {
+          $li = commerce_line_item_load($item['line_item_id']);
+          if ($li && isset($li->commerce_product) && $li->commerce_product[LANGUAGE_NONE][0]['product_id'] == $product_id) {
+            return FALSE;
+          }
+        }
+      }
+    }
+  }
+
+  // Acquire a per-order distributed lock to prevent concurrent execution of
+  // this function from the webhook request and the checkout-form request.
+  // Without the lock, both processes can read field_payment_status=0 before
+  // either has set it to 1, causing rules_process_recipient_order_core to fire
+  // twice for the same order.
+  $lock_key = 'fee_proc_order_' . $order->order_id;
+  if (!lock_acquire($lock_key, 60)) {
+    // Another PHP process is already running fee processing for this order.
+    // Wait up to 15 s for it to finish, then verify it completed.
+    watchdog('rovas_project_reward', 'fee_proc: order @oid — lock held by another process; waiting up to 15s.', array('@oid' => $order->order_id), WATCHDOG_INFO);
+    lock_wait($lock_key, 15);
+
+    // Re-read forex node from DB to see if the other process set status=1.
+    $q2 = new EntityFieldQuery();
+    $q2->entityCondition('entity_type', 'node')
+      ->entityCondition('bundle', 'forex_transaction')
+      ->fieldCondition('field_order_record', 'target_id', $order->order_id);
+    $r2 = $q2->execute();
+    if (!empty($r2['node'])) {
+      $fn2 = node_load(key($r2['node']));
+      if ($fn2 && entity_metadata_wrapper('node', $fn2)->field_payment_status->value() == 1) {
+        watchdog('rovas_project_reward', 'fee_proc: order @oid — concurrent process completed successfully; skipping duplicate.', array('@oid' => $order->order_id), WATCHDOG_INFO);
+        return TRUE;
+      }
+    }
+    watchdog('rovas_project_reward', 'fee_proc: order @oid — lock released but order not yet processed; aborting to prevent double-processing.', array('@oid' => $order->order_id), WATCHDOG_WARNING);
+    return FALSE;
+  }
+
+  // Lock acquired. Find forex node by field_order_record referencing this order.
+  // For regular card payments, the checkout form handler may be creating the
+  // forex node concurrently (via rules_process_card_payment_orders triggered
+  // by hook_commerce_payment_transaction_insert). Give it a moment to finish
+  // before deciding to create a new one, to avoid duplicate nodes.
+  if (!_rovas_project_reward_forex_node_exists_for_order($order->order_id)) {
+    usleep(500000);
+    if (!_rovas_project_reward_forex_node_exists_for_order($order->order_id)) {
+      _rovas_project_reward_ensure_forex_node_for_order($order);
+    }
+  }
+
+  $query = new EntityFieldQuery();
+  $query->entityCondition('entity_type', 'node')
+    ->entityCondition('bundle', 'forex_transaction')
+    ->fieldCondition('field_order_record', 'target_id', $order->order_id);
+  $result = $query->execute();
+
+  if (empty($result['node'])) {
+    lock_release($lock_key);
+    watchdog('rovas_project_reward', 'Forex node not found for order @order_id (payment intent @pi). Single query, no retry.', array(
+      '@order_id' => $order->order_id,
+      '@pi' => $payment_intent_id,
+    ), WATCHDOG_ERROR);
+    return FALSE;
+  }
+
+  $nids = array_keys($result['node']);
+  $forex_node = node_load($nids[0]);
+
+  if (!$forex_node || $forex_node->type !== 'forex_transaction') {
+    lock_release($lock_key);
+    return FALSE;
+  }
+
+  $forex_wrapper = entity_metadata_wrapper('node', $forex_node);
+
+  // Re-check payment_status now that we hold the lock. Another process may
+  // have set it to 1 in the window between our pre-lock read and lock acquisition.
+  $payment_status = $forex_wrapper->field_payment_status->value();
+  if ($payment_status == 1) {
+    lock_release($lock_key);
+    return TRUE;
+  }
+
+  $charge_fees = FALSE;
+  $base_buy_ch_fee = (float) variable_get('base_buy_ch_fee', 0);
+  $rovas_fee = $base_buy_ch_fee * $net_amount;
+  $net_after_rovas_fee = $net_amount - $rovas_fee;
+  $merit_allocation_multiplier = 1;
+
+  // Get rewarded project (payment recipient).
+  $recipient_id = $wrapper->field_payment_recipient->value();
+  $rewarded_project = NULL;
+  if ($recipient_id) {
+    $rewarded_project = node_load($recipient_id);
+  }
+
+  if ($payer_type === 'project' && $rewarded_project && $rewarded_project->type === 'project') {
+    $proj_wrapper = entity_metadata_wrapper('node', $rewarded_project);
+    $alloc = $proj_wrapper->field_reward_merit_allocation->value();
+    if (isset($alloc) && is_numeric($alloc)) {
+      $merit_allocation_multiplier = $alloc / 100;
+    }
+  }
+
+  $merit_fee = $net_after_rovas_fee * $merit_allocation_multiplier;
+  $net_after_merit = $net_after_rovas_fee - $merit_fee;
+  $total_fee = $fee_amount + $rovas_fee;
+
+  // Distribute euros within the project if net_after_merit > 0.
+  if ($net_after_merit > 0 && $rewarded_project) {
+    process_preferred_allocation_payment($rewarded_project, $net_after_merit);
+  }
+
+  // Forex conversion: EUR to CHR for merit_fee, with processor fee, charge_fees=FALSE.
+  $forex_params = rovas_forex_transaction_params('eur_to_chr', $merit_fee, $fee_amount, $charge_fees);
+  $eur_basket = $forex_params['eur_basket'];
+  $chr_basket = $forex_params['chr_basket'];
+  $output_amount = $forex_params['output_amount'];
+  $use_temp_baskets = $forex_params['use_temp_baskets'];
+
+  // Invoke Rules component for recipient order processing if it exists.
+  if (module_exists('rules')) {
+    $config = rules_config_load('rules_process_recipient_order_core');
+    if ($config && $config->active) {
+      rules_invoke_component('rules_process_recipient_order_core', $output_amount, 1, $order);
+    }
+    elseif (!$config) {
+      watchdog('rovas_project_reward', 'rules_process_recipient_order_core component not found in database (order @oid).', array('@oid' => $order->order_id), WATCHDOG_ERROR);
+    }
+  }
+
+  // Update forex baskets.
+  $new_universal_forex_baskets = array(
+    'ch_basket' => $chr_basket - $output_amount,
+    'eur_basket' => $eur_basket + $merit_fee,
+  );
+
+  if (!empty($use_temp_baskets)) {
+    variable_set('forex_baskets_temp', $new_universal_forex_baskets);
+  }
+  else {
+    if (variable_get('forex_baskets_temp')) {
+      variable_del('forex_baskets_temp');
+    }
+    variable_set('forex_baskets', $new_universal_forex_baskets);
+  }
+
+  // Update forex node fields. Setting field_payment_status=1 is the commit
+  // point; any concurrent process that acquired the lock after us will see
+  // status=1 and skip processing.
+  $forex_wrapper->field_euro_basket->set($eur_basket);
+  $forex_wrapper->field_chron_basket->set($chr_basket);
+  $forex_wrapper->field_input_amount->set($merit_fee);
+  $forex_wrapper->field_conversion_fee->set($total_fee);
+  $forex_wrapper->field_output_amount->set($output_amount);
+  $forex_wrapper->field_payment_status->set(1);
+  $forex_wrapper->save();
+
+  lock_release($lock_key);
+  return TRUE;
+}
+
+//helper functions to write and read into user's session
+//the session value must be an array
+function rovas_project_reward_session_get($session_name, $default) {
+	if (isset($_SESSION[$session_name])) {
+		return $_SESSION[$session_name];
+	}
+	return $default;
+}
+function rovas_project_reward_session_set($session_name, $session_value) {
+	$_SESSION[$session_name] = $session_value;
+}
+
+//function to verify payload from 3rd parties
+function verifySignature($message, $secret, $providedSignature) {
+    $expectedSignature = strtolower(hash_hmac('sha256', $message, $secret));
+    return $expectedSignature === $providedSignature;
+}
+
+//removes the "signature" param from URL
+function remove_signature_from_url_string($url) {
+  // Parse the URL
+  $parsed_url = parse_url($url);
+  
+  // Parse query string into array
+  parse_str($parsed_url['query'], $query_params);
+  
+  // Remove signature parameter
+  unset($query_params['signature']);
+
+  global $base_url;
+  
+  $clean_url = $base_url;
+  if (isset($parsed_url['port'])) {
+    $clean_url .= ':' . $parsed_url['port'];
+  }
+  $clean_url .= $parsed_url['path'];
+  
+  if (!empty($query_params)) {
+    $clean_url .= '?' . http_build_query($query_params);
+  }
+  
+  return $clean_url;
+}
+
+/*
+inserting the ordered product name we might receive in the URL of a GET request, sent by a 3rd party application
+*/
+function rovas_project_reward_commerce_stripe_pi_payment_intent_data_alter(array &$payment_intent_data, EntityMetadataWrapper $order_wrapper, array $payment_method, $cardonfile_id = NULL) {
+
+  $session = rovas_project_reward_session_get('rovas_project_reward', []);
+
+  if (isset($session['name'])) {
+    // Initialize metadata array if it doesn't exist
+    if (!isset($payment_intent_data['metadata'])) {
+      $payment_intent_data['metadata'] = [];
+    }
+    
+    // Check if product_name already exists and decide what to do
+    if (!isset($payment_intent_data['metadata']['product_name'])) {
+      $payment_intent_data['metadata']['product_name'] = $session['name'];
+    }
+  }
+}
+
+/**
+ * Implements hook_rules_event_info().
+ */
+function rovas_project_reward_rules_event_info() {
+  return array(
+    'stripe_fees_processed' => array(
+      'label' => t('Stripe fees have been processed'),
+      'group' => t('Rovas'),
+      'variables' => array(
+        'order' => array(
+          'type' => 'commerce_order',
+          'label' => t('Commerce Order'),
+        ),
+        'payment_intent_id' => array(
+          'type' => 'text',
+          'label' => t('Payment Intent ID'),
+        ),
+        'fee_amount' => array(
+          'type' => 'decimal',
+          'label' => t('Fee Amount'),
+        ),
+        'currency' => array(
+          'type' => 'text',
+          'label' => t('Currency Code'),
+        ),
+        'net_amount' => array(
+          'type' => 'decimal',
+          'label' => t('Net Amount (after fees)'),
+        ),
+      ),
+    ),
+  );
+}
+
+/**
+ * Implements hook_rules_action_info().
+ */
+function rovas_project_reward_rules_action_info() {
+  return array(
+    'project_merit_updater' => array(
+      'label' => t('Update project merits'),
+      'group' => t('Rovas'),
+      'parameter' => array(
+        'node' => array(
+          'type' => 'node', 
+          'label' => t('Node'),
+          'save' => FALSE,
+        ),
+        'project_merits' => array(
+          'type' => 'decimal', 
+          'label' => t('Merits to add')
+        ),
+      ),
+      'provides' => array(
+        'new_merit_value' => array(
+          'type' => 'decimal',
+          'label' => t('New merit value'),
+        ),
+      ),
+    ),
+  );
+}
+
+function project_merit_updater($node, $project_merits) {
+  $project_merits = (float) $project_merits;
+  
+  if (is_numeric($node)) {
+    $node = node_load($node);
+  }
+  
+  if (!isset($node->nid)) {
+    watchdog('rovas_project_reward', 'Invalid node passed to project_merit_updater', array(), WATCHDOG_ERROR);
+    return array('new_merit_value' => 0);
+  }
+  
+  $wrapper = entity_metadata_wrapper('node', $node);
+  
+  try {
+    $current_val = $wrapper->field_merit_reward->value();
+    $new_value = $current_val + $project_merits;
+    
+    $wrapper->field_merit_reward->set($new_value);
+    
+    $wrapper->save();
+    
+    return array('new_merit_value' => $new_value);
+  }
+  catch (Exception $e) {
+    watchdog('rovas_project_reward', 'Error updating project merits: @error', array('@error' => $e->getMessage()), WATCHDOG_ERROR);
+    return array('new_merit_value' => isset($current_val) ? $current_val : 0);
+  }
+}
