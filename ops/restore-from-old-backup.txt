@@ -1,0 +1,93 @@
+Restoring from a database backup made before the module reorganization
+======================================================================
+
+Background
+----------
+In the current codebase, Drupal contrib and custom modules live under:
+
+  sites/all/modules/contrib/<name>/
+  sites/all/modules/custom/<name>/
+
+Older database backups (made before this reorganization) store file paths
+in the flat layout:
+
+  sites/all/modules/<name>/
+
+If you restore such a backup while the filesystem already has the new
+structure, Drupal will be unable to find its modules and the site/drush
+will fail to bootstrap. Follow the steps below to reconcile the database
+with the filesystem.
+
+
+Step 1 — Restore the backup
+----------------------------
+Restore the database normally (e.g. via backup_migrate, drush sql-cli,
+or phpMyAdmin). Do not start using the site yet.
+
+
+Step 2 — Fix module paths in the system table
+----------------------------------------------
+The system table tracks every module's file path. Run:
+
+  ssh root@magura
+  cd /var/www/rovas
+  php ops/fix_system_paths.php
+
+This script updates all old flat paths to their correct contrib/ or
+custom/ equivalents by checking what exists on disk. It prints each
+path it updates, and warns about any modules it cannot find.
+
+
+Step 3 — Rebuild the class registry
+-------------------------------------
+The registry table maps PHP class and interface names to the files that
+define them. After a path change it must be rebuilt from scratch:
+
+  php ops/rebuild_registry.php
+
+This scans all PHP files under includes/, modules/, and
+sites/all/modules/ and repopulates the registry and registry_file tables.
+It handles both legacy unnamespaced classes and PSR-4 namespaced ones
+(e.g. Drupal\service_container\...).
+
+
+Step 4 — Fix the Composer autoloader paths
+-------------------------------------------
+The vendor autoloader at sites/all/vendor/ may still reference old module
+paths. Check and fix these two locations if needed:
+
+  sites/default/files/composer/composer.json
+  sites/all/vendor/composer/autoload_static.php
+  sites/all/vendor/composer/autoload_namespaces.php
+  sites/all/vendor/composer/autoload_psr4.php
+
+Search for any occurrence of "all/modules/<name>/" (without contrib/ or
+custom/) and replace with "all/modules/contrib/<name>/" (or custom/ as
+appropriate). Example one-liner for service_container:
+
+  sed -i 's|all/modules/service_container/|all/modules/contrib/service_container/|g' \
+    sites/default/files/composer/composer.json \
+    sites/all/vendor/composer/autoload_static.php \
+    sites/all/vendor/composer/autoload_namespaces.php \
+    sites/all/vendor/composer/autoload_psr4.php
+
+NOTE: As of the last deploy these files are already correct on Magura.
+This step is only necessary if the backup also overwrote those files,
+or if composer-manager regenerated them from the restored variable data.
+
+
+Step 5 — Clear caches and run database updates
+-----------------------------------------------
+  cd /var/www/rovas
+  drush74 cc all -y
+  drush74 updb -y
+
+
+Quick reference (all steps on Magura)
+--------------------------------------
+  ssh root@magura
+  cd /var/www/rovas
+  php ops/fix_system_paths.php
+  php ops/rebuild_registry.php
+  drush74 cc all -y
+  drush74 updb -y
