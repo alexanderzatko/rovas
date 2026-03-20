@@ -42,7 +42,7 @@ function rovas_project_reward_form ($form, &$form_state) {
 
   $parameters = drupal_get_query_parameters();
   
-	watchdog('rovas_project_reward','form state 1 <pre>' . print_r($form_state,1) . '</pre>');
+//	watchdog('rovas_project_reward','form state 1 <pre>' . print_r($form_state,1) . '</pre>');
 
 	// Check if this is an AJAX request (Drupal 7 method)
 	$is_ajax = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest';
@@ -73,7 +73,7 @@ function rovas_project_reward_form ($form, &$form_state) {
 
 	$vals = isset($form_state['values']) ? $form_state['values'] : 'vo values';
 
-	watchdog('rovas_project_reward','form state <pre>' . print_r([$parameters,$vals],1) . "</pre>");
+//	watchdog('rovas_project_reward','form state <pre>' . print_r([$parameters,$vals],1) . "</pre>");
 
 	$currency = isset($form_state['values']['payment-currency']) ? $form_state['values']['payment-currency'] : 'CHR';
 //	$payment_suffix = $currency == 'EUR' ? ' €' : ' ' . t('Chrons');
