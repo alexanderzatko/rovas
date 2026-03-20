@@ -520,14 +520,14 @@ function rovas_purchase_shares_form_submit ($form, &$form_state) {
 			$order = commerce_order_new($uid, 'checkout_checkout');
 			commerce_order_save($order);
 
-			//modify unit price of the product
-			$product = entity_metadata_wrapper('commerce_product', $anonpay_product_nid);
-			$product->commerce_price->amount->set($unit_price);
-			$product->commerce_price->currency_code->set('EUR');
-			$product->save();
-
 			$product = commerce_product_load($anonpay_product_nid);
 			$line_item = commerce_product_line_item_new($product, $quantity, $order->order_id);
+
+			// Set dynamic price directly on line item to avoid saving product entity.
+			$line_item_wrapper = entity_metadata_wrapper('commerce_line_item', $line_item);
+			$line_item_wrapper->commerce_unit_price->amount->set($unit_price);
+			$line_item_wrapper->commerce_unit_price->currency_code->set('EUR');
+			commerce_line_item_rebase_unit_price($line_item);
 
 			// Save the line item to get its ID.
 			commerce_line_item_save($line_item);
