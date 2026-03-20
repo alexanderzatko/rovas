@@ -131,17 +131,23 @@
 		$verifiable = rules_invoke_component('rules_verifiability',$node,$user,0);
 		$editable = rules_invoke_component('rules_work_report_editability',$node,$user);
 		$deletable = rules_invoke_component('rules_work_report_deletability',$node,$user);
+
+		// `rules_invoke_component()` returns FALSE if the component fails to
+		// execute; normalize to arrays so we never do $var[0] on a boolean.
+		$verifiable = is_array($verifiable) ? $verifiable : array();
+		$editable = is_array($editable) ? $editable : array();
+		$deletable = is_array($deletable) ? $deletable : array();
 	}
 	else {
-		$verifiable = false;
-		$editable = false;
-		$deletable = false;
+		$verifiable = array();
+		$editable = array();
+		$deletable = array();
 	}
 
 	$result = '<div class="node-buttons">';
 
 	//Editing
-	if ($editable[0]) {
+	if (!empty($editable[0])) {
 		$result .= '<a class="btn btn-default" href="/node/' . $nodeid . '/edit?destination=/node/' . $project_id . '" role="button" style="color:white; background-color:orange;">'. t('Edit') .'</a>&nbsp;&nbsp;';
 	}
 	else {
@@ -150,7 +156,7 @@
 
 	//Deleting
 
-	if ($deletable[0]) {
+	if (!empty($deletable[0])) {
 		$result .= '<a class="btn btn-default" href="/node/' . $nodeid . '/delete?destination=/node/' . $project_id . '" role="button" style="color:white; background-color:red;">'. t('Delete') .'</a>&nbsp;&nbsp;';
 	}
 	else {
@@ -159,7 +165,7 @@
 
 	//Verifying
 
-	if ($verifiable[0]) {
+	if (!empty($verifiable[0])) {
 		$result .= '<a class="btn btn-default" href="/node/add/verification?wrnid=' . $nodeid . '&action=verify" role="button" style="color:white; background-color:green;">'. t('Verify') .'</a>&nbsp;&nbsp;';
 	}
 	else {
@@ -168,7 +174,7 @@
 
 	//Declining
 
-	if ($verifiable[0] && $canDecline) {
+	if (!empty($verifiable[0]) && $canDecline) {
 		$result .= '<a class="btn btn-default" href="/node/add/verification?wrnid=' . $nodeid . '&action=decline" role="button" style="color:white; background-color:blue;">'. t('Will not verify') .'</a>&nbsp;&nbsp;';
 	}
 
