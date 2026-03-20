@@ -9,7 +9,7 @@
       { "variable_add" : {
           "USING" : {
             "type" : "text",
-            "value" : "\u003C?php\r\n$head = getallheaders();\r\necho $head[\u0027API-KEY\u0027];\r\n?\u003E"
+            "value" : "\u003C?php\r\necho isset($_SERVER['HTTP_API_KEY']) ? $_SERVER['HTTP_API_KEY'] : '';\r\n?\u003E"
           },
           "PROVIDE" : { "variable_added" : { "api_key" : "api key" } }
         }
@@ -17,7 +17,7 @@
       { "variable_add" : {
           "USING" : {
             "type" : "text",
-            "value" : "\u003C?php \r\n$head = getallheaders();\r\necho $head[\u0027TOKEN\u0027];\r\n?\u003E"
+            "value" : "\u003C?php\r\necho isset($_SERVER['HTTP_TOKEN']) ? $_SERVER['HTTP_TOKEN'] : '';\r\n?\u003E"
           },
           "PROVIDE" : { "variable_added" : { "token" : "token" } }
         }

@@ -53,8 +53,25 @@ It handles both legacy unnamespaced classes and PSR-4 namespaced ones
 
 Step 4 — Fix the Composer autoloader paths
 -------------------------------------------
+4a. Fix the composer_manager_vendor_dir variable
+-------------------------------------------------
+The backup restores the variable table, which may contain an old vendor
+directory path. composer_manager uses this variable to locate autoload.php;
+if it points at the wrong place the site will throw a RuntimeException on
+every page load even after caches are cleared.
+
+Check and fix it:
+
+  mysql -u rovas -p rovas -e "SELECT name, value FROM variable WHERE name = 'composer_manager_vendor_dir';"
+
+The correct value is sites/all/vendor (14 characters). If it is wrong, fix it:
+
+  mysql -u rovas -p rovas -e "UPDATE variable SET value = 's:16:\"sites/all/vendor\";' WHERE name = 'composer_manager_vendor_dir';"
+
+4b. Fix autoloader file references
+------------------------------------
 The vendor autoloader at sites/all/vendor/ may still reference old module
-paths. Check and fix these two locations if needed:
+paths. Check and fix these files if needed:
 
   sites/default/files/composer/composer.json
   sites/all/vendor/composer/autoload_static.php
@@ -72,11 +89,41 @@ appropriate). Example one-liner for service_container:
     sites/all/vendor/composer/autoload_psr4.php
 
 NOTE: As of the last deploy these files are already correct on Magura.
-This step is only necessary if the backup also overwrote those files,
+Step 4b is only necessary if the backup also overwrote those files,
 or if composer-manager regenerated them from the restored variable data.
 
 
-Step 5 — Clear caches and run database updates
+Step 5 — Clear the bootstrap cache via MySQL
+---------------------------------------------
+The cache_bootstrap table holds serialized module paths that were cached
+before the backup was made. If those paths still use the old flat layout,
+Drupal will crash trying to include missing files during bootstrap — before
+drush can even run the cache-clear command.
+
+Wipe all cache tables directly via MySQL first:
+
+  mysql -u rovas -p rovas -e '
+    TRUNCATE cache;
+    TRUNCATE cache_bootstrap;
+    TRUNCATE cache_block;
+    TRUNCATE cache_field;
+    TRUNCATE cache_filter;
+    TRUNCATE cache_form;
+    TRUNCATE cache_menu;
+    TRUNCATE cache_page;
+    TRUNCATE cache_path;
+    TRUNCATE cache_rules;
+    TRUNCATE cache_token;
+    TRUNCATE cache_update;
+    TRUNCATE cache_variable;
+    TRUNCATE cache_views;
+    TRUNCATE cache_views_data;
+  '
+
+Replace the -p password as needed (check sites/default/settings.php).
+
+
+Step 6 — Clear caches and run database updates
 -----------------------------------------------
   cd /var/www/rovas
   drush74 cc all -y
@@ -89,5 +136,7 @@ Quick reference (all steps on Magura)
   cd /var/www/rovas
   php ops/fix_system_paths.php
   php ops/rebuild_registry.php
+  mysql -u rovas -pPASSWORD rovas -e "UPDATE variable SET value = 's:16:\"sites/all/vendor\";' WHERE name = 'composer_manager_vendor_dir';"
+  mysql -u rovas -pPASSWORD rovas -e 'TRUNCATE cache; TRUNCATE cache_bootstrap; TRUNCATE cache_block; TRUNCATE cache_field; TRUNCATE cache_filter; TRUNCATE cache_form; TRUNCATE cache_menu; TRUNCATE cache_page; TRUNCATE cache_path; TRUNCATE cache_rules; TRUNCATE cache_token; TRUNCATE cache_update; TRUNCATE cache_variable; TRUNCATE cache_views; TRUNCATE cache_views_data;'
   drush74 cc all -y
   drush74 updb -y
