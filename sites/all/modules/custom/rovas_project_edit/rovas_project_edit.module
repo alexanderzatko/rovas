@@ -176,6 +176,9 @@ function rovas_project_edit_form_project_node_form_alter(&$form, &$form_state, $
 		$chr = $form_state['input']['field_rate'][LANGUAGE_NONE][0]['value'];
 	}
 
+	// Ensure numeric to avoid PHP 7.4 "non-numeric value" warnings in forex().
+	$chr = (isset($chr) && is_numeric($chr)) ? (float) $chr : 0.0;
+
 	$fex = calculate_forex_transaction_params('chr_to_eur',$chr);
 	$euro = round($fex['output'],2);
 
