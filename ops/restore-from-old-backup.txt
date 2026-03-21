@@ -24,6 +24,9 @@ Step 1 — Restore the backup
 Restore the database normally (e.g. via backup_migrate, drush sql-cli,
 or phpMyAdmin). Do not start using the site yet.
 
+example
+mysql -u username -p db_name < rovas.sql
+
 
 Step 2 — Fix module paths in the system table
 ----------------------------------------------
@@ -102,7 +105,7 @@ drush can even run the cache-clear command.
 
 Wipe all cache tables directly via MySQL first:
 
-  mysql -u rovas -p rovas -e '
+  mysql -u rovdev -p rovdev -e '
     TRUNCATE cache;
     TRUNCATE cache_bootstrap;
     TRUNCATE cache_block;
