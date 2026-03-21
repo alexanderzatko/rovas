@@ -214,15 +214,53 @@ function _rovas_stripe_webhooks_find_order_by_payment_intent($payment_intent_id)
 }
 
 /**
+ * Ensure intent is a plain array for safe use with isset/array access.
+ * PHP 8+ deprecates array_key_exists() on objects; various code paths expect arrays.
+ */
+function _rovas_stripe_webhooks_intent_to_array($intent) {
+  if (is_array($intent)) {
+    return $intent;
+  }
+  if (is_object($intent) && class_exists('Stripe\Util\Util') && $intent instanceof \Stripe\StripeObject) {
+    return \Stripe\Util\Util::convertStripeObjectToArray($intent);
+  }
+  if (is_object($intent)) {
+    return json_decode(json_encode($intent), TRUE);
+  }
+  return array();
+}
+
+/**
+ * Recursively convert any StripeObject instances in data to arrays.
+ * Prevents array_key_exists() deprecation when order->data is used by Drupal/contrib.
+ */
+function _rovas_stripe_webhooks_sanitize_order_data($data) {
+  if (!is_array($data) && !is_object($data)) {
+    return $data;
+  }
+  if (is_object($data) && class_exists('Stripe\StripeObject') && $data instanceof \Stripe\StripeObject) {
+    return \Stripe\Util\Util::convertStripeObjectToArray($data);
+  }
+  $out = array();
+  foreach ((array) $data as $k => $v) {
+    $out[$k] = is_array($v) || is_object($v) ? _rovas_stripe_webhooks_sanitize_order_data($v) : $v;
+  }
+  return $out;
+}
+
+/**
  * Add balance transaction fees to order and process forex (no Rules event).
  */
 function _rovas_stripe_webhooks_add_balance_fees_and_process($order, $intent) {
-  if (!is_array($intent)) {
-    $intent = (array) $intent;
+  $intent = _rovas_stripe_webhooks_intent_to_array($intent);
+  $intent_id = isset($intent['id']) ? $intent['id'] : NULL;
+  if (!$intent_id) {
+    watchdog('rovas_stripe_webhooks', 'add_balance_fees: intent has no id', array(), WATCHDOG_WARNING);
+    return;
   }
 
   try {
-    $pi = \Stripe\PaymentIntent::retrieve($intent['id']);
+    $pi = \Stripe\PaymentIntent::retrieve($intent_id);
     $charge = NULL;
     if (isset($pi->charges->data[0])) {
       $charge = $pi->charges->data[0];
@@ -239,7 +277,7 @@ function _rovas_stripe_webhooks_add_balance_fees_and_process($order, $intent) {
       catch (Exception $ce) {
         watchdog('rovas_stripe_webhooks', 'Could not retrieve latest_charge @lc for PI @pi: @err', array(
           '@lc'  => $pi->latest_charge,
-          '@pi'  => $intent['id'],
+          '@pi'  => $intent_id,
           '@err' => $ce->getMessage(),
         ), WATCHDOG_WARNING);
       }
@@ -247,7 +285,7 @@ function _rovas_stripe_webhooks_add_balance_fees_and_process($order, $intent) {
 
     if (!$charge || empty($charge->balance_transaction)) {
       watchdog('rovas_stripe_webhooks', 'Charge or balance_transaction missing for PI @pi (charges count: @cnt, latest_charge: @lc)', array(
-        '@pi'  => $intent['id'],
+        '@pi'  => $intent_id,
         '@cnt' => isset($pi->charges->data) ? count($pi->charges->data) : 'n/a',
         '@lc'  => isset($pi->latest_charge) ? $pi->latest_charge : 'none',
       ), WATCHDOG_WARNING);
@@ -256,13 +294,18 @@ function _rovas_stripe_webhooks_add_balance_fees_and_process($order, $intent) {
 
     $bt = \Stripe\BalanceTransaction::retrieve($charge->balance_transaction);
     $fee_details = array();
-    if (!empty($bt->fee_details) && is_array($bt->fee_details)) {
-      foreach ($bt->fee_details as $fd) {
+    $fee_details_raw = isset($bt->fee_details) ? $bt->fee_details : NULL;
+    if (!empty($fee_details_raw) && (is_array($fee_details_raw) || $fee_details_raw instanceof \Traversable)) {
+      foreach ($fee_details_raw as $fd) {
+        $amount = is_object($fd) ? (isset($fd->amount) ? $fd->amount : NULL) : (isset($fd['amount']) ? $fd['amount'] : NULL);
+        $currency = is_object($fd) ? (isset($fd->currency) ? $fd->currency : NULL) : (isset($fd['currency']) ? $fd['currency'] : NULL);
+        $type = is_object($fd) ? (isset($fd->type) ? $fd->type : NULL) : (isset($fd['type']) ? $fd['type'] : NULL);
+        $description = is_object($fd) ? (isset($fd->description) ? $fd->description : NULL) : (isset($fd['description']) ? $fd['description'] : NULL);
         $fee_details[] = array(
-          'amount' => isset($fd->amount) ? $fd->amount : NULL,
-          'currency' => isset($fd->currency) ? $fd->currency : NULL,
-          'type' => isset($fd->type) ? $fd->type : NULL,
-          'description' => isset($fd->description) ? $fd->description : NULL,
+          'amount' => $amount,
+          'currency' => $currency,
+          'type' => $type,
+          'description' => $description,
         );
       }
     }
@@ -282,6 +325,10 @@ function _rovas_stripe_webhooks_add_balance_fees_and_process($order, $intent) {
       $order->data = array();
     }
 
+    // Sanitize existing order data to plain arrays (no Stripe objects).
+    // PHP 8+ deprecates array_key_exists() on objects; Drupal/contrib may use it.
+    $order->data = _rovas_stripe_webhooks_sanitize_order_data($order->data);
+
     $order->data['p_processor_balance_txn'] = array(
       'id' => $charge->balance_transaction,
       'amount' => isset($bt->amount) ? $bt->amount : NULL,
@@ -294,7 +341,7 @@ function _rovas_stripe_webhooks_add_balance_fees_and_process($order, $intent) {
     commerce_order_save($order);
 
     if (function_exists('_rovas_process_stripe_fees_for_order')) {
-      _rovas_process_stripe_fees_for_order($order, $intent['id'], $fee_decimal, $currency, $net_decimal);
+      _rovas_process_stripe_fees_for_order($order, $intent_id, $fee_decimal, $currency, $net_decimal);
     }
     else {
       watchdog('rovas_stripe_webhooks', '_rovas_process_stripe_fees_for_order not found — rovas_project_reward module may be missing.', array(), WATCHDOG_ERROR);
@@ -302,7 +349,7 @@ function _rovas_stripe_webhooks_add_balance_fees_and_process($order, $intent) {
   }
   catch (Exception $e) {
     watchdog('rovas_stripe_webhooks', 'Failed to add balance fees for PI @pi (order @order): @err', array(
-      '@pi' => $intent['id'],
+      '@pi' => $intent_id,
       '@order' => $order->order_id,
       '@err' => $e->getMessage(),
     ), WATCHDOG_ERROR);
