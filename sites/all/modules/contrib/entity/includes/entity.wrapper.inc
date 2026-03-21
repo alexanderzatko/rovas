@@ -729,8 +729,9 @@ class EntityDrupalWrapper extends EntityStructureWrapper {
     if (!empty($options['identifier'])) {
       return $this->id;
     }
-    elseif (!$this->data && !empty($this->id)) {
-      // Lazy load the entity if necessary.
+    elseif (!$this->data && isset($this->id) && $this->id !== FALSE) {
+      // Lazy load the entity if necessary. Note: !empty($this->id) would be
+      // FALSE for uid 0 (anonymous user), preventing load; use explicit check.
       $return = entity_load($this->type, array($this->id));
       // In case the entity cannot be loaded, we return NULL just as for empty
       // properties.
