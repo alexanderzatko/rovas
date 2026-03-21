@@ -354,6 +354,12 @@ function _rovas_safe_dispatch_webhook(array $event, array $record) {
   ob_start();
 
   $prev = set_error_handler(function($severity, $message, $file, $line) {
+    // Do not convert E_DEPRECATED to exceptions. PHP 7.4+ deprecates
+    // array_key_exists() on objects; Drupal/Commerce/Stripe may still use it.
+    // Letting deprecations pass prevents order processing from aborting.
+    if ($severity === E_DEPRECATED) {
+      return FALSE;
+    }
     throw new ErrorException($message, 0, $severity, $file, $line);
   });
 
