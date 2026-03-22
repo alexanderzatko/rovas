@@ -229,7 +229,7 @@ function forex_admin_form($form, &$form_state) {
 		'#markup' => '<div style="font-weight:bold;" class="baskets label eu">Chron: </div><div class="baskets ch">' . $ch_current . '</div>',
 		);
 
-	$eu_current = $forex_baskets_temp['eur_basket'] ? $forex_baskets_temp['eur_basket'] : $forex_baskets['eur_basket'];
+	$eu_current = isset($forex_baskets_temp['eur_basket']) ? $forex_baskets_temp['eur_basket'] : $forex_baskets['eur_basket'];
 
 	$form['eu_basket_current'] = array(
 		'#type' => 'markup',
