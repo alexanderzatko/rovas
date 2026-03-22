@@ -1935,7 +1935,7 @@ function rovas_project_reward_notify_purchase($rewarded_project,$paid_amt,$curre
     // rovas_project_reward_review_finalize_payment, after all hooks complete.
     $msg = t('Thank you for the payment. It might take a couple of minutes to have it completely processed.');
     drupal_set_message($msg, 'status', FALSE);
-    _rovas_project_reward_queue_redirect('node/' . $rewarded_project->nid);
+    _rovas_project_reward_queue_redirect(url('node/' . $rewarded_project->nid, array('absolute' => TRUE)));
 		return;
 	}
 	
