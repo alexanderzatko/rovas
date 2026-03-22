@@ -3,7 +3,20 @@
 global $base_url;
 
 $order = commerce_order_load($info['order_number']);
-$payment_method = commerce_payment_method_instance_load($order->data['payment_method']);
+
+$payment_method_id = !empty($order->data['payment_method']) ? $order->data['payment_method'] : '';
+$payment_method = $payment_method_id ? commerce_payment_method_instance_load($payment_method_id) : FALSE;
+$payment_method_title = '';
+
+if (is_array($payment_method) && !empty($payment_method['display_title'])) {
+  $payment_method_title = $payment_method['display_title'];
+}
+elseif (!empty($order->data['stripe_pi'])) {
+  $payment_method_title = t('Card (Stripe)');
+}
+else {
+  $payment_method_title = t('Not specified');
+}
 $order_total = isset($order->commerce_order_total[LANGUAGE_NONE][0]['amount']) ? $order->commerce_order_total[LANGUAGE_NONE][0]['amount']/100 : '';
 $currency = $order->commerce_order_total[LANGUAGE_NONE][0]['currency_code'] == 'EUR' ? '€' : '';
 $payer_type = $order->field_payer_type[LANGUAGE_NONE][0]['value'];
@@ -232,14 +245,12 @@ else {
             <tr>
               <td class="paymethod"><?php 
                       
-				$payment_method = commerce_payment_method_instance_load($order->data['payment_method']);
-				
 				print '<div class="pmethod">';
 				print '<span class="label">';
 				print t('Payment method',[],['langcode' => $target_lang]) . ': ';
 				print '</span>';
 				print '<span class="value">';
-				print $payment_method['display_title']; 
+				print check_plain($payment_method_title);
 				print '</span>';
 				print '</div>';
 
@@ -327,7 +338,7 @@ else {
             </tr>
 		<?php endif; ?>
 
-		<?php if ($order->data['payment_method'] == 'bank_transfer|commerce_payment_bank_transfer'): ?>
+		<?php if ($payment_method_id == 'bank_transfer|commerce_payment_bank_transfer' && is_array($payment_method)): ?>
 		<!-- bank info START -->
             <tr>
               <td>
