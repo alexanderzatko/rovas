@@ -49,7 +49,6 @@ function rovas_stripe_express_checkout_thanks() {
 	}
 
 	try {
-
 			\Stripe\Stripe::setApiKey(variable_get('stripe_secret_key'));        
 			$intent = \Stripe\PaymentIntent::retrieve($payment_intent_id);
 
@@ -80,7 +79,5 @@ function rovas_stripe_express_checkout_thanks() {
 	if ($redirect) {
 		drupal_goto($redirect);
 	}
-	else {
-		drupal_goto('rewpro');
-	}
+	drupal_goto('rewpro');
 }
