@@ -76,8 +76,23 @@ function rovas_stripe_express_checkout_thanks() {
 	// Unlike the Commerce checkout flow (which executes it from
 	// rovas_project_reward_review_finalize_payment), we must run it here.
 	$redirect = _rovas_project_reward_queue_redirect();
-	if ($redirect) {
-		drupal_goto($redirect);
+	if (!$redirect) {
+		$redirect = url('rewpro', array('absolute' => TRUE));
 	}
-	drupal_goto('rewpro');
+
+	// Commit session before redirecting so the session lock is released.
+	if (drupal_get_bootstrap_phase() >= DRUPAL_BOOTSTRAP_SESSION) {
+		drupal_session_commit();
+	}
+
+	// Send HTTP 302. In some environments (early output from a concurrent
+	// request or a module hook) header() may fail silently because headers are
+	// already sent. The HTML/JS fallback below ensures the browser redirects
+	// regardless of whether the Location header was actually transmitted.
+	header('Location: ' . $redirect, TRUE, 302);
+	print '<!DOCTYPE html><html><head>'
+		. '<meta http-equiv="refresh" content="0;url=' . check_plain($redirect) . '">'
+		. '<script>window.location.replace(' . drupal_json_encode($redirect) . ');</script>'
+		. '</head><body>Redirecting...</body></html>';
+	drupal_exit();
 }
