@@ -44,6 +44,7 @@ function rovas_stripe_express_checkout_thanks() {
 	$payment_intent_id = isset($parameters['payment_intent']) ? $parameters['payment_intent'] : null;
 
 	if (!$payment_intent_id) {
+			drupal_goto('rewpro');
 			return;
 	}
 
@@ -56,14 +57,30 @@ function rovas_stripe_express_checkout_thanks() {
 			$paid_amt = isset($intent->amount_received) ? $intent->amount_received / 100 : null;
 			$email = isset($intent->charges->data[0]->receipt_email) ? $intent->charges->data[0]->receipt_email : null;
 
-			if ($project_id) {
+			if ($project_id && $project_id !== 'none') {
 					$project = node_load($project_id);
-					rovas_project_reward_notify_purchase($project,$paid_amt,'EUR',$email);
+					if ($project) {
+						rovas_project_reward_notify_purchase($project, $paid_amt, 'EUR', $email);
+					} else {
+						watchdog('rovas_stripe', 'Project @nid not found for PI: @pi_id', array('@nid' => $project_id, '@pi_id' => $payment_intent_id), WATCHDOG_WARNING);
+					}
 			} else {
 					watchdog('rovas_stripe', 'No project_id found in PaymentIntent metadata for PI: @pi_id', array('@pi_id' => $payment_intent_id), WATCHDOG_WARNING);
 			}
 			
 	} catch (Exception $e) {
 			watchdog('rovas_stripe', 'Error retrieving PaymentIntent: @error', array('@error' => $e->getMessage()), WATCHDOG_ERROR);
+	}
+
+	// rovas_project_reward_notify_purchase() queues a redirect via
+	// _rovas_project_reward_queue_redirect() (e.g. to the 3rd party callbackurl).
+	// Unlike the Commerce checkout flow (which executes it from
+	// rovas_project_reward_review_finalize_payment), we must run it here.
+	$redirect = _rovas_project_reward_queue_redirect();
+	if ($redirect) {
+		drupal_goto($redirect);
+	}
+	else {
+		drupal_goto('rewpro');
 	}
 }
