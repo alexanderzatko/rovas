@@ -350,6 +350,14 @@ function rovas_stripe_webhooks_set_processing_flag($set = NULL) {
 }
 
 function _rovas_safe_dispatch_webhook(array $event, array $record) {
+  // Suppress session writes. The response has already been flushed to the
+  // client (via drupal_json_output + fastcgi_finish_request), so headers are
+  // committed. Drupal 7 defers session_start() until session data is first
+  // accessed; if anything in the Rules/fee pipeline touches the session after
+  // headers are sent, PHP emits "Cannot start session when headers already
+  // sent". drupal_save_session(FALSE) prevents that call entirely.
+  drupal_save_session(FALSE);
+
   $lvl = ob_get_level();
   ob_start();
 
