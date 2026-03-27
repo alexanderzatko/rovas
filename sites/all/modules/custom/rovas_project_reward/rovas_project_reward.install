@@ -38,3 +38,219 @@ function rovas_project_reward_uninstall() {
 		field_delete_instance($instance);
 	}
 }
+
+/**
+ * Implements hook_schema().
+ */
+function rovas_project_reward_schema() {
+  $schema = array();
+
+  $schema['rovas_bank_payment_intent'] = array(
+    'description' => 'Tracks SEPA/bank payment intents linked 1:1 to Commerce orders.',
+    'fields' => array(
+      'id' => array(
+        'type' => 'serial',
+        'not null' => TRUE,
+      ),
+      'intent_id' => array(
+        'type' => 'varchar',
+        'length' => 64,
+        'not null' => TRUE,
+      ),
+      'order_id' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+      ),
+      'provider' => array(
+        'type' => 'varchar',
+        'length' => 32,
+        'not null' => TRUE,
+        'default' => 'fio',
+      ),
+      'provider_payment_id' => array(
+        'type' => 'varchar',
+        'length' => 128,
+        'not null' => FALSE,
+      ),
+      'status' => array(
+        'type' => 'varchar',
+        'length' => 32,
+        'not null' => TRUE,
+        'default' => 'created',
+      ),
+      'reference' => array(
+        'type' => 'varchar',
+        'length' => 64,
+        'not null' => TRUE,
+      ),
+      'amount' => array(
+        'type' => 'numeric',
+        'precision' => 12,
+        'scale' => 2,
+        'not null' => TRUE,
+      ),
+      'currency' => array(
+        'type' => 'varchar',
+        'length' => 3,
+        'not null' => TRUE,
+        'default' => 'EUR',
+      ),
+      'paytype' => array(
+        'type' => 'varchar',
+        'length' => 32,
+        'not null' => FALSE,
+      ),
+      'recipient_id' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => FALSE,
+      ),
+      'callback_url' => array(
+        'type' => 'text',
+        'size' => 'big',
+        'not null' => FALSE,
+      ),
+      'callback_token' => array(
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => FALSE,
+      ),
+      'callback_expires' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => FALSE,
+      ),
+      'epc_payload' => array(
+        'type' => 'text',
+        'size' => 'big',
+        'not null' => FALSE,
+      ),
+      'meta' => array(
+        'type' => 'text',
+        'size' => 'big',
+        'not null' => FALSE,
+      ),
+      'created' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+      ),
+      'changed' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+      ),
+    ),
+    'primary key' => array('id'),
+    'unique keys' => array(
+      'intent_id' => array('intent_id'),
+      'order_id' => array('order_id'),
+    ),
+    'indexes' => array(
+      'status' => array('status'),
+      'provider_payment_id' => array('provider_payment_id'),
+      'reference' => array('reference'),
+    ),
+  );
+
+  $schema['rovas_bank_callback_delivery'] = array(
+    'description' => 'Delivery queue for asynchronous 3rd-party delayed callbacks.',
+    'fields' => array(
+      'id' => array(
+        'type' => 'serial',
+        'not null' => TRUE,
+      ),
+      'delivery_id' => array(
+        'type' => 'varchar',
+        'length' => 64,
+        'not null' => TRUE,
+      ),
+      'order_id' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+      ),
+      'intent_id' => array(
+        'type' => 'varchar',
+        'length' => 64,
+        'not null' => TRUE,
+      ),
+      'event_type' => array(
+        'type' => 'varchar',
+        'length' => 64,
+        'not null' => TRUE,
+      ),
+      'endpoint' => array(
+        'type' => 'text',
+        'size' => 'big',
+        'not null' => TRUE,
+      ),
+      'payload' => array(
+        'type' => 'text',
+        'size' => 'big',
+        'not null' => TRUE,
+      ),
+      'status' => array(
+        'type' => 'varchar',
+        'length' => 20,
+        'not null' => TRUE,
+        'default' => 'queued',
+      ),
+      'attempts' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+      'next_attempt' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+      ),
+      'last_http_code' => array(
+        'type' => 'int',
+        'not null' => FALSE,
+      ),
+      'last_error' => array(
+        'type' => 'text',
+        'size' => 'big',
+        'not null' => FALSE,
+      ),
+      'created' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+      ),
+      'changed' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+      ),
+    ),
+    'primary key' => array('id'),
+    'unique keys' => array(
+      'delivery_id' => array('delivery_id'),
+    ),
+    'indexes' => array(
+      'queue' => array('status', 'next_attempt'),
+      'order_id' => array('order_id'),
+      'intent_id' => array('intent_id'),
+    ),
+  );
+
+  return $schema;
+}
+
+/**
+ * Create bank intent + callback queue tables.
+ */
+function rovas_project_reward_update_7101() {
+  $schema = drupal_get_schema_unprocessed('rovas_project_reward');
+  if (!db_table_exists('rovas_bank_payment_intent')) {
+    db_create_table('rovas_bank_payment_intent', $schema['rovas_bank_payment_intent']);
+  }
+  if (!db_table_exists('rovas_bank_callback_delivery')) {
+    db_create_table('rovas_bank_callback_delivery', $schema['rovas_bank_callback_delivery']);
+  }
+}

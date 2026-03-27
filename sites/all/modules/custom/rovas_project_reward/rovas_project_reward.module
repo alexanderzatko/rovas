@@ -13,6 +13,29 @@ function rovas_project_reward_menu() {
     'access callback' => TRUE,
   );
 
+  $items['rewpro/bank/provider-webhook'] = array(
+    'title' => 'Bank provider webhook',
+    'page callback' => 'rovas_project_reward_bank_provider_webhook',
+    'access callback' => TRUE,
+    'type' => MENU_CALLBACK,
+  );
+
+  $items['rewpro/bank/fio/poll'] = array(
+    'title' => 'Poll Fio bank transactions',
+    'page callback' => 'rovas_project_reward_bank_poll_page',
+    'access callback' => 'user_access',
+    'access arguments' => array('access administration pages'),
+    'type' => MENU_CALLBACK,
+  );
+
+  $items['admin/commerce/orders/rewpro-bank-review'] = array(
+    'title' => 'Rewpro bank payment review',
+    'page callback' => 'rovas_project_reward_bank_manual_review_page',
+    'access callback' => 'user_access',
+    'access arguments' => array('access administration pages'),
+    'type' => MENU_NORMAL_ITEM,
+  );
+
   return $items;
 }
 
@@ -991,6 +1014,7 @@ function rovas_project_reward_form_submit($form, &$form_state) {
     if ($pay_method === 'pay-choice-bank') {
       // Attach billing profile and update status for bank payments
       rpr_attach_billing_profile_to_order($order, $uid);
+      rovas_project_reward_create_bank_intent($order, $paytype, $pid, $sessary);
       $order = commerce_order_status_update($order, 'checkout_review', TRUE);
       commerce_order_save($order);
       
@@ -1451,6 +1475,15 @@ function _handle_review_form_modifications(&$form, &$form_state) {
           if ($method_id === 'bank_transfer') {
             $filtered_methods[$method_id] = $method;
           }
+        }
+
+        $bank_markup = rovas_project_reward_render_bank_transfer_info($order);
+        if (!empty($bank_markup)) {
+          $form['rovas_bank_info'] = array(
+            '#type' => 'markup',
+            '#markup' => $bank_markup,
+            '#weight' => -9,
+          );
         }
       }
 
@@ -2528,4 +2561,670 @@ function project_merit_updater($node, $project_merits) {
     watchdog('rovas_project_reward', 'Error updating project merits: @error', array('@error' => $e->getMessage()), WATCHDOG_ERROR);
     return array('new_merit_value' => isset($current_val) ? $current_val : 0);
   }
+}
+
+/**
+ * Implements hook_cron().
+ */
+function rovas_project_reward_cron() {
+  rovas_project_reward_poll_fio_transactions();
+  rovas_project_reward_process_callback_delivery_queue();
+}
+
+/**
+ * Build/refresh a SEPA bank intent for a rewpro order.
+ */
+function rovas_project_reward_create_bank_intent($order, $paytype, $recipient_id, array $session_data = array()) {
+  if (empty($order->order_id)) {
+    return FALSE;
+  }
+
+  $intent_id = 'rpr_' . $order->order_id . '_' . substr(hash('sha256', microtime(TRUE) . mt_rand()), 0, 12);
+  $amount = round(commerce_currency_amount_to_decimal($order->commerce_order_total[LANGUAGE_NONE][0]['amount'], 'EUR'), 2);
+  $reference = (string) $order->order_id;
+  $provider = variable_get('rovas_bank_provider', 'fio');
+  $bank_details = rovas_project_reward_get_bank_transfer_details($order);
+  $beneficiary = !empty($bank_details['account_owner']) ? $bank_details['account_owner'] : variable_get('rovas_bank_beneficiary_name', variable_get('site_name', 'Rovas'));
+  $iban = !empty($bank_details['account_iban']) ? $bank_details['account_iban'] : variable_get('rovas_bank_iban', '');
+  $bic = !empty($bank_details['account_swift']) ? $bank_details['account_swift'] : variable_get('rovas_bank_bic', 'FIOZSKBAXXX');
+  $message = t('Order @id', array('@id' => $order->order_id));
+  $epc_payload = rovas_project_reward_build_epc_qr_payload($beneficiary, $iban, $bic, $amount, $reference, $message);
+  $callback_expires = REQUEST_TIME + (int) variable_get('rovas_bank_delayed_token_ttl', 3 * 24 * 3600);
+
+  db_merge('rovas_bank_payment_intent')
+    ->key(array('order_id' => $order->order_id))
+    ->fields(array(
+      'intent_id' => $intent_id,
+      'provider' => $provider,
+      'status' => 'pending_settlement',
+      'reference' => $reference,
+      'amount' => $amount,
+      'currency' => 'EUR',
+      'paytype' => $paytype,
+      'recipient_id' => is_numeric($recipient_id) ? (int) $recipient_id : NULL,
+      'callback_url' => isset($session_data['callbackurl']) ? $session_data['callbackurl'] : '',
+      'callback_token' => isset($session_data['token']) ? $session_data['token'] : '',
+      'callback_expires' => $callback_expires,
+      'epc_payload' => $epc_payload,
+      'meta' => drupal_json_encode(array(
+        'callback_context' => isset($session_data['original_url']) ? $session_data['original_url'] : '',
+        'expiration' => isset($session_data['expiration']) ? $session_data['expiration'] : NULL,
+      )),
+      'changed' => REQUEST_TIME,
+    ))
+    ->insertFields(array(
+      'created' => REQUEST_TIME,
+    ))
+    ->execute();
+
+  $order->data['sepa'] = array(
+    'intent_id' => $intent_id,
+    'provider' => $provider,
+    'status' => 'pending_settlement',
+    'reference' => $reference,
+    'amount' => number_format($amount, 2, '.', ''),
+    'currency' => 'EUR',
+    'beneficiary_name' => $beneficiary,
+    'iban' => $iban,
+    'bic' => $bic,
+    'epc_payload' => $epc_payload,
+    'callbackurl' => isset($session_data['callbackurl']) ? $session_data['callbackurl'] : '',
+  );
+  commerce_order_save($order);
+
+  // Inform third-party partner that this order is delayed (async settlement).
+  rovas_project_reward_enqueue_delayed_callback($order, 'delayed');
+  // Try immediate delivery and let cron retries handle transient failures.
+  rovas_project_reward_process_callback_delivery_queue(3);
+
+  watchdog('rovas_project_reward', 'Created bank intent @intent for order @order.', array('@intent' => $intent_id, '@order' => $order->order_id), WATCHDOG_INFO);
+
+  return $intent_id;
+}
+
+/**
+ * Build EPC QR payload (SCT).
+ */
+function rovas_project_reward_build_epc_qr_payload($beneficiary, $iban, $bic, $amount, $reference, $message = '') {
+  $beneficiary = trim((string) $beneficiary);
+  $iban = preg_replace('/\s+/', '', strtoupper((string) $iban));
+  $bic = trim((string) $bic);
+  $amount = number_format((float) $amount, 2, '.', '');
+  $reference = trim((string) $reference);
+  $message = trim((string) $message);
+
+  $lines = array(
+    'BCD',
+    '002',
+    '1',
+    'SCT',
+    $bic,
+    $beneficiary,
+    $iban,
+    'EUR' . $amount,
+    '',
+    $reference,
+    $message,
+  );
+  return implode("\n", $lines);
+}
+
+/**
+ * Render review pane data for manual transfer fallback.
+ */
+function rovas_project_reward_render_bank_transfer_info($order) {
+  if (empty($order->data['sepa']) || empty($order->data['sepa']['reference'])) {
+    return '';
+  }
+
+  $sepa = $order->data['sepa'];
+  $payload = isset($sepa['epc_payload']) ? $sepa['epc_payload'] : '';
+  $qr_url = 'https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=' . rawurlencode($payload);
+  $amount = isset($sepa['amount']) ? $sepa['amount'] : '0.00';
+  $currency = isset($sepa['currency']) ? $sepa['currency'] : 'EUR';
+  $beneficiary = isset($sepa['beneficiary_name']) ? $sepa['beneficiary_name'] : '';
+  $iban = isset($sepa['iban']) ? $sepa['iban'] : '';
+  $bic = isset($sepa['bic']) ? $sepa['bic'] : '';
+  $reference = $sepa['reference'];
+  $bank_details = rovas_project_reward_get_bank_transfer_details($order);
+
+  $out = '<div class="rovas-bank-transfer-box" style="border:1px solid #ddd;padding:12px;margin:10px 0 16px 0;">';
+  $out .= '<h4 style="margin-top:0;">' . check_plain(t('Bank transfer instructions')) . '</h4>';
+  $out .= '<p>' . check_plain(t('If instant authorization is unavailable, complete manual transfer using these details.')) . '</p>';
+  $out .= '<ul style="margin-left:16px;">';
+  $out .= '<li><strong>' . check_plain(t('Beneficiary')) . ':</strong> ' . check_plain($beneficiary) . '</li>';
+  $out .= '<li><strong>IBAN:</strong> ' . check_plain($iban) . '</li>';
+  $out .= '<li><strong>BIC:</strong> ' . check_plain($bic) . '</li>';
+  $out .= '<li><strong>' . check_plain(t('Amount')) . ':</strong> ' . check_plain($amount . ' ' . $currency) . '</li>';
+  $out .= '<li><strong>' . check_plain(t('Reference (VS)')) . ':</strong> ' . check_plain($reference) . '</li>';
+  $out .= '</ul>';
+  if (!empty($bank_details['policy'])) {
+    $out .= '<p><small>' . check_plain($bank_details['policy']) . '</small></p>';
+  }
+  $out .= '<div><img src="' . check_plain($qr_url) . '" alt="' . check_plain(t('SEPA QR code')) . '" /></div>';
+  $out .= '<p><small>' . check_plain(t('Your order remains pending until payment is confirmed by bank settlement.')) . '</small></p>';
+  $out .= '</div>';
+
+  return $out;
+}
+
+/**
+ * Get bank transfer account details from Commerce method settings.
+ *
+ * Uses the active bank transfer payment method instance as source of truth
+ * (including details enabled through Rules action), then falls back to legacy
+ * variables when needed.
+ */
+function rovas_project_reward_get_bank_transfer_details($order = NULL) {
+  $details = array(
+    'account_owner' => '',
+    'account_number' => '',
+    'account_iban' => '',
+    'account_swift' => '',
+    'account_bank' => '',
+    'policy' => '',
+  );
+
+  $instance = commerce_payment_method_instance_load('bank_transfer|commerce_payment_bank_transfer');
+  if ($instance && !empty($instance['settings']) && is_array($instance['settings'])) {
+    if (!empty($instance['settings']['details']) && is_array($instance['settings']['details'])) {
+      $details = array_merge($details, $instance['settings']['details']);
+    }
+    if (!empty($instance['settings']['policy'])) {
+      $details['policy'] = $instance['settings']['policy'];
+    }
+  }
+
+  // Tokenize policy for current order if available.
+  if (!empty($details['policy']) && $order) {
+    $details['policy'] = token_replace($details['policy'], array('commerce-order' => $order), array('clear' => TRUE));
+  }
+
+  // Fallback for older local configuration style.
+  if (empty($details['account_owner'])) {
+    $details['account_owner'] = variable_get('rovas_bank_beneficiary_name', variable_get('site_name', 'Rovas'));
+  }
+  if (empty($details['account_iban'])) {
+    $details['account_iban'] = variable_get('rovas_bank_iban', '');
+  }
+  if (empty($details['account_swift'])) {
+    $details['account_swift'] = variable_get('rovas_bank_bic', 'FIOZSKBAXXX');
+  }
+  if (empty($details['policy'])) {
+    $details['policy'] = t('Variable symbol: @vs', array('@vs' => !empty($order->order_id) ? $order->order_id : ''));
+  }
+
+  return $details;
+}
+
+/**
+ * Generic provider webhook endpoint for bank payment outcomes.
+ */
+function rovas_project_reward_bank_provider_webhook() {
+  $raw = file_get_contents('php://input');
+  $payload = drupal_json_decode($raw);
+  if (empty($payload['order_id']) || empty($payload['status'])) {
+    drupal_add_http_header('Status', '400 Bad Request');
+    print 'Missing order_id/status';
+    drupal_exit();
+  }
+
+  $order_id = (int) $payload['order_id'];
+  $status = strtolower($payload['status']);
+  $provider_payment_id = !empty($payload['provider_payment_id']) ? $payload['provider_payment_id'] : NULL;
+  $actual_amount = isset($payload['amount']) ? (float) $payload['amount'] : NULL;
+
+  if ($status === 'paid' || $status === 'succeeded' || $status === 'confirmed') {
+    rovas_project_reward_mark_bank_order_success($order_id, $provider_payment_id, $actual_amount, $payload);
+  }
+  elseif ($status === 'failed' || $status === 'expired' || $status === 'rejected') {
+    rovas_project_reward_mark_bank_order_failed($order_id, $status, $payload);
+  }
+  else {
+    drupal_add_http_header('Status', '422 Unprocessable Entity');
+    print 'Unsupported status';
+    drupal_exit();
+  }
+
+  print 'ok';
+  drupal_exit();
+}
+
+/**
+ * Manual admin endpoint to trigger Fio poll.
+ */
+function rovas_project_reward_bank_poll_page() {
+  $result = rovas_project_reward_poll_fio_transactions();
+  drupal_set_message(t('Fio poll finished. Processed: @n.', array('@n' => (int) $result['processed'])));
+  drupal_goto('admin/commerce/orders/rewpro-bank-review');
+}
+
+/**
+ * Admin table listing intents requiring manual review.
+ */
+function rovas_project_reward_bank_manual_review_page() {
+  $header = array(t('Order'), t('Status'), t('Reference'), t('Amount'), t('Updated'));
+  $rows = array();
+  $result = db_select('rovas_bank_payment_intent', 'i')
+    ->fields('i', array('order_id', 'status', 'reference', 'amount', 'currency', 'changed'))
+    ->condition('status', array('manual_review', 'failed', 'expired'), 'IN')
+    ->orderBy('changed', 'DESC')
+    ->range(0, 200)
+    ->execute();
+
+  foreach ($result as $row) {
+    $rows[] = array(
+      l('#' . $row->order_id, 'admin/commerce/orders/' . $row->order_id),
+      check_plain($row->status),
+      check_plain($row->reference),
+      check_plain(number_format((float) $row->amount, 2) . ' ' . $row->currency),
+      format_date($row->changed, 'short'),
+    );
+  }
+
+  if (empty($rows)) {
+    return '<p>' . check_plain(t('No bank intents waiting for manual review.')) . '</p>';
+  }
+
+  return theme('table', array('header' => $header, 'rows' => $rows));
+}
+
+/**
+ * Reconcile bank payments from Fio transactions endpoint.
+ */
+function rovas_project_reward_poll_fio_transactions() {
+  $endpoint = trim(variable_get('rovas_fio_transactions_endpoint', ''));
+  $processed = 0;
+
+  if (empty($endpoint)) {
+    return array('processed' => 0, 'reason' => 'missing-endpoint');
+  }
+
+  $response = drupal_http_request($endpoint, array('timeout' => 20));
+  if (!empty($response->error) || (int) $response->code >= 300) {
+    watchdog('rovas_project_reward', 'Fio polling failed: @err (@code).', array('@err' => isset($response->error) ? $response->error : 'HTTP error', '@code' => isset($response->code) ? $response->code : 0), WATCHDOG_ERROR);
+    return array('processed' => 0, 'reason' => 'http-failure');
+  }
+
+  $data = drupal_json_decode($response->data);
+  if (empty($data)) {
+    return array('processed' => 0, 'reason' => 'empty-response');
+  }
+
+  $items = rovas_project_reward_extract_fio_items($data);
+  foreach ($items as $item) {
+    $reference = isset($item['reference']) ? trim((string) $item['reference']) : '';
+    if ($reference === '' || !ctype_digit($reference)) {
+      continue;
+    }
+    $order_id = (int) $reference;
+    $amount = isset($item['amount']) ? (float) $item['amount'] : NULL;
+    $provider_payment_id = isset($item['provider_payment_id']) ? $item['provider_payment_id'] : NULL;
+    rovas_project_reward_mark_bank_order_success($order_id, $provider_payment_id, $amount, $item);
+    $processed++;
+  }
+
+  return array('processed' => $processed);
+}
+
+/**
+ * Normalize possible Fio JSON formats to an internal list.
+ */
+function rovas_project_reward_extract_fio_items(array $data) {
+  $items = array();
+
+  // OpenAPI-shaped payloads can vary by adapter. Keep parser defensive.
+  if (!empty($data['transactions']) && is_array($data['transactions'])) {
+    foreach ($data['transactions'] as $tx) {
+      $items[] = array(
+        'reference' => isset($tx['variableSymbol']) ? $tx['variableSymbol'] : (isset($tx['reference']) ? $tx['reference'] : ''),
+        'amount' => isset($tx['amount']) ? $tx['amount'] : NULL,
+        'provider_payment_id' => isset($tx['id']) ? $tx['id'] : (isset($tx['entryReference']) ? $tx['entryReference'] : ''),
+        'raw' => $tx,
+      );
+    }
+  }
+  elseif (!empty($data['accountStatement']['transactionList']['transaction']) && is_array($data['accountStatement']['transactionList']['transaction'])) {
+    // Backward compatible parser for older Fio statement-like data.
+    foreach ($data['accountStatement']['transactionList']['transaction'] as $tx) {
+      $vs = '';
+      if (!empty($tx['column5']['value'])) {
+        $vs = $tx['column5']['value'];
+      }
+      $amount = !empty($tx['column1']['value']) ? $tx['column1']['value'] : NULL;
+      $provider_id = !empty($tx['column22']['value']) ? $tx['column22']['value'] : '';
+      $items[] = array(
+        'reference' => $vs,
+        'amount' => $amount,
+        'provider_payment_id' => $provider_id,
+        'raw' => $tx,
+      );
+    }
+  }
+
+  return $items;
+}
+
+/**
+ * Mark bank order as paid and enqueue delayed-confirmed callback.
+ */
+function rovas_project_reward_mark_bank_order_success($order_id, $provider_payment_id = NULL, $actual_amount = NULL, array $meta = array()) {
+  $order = commerce_order_load($order_id);
+  if (!$order) {
+    watchdog('rovas_project_reward', 'Bank settlement references missing order @order.', array('@order' => $order_id), WATCHDOG_WARNING);
+    return FALSE;
+  }
+
+  $intent = db_select('rovas_bank_payment_intent', 'i')
+    ->fields('i')
+    ->condition('order_id', $order_id)
+    ->execute()
+    ->fetchObject();
+  if (!$intent) {
+    watchdog('rovas_project_reward', 'No bank intent found for order @order.', array('@order' => $order_id), WATCHDOG_WARNING);
+    return FALSE;
+  }
+
+  if (!empty($order->data['sepa']['status']) && $order->data['sepa']['status'] === 'paid') {
+    return TRUE;
+  }
+
+  $expected = isset($order->data['sepa']['amount']) ? (float) $order->data['sepa']['amount'] : (float) $intent->amount;
+  if ($actual_amount !== NULL && abs($actual_amount - $expected) > 0.009) {
+    db_update('rovas_bank_payment_intent')
+      ->fields(array(
+        'status' => 'manual_review',
+        'provider_payment_id' => $provider_payment_id,
+        'meta' => drupal_json_encode(array('mismatch' => array('expected' => $expected, 'actual' => $actual_amount), 'payload' => $meta)),
+        'changed' => REQUEST_TIME,
+      ))
+      ->condition('order_id', $order_id)
+      ->execute();
+    watchdog('rovas_project_reward', 'Amount mismatch for order @order. Expected @exp, got @got.', array('@order' => $order_id, '@exp' => $expected, '@got' => $actual_amount), WATCHDOG_WARNING);
+    return FALSE;
+  }
+
+  db_update('rovas_bank_payment_intent')
+    ->fields(array(
+      'status' => 'paid',
+      'provider_payment_id' => $provider_payment_id,
+      'meta' => drupal_json_encode($meta),
+      'changed' => REQUEST_TIME,
+    ))
+    ->condition('order_id', $order_id)
+    ->execute();
+
+  $order->data['sepa']['status'] = 'paid';
+  if (!empty($provider_payment_id)) {
+    $order->data['sepa']['provider_payment_id'] = $provider_payment_id;
+  }
+  commerce_order_save($order);
+
+  // Trigger existing bank paid-in-full rule chain.
+  if (function_exists('rules_invoke_event')) {
+    rules_invoke_event('commerce_payment_order_paid_in_full', $order);
+  }
+
+  rovas_project_reward_enqueue_delayed_callback($order, 'delayed-confirmed');
+  rovas_project_reward_process_callback_delivery_queue(5);
+  watchdog('rovas_project_reward', 'Bank order @order marked as paid.', array('@order' => $order_id), WATCHDOG_INFO);
+  return TRUE;
+}
+
+/**
+ * Mark bank order as failed/expired and enqueue delayed-rejected callback.
+ */
+function rovas_project_reward_mark_bank_order_failed($order_id, $status = 'failed', array $meta = array()) {
+  $order = commerce_order_load($order_id);
+  if (!$order) {
+    return FALSE;
+  }
+
+  db_update('rovas_bank_payment_intent')
+    ->fields(array(
+      'status' => in_array($status, array('expired', 'failed', 'rejected')) ? $status : 'failed',
+      'meta' => drupal_json_encode($meta),
+      'changed' => REQUEST_TIME,
+    ))
+    ->condition('order_id', $order_id)
+    ->execute();
+
+  $order->data['sepa']['status'] = ($status === 'expired') ? 'expired' : 'failed';
+  commerce_order_save($order);
+
+  rovas_project_reward_enqueue_delayed_callback($order, 'delayed-rejected');
+  rovas_project_reward_process_callback_delivery_queue(5);
+  watchdog('rovas_project_reward', 'Bank order @order marked as @status.', array('@order' => $order_id, '@status' => $status), WATCHDOG_WARNING);
+  return TRUE;
+}
+
+/**
+ * Add delayed callback event to delivery queue.
+ */
+function rovas_project_reward_enqueue_delayed_callback($order, $event_type) {
+  if (empty($order->order_id)) {
+    return FALSE;
+  }
+  if (!in_array($event_type, array('delayed', 'delayed-confirmed', 'delayed-rejected'))) {
+    return FALSE;
+  }
+
+  $intent = db_select('rovas_bank_payment_intent', 'i')
+    ->fields('i')
+    ->condition('order_id', $order->order_id)
+    ->execute()
+    ->fetchObject();
+  if (!$intent || empty($intent->callback_token)) {
+    return FALSE;
+  }
+
+  $endpoint = rovas_project_reward_resolve_partner_endpoint($intent->paytype, $intent->recipient_id);
+  if (empty($endpoint)) {
+    return FALSE;
+  }
+
+  $delivery_id = 'cb_' . substr(hash('sha256', microtime(TRUE) . mt_rand() . $order->order_id . $event_type), 0, 40);
+  $payload = array(
+    'event' => $event_type,
+    'delivery_id' => $delivery_id,
+    'occurred_at' => gmdate('c', REQUEST_TIME),
+    'order' => array(
+      'id' => (int) $order->order_id,
+      'status' => !empty($order->status) ? $order->status : '',
+      'amount' => isset($intent->amount) ? number_format((float) $intent->amount, 2, '.', '') : '',
+      'currency' => !empty($intent->currency) ? $intent->currency : 'EUR',
+      'reference' => !empty($intent->reference) ? $intent->reference : (string) $order->order_id,
+    ),
+    'payment' => array(
+      'method' => 'bank_transfer',
+      'provider' => !empty($intent->provider) ? $intent->provider : 'fio',
+      'provider_payment_id' => !empty($intent->provider_payment_id) ? $intent->provider_payment_id : '',
+    ),
+    'context' => array(
+      'paytype' => !empty($intent->paytype) ? $intent->paytype : '',
+      'recipient_id' => !empty($intent->recipient_id) ? (int) $intent->recipient_id : 0,
+      'callbackurl' => !empty($intent->callback_url) ? $intent->callback_url : '',
+      'token' => $intent->callback_token,
+    ),
+  );
+
+  db_insert('rovas_bank_callback_delivery')
+    ->fields(array(
+      'delivery_id' => $delivery_id,
+      'order_id' => (int) $order->order_id,
+      'intent_id' => $intent->intent_id,
+      'event_type' => $event_type,
+      'endpoint' => $endpoint,
+      'payload' => drupal_json_encode($payload),
+      'status' => 'queued',
+      'attempts' => 0,
+      'next_attempt' => REQUEST_TIME,
+      'created' => REQUEST_TIME,
+      'changed' => REQUEST_TIME,
+    ))
+    ->execute();
+
+  return TRUE;
+}
+
+/**
+ * Deliver queued delayed callbacks.
+ */
+function rovas_project_reward_process_callback_delivery_queue($limit = 20) {
+  $result = db_select('rovas_bank_callback_delivery', 'd')
+    ->fields('d')
+    ->condition('status', array('queued', 'retrying'), 'IN')
+    ->condition('next_attempt', REQUEST_TIME, '<=')
+    ->orderBy('next_attempt', 'ASC')
+    ->range(0, $limit)
+    ->execute();
+
+  foreach ($result as $row) {
+    $payload_arr = drupal_json_decode($row->payload);
+    if (empty($payload_arr['context']['token'])) {
+      rovas_project_reward_mark_callback_delivery_dead($row->id, 0, 'Missing token');
+      continue;
+    }
+
+    $signature = rovas_project_reward_sign_delayed_payload($payload_arr['context']['token'], $payload_arr['context']['recipient_id'], $payload_arr['context']['paytype']);
+    if ($signature === FALSE) {
+      rovas_project_reward_mark_callback_delivery_retry($row, 0, 'Unable to sign payload');
+      continue;
+    }
+
+    $body = drupal_json_encode($payload_arr);
+    $timestamp = (string) REQUEST_TIME;
+    $idempotency = $row->delivery_id;
+    $headers = array(
+      'Content-Type' => 'application/json',
+      'X-Rovas-Event' => $row->event_type,
+      'X-Rovas-Delivery-Id' => $idempotency,
+      'X-Rovas-Timestamp' => $timestamp,
+      'X-Rovas-Signature' => 'sha256=' . hash_hmac('sha256', $timestamp . '.' . $body, $signature),
+    );
+
+    $response = drupal_http_request($row->endpoint, array(
+      'method' => 'POST',
+      'data' => $body,
+      'headers' => $headers,
+      'timeout' => 8,
+    ));
+
+    $code = isset($response->code) ? (int) $response->code : 0;
+    if ($code >= 200 && $code < 300) {
+      db_update('rovas_bank_callback_delivery')
+        ->fields(array(
+          'status' => 'delivered',
+          'attempts' => (int) $row->attempts + 1,
+          'last_http_code' => $code,
+          'last_error' => '',
+          'changed' => REQUEST_TIME,
+        ))
+        ->condition('id', $row->id)
+        ->execute();
+    }
+    else {
+      $error = !empty($response->error) ? $response->error : 'HTTP ' . $code;
+      rovas_project_reward_mark_callback_delivery_retry($row, $code, $error);
+    }
+  }
+}
+
+/**
+ * Retry/backoff handling for callback queue.
+ */
+function rovas_project_reward_mark_callback_delivery_retry($row, $http_code, $error) {
+  $attempts = (int) $row->attempts + 1;
+  $max_attempts = (int) variable_get('rovas_bank_callback_max_attempts', 6);
+  if ($attempts >= $max_attempts) {
+    rovas_project_reward_mark_callback_delivery_dead($row->id, $http_code, $error);
+    return;
+  }
+
+  $backoff = array(60, 300, 900, 3600, 21600, 86400);
+  $delay = isset($backoff[$attempts - 1]) ? $backoff[$attempts - 1] : 86400;
+  db_update('rovas_bank_callback_delivery')
+    ->fields(array(
+      'status' => 'retrying',
+      'attempts' => $attempts,
+      'next_attempt' => REQUEST_TIME + $delay,
+      'last_http_code' => $http_code,
+      'last_error' => substr((string) $error, 0, 1024),
+      'changed' => REQUEST_TIME,
+    ))
+    ->condition('id', $row->id)
+    ->execute();
+}
+
+/**
+ * Move callback delivery to dead-letter terminal state.
+ */
+function rovas_project_reward_mark_callback_delivery_dead($id, $http_code, $error) {
+  db_update('rovas_bank_callback_delivery')
+    ->fields(array(
+      'status' => 'dead_letter',
+      'last_http_code' => $http_code,
+      'last_error' => substr((string) $error, 0, 1024),
+      'changed' => REQUEST_TIME,
+    ))
+    ->condition('id', $id)
+    ->execute();
+}
+
+/**
+ * Resolve partner webhook endpoint from reward target.
+ */
+function rovas_project_reward_resolve_partner_endpoint($paytype, $recipient_id) {
+  if (!is_numeric($recipient_id)) {
+    return '';
+  }
+
+  if ($paytype === 'project') {
+    $node = node_load($recipient_id);
+    return (!empty($node->field_webhook_url[LANGUAGE_NONE][0]['value'])) ? $node->field_webhook_url[LANGUAGE_NONE][0]['value'] : '';
+  }
+  if ($paytype === 'wreport') {
+    $report = node_load($recipient_id);
+    if (!empty($report->field__asset_owning_project[LANGUAGE_NONE][0]['target_id'])) {
+      $project = node_load($report->field__asset_owning_project[LANGUAGE_NONE][0]['target_id']);
+      if (!empty($project->field_webhook_url[LANGUAGE_NONE][0]['value'])) {
+        return $project->field_webhook_url[LANGUAGE_NONE][0]['value'];
+      }
+    }
+  }
+  return '';
+}
+
+/**
+ * Return secret used for delayed callback signature generation.
+ */
+function rovas_project_reward_sign_delayed_payload($token, $recipient_id, $paytype) {
+  if (empty($token) || !is_numeric($recipient_id)) {
+    return FALSE;
+  }
+
+  $owner_uid = 0;
+  if ($paytype === 'project') {
+    $node = node_load($recipient_id);
+    if (!empty($node->uid)) {
+      $owner_uid = $node->uid;
+    }
+  }
+  elseif ($paytype === 'wreport') {
+    $node = node_load($recipient_id);
+    if (!empty($node->uid)) {
+      $owner_uid = $node->uid;
+    }
+  }
+
+  if (!$owner_uid) {
+    return FALSE;
+  }
+
+  $keys = rules_invoke_component('rules_retrieve_user_s_api_key_and_token', $owner_uid, 'rovas_endpoint');
+  if (empty($keys[0])) {
+    return FALSE;
+  }
+
+  return strtolower(hash_hmac('sha256', $token, $keys[0]));
 }
