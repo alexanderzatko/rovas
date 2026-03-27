@@ -2591,31 +2591,47 @@ function rovas_project_reward_create_bank_intent($order, $paytype, $recipient_id
   $epc_payload = rovas_project_reward_build_epc_qr_payload($beneficiary, $iban, $bic, $amount, $reference, $message);
   $callback_expires = REQUEST_TIME + (int) variable_get('rovas_bank_delayed_token_ttl', 3 * 24 * 3600);
 
-  db_merge('rovas_bank_payment_intent')
-    ->key(array('order_id' => $order->order_id))
-    ->fields(array(
-      'intent_id' => $intent_id,
-      'provider' => $provider,
-      'status' => 'pending_settlement',
-      'reference' => $reference,
-      'amount' => $amount,
-      'currency' => 'EUR',
-      'paytype' => $paytype,
-      'recipient_id' => is_numeric($recipient_id) ? (int) $recipient_id : NULL,
-      'callback_url' => isset($session_data['callbackurl']) ? $session_data['callbackurl'] : '',
-      'callback_token' => isset($session_data['token']) ? $session_data['token'] : '',
-      'callback_expires' => $callback_expires,
-      'epc_payload' => $epc_payload,
-      'meta' => drupal_json_encode(array(
-        'callback_context' => isset($session_data['original_url']) ? $session_data['original_url'] : '',
-        'expiration' => isset($session_data['expiration']) ? $session_data['expiration'] : NULL,
-      )),
-      'changed' => REQUEST_TIME,
-    ))
-    ->insertFields(array(
-      'created' => REQUEST_TIME,
-    ))
-    ->execute();
+  $intent_fields = array(
+    'intent_id' => $intent_id,
+    'provider' => $provider,
+    'status' => 'pending_settlement',
+    'reference' => $reference,
+    'amount' => $amount,
+    'currency' => 'EUR',
+    'paytype' => $paytype,
+    'recipient_id' => is_numeric($recipient_id) ? (int) $recipient_id : NULL,
+    'callback_url' => isset($session_data['callbackurl']) ? $session_data['callbackurl'] : '',
+    'callback_token' => isset($session_data['token']) ? $session_data['token'] : '',
+    'callback_expires' => $callback_expires,
+    'epc_payload' => $epc_payload,
+    'meta' => drupal_json_encode(array(
+      'callback_context' => isset($session_data['original_url']) ? $session_data['original_url'] : '',
+      'expiration' => isset($session_data['expiration']) ? $session_data['expiration'] : NULL,
+    )),
+    'changed' => REQUEST_TIME,
+  );
+
+  $existing_intent_id = db_select('rovas_bank_payment_intent', 'i')
+    ->fields('i', array('id'))
+    ->condition('order_id', $order->order_id)
+    ->range(0, 1)
+    ->execute()
+    ->fetchField();
+
+  if ($existing_intent_id) {
+    db_update('rovas_bank_payment_intent')
+      ->fields($intent_fields)
+      ->condition('order_id', $order->order_id)
+      ->execute();
+  }
+  else {
+    db_insert('rovas_bank_payment_intent')
+      ->fields($intent_fields + array(
+        'order_id' => (int) $order->order_id,
+        'created' => REQUEST_TIME,
+      ))
+      ->execute();
+  }
 
   $order->data['sepa'] = array(
     'intent_id' => $intent_id,
