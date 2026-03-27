@@ -1028,6 +1028,11 @@ function rovas_project_reward_form_submit($form, &$form_state) {
     }
     else {
       rovas_project_reward_notify_purchase($node, $paid_amt, $currency, $user_email);
+      $redirect = _rovas_project_reward_queue_redirect();
+      if (!empty($redirect)) {
+        drupal_goto($redirect);
+      }
+      drupal_goto('/node/' . $pid);
     }
   }
   // If we reach here: anonymous user with non-EUR currency
