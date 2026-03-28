@@ -1585,6 +1585,29 @@ function _handle_complete_form_modifications(&$form, &$form_state) {
     return;
   }
 
+  // Remove the standard Commerce completion message for all roles.
+  // It contains "Your order number is X..." and "Return to the front page."
+  // We replace both with controlled output below.
+  if (isset($form['checkout_completion_message'])) {
+    $form['checkout_completion_message']['#access'] = FALSE;
+  }
+
+  // For authenticated users only, show the order number without the front page link.
+  global $user;
+  if ($user->uid != 0) {
+    $order_url = url('user/' . $user->uid . '/orders/' . $order->order_id);
+    $form['rovas_rewpro_order_message'] = array(
+      '#type' => 'markup',
+      '#markup' => '<div class="checkout-completion-message">'
+        . t('Your order number is @number. You can <a href="!url">view your order</a> on your account page when logged in.', array(
+          '@number' => $order->order_number,
+          '!url'    => $order_url,
+        ))
+        . '</div>',
+      '#weight' => 5,
+    );
+  }
+
   $bank_markup = rovas_project_reward_render_bank_transfer_info($order);
   if (!empty($bank_markup)) {
     $form['rovas_rewpro_complete_bank'] = array(
