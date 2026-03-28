@@ -1594,11 +1594,11 @@ function _handle_complete_form_modifications(&$form, &$form_state) {
     );
   }
 
-  $callbackurl = rovas_project_reward_order_callback_url($order);
-  if ($callbackurl !== '') {
+  $return_url = rovas_project_reward_bank_order_return_url($order);
+  if ($return_url !== '') {
     $form['rovas_rewpro_complete_return'] = array(
       '#type' => 'markup',
-      '#markup' => '<div class="rovas-rewpro-complete-actions">' . l(t('Return to the site you came from'), $callbackurl, array(
+      '#markup' => '<div class="rovas-rewpro-complete-actions">' . l(t('Return to the site you came from'), $return_url, array(
         'external' => TRUE,
         'attributes' => array('class' => array('btn', 'btn-success', 'btn-credit-bank', 'icon-before')),
       )) . '</div>',
@@ -1631,6 +1631,70 @@ function rovas_project_reward_order_callback_url($order) {
     return $intent['callback_url'];
   }
   return '';
+}
+
+/**
+ * Build a signed return URL for a bank transfer order on the complete page.
+ *
+ * Mirrors the parameters sent by the credit-card webhook
+ * (rovas_project_reward_notify_purchase) but appends them as query-string
+ * values to the callbackurl instead of sending a server-side POST, because
+ * the payment has not yet been received.
+ *
+ * The 3rd-party app can verify authenticity via the HMAC signature and use
+ * the delayed=1 flag to show an appropriate "awaiting payment" message.
+ *
+ * Parameters appended to callbackurl:
+ *   token        – the session token identifying this transaction
+ *   signature    – HMAC-SHA256(token, project_api_secret), lowercase hex
+ *   amount_paid  – order total in EUR (decimal, e.g. "12.50")
+ *   currency     – always "EUR"
+ *   email        – buyer e-mail address
+ *   delayed      – always "1" (payment not yet settled)
+ *
+ * Returns empty string when no callback URL or signing is possible.
+ */
+function rovas_project_reward_bank_order_return_url($order) {
+  if (empty($order->order_id)) {
+    return '';
+  }
+
+  $intent = db_select('rovas_bank_payment_intent', 'i')
+    ->fields('i')
+    ->condition('order_id', (int) $order->order_id)
+    ->range(0, 1)
+    ->execute()
+    ->fetchObject();
+
+  if (!$intent || empty($intent->callback_url) || !valid_url($intent->callback_url, TRUE)) {
+    return '';
+  }
+  if (empty($intent->callback_token)) {
+    return '';
+  }
+
+  $token = $intent->callback_token;
+  $signature = rovas_project_reward_sign_delayed_payload($token, $intent->recipient_id, $intent->paytype);
+  if ($signature === FALSE) {
+    return '';
+  }
+
+  $amount   = isset($intent->amount) ? number_format((float) $intent->amount, 2, '.', '') : '0.00';
+  $currency = !empty($intent->currency) ? $intent->currency : 'EUR';
+  $email    = !empty($order->mail) ? $order->mail : '';
+
+  $params = array(
+    'token'       => $token,
+    'signature'   => $signature,
+    'amount_paid' => $amount,
+    'currency'    => $currency,
+    'email'       => $email,
+    'delayed'     => '1',
+  );
+
+  $base = $intent->callback_url;
+  $separator = (strpos($base, '?') !== FALSE) ? '&' : '?';
+  return $base . $separator . http_build_query($params);
 }
 
 /**
@@ -2798,10 +2862,10 @@ function _rovas_project_reward_checkout_complete_bank_shutdown($order_id) {
     return;
   }
   rovas_project_reward_process_bank_transfer_checkout_complete($order);
-  $order = commerce_order_load($order_id);
-  if ($order) {
-    rovas_project_reward_order_placed_partner_notify($order);
-  }
+  // order-placed partner notification removed: the "Return to site" button on
+  // the complete page now carries the signed token/signature/delayed params
+  // directly in its URL, so no separate server-to-server call is needed here.
+  // A future polling job will call the partner once the payment is settled.
 }
 
 /**
