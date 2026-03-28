@@ -1678,6 +1678,24 @@ function _rovas_project_reward_queue_redirect($url = NULL) {
 function rovas_project_reward_review_finalize_payment($form, &$form_state) {
 
   $order = $form_state['order'];
+
+  // Bank transfer orders have no Stripe PI. Commerce's payment-pane submit
+  // handler can clear $order->data['payment_method'] on the review step
+  // (because _handle_review_form_modifications skips POST). Re-assert the
+  // correct value so that _handle_complete_form_modifications can recognise
+  // this as a bank transfer order and render the SEPA instructions + return
+  // button. No redirect is needed here; the complete page handles everything.
+  if (!empty($order->data['rpr_paytype']) && $order->data['rpr_paytype'] === 'pay-choice-bank') {
+    if (empty($order->data['payment_method'])) {
+      $fresh = commerce_order_load($order->order_id);
+      if ($fresh) {
+        $fresh->data['payment_method'] = 'bank_transfer|commerce_payment_bank_transfer';
+        commerce_order_save($fresh);
+      }
+    }
+    return;
+  }
+
   if (empty($order->data['stripe_pi']['payment_intent'])) {
     watchdog('rpr', 'No PI on order data; aborting', [], WATCHDOG_WARNING);
     return;
@@ -2649,10 +2667,18 @@ function rovas_project_reward_cron() {
  * Returns TRUE if the order's selected Commerce payment method is bank transfer.
  */
 function rovas_project_reward_order_is_bank_transfer_selected($order) {
-  if (empty($order) || !function_exists('commerce_payment_rules_compare_selected_payment_method')) {
+  if (empty($order)) {
     return FALSE;
   }
-  return commerce_payment_rules_compare_selected_payment_method($order, 'bank_transfer');
+  // Primary check: Commerce payment_method field.
+  if (function_exists('commerce_payment_rules_compare_selected_payment_method') &&
+      commerce_payment_rules_compare_selected_payment_method($order, 'bank_transfer')) {
+    return TRUE;
+  }
+  // Fallback: rpr_paytype is set at order creation and is not cleared by
+  // Commerce's payment-pane submit handler, making it a reliable indicator
+  // even when payment_method has been wiped on the review step.
+  return isset($order->data['rpr_paytype']) && $order->data['rpr_paytype'] === 'pay-choice-bank';
 }
 
 /**
