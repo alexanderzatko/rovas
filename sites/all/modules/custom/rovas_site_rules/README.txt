@@ -14,19 +14,54 @@ Rule status in the Rules UI:
   assigns them "Default" status. If a rule is edited in the UI it becomes
   "Overridden" and can be reverted to the JSON-file version at any time.
 
-Migration (re-import all rules from JSON files):
-  Via Drush (recommended):
-    drush php-eval "module_load_include('inc', 'rovas_site_rules', 'rovas_site_rules.migration'); rovas_site_rules_migration_run();"
+Re-importing all rules from the JSON files (migration)
+--------------------------------------------------------
+Use drush74 (not plain drush) on Rovas servers: the default "drush" binary may
+use a different PHP or bootstrap context, so "drush pm-info" can show the wrong
+status (e.g. module "not installed" while the admin UI shows it enabled). If
+commands or counts do not match what you see in the browser, you are almost
+certainly using the wrong Drush.
 
-  Via browser (Devel > Execute PHP):
-    module_load_include('inc', 'rovas_site_rules', 'rovas_site_rules.migration');
-    rovas_site_rules_migration_run();
+Use this after you change JSON files in rules/ and want the site to match them,
+or when Rules entries for this module look wrong or out of date.
 
-  The migration deletes all DB entries for this module's rules, then calls
-  entity_defaults_rebuild() which re-imports them from the JSON files and saves
-  them with "Default" status.
+What it does (plain language):
+  - Removes the saved copies of this module's rules from the database (only the
+    rules that come from these JSON files; other modules' rules are untouched).
+  - Re-loads every JSON file and writes fresh copies into the database with
+    "Default" status in the Rules UI.
 
-"Maximum function nesting level" (e.g. on "drush cc all" or after migration):
+How to run it
+
+  A) Drush on the server (recommended — one step, no batch progress page)
+     From the Drupal root (the directory that contains index.php), run:
+
+       drush74 php-eval "module_load_include('inc', 'rovas_site_rules', 'rovas_site_rules.migration'); rovas_site_rules_migration_run();"
+
+     What you should see:
+     - A short summary line with how many JSON files were processed and how many
+       old database rows were removed. "0 rows removed" often means the rules
+       were not in the database yet (for example after a fresh deploy); the
+       second half of the process still re-imports from JSON.
+     - If something is wrong, check Administration > Reports > Recent log
+       messages for lines like "Skipped invalid rule" (type may show as
+       rovas_site_rules). Those lines explain which JSON file failed and why.
+
+  B) Browser (Devel > Execute PHP)
+     Paste and run:
+
+       module_load_include('inc', 'rovas_site_rules', 'rovas_site_rules.migration');
+       rovas_site_rules_migration_run();
+
+     The site will show a batch progress screen. Wait until it finishes; you
+     should see a green status message when done. Do not close the tab early.
+
+After a code deploy to the server
+  - If the migration or the site behaves oddly right after uploading new files,
+    clear caches (drush74 cc all) or ask your host to reload PHP (OPcache
+    can briefly serve old code). Then run the migration again using method A or B.
+
+"Maximum function nesting level" (e.g. on "drush74 cc all" or after migration):
   During cache clears, entity_defaults_rebuild() calls
   hook_default_rules_configuration(), which runs rules_import() for each of the
   139 JSON files. For complex rules this creates a deep — but finite — call
@@ -34,10 +69,10 @@ Migration (re-import all rules from JSON files):
   is too low.
 
   Option 1 — raise the limit for the command:
-    php -d xdebug.max_nesting_level=1000 $(which drush) cc all
+    php -d xdebug.max_nesting_level=1000 $(which drush74) cc all
 
   Option 2 — disable Xdebug for CLI cache clears:
-    php -d xdebug.mode=off $(which drush) cc all
+    php -d xdebug.mode=off $(which drush74) cc all
 
   Option 3 — raise the limit permanently in php.ini (CLI section):
     xdebug.max_nesting_level = 1000

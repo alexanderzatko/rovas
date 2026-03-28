@@ -6,8 +6,13 @@
  * entity_defaults_rebuild(). Rules will be assigned ENTITY_IN_CODE ("Default")
  * status because they are defined purely in code (JSON files + hook).
  *
- * Uses Batch API to avoid lock timeouts when run from the web. When run via
- * Drush CLI, executes directly (no batch) since there's no lock contention.
+ * Uses Batch API to avoid lock timeouts when run from the web. The batch
+ * definition sets the 'file' key (see batch_set()) so this .inc is included on
+ * every batch subrequest; callbacks are not loaded from devel/php alone, and
+ * defining them only in .module can fail if PHP OPcache serves stale bytecode.
+ *
+ * When run via Drush CLI, executes directly (no batch) since there's no lock
+ * contention.
  *
  * Both delete and rebuild are one-rule-per-batch-operation. Doing all deletes
  * in a single operation caused MySQL "Lock wait timeout exceeded" on the
@@ -88,6 +93,8 @@ function rovas_site_rules_migration_run_batch() {
     'title'      => t('Migrating rovas_site_rules'),
     'operations' => $operations,
     'finished'   => '_rovas_site_rules_migration_finished',
+    // Required so batch subrequests load this file before call_user_func_array().
+    'file'       => drupal_get_path('module', 'rovas_site_rules') . '/rovas_site_rules.migration.inc',
   );
 
   batch_set($batch);
@@ -111,11 +118,13 @@ function rovas_site_rules_migration_run_direct() {
   $deleted = isset($ctx['results']['deleted']) ? $ctx['results']['deleted'] : 0;
 
   // Re-import from hook: clears cache, rebuilds defaults, clears cache again.
-  _rovas_site_rules_migration_rebuild(array(), $ctx);
+  _rovas_site_rules_migration_rebuild($ctx);
 
   if (function_exists('drush_print')) {
-    drush_print(dt('Deleted @count rules; re-imported via entity_defaults_rebuild().', array(
-      '@count' => $deleted,
+    $expected = count($names);
+    drush_print(dt('Migration (CLI): @json JSON rule files in list; @deleted matching DB row(s) removed; rebuild completed. If no rows were removed, those rules were already missing from the database (or names did not match). If the Rules UI is still missing rules, check Reports for "Skipped invalid rule" (rovas_site_rules). On Rovas servers use drush74 (not drush) so CLI matches the site you see in the browser.', array(
+      '@json' => $expected,
+      '@deleted' => $deleted,
     )));
   }
 }
@@ -158,8 +167,12 @@ function _rovas_site_rules_migration_delete_one($name, &$context) {
  * imports each rule from its JSON file and returns it to Entity API. Entity API
  * then saves each rule to DB with ENTITY_IN_CODE status, which the Rules UI
  * displays as "Default".
+ *
+ * Batch API passes only &$context when the operation args list is empty (see
+ * array_merge in _batch_process()); do not add an unused $args parameter or
+ * PHP 8+ will throw ArgumentCountError.
  */
-function _rovas_site_rules_migration_rebuild($args, &$context) {
+function _rovas_site_rules_migration_rebuild(&$context) {
   rules_clear_cache(TRUE);
   entity_defaults_rebuild();
   rules_clear_cache(TRUE);
@@ -168,8 +181,11 @@ function _rovas_site_rules_migration_rebuild($args, &$context) {
 
 /**
  * Batch finished callback.
+ *
+ * Drupal 7 passes four arguments (success, results, operations, elapsed); accept
+ * the last so PHP 8+ does not error on extra arguments.
  */
-function _rovas_site_rules_migration_finished($success, $results, $operations) {
+function _rovas_site_rules_migration_finished($success, $results, $operations, $elapsed = NULL) {
   $deleted = isset($results['deleted']) ? $results['deleted'] : 0;
   if ($success) {
     drupal_set_message(t('Migration complete. Deleted @deleted rules; re-imported from code.', array(

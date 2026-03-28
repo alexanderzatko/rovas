@@ -6,13 +6,8 @@
  * Provides default Rules configurations via hook_default_rules_configuration()
  * in rovas_site_rules.rules_defaults.inc. Rule definitions are stored as JSON
  * in the rules/ subdirectory.
+ *
+ * Batch migration callbacks live in rovas_site_rules.migration.inc; the Batch
+ * API 'file' key loads that include on progressive batch requests (see
+ * rovas_site_rules_migration_run_batch()).
  */
-
-/**
- * Implements hook_init().
- */
-function rovas_site_rules_init() {
-  if (arg(0) === 'batch') {
-    module_load_include('inc', 'rovas_site_rules', 'rovas_site_rules.migration');
-  }
-}

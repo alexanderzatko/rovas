@@ -16,7 +16,7 @@
  * Note: rules_import() for complex rules can produce a deep call stack. If
  * Xdebug is active, raise xdebug.max_nesting_level (e.g. 500) or run cache
  * clears with Xdebug disabled:
- *   php -d xdebug.mode=off $(which drush) cc all
+ *   php -d xdebug.mode=off $(which drush74) cc all
  */
 function rovas_site_rules_default_rules_configuration() {
   static $running = FALSE;
