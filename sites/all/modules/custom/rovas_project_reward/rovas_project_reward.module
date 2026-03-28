@@ -1315,7 +1315,11 @@ function rpr_create_customer_profile($billing_info, $order_id) {
 */
 function rovas_project_reward_form_alter(&$form, &$form_state, $form_id) {
 
-  if ($form_id !== 'commerce_checkout_form_checkout' && $form_id !== 'commerce_checkout_form_review') {
+  if (!in_array($form_id, array(
+    'commerce_checkout_form_checkout',
+    'commerce_checkout_form_review',
+    'commerce_checkout_form_complete',
+  ), TRUE)) {
     return;
   }
 
@@ -1325,8 +1329,8 @@ function rovas_project_reward_form_alter(&$form, &$form_state, $form_id) {
   $callbackurl = isset($sessary['callbackurl']) ? $sessary['callbackurl'] : '';
   $expiration = isset($sessary['expiration']) ? $sessary['expiration'] : INF;
   
-  // session expiration validation for callback URLs
-  if ($callbackurl && $expiration != INF) {
+  // session expiration validation for callback URLs (checkout/review only; complete has no submit)
+  if ($callbackurl && $expiration != INF && in_array($form_id, array('commerce_checkout_form_checkout', 'commerce_checkout_form_review'), TRUE)) {
     if (isset($form['buttons']['continue']['#validate'])) {
       $form['buttons']['continue']['#validate'][] = 'rovas_forex_session_expiration_validate';
     } else {
@@ -1350,6 +1354,10 @@ function rovas_project_reward_form_alter(&$form, &$form_state, $form_id) {
 				$form['buttons']['continue']['#submit'][] = 'rovas_project_reward_review_finalize_payment';
 			}
       _handle_review_form_modifications($form, $form_state);
+      break;
+
+    case 'commerce_checkout_form_complete':
+      _handle_complete_form_modifications($form, $form_state);
       break;
   }
 }
@@ -1507,20 +1515,19 @@ function _handle_review_form_modifications(&$form, &$form_state) {
 			$form['commerce_payment']['payment_method']['#prefix'] = '<div style="display:none">';
 			$form['commerce_payment']['payment_method']['#suffix'] = '</div>';
 
-      // For bank transfer, suppress legacy payment-details block and show
-      // the custom QR/SEPA instructions below the order summary.
+      // For bank transfer, suppress legacy payment-details block; full SEPA
+      // instructions are shown on checkout complete after the order is submitted.
       if ($preferred_method === 'pay-choice-bank') {
         if (isset($form['commerce_payment']['payment_details'])) {
           unset($form['commerce_payment']['payment_details']);
         }
-        $bank_markup = rovas_project_reward_render_bank_transfer_info($order);
-        if (!empty($bank_markup)) {
-          $form['checkout_review']['rovas_bank_info'] = array(
-            '#type' => 'markup',
-            '#markup' => $bank_markup,
-            '#weight' => 30,
-          );
-        }
+        $form['checkout_review']['rovas_bank_info'] = array(
+          '#type' => 'markup',
+          '#markup' => '<div class="rovas-bank-review-notice" style="border:1px solid #ddd;padding:12px;margin:10px 0 16px 0;">'
+            . check_plain(t('Bank details will be shown on the next screen after you submit your order. They will also be sent to you by email.'))
+            . '</div>',
+          '#weight' => 30,
+        );
       }
 
     }
@@ -1564,6 +1571,66 @@ function _handle_review_form_modifications(&$form, &$form_state) {
       );
     }
   }
+}
+
+/**
+ * Thank-you page: SEPA/bank instructions and optional third-party return link.
+ */
+function _handle_complete_form_modifications(&$form, &$form_state) {
+  if (empty($form_state['order']->order_id)) {
+    return;
+  }
+  $order = commerce_order_load($form_state['order']->order_id);
+  if (!$order || !rovas_project_reward_order_is_bank_transfer_selected($order)) {
+    return;
+  }
+
+  $bank_markup = rovas_project_reward_render_bank_transfer_info($order);
+  if (!empty($bank_markup)) {
+    $form['rovas_rewpro_complete_bank'] = array(
+      '#type' => 'markup',
+      '#markup' => $bank_markup,
+      '#weight' => 10,
+    );
+  }
+
+  $callbackurl = rovas_project_reward_order_callback_url($order);
+  if ($callbackurl !== '') {
+    $form['rovas_rewpro_complete_return'] = array(
+      '#type' => 'markup',
+      '#markup' => '<div class="rovas-rewpro-complete-actions">' . l(t('Return to the site you came from'), $callbackurl, array(
+        'external' => TRUE,
+        'attributes' => array('class' => array('btn', 'btn-success', 'btn-credit-bank', 'icon-before')),
+      )) . '</div>',
+      '#weight' => 15,
+    );
+  }
+}
+
+/**
+ * Returns validated callback URL for rewpro third-party return link, or empty string.
+ *
+ * Prefers session; falls back to rovas_bank_payment_intent.callback_url.
+ */
+function rovas_project_reward_order_callback_url($order) {
+  if (empty($order->order_id)) {
+    return '';
+  }
+  $sessary = rovas_project_reward_session_get('rovas_project_reward', array());
+  $url = isset($sessary['callbackurl']) ? $sessary['callbackurl'] : '';
+  if ($url !== '' && valid_url($url, TRUE)) {
+    return $url;
+  }
+  $intent = db_select('rovas_bank_payment_intent', 'i')
+    ->fields('i', array('callback_url'))
+    ->condition('order_id', (int) $order->order_id)
+    ->range(0, 1)
+    ->execute()
+    ->fetchAssoc();
+  if ($intent && !empty($intent['callback_url']) && valid_url($intent['callback_url'], TRUE)) {
+    return $intent['callback_url'];
+  }
+  return '';
 }
 
 /**
@@ -2579,6 +2646,157 @@ function rovas_project_reward_cron() {
 }
 
 /**
+ * Returns TRUE if the order's selected Commerce payment method is bank transfer.
+ */
+function rovas_project_reward_order_is_bank_transfer_selected($order) {
+  if (empty($order) || !function_exists('commerce_payment_rules_compare_selected_payment_method')) {
+    return FALSE;
+  }
+  return commerce_payment_rules_compare_selected_payment_method($order, 'bank_transfer');
+}
+
+/**
+ * TRUE when the order matches the former Rules rule "rules_process_bank_payment_orders"
+ * guards (bank transfer + payment recipient set). Used to schedule shutdown work.
+ */
+function rovas_project_reward_checkout_complete_needs_bank_pipeline($order) {
+  if (empty($order->order_id) || empty($order->type) || $order->type !== 'commerce_order') {
+    return FALSE;
+  }
+  if (!rovas_project_reward_order_is_bank_transfer_selected($order)) {
+    return FALSE;
+  }
+  $recipient_items = field_get_items('commerce_order', $order, 'field_payment_recipient');
+  if (empty($recipient_items[0]['value'])) {
+    return FALSE;
+  }
+  return TRUE;
+}
+
+/**
+ * Replaces the disabled Rules reaction rules_process_bank_payment_orders:
+ * set status to processing, create forex node via rules_process_forex_order,
+ * send invoice receipt mail. Guards match the rule (not rewpro-specific).
+ *
+ * @param object $order
+ *   Commerce order entity.
+ *
+ * @return bool
+ *   TRUE if this order was handled (or already processed), FALSE if guards failed.
+ */
+function rovas_project_reward_process_bank_transfer_checkout_complete($order) {
+  if (empty($order->order_id) || empty($order->type) || $order->type !== 'commerce_order') {
+    return FALSE;
+  }
+  if (!rovas_project_reward_checkout_complete_needs_bank_pipeline($order)) {
+    return FALSE;
+  }
+  if (!empty($order->data['rovas_bank_checkout_complete_processed'])) {
+    return TRUE;
+  }
+  if (!function_exists('commerce_order_status_update') || !function_exists('rovas_forex_transaction_params')) {
+    return FALSE;
+  }
+
+  $order = commerce_order_status_update($order, 'processing', FALSE);
+  $order = commerce_order_load($order->order_id);
+  if (!$order) {
+    return FALSE;
+  }
+
+  $wrapper = entity_metadata_wrapper('commerce_order', $order);
+  $order_total = $wrapper->commerce_order_total->amount->value() / 100;
+
+  $forex_params = rovas_forex_transaction_params('eur_to_chr', $order_total, 0, TRUE);
+  $eur_basket = $forex_params['eur_basket'];
+  $chr_basket = $forex_params['chr_basket'];
+  $output_amount = $forex_params['output_amount'];
+
+  if (module_exists('rules') && function_exists('rules_invoke_component')) {
+    $config = rules_config_load('rules_process_forex_order');
+    if ($config && !empty($config->active)) {
+      rules_invoke_component(
+        'rules_process_forex_order',
+        $order->order_id,
+        0,
+        $eur_basket,
+        $chr_basket,
+        'euros_to_chrons',
+        $order_total,
+        $output_amount,
+        0,
+        $order->uid
+      );
+    }
+  }
+
+  if (function_exists('commerce_invoice_receipt_action_mail')) {
+    $to = token_replace('[commerce-order:owner] <[commerce-order:mail]>', array('commerce-order' => $order), array('clear' => TRUE));
+    $subject = token_replace('[site:name]: Order #[commerce-order:order-id]', array('commerce-order' => $order), array('clear' => TRUE));
+    commerce_invoice_receipt_action_mail($order, $to, $subject, NULL);
+  }
+
+  $order = commerce_order_load($order->order_id);
+  if ($order) {
+    $order->data['rovas_bank_checkout_complete_processed'] = REQUEST_TIME;
+    commerce_order_save($order);
+  }
+
+  return TRUE;
+}
+
+/**
+ * Queues signed partner webhook (order-placed) when a bank intent has callback data.
+ */
+function rovas_project_reward_order_placed_partner_notify($order) {
+  if (empty($order->order_id)) {
+    return;
+  }
+  if (!empty($order->data['rovas_order_placed_callback_sent'])) {
+    return;
+  }
+  if (!rovas_project_reward_enqueue_delayed_callback($order, 'order-placed')) {
+    return;
+  }
+  $order->data['rovas_order_placed_callback_sent'] = REQUEST_TIME;
+  commerce_order_save($order);
+  rovas_project_reward_process_callback_delivery_queue(3);
+}
+
+/**
+ * Shutdown: runs after Rules and other modules on commerce_checkout_complete.
+ */
+function _rovas_project_reward_checkout_complete_bank_shutdown($order_id) {
+  $order = commerce_order_load($order_id);
+  if (!$order) {
+    return;
+  }
+  rovas_project_reward_process_bank_transfer_checkout_complete($order);
+  $order = commerce_order_load($order_id);
+  if ($order) {
+    rovas_project_reward_order_placed_partner_notify($order);
+  }
+}
+
+/**
+ * Implements hook_commerce_checkout_complete().
+ *
+ * Bank transfer orders with field_payment_recipient: run the former Rules
+ * actions in code and notify 3rd-party partners (order-placed) after checkout
+ * submission. Deferred to shutdown so Rules such as commerce_checkout_order_convert
+ * run first.
+ */
+function rovas_project_reward_commerce_checkout_complete($order) {
+  if (empty($order->order_id)) {
+    return;
+  }
+  if (!rovas_project_reward_checkout_complete_needs_bank_pipeline($order)) {
+    return;
+  }
+  drupal_register_shutdown_function('_rovas_project_reward_checkout_complete_bank_shutdown', array($order->order_id));
+}
+
+/**
  * Build/refresh a SEPA bank intent for a rewpro order.
  */
 function rovas_project_reward_create_bank_intent($order, $paytype, $recipient_id, array $session_data = array()) {
@@ -2654,11 +2872,6 @@ function rovas_project_reward_create_bank_intent($order, $paytype, $recipient_id
     'callbackurl' => isset($session_data['callbackurl']) ? $session_data['callbackurl'] : '',
   );
   commerce_order_save($order);
-
-  // Inform third-party partner that this order is delayed (async settlement).
-  rovas_project_reward_enqueue_delayed_callback($order, 'delayed');
-  // Try immediate delivery and let cron retries handle transient failures.
-  rovas_project_reward_process_callback_delivery_queue(3);
 
   watchdog('rovas_project_reward', 'Created bank intent @intent for order @order.', array('@intent' => $intent_id, '@order' => $order->order_id), WATCHDOG_INFO);
 
@@ -3028,7 +3241,7 @@ function rovas_project_reward_enqueue_delayed_callback($order, $event_type) {
   if (empty($order->order_id)) {
     return FALSE;
   }
-  if (!in_array($event_type, array('delayed', 'delayed-confirmed', 'delayed-rejected'))) {
+  if (!in_array($event_type, array('delayed-confirmed', 'delayed-rejected', 'order-placed'), TRUE)) {
     return FALSE;
   }
 

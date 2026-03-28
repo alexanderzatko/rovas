@@ -1,6 +1,7 @@
 { "rules_process_bank_payment_orders" : {
     "LABEL" : "process bank payment orders",
     "PLUGIN" : "reaction rule",
+    "ACTIVE" : false,
     "OWNER" : "rules",
     "REQUIRES" : [
       "rules",
