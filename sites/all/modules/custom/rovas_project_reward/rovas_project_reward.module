@@ -3019,12 +3019,17 @@ function rovas_project_reward_build_epc_qr_payload($beneficiary, $iban, $bic, $a
 }
 
 /**
- * Render review pane data for manual transfer fallback.
+ * Render bank transfer instructions block for the complete page and invoice email.
+ *
+ * @param object      $order    Loaded commerce order.
+ * @param string|null $langcode Optional language code for translated strings.
  */
-function rovas_project_reward_render_bank_transfer_info($order) {
+function rovas_project_reward_render_bank_transfer_info($order, $langcode = NULL) {
   if (empty($order->data['sepa']) || empty($order->data['sepa']['reference'])) {
     return '';
   }
+
+  $t_opts = $langcode ? array('langcode' => $langcode) : array();
 
   $sepa = $order->data['sepa'];
   $payload = isset($sepa['epc_payload']) ? $sepa['epc_payload'] : '';
@@ -3038,20 +3043,22 @@ function rovas_project_reward_render_bank_transfer_info($order) {
   $bank_details = rovas_project_reward_get_bank_transfer_details($order);
 
   $out = '<div class="rovas-bank-transfer-box" style="border:1px solid #ddd;padding:12px;margin:10px 0 16px 0;">';
-  $out .= '<h4 style="margin-top:0;">' . check_plain(t('Bank transfer instructions')) . '</h4>';
-  $out .= '<p>' . check_plain(t('If instant authorization is unavailable, complete manual transfer using these details.')) . '</p>';
+  $out .= '<h4 style="margin-top:0;">' . check_plain(t('Bank transfer instructions', array(), $t_opts)) . '</h4>';
+  $out .= '<p>' . check_plain(t('If instant authorization is unavailable, complete manual transfer using these details.', array(), $t_opts)) . '</p>';
   $out .= '<ul style="margin-left:16px;">';
-  $out .= '<li><strong>' . check_plain(t('Beneficiary')) . ':</strong> ' . check_plain($beneficiary) . '</li>';
+  $out .= '<li><strong>' . check_plain(t('Beneficiary', array(), $t_opts)) . ':</strong> ' . check_plain($beneficiary) . '</li>';
   $out .= '<li><strong>IBAN:</strong> ' . check_plain($iban) . '</li>';
   $out .= '<li><strong>BIC:</strong> ' . check_plain($bic) . '</li>';
-  $out .= '<li><strong>' . check_plain(t('Amount')) . ':</strong> ' . check_plain($amount . ' ' . $currency) . '</li>';
-  $out .= '<li><strong>' . check_plain(t('Reference (VS)')) . ':</strong> ' . check_plain($reference) . '</li>';
+  $out .= '<li><strong>' . check_plain(t('Amount', array(), $t_opts)) . ':</strong> ' . check_plain($amount . ' ' . $currency) . '</li>';
+  $out .= '<li><strong>' . check_plain(t('Reference (VS)', array(), $t_opts)) . ':</strong> ' . check_plain($reference) . '</li>';
   $out .= '</ul>';
   if (!empty($bank_details['policy'])) {
     $out .= '<p><small>' . check_plain($bank_details['policy']) . '</small></p>';
   }
-  $out .= '<div><img src="' . check_plain($qr_url) . '" alt="' . check_plain(t('SEPA QR code')) . '" /></div>';
-  $out .= '<p><small>' . check_plain(t('Your order remains pending until payment is confirmed by bank settlement.')) . '</small></p>';
+  if (!empty($payload)) {
+    $out .= '<div><img src="' . check_plain($qr_url) . '" alt="' . check_plain(t('SEPA QR code', array(), $t_opts)) . '" /></div>';
+  }
+  $out .= '<p><small>' . check_plain(t('Your order remains pending until payment is confirmed by bank settlement.', array(), $t_opts)) . '</small></p>';
   $out .= '</div>';
 
   return $out;

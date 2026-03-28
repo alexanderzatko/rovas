@@ -148,27 +148,6 @@ else {
 			font-weight: bold;
 		}
 
-		.bank-info-text {
-			color: red;
-			font-weight: bold;
-			font-size: 12px;
-			margin-top: 35px;
-		}
-
-		.bank-info .cell1 {
-		  white-space: nowrap;
-		  padding-right: 10px;
-		  font-weight: bold;
-		}
-
-		.bank-info .cell2 {
-		  white-space: nowrap;
-		}
-
-		.bank-info .cell3 {
-		  width: 90%;
-		}
-	
 		.footer-table {
 			margin-top: 50px;
 		}
@@ -338,36 +317,13 @@ else {
             </tr>
 		<?php endif; ?>
 
-		<?php if ($payment_method_id == 'bank_transfer|commerce_payment_bank_transfer' && is_array($payment_method)): ?>
-		<!-- bank info START -->
+	<?php
+	$bank_info_html = rovas_project_reward_render_bank_transfer_info($order, $target_lang);
+	if (!empty($bank_info_html)): ?>
             <tr>
-              <td>
-				<div class="bank-info-text"><?php echo t('To complete the order, send your payment using the bank information shown below',[],['langcode' => $target_lang]); ?></div>
-			    <table class="bank-info" style="font-family: verdana, arial, helvetica; font-size: 1em;">
-				  <tr class="spacer">
-					  <td colspan="3">&nbsp;</td>
-				  </tr>
-				  <tr>
-					  <td class="cell1"><?php print t('Bank',[],['langcode' => $target_lang]) . ':'; ?></td>
-					  <td class="cell2"><?php print $payment_method['settings']['details']['account_bank']; ?></td>
-					  <td class="cell3">&nbsp;</td>
-				  </tr>
-				  <tr>
-					  <td class="cell1"><?php print t('IBAN',[],['langcode' => $target_lang]) . ':'; ?></td>
-					  <td class="cell2"><?php print $payment_method['settings']['details']['account_iban']; ?></td>
-					  <td class="cell3">&nbsp;</td>
-				  </tr>
-				  <tr>
-					  <td class="cell1"><?php print t('SWIFT',[],['langcode' => $target_lang]) . ':'; ?></td>
-					  <td class="cell2"><?php print $payment_method['settings']['details']['account_swift']; ?></td>
-					  <td class="cell3">&nbsp;</td>
-				  </tr>
-				</table>
-				</td>
+              <td><?php print $bank_info_html; ?></td>
             </tr>
-
-		<!-- bank info END -->
-		<?php endif; ?>
+	<?php endif; ?>
 
             <tr>
               <td>
