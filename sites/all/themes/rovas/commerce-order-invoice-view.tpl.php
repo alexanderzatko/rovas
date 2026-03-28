@@ -14,6 +14,9 @@ if (is_array($payment_method) && !empty($payment_method['display_title'])) {
 elseif (!empty($order->data['stripe_pi'])) {
   $payment_method_title = t('Card (Stripe)');
 }
+elseif (strpos($payment_method_id, 'bank_transfer') !== FALSE || !empty($order->data['sepa'])) {
+  $payment_method_title = t('Bank transfer');
+}
 else {
   $payment_method_title = t('Not specified');
 }
