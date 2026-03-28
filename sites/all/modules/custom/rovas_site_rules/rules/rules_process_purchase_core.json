@@ -109,7 +109,7 @@
                                 }
                               },
                               { "data_set" : { "data" : [ "amount-paid" ], "value" : [ "merit-award" ] } },
-                              { "data_set" : { "data" : [ "purchase-receipt-amount" ], "value" : [ "chrons-to-pay" ] } },
+                              { "data_set" : { "data" : [ "purchase-receipt-amount" ], "value" : [ "merit-award" ] } },
                               { "rovas_forex_transaction_params" : {
                                   "USING" : {
                                     "transact_type" : "chr_to_eur",
