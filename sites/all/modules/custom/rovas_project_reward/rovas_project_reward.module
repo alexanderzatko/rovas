@@ -3262,6 +3262,55 @@ function rovas_project_reward_extract_fio_items(array $data) {
 }
 
 /**
+ * Sync the bank intent record and order data to 'paid' and queue partner callback.
+ *
+ * Extracted from mark_bank_order_success() so the admin-confirmation hook can
+ * reuse it without re-firing the Rules paid_in_full event (Commerce core already
+ * does that for admin confirmations via commerce_payment_transaction_save()).
+ *
+ * @param int $order_id
+ *   Commerce order ID.
+ * @param string|null $provider_payment_id
+ *   Provider-side payment identifier, if available.
+ * @param array $meta
+ *   Additional metadata to persist on the intent row.
+ *
+ * @return bool
+ *   TRUE if the sync completed (or was already done), FALSE on hard failure.
+ */
+function rovas_project_reward_sync_bank_intent_paid($order_id, $provider_payment_id = NULL, array $meta = array()) {
+  $order = commerce_order_load($order_id);
+  if (!$order) {
+    watchdog('rovas_project_reward', 'sync_bank_intent_paid: missing order @order.', array('@order' => $order_id), WATCHDOG_WARNING);
+    return FALSE;
+  }
+
+  if (!empty($order->data['sepa']['status']) && $order->data['sepa']['status'] === 'paid') {
+    return TRUE;
+  }
+
+  db_update('rovas_bank_payment_intent')
+    ->fields(array(
+      'status' => 'paid',
+      'provider_payment_id' => $provider_payment_id,
+      'meta' => drupal_json_encode($meta),
+      'changed' => REQUEST_TIME,
+    ))
+    ->condition('order_id', $order_id)
+    ->execute();
+
+  $order->data['sepa']['status'] = 'paid';
+  if (!empty($provider_payment_id)) {
+    $order->data['sepa']['provider_payment_id'] = $provider_payment_id;
+  }
+  commerce_order_save($order);
+
+  rovas_project_reward_enqueue_delayed_callback($order, 'delayed-confirmed');
+
+  return TRUE;
+}
+
+/**
  * Mark bank order as paid and enqueue delayed-confirmed callback.
  */
 function rovas_project_reward_mark_bank_order_success($order_id, $provider_payment_id = NULL, $actual_amount = NULL, array $meta = array()) {
@@ -3300,31 +3349,293 @@ function rovas_project_reward_mark_bank_order_success($order_id, $provider_payme
     return FALSE;
   }
 
-  db_update('rovas_bank_payment_intent')
-    ->fields(array(
-      'status' => 'paid',
-      'provider_payment_id' => $provider_payment_id,
-      'meta' => drupal_json_encode($meta),
-      'changed' => REQUEST_TIME,
-    ))
-    ->condition('order_id', $order_id)
-    ->execute();
+  rovas_project_reward_sync_bank_intent_paid($order_id, $provider_payment_id, $meta);
 
-  $order->data['sepa']['status'] = 'paid';
-  if (!empty($provider_payment_id)) {
-    $order->data['sepa']['provider_payment_id'] = $provider_payment_id;
-  }
-  commerce_order_save($order);
+  // Reload order so it reflects the sepa status saved by sync helper.
+  $order = commerce_order_load($order_id);
 
-  // Trigger existing bank paid-in-full rule chain.
+  // Trigger existing bank paid-in-full rule chain (→ order status = completed).
   if (function_exists('rules_invoke_event')) {
     rules_invoke_event('commerce_payment_order_paid_in_full', $order);
   }
 
-  rovas_project_reward_enqueue_delayed_callback($order, 'delayed-confirmed');
   rovas_project_reward_process_callback_delivery_queue(5);
+  rovas_project_reward_process_bank_order_reward($order);
   watchdog('rovas_project_reward', 'Bank order @order marked as paid.', array('@order' => $order_id), WATCHDOG_INFO);
   return TRUE;
+}
+
+/**
+ * Complete the merit/chron reward distribution for a confirmed bank transfer order.
+ *
+ * At checkout-complete time a forex_transaction node was created with
+ * field_payment_status=0 and the exchange-rate locked in field_output_amount.
+ * This function commits that pending node: calls rules_process_recipient_order_core
+ * with the locked chron amount, updates the forex baskets, and sets
+ * field_payment_status=1 as the idempotency commit-point.
+ *
+ * Mirrors the final steps of _rovas_process_stripe_fees_for_order() but uses the
+ * already-stored output_amount rather than recalculating (preserves locked rate).
+ *
+ * @param object $order
+ *   Loaded Commerce order entity.
+ *
+ * @return bool
+ *   TRUE on success or if already processed, FALSE on error.
+ */
+function rovas_project_reward_process_bank_order_reward($order) {
+  if (empty($order->order_id)) {
+    return FALSE;
+  }
+
+  if (!rovas_project_reward_checkout_complete_needs_bank_pipeline($order)) {
+    return FALSE;
+  }
+
+  $wrapper = entity_metadata_wrapper('commerce_order', $order);
+  $order_total = $wrapper->commerce_order_total->amount->value() / 100;
+
+  $lock_key = 'bank_reward_order_' . $order->order_id;
+  if (!lock_acquire($lock_key, 60)) {
+    lock_wait($lock_key, 15);
+    // Check whether a concurrent process already finished.
+    $q2 = new EntityFieldQuery();
+    $q2->entityCondition('entity_type', 'node')
+      ->entityCondition('bundle', 'forex_transaction')
+      ->fieldCondition('field_order_record', 'target_id', $order->order_id);
+    $r2 = $q2->execute();
+    if (!empty($r2['node'])) {
+      $fn2 = node_load(key($r2['node']));
+      if ($fn2 && entity_metadata_wrapper('node', $fn2)->field_payment_status->value() == 1) {
+        watchdog('rovas_project_reward', 'bank_order_reward: order @oid — concurrent process finished; skipping.', array('@oid' => $order->order_id), WATCHDOG_INFO);
+        return TRUE;
+      }
+    }
+    watchdog('rovas_project_reward', 'bank_order_reward: order @oid — could not acquire lock; aborting to prevent double-processing.', array('@oid' => $order->order_id), WATCHDOG_WARNING);
+    return FALSE;
+  }
+
+  // Find the pending forex_transaction node created at checkout-complete time.
+  $query = new EntityFieldQuery();
+  $query->entityCondition('entity_type', 'node')
+    ->entityCondition('bundle', 'forex_transaction')
+    ->fieldCondition('field_order_record', 'target_id', $order->order_id);
+  $result = $query->execute();
+
+  if (empty($result['node'])) {
+    lock_release($lock_key);
+    watchdog('rovas_project_reward', 'bank_order_reward: forex node not found for order @oid.', array('@oid' => $order->order_id), WATCHDOG_ERROR);
+    return FALSE;
+  }
+
+  $forex_node = node_load(key($result['node']));
+  if (!$forex_node || $forex_node->type !== 'forex_transaction') {
+    lock_release($lock_key);
+    return FALSE;
+  }
+
+  $forex_wrapper = entity_metadata_wrapper('node', $forex_node);
+
+  // Idempotency: another process may have committed between our pre-lock check
+  // and lock acquisition.
+  if ($forex_wrapper->field_payment_status->value() == 1) {
+    lock_release($lock_key);
+    return TRUE;
+  }
+
+  // Use the exchange rate locked at checkout-complete time.
+  $output_amount = (float) $forex_wrapper->field_output_amount->value();
+
+  if ($output_amount <= 0) {
+    lock_release($lock_key);
+    watchdog('rovas_project_reward', 'bank_order_reward: zero output_amount on forex node for order @oid; skipping reward.', array('@oid' => $order->order_id), WATCHDOG_WARNING);
+    return FALSE;
+  }
+
+  // Distribute merits/chrons to project contributors (or user for merit orders).
+  if (module_exists('rules') && function_exists('rules_invoke_component')) {
+    $config = rules_config_load('rules_process_recipient_order_core');
+    if ($config && !empty($config->active)) {
+      rules_invoke_component('rules_process_recipient_order_core', $output_amount, 1, $order);
+    }
+    else {
+      lock_release($lock_key);
+      watchdog('rovas_project_reward', 'bank_order_reward: rules_process_recipient_order_core not found/active for order @oid.', array('@oid' => $order->order_id), WATCHDOG_ERROR);
+      return FALSE;
+    }
+  }
+
+  // Commit the forex node. field_payment_status=1 is the idempotency marker:
+  // any concurrent process that acquired the lock after us will see status=1.
+  $forex_baskets = variable_get('forex_baskets', array());
+  $chr_basket = isset($forex_baskets['ch_basket']) ? (float) $forex_baskets['ch_basket'] : 0.0;
+  $eur_basket = isset($forex_baskets['eur_basket']) ? (float) $forex_baskets['eur_basket'] : 0.0;
+
+  $new_baskets = array(
+    'ch_basket' => $chr_basket - $output_amount,
+    'eur_basket' => $eur_basket + $order_total,
+  );
+  variable_set('forex_baskets', $new_baskets);
+
+  $forex_wrapper->field_chron_basket->set($chr_basket);
+  $forex_wrapper->field_euro_basket->set($eur_basket);
+  $forex_wrapper->field_payment_status->set(1);
+  $forex_wrapper->save();
+
+  lock_release($lock_key);
+
+  // Notify the originating 3rd party web app using the same synchronous payload
+  // format that card and express-checkout orders use (notify_purchase). This uses
+  // the callback_token stored in the intent table at order-creation time, so it
+  // works even though the buyer's PHP session is gone.
+  // Reload the order so the notification sees the most recent order->data state.
+  $order = commerce_order_load($order->order_id);
+  if ($order) {
+    rovas_project_reward_notify_bank_purchase_confirmed($order);
+  }
+
+  watchdog('rovas_project_reward', 'bank_order_reward: reward distributed for order @oid (@chrons chrons).', array('@oid' => $order->order_id, '@chrons' => $output_amount), WATCHDOG_INFO);
+  return TRUE;
+}
+
+/**
+ * Notify the originating 3rd party website after a bank transfer order is confirmed.
+ *
+ * Sends the same synchronous {token, signature, amount_paid, currency, email}
+ * payload that rovas_project_reward_notify_purchase() sends for card/express orders,
+ * but sources the callback token from the rovas_bank_payment_intent record (stored
+ * at order-creation time) rather than the PHP session (which is gone by the time
+ * the bank payment is confirmed).
+ *
+ * Only fires when:
+ *  - payer_type is 'project' (only project purchases have a webhook endpoint)
+ *  - the intent has a non-empty callback_token (order originated from a 3rd party)
+ *  - not already sent (guarded by order->data['rovas_bank_purchase_notified'])
+ *
+ * @param object $order
+ *   Loaded Commerce order entity.
+ */
+function rovas_project_reward_notify_bank_purchase_confirmed($order) {
+  if (empty($order->order_id)) {
+    return;
+  }
+
+  // Only project-payer orders have a webhook on the rewarded node.
+  $wrapper = entity_metadata_wrapper('commerce_order', $order);
+  $payer_type = $wrapper->field_payer_type->value();
+  if ($payer_type !== 'project') {
+    return;
+  }
+
+  // Idempotency: only send once per order.
+  if (!empty($order->data['rovas_bank_purchase_notified'])) {
+    return;
+  }
+
+  // Fetch the bank intent to retrieve the stored callback token.
+  $intent = db_select('rovas_bank_payment_intent', 'i')
+    ->fields('i')
+    ->condition('order_id', $order->order_id)
+    ->execute()
+    ->fetchObject();
+  if (!$intent || empty($intent->callback_token)) {
+    // Order was not initiated from a 3rd party site — nothing to notify.
+    return;
+  }
+
+  $recipient_id = $wrapper->field_payment_recipient->value();
+  if (empty($recipient_id)) {
+    return;
+  }
+
+  $rewarded_project = node_load($recipient_id);
+  if (!$rewarded_project) {
+    return;
+  }
+
+  $endpoint = isset($rewarded_project->field_webhook_url[LANGUAGE_NONE][0]['value'])
+    ? $rewarded_project->field_webhook_url[LANGUAGE_NONE][0]['value']
+    : '';
+  if (empty($endpoint)) {
+    return;
+  }
+
+  // Derive signature using the project owner's API secret, identical to
+  // what rovas_project_reward_notify_purchase() does for card/express orders.
+  $owner_uid = $rewarded_project->uid;
+  $keys = rules_invoke_component('rules_retrieve_user_s_api_key_and_token', $owner_uid, 'rovas_endpoint');
+  $secret = $keys[0];
+
+  $token = $intent->callback_token;
+  $signature = strtolower(hash_hmac('sha256', $token, $secret));
+
+  $order_total = $wrapper->commerce_order_total->amount->value() / 100;
+  $email = $order->mail;
+
+  $options = array(
+    'method' => 'POST',
+    'data' => drupal_json_encode(array(
+      'token' => $token,
+      'signature' => $signature,
+      'amount_paid' => $order_total,
+      'currency' => 'EUR',
+      'email' => $email,
+    )),
+    'headers' => array('Content-Type' => 'application/json'),
+    'timeout' => 5,
+  );
+
+  $response = drupal_http_request($endpoint, $options);
+
+  // Mark as notified before saving, so a concurrent call cannot also send.
+  $order->data['rovas_bank_purchase_notified'] = REQUEST_TIME;
+  commerce_order_save($order);
+
+  watchdog('rovas_project_reward', 'Bank purchase confirmed: notified 3rd party for order @oid (HTTP @code).', array('@oid' => $order->order_id, '@code' => isset($response->code) ? $response->code : '?'), WATCHDOG_INFO);
+
+  if ((int) $response->code !== 204) {
+    $message = 'Bank transfer: unexpected response notifying project <a href="/node/' . $rewarded_project->nid . '">' . $rewarded_project->nid . '</a> for order ' . $order->order_id . '.<p>Response: <pre>' . print_r($response, 1) . '</pre></p>';
+    rules_invoke_component('rules_send_email', 'alexanderz@neofund.sk', 'Bank payment notification failure', $message, 'en');
+  }
+}
+
+/**
+ * Implements hook_commerce_payment_transaction_update().
+ *
+ * Intercepts the admin "confirm bank transfer" form submit path. When a
+ * bank_transfer transaction is saved as SUCCESS by commerce_bank_transfer_confirm_form_submit(),
+ * Commerce core fires commerce_payment_order_paid_in_full on its own (via
+ * hook_commerce_payment_transaction_update in commerce_payment.module). This hook
+ * handles the two operations that the admin path would otherwise miss:
+ *   1. Syncing the rovas_bank_payment_intent record and order->data['sepa'] to 'paid'.
+ *   2. Running the merit/chron reward distribution.
+ */
+function rovas_project_reward_commerce_payment_transaction_update($transaction) {
+  if (empty($transaction->payment_method) || $transaction->payment_method !== 'bank_transfer') {
+    return;
+  }
+  if ($transaction->status !== COMMERCE_PAYMENT_STATUS_SUCCESS) {
+    return;
+  }
+  // Skip if the transaction was already SUCCESS before this save (no transition).
+  if (isset($transaction->original) && $transaction->original->status === COMMERCE_PAYMENT_STATUS_SUCCESS) {
+    return;
+  }
+
+  $order = commerce_order_load($transaction->order_id);
+  if (!$order) {
+    return;
+  }
+
+  // Sync intent table / order->data['sepa'] / partner callback if not already done
+  // (e.g. Fio cron may have already called mark_bank_order_success()).
+  if (empty($order->data['sepa']['status']) || $order->data['sepa']['status'] !== 'paid') {
+    rovas_project_reward_sync_bank_intent_paid($transaction->order_id);
+    // Reload so process_bank_order_reward sees the updated order data.
+    $order = commerce_order_load($transaction->order_id);
+  }
+
+  rovas_project_reward_process_bank_order_reward($order);
 }
 
 /**
