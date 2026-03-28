@@ -3044,7 +3044,6 @@ function rovas_project_reward_render_bank_transfer_info($order, $langcode = NULL
 
   $out = '<div class="rovas-bank-transfer-box" style="padding:12px;margin:10px 0 16px 0;">';
   $out .= '<h4 style="margin-top:0;">' . check_plain(t('Bank transfer instructions', array(), $t_opts)) . '</h4>';
-  $out .= '<p>' . check_plain(t('If instant authorization is unavailable, complete manual transfer using these details.', array(), $t_opts)) . '</p>';
   $out .= '<ul style="margin-left:16px;">';
   $out .= '<li><strong>' . check_plain(t('Beneficiary', array(), $t_opts)) . ':</strong> ' . check_plain($beneficiary) . '</li>';
   $out .= '<li><strong>IBAN:</strong> ' . check_plain($iban) . '</li>';
