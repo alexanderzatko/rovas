@@ -3385,9 +3385,8 @@ function rovas_project_reward_mark_bank_order_success($order_id, $provider_payme
   $result = $query->execute();
 
   if (!empty($result['commerce_payment_transaction'])) {
-    $transaction = commerce_payment_transaction_load(
-      reset(array_keys($result['commerce_payment_transaction']))
-    );
+    $txn_ids = array_keys($result['commerce_payment_transaction']);
+    $transaction = commerce_payment_transaction_load(reset($txn_ids));
   }
   else {
     // Fallback: no PENDING row found (e.g. legacy order placed before the
@@ -3722,9 +3721,8 @@ function rovas_project_reward_mark_bank_order_failed($order_id, $status = 'faile
   $result = $query->execute();
 
   if (!empty($result['commerce_payment_transaction'])) {
-    $transaction = commerce_payment_transaction_load(
-      reset(array_keys($result['commerce_payment_transaction']))
-    );
+    $txn_ids = array_keys($result['commerce_payment_transaction']);
+    $transaction = commerce_payment_transaction_load(reset($txn_ids));
     $transaction->status = COMMERCE_PAYMENT_STATUS_FAILURE;
     $transaction->message .= '<br />' . t('Failed/rejected: @date',
       array('@date' => format_date(REQUEST_TIME, 'short')));
