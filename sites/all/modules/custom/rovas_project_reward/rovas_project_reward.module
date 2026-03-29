@@ -3401,7 +3401,7 @@ function rovas_project_reward_mark_bank_order_success($order_id, $provider_payme
   if ($provider_payment_id) {
     $transaction->remote_id = $provider_payment_id;
   }
-  $transaction->message .= '<br />' . t('Confirmed by FIO: @date',
+  $transaction->message .= t('Confirmed by FIO: @date',
     array('@date' => format_date(REQUEST_TIME, 'short')));
 
   // Saving the transaction triggers:
