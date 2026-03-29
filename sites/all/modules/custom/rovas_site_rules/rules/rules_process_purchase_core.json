@@ -22,11 +22,6 @@
       }
     },
     "ACTION SET" : [
-      { "variable_add" : {
-          "USING" : { "type" : "decimal", "value" : [ "amount-paid" ] },
-          "PROVIDE" : { "variable_added" : { "purchase_receipt_amount" : "purchase receipt amount" } }
-        }
-      },
       { "CONDITIONAL" : [
           {
             "IF" : { "data_is" : { "data" : [ "logged-in-user:uid" ], "op" : "\u003E", "value" : "0" } },
@@ -109,7 +104,6 @@
                                 }
                               },
                               { "data_set" : { "data" : [ "amount-paid" ], "value" : [ "merit-award" ] } },
-                              { "data_set" : { "data" : [ "purchase-receipt-amount" ], "value" : [ "merit-award" ] } },
                               { "rovas_forex_transaction_params" : {
                                   "USING" : {
                                     "transact_type" : "chr_to_eur",
@@ -364,7 +358,7 @@
                   "USING" : {
                     "buyer_uid" : [ "logged-in-user:uid" ],
                     "product_id" : [ "purchased-product-id" ],
-                    "total_reward" : [ "purchase-receipt-amount" ],
+                    "total_reward" : [ "amount-paid" ],
                     "description" : [ "note" ],
                     "wreport_id" : "0"
                   },
