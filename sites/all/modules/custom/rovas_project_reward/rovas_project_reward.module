@@ -3355,8 +3355,13 @@ function rovas_project_reward_mark_bank_order_success($order_id, $provider_payme
   $order = commerce_order_load($order_id);
 
   // Trigger existing bank paid-in-full rule chain (→ order status = completed).
-  if (function_exists('rules_invoke_event')) {
-    rules_invoke_event('commerce_payment_order_paid_in_full', $order);
+  // The commerce_payment_order_paid_in_full event requires both the order and a
+  // commerce_payment_transaction argument. For bank transfers no real transaction
+  // entity is persisted, so we pass an unsaved stub — the same pattern Commerce
+  // core uses in commerce_payment.checkout_pane.inc for zero-balance orders.
+  if (function_exists('rules_invoke_event') && function_exists('commerce_payment_transaction_new')) {
+    $stub_transaction = commerce_payment_transaction_new('bank_transfer', $order->order_id);
+    rules_invoke_event('commerce_payment_order_paid_in_full', $order, $stub_transaction);
   }
 
   rovas_project_reward_process_callback_delivery_queue(5);
