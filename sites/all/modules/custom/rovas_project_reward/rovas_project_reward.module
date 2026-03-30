@@ -3420,13 +3420,16 @@ function rovas_project_reward_mark_bank_order_success($order_id, $provider_payme
  * Complete the merit/chron reward distribution for a confirmed bank transfer order.
  *
  * At checkout-complete time a forex_transaction node was created with
- * field_payment_status=0 and the exchange-rate locked in field_output_amount.
- * This function commits that pending node: calls rules_process_recipient_order_core
- * with the locked chron amount, updates the forex baskets, and sets
- * field_payment_status=1 as the idempotency commit-point.
+ * field_payment_status=0 and the full-order CHR amount locked in field_output_amount.
+ * This function commits that pending node: applies the project's merit-allocation
+ * fraction to obtain the correct CHR amount, calls rules_process_recipient_order_core
+ * with that merit-only amount, updates the forex baskets and the forex node fields,
+ * then sets field_payment_status=1 as the idempotency commit-point.
  *
- * Mirrors the final steps of _rovas_process_stripe_fees_for_order() but uses the
- * already-stored output_amount rather than recalculating (preserves locked rate).
+ * Mirrors _rovas_process_stripe_fees_for_order(): the merit fraction is computed
+ * from field_reward_merit_allocation on the rewarded project before the rule is
+ * invoked, so that rules_process_recipient_order_core (and mrewarder) receive only
+ * the portion that should actually be distributed as merits.
  *
  * @param object $order
  *   Loaded Commerce order entity.
@@ -3503,11 +3506,32 @@ function rovas_project_reward_process_bank_order_reward($order) {
     return FALSE;
   }
 
+  // Calculate the merit-only fraction of the full CHR amount, mirroring
+  // _rovas_process_stripe_fees_for_order(). For 'project' payer type, only the
+  // fraction defined by field_reward_merit_allocation on the rewarded project
+  // should be passed to rules_process_recipient_order_core (and mrewarder).
+  // For all other payer types the multiplier stays 1 (full amount).
+  $merit_allocation_multiplier = 1.0;
+  $payer_type = $wrapper->field_payer_type->value();
+  $recipient_id = $wrapper->field_payment_recipient->value();
+  if ($payer_type === 'project' && $recipient_id) {
+    $rewarded_project = node_load($recipient_id);
+    if ($rewarded_project && $rewarded_project->type === 'project') {
+      $proj_wrapper = entity_metadata_wrapper('node', $rewarded_project);
+      $alloc = $proj_wrapper->field_reward_merit_allocation->value();
+      if (isset($alloc) && is_numeric($alloc)) {
+        $merit_allocation_multiplier = (float) $alloc / 100;
+      }
+    }
+  }
+  $merit_chrons = $output_amount * $merit_allocation_multiplier;
+  $merit_eur    = $order_total  * $merit_allocation_multiplier;
+
   // Distribute merits/chrons to project contributors (or user for merit orders).
   if (module_exists('rules') && function_exists('rules_invoke_component')) {
     $config = rules_config_load('rules_process_recipient_order_core');
     if ($config && !empty($config->active)) {
-      rules_invoke_component('rules_process_recipient_order_core', $output_amount, 1, $order);
+      rules_invoke_component('rules_process_recipient_order_core', $merit_chrons, 1, $order);
     }
     else {
       lock_release($lock_key);
@@ -3518,18 +3542,22 @@ function rovas_project_reward_process_bank_order_reward($order) {
 
   // Commit the forex node. field_payment_status=1 is the idempotency marker:
   // any concurrent process that acquired the lock after us will see status=1.
+  // Update field_input_amount and field_output_amount to the merit portion
+  // actually distributed (mirrors _rovas_process_stripe_fees_for_order).
   $forex_baskets = variable_get('forex_baskets', array());
   $chr_basket = isset($forex_baskets['ch_basket']) ? (float) $forex_baskets['ch_basket'] : 0.0;
   $eur_basket = isset($forex_baskets['eur_basket']) ? (float) $forex_baskets['eur_basket'] : 0.0;
 
   $new_baskets = array(
-    'ch_basket' => $chr_basket - $output_amount,
-    'eur_basket' => $eur_basket + $order_total,
+    'ch_basket' => $chr_basket - $merit_chrons,
+    'eur_basket' => $eur_basket + $merit_eur,
   );
   variable_set('forex_baskets', $new_baskets);
 
   $forex_wrapper->field_chron_basket->set($chr_basket);
   $forex_wrapper->field_euro_basket->set($eur_basket);
+  $forex_wrapper->field_input_amount->set($merit_eur);
+  $forex_wrapper->field_output_amount->set($merit_chrons);
   $forex_wrapper->field_payment_status->set(1);
   $forex_wrapper->save();
 
@@ -3545,7 +3573,7 @@ function rovas_project_reward_process_bank_order_reward($order) {
     rovas_project_reward_notify_bank_purchase_confirmed($order);
   }
 
-  watchdog('rovas_project_reward', 'bank_order_reward: reward distributed for order @oid (@chrons chrons).', array('@oid' => $order->order_id, '@chrons' => $output_amount), WATCHDOG_INFO);
+  watchdog('rovas_project_reward', 'bank_order_reward: reward distributed for order @oid (@merit_chrons merit chrons of @total_chrons total, multiplier @mult).', array('@oid' => $order->order_id, '@merit_chrons' => $merit_chrons, '@total_chrons' => $output_amount, '@mult' => $merit_allocation_multiplier), WATCHDOG_INFO);
   return TRUE;
 }
 
