@@ -2966,7 +2966,8 @@ function rovas_project_reward_create_bank_intent($order, $paytype, $recipient_id
     'epc_payload' => $epc_payload,
     'meta' => drupal_json_encode(array(
       'callback_context' => isset($session_data['original_url']) ? $session_data['original_url'] : '',
-      'expiration' => isset($session_data['expiration']) ? $session_data['expiration'] : NULL,
+      'product_name'     => isset($session_data['name']) ? $session_data['name'] : '',
+      'expiration'       => isset($session_data['expiration']) ? $session_data['expiration'] : NULL,
     )),
     'changed' => REQUEST_TIME,
   );
@@ -3367,6 +3368,13 @@ function rovas_project_reward_mark_bank_order_success($order_id, $provider_payme
       ->condition('order_id', $order_id)
       ->execute();
     watchdog('rovas_project_reward', 'Amount mismatch for order @order. Expected @exp, got @got.', array('@order' => $order_id, '@exp' => $expected, '@got' => $actual_amount), WATCHDOG_WARNING);
+
+    // Notify the buyer about the mismatch so they can take action.
+    rovas_project_reward_send_bank_transfer_notification($order, 'bank_transfer_mismatch', array(
+      'actual_amount'   => $actual_amount,
+      'expected_amount' => $expected,
+    ));
+
     return FALSE;
   }
 
@@ -3413,6 +3421,10 @@ function rovas_project_reward_mark_bank_order_success($order_id, $provider_payme
 
   rovas_project_reward_process_callback_delivery_queue(5);
   watchdog('rovas_project_reward', 'Bank order @order marked as paid.', array('@order' => $order_id), WATCHDOG_INFO);
+
+  // Notify the buyer that their payment has been confirmed.
+  rovas_project_reward_send_bank_transfer_notification($order, 'bank_transfer_confirmed');
+
   return TRUE;
 }
 
@@ -3759,6 +3771,11 @@ function rovas_project_reward_mark_bank_order_failed($order_id, $status = 'faile
   rovas_project_reward_enqueue_delayed_callback($order, 'delayed-rejected');
   rovas_project_reward_process_callback_delivery_queue(5);
   watchdog('rovas_project_reward', 'Bank order @order marked as @status.', array('@order' => $order_id, '@status' => $status), WATCHDOG_WARNING);
+
+  // Notify the buyer about the failure or expiry.
+  $mail_key = ($status === 'expired') ? 'bank_transfer_expired' : 'bank_transfer_failed';
+  rovas_project_reward_send_bank_transfer_notification($order, $mail_key);
+
   return TRUE;
 }
 
@@ -3991,4 +4008,288 @@ function rovas_project_reward_sign_delayed_payload($token, $recipient_id, $payty
   }
 
   return strtolower(hash_hmac('sha256', $token, $keys[0]));
+}
+
+// ---------------------------------------------------------------------------
+// Bank transfer reconciliation notification emails
+// ---------------------------------------------------------------------------
+
+/**
+ * Implements hook_theme().
+ */
+function rovas_project_reward_theme() {
+  return array(
+    'commerce_bank_transfer_notification' => array(
+      'variables' => array(
+        'mail_key'    => NULL,
+        'content'     => '',
+        'order_id'    => NULL,
+        'target_lang' => NULL,
+        'base_url'    => '',
+        'site_mail'   => '',
+      ),
+      'template' => 'commerce-bank-transfer-notification',
+      'path'     => drupal_get_path('module', 'rovas_project_reward') . '/templates',
+    ),
+  );
+}
+
+/**
+ * Implements hook_mail().
+ *
+ * Handles four reconciliation-outcome mail keys:
+ *   bank_transfer_confirmed, bank_transfer_mismatch,
+ *   bank_transfer_failed,    bank_transfer_expired.
+ */
+function rovas_project_reward_mail($key, &$message, $params) {
+  $allowed = array(
+    'bank_transfer_confirmed',
+    'bank_transfer_mismatch',
+    'bank_transfer_failed',
+    'bank_transfer_expired',
+  );
+  if (!in_array($key, $allowed, TRUE)) {
+    return;
+  }
+
+  $message['headers']['Content-Type'] = 'text/html; charset=UTF-8; format=flowed';
+  $message['subject'] = isset($params['subject']) ? $params['subject'] : '';
+  $message['body'][] = theme('commerce_bank_transfer_notification', array(
+    'mail_key'    => $key,
+    'content'     => _rovas_project_reward_bank_notification_content($key, $params),
+    'order_id'    => isset($params['order_id']) ? $params['order_id'] : '',
+    'target_lang' => isset($params['target_lang']) ? $params['target_lang'] : language_default()->language,
+    'base_url'    => isset($params['base_url']) ? $params['base_url'] : url('', array('absolute' => TRUE)),
+    'site_mail'   => variable_get('site_mail', ''),
+  ));
+}
+
+/**
+ * Send a bank transfer reconciliation notification to the buyer.
+ *
+ * @param object $order
+ *   Loaded Commerce order entity.
+ * @param string $mail_key
+ *   One of: bank_transfer_confirmed, bank_transfer_mismatch,
+ *            bank_transfer_failed, bank_transfer_expired.
+ * @param array $extra_params
+ *   Extra key/value pairs merged into $params (e.g. actual_amount,
+ *   expected_amount for the mismatch case).
+ */
+function rovas_project_reward_send_bank_transfer_notification($order, $mail_key, array $extra_params = array()) {
+  if (empty($order->mail)) {
+    return FALSE;
+  }
+
+  // Determine target language, mirroring the invoice template logic.
+  $target_lang = language_default()->language;
+  if (!empty($order->data['stripe_pi']['payment_intent']['metadata']['language_mapped'])) {
+    $target_lang = $order->data['stripe_pi']['payment_intent']['metadata']['language_mapped'];
+  }
+  elseif (!empty($order->uid)) {
+    $account = user_load($order->uid);
+    if ($account && !empty($account->language)) {
+      $target_lang = $account->language;
+    }
+  }
+
+  // Resolve recipient display name.
+  $recipient_name = '';
+  if (!empty($order->field_payment_recipient[LANGUAGE_NONE][0]['value'])) {
+    $recipient_id = $order->field_payment_recipient[LANGUAGE_NONE][0]['value'];
+    $payer_type = !empty($order->field_payer_type[LANGUAGE_NONE][0]['value'])
+      ? $order->field_payer_type[LANGUAGE_NONE][0]['value']
+      : 'project';
+    try {
+      if ($payer_type === 'user') {
+        $wrapper = entity_metadata_wrapper('user', $recipient_id);
+        $recipient_name = $wrapper->field_full_name->value() . ' (' . $wrapper->label() . ')';
+      }
+      else {
+        $wrapper = entity_metadata_wrapper('node', $recipient_id);
+        $recipient_name = $wrapper->label();
+      }
+    }
+    catch (Exception $e) {
+      watchdog('rovas_project_reward', 'Could not resolve recipient name for order @oid: @err', array('@oid' => $order->order_id, '@err' => $e->getMessage()), WATCHDOG_WARNING);
+    }
+  }
+
+  // Load bank intent for 3rd-party context (callback_token, callback_context,
+  // product_name persisted in intent->meta at order creation).
+  $callback_token   = '';
+  $callback_context = '';
+  $product_name     = '';
+  $intent = db_select('rovas_bank_payment_intent', 'i')
+    ->fields('i')
+    ->condition('order_id', (int) $order->order_id)
+    ->execute()
+    ->fetchObject();
+  if ($intent) {
+    $callback_token = !empty($intent->callback_token) ? $intent->callback_token : '';
+    $meta = !empty($intent->meta) ? drupal_json_decode($intent->meta) : array();
+    $callback_context = !empty($meta['callback_context']) ? $meta['callback_context'] : '';
+    $product_name     = !empty($meta['product_name'])     ? $meta['product_name']     : '';
+  }
+
+  global $base_url;
+
+  $order_amount = !empty($order->data['sepa']['amount'])
+    ? number_format((float) $order->data['sepa']['amount'], 2, '.', '')
+    : '';
+  $order_date = !empty($order->created) ? format_date($order->created, 'medium') : '';
+
+  $params = array(
+    'order'            => $order,
+    'order_id'         => $order->order_id,
+    'order_amount'     => $order_amount,
+    'order_date'       => $order_date,
+    'order_mail'       => $order->mail,
+    'recipient_name'   => $recipient_name,
+    'target_lang'      => $target_lang,
+    'callback_token'   => $callback_token,
+    'callback_context' => $callback_context,
+    'product_name'     => $product_name,
+    'base_url'         => $base_url,
+  ) + $extra_params;
+
+  // Build localised subject line.
+  switch ($mail_key) {
+    case 'bank_transfer_confirmed':
+      $params['subject'] = t('Rovas: Payment confirmed – Order #@id', array('@id' => $order->order_id), array('langcode' => $target_lang));
+      break;
+
+    case 'bank_transfer_mismatch':
+      $actual   = isset($extra_params['actual_amount'])   ? (float) $extra_params['actual_amount']   : 0;
+      $expected = isset($extra_params['expected_amount']) ? (float) $extra_params['expected_amount'] : 0;
+      if ($actual < $expected) {
+        $params['subject'] = t('Rovas: Incomplete payment received – Order #@id', array('@id' => $order->order_id), array('langcode' => $target_lang));
+      }
+      else {
+        $params['subject'] = t('Rovas: Overpayment received – Order #@id', array('@id' => $order->order_id), array('langcode' => $target_lang));
+      }
+      break;
+
+    case 'bank_transfer_failed':
+      $params['subject'] = t('Rovas: Payment could not be processed – Order #@id', array('@id' => $order->order_id), array('langcode' => $target_lang));
+      break;
+
+    case 'bank_transfer_expired':
+      $params['subject'] = t('Rovas: Payment window expired – Order #@id', array('@id' => $order->order_id), array('langcode' => $target_lang));
+      break;
+
+    default:
+      $params['subject'] = t('Rovas: Order #@id notification', array('@id' => $order->order_id), array('langcode' => $target_lang));
+  }
+
+  drupal_mail('rovas_project_reward', $mail_key, $order->mail, $target_lang, $params);
+  watchdog('rovas_project_reward', 'Sent @key notification for order @oid to @mail.', array('@key' => $mail_key, '@oid' => $order->order_id, '@mail' => $order->mail), WATCHDOG_INFO);
+}
+
+/**
+ * Build the outcome-specific HTML content block for the notification email.
+ *
+ * Returns an HTML string with <p> elements only — the wrapper chrome (logo,
+ * header, footer) is handled by the template.
+ *
+ * @param string $mail_key
+ *   The mail key identifying the outcome.
+ * @param array $params
+ *   Parameters array from rovas_project_reward_send_bank_transfer_notification().
+ *
+ * @return string
+ *   HTML content block.
+ */
+function _rovas_project_reward_bank_notification_content($mail_key, array $params) {
+  $order_id      = isset($params['order_id'])      ? check_plain($params['order_id'])      : '';
+  $order_amount  = isset($params['order_amount'])  ? check_plain($params['order_amount'])  : '';
+  $order_date    = isset($params['order_date'])     ? check_plain($params['order_date'])    : '';
+  $recipient_name = isset($params['recipient_name']) ? check_plain($params['recipient_name']) : '';
+  $target_lang   = isset($params['target_lang'])   ? $params['target_lang']                : language_default()->language;
+
+  $content = '';
+
+  switch ($mail_key) {
+
+    case 'bank_transfer_confirmed':
+      $content .= '<p>' . t('We have received and confirmed your bank transfer of <strong>€@amount</strong> for Order #@id placed on @date.',
+        array('@amount' => $order_amount, '@id' => $order_id, '@date' => $order_date),
+        array('langcode' => $target_lang)) . '</p>';
+
+      if ($recipient_name) {
+        $content .= '<p>' . t('Your order is now complete and your payment was sent to <strong>@recipient</strong>.',
+          array('@recipient' => $recipient_name),
+          array('langcode' => $target_lang)) . '</p>';
+      }
+      else {
+        $content .= '<p>' . t('Your order is now complete.', array(), array('langcode' => $target_lang)) . '</p>';
+      }
+
+      // 3rd-party return sentence — only when the order originated from an
+      // external site (non-empty callback_token) and a return URL is known.
+      if (!empty($params['callback_token']) && !empty($params['callback_context'])) {
+        $site_url   = $params['callback_context'];
+        $site_host  = @parse_url($site_url, PHP_URL_HOST);
+        $site_label = $site_host ? check_plain($site_host) : check_plain($site_url);
+        $site_link  = '<a href="' . check_url($site_url) . '">' . $site_label . '</a>';
+
+        if (!empty($params['product_name'])) {
+          $content .= '<p>' . t('You can now access the product or service <strong>@product</strong> you purchased at !site_link.',
+            array('@product' => check_plain($params['product_name']), '!site_link' => $site_link),
+            array('langcode' => $target_lang)) . '</p>';
+        }
+        else {
+          $content .= '<p>' . t('You can now return to !site_link to access your purchase.',
+            array('!site_link' => $site_link),
+            array('langcode' => $target_lang)) . '</p>';
+        }
+      }
+
+      $content .= '<p>' . t('Thank you for your support.', array(), array('langcode' => $target_lang)) . '</p>';
+      break;
+
+    case 'bank_transfer_mismatch':
+      $actual_f   = isset($params['actual_amount'])   ? (float) $params['actual_amount']   : NULL;
+      $expected_f = isset($params['expected_amount']) ? (float) $params['expected_amount'] : NULL;
+      $actual_str   = $actual_f   !== NULL ? number_format($actual_f,   2, '.', '') : '?';
+      $expected_str = $expected_f !== NULL ? number_format($expected_f, 2, '.', '') : '?';
+      $diff_str     = ($actual_f !== NULL && $expected_f !== NULL)
+        ? number_format(abs($actual_f - $expected_f), 2, '.', '')
+        : '?';
+
+      if ($actual_f !== NULL && $expected_f !== NULL && $actual_f < $expected_f) {
+        $content .= '<p>' . t('We received a bank transfer of <strong>€@actual</strong> for Order #@id, but the expected amount was <strong>€@expected</strong> (difference: <strong>€@diff</strong>).',
+          array('@actual' => $actual_str, '@id' => $order_id, '@expected' => $expected_str, '@diff' => $diff_str),
+          array('langcode' => $target_lang)) . '</p>';
+        $content .= '<p>' . t('Your order is currently on hold pending manual review. To resolve this, please transfer the outstanding <strong>€@diff</strong> using the same payment reference, or contact us for assistance.',
+          array('@diff' => $diff_str),
+          array('langcode' => $target_lang)) . '</p>';
+      }
+      else {
+        $content .= '<p>' . t('We received a bank transfer of <strong>€@actual</strong> for Order #@id, but the expected amount was only <strong>€@expected</strong> (overpayment: <strong>€@diff</strong>).',
+          array('@actual' => $actual_str, '@id' => $order_id, '@expected' => $expected_str, '@diff' => $diff_str),
+          array('langcode' => $target_lang)) . '</p>';
+        $content .= '<p>' . t('Your order is on hold pending manual review. Please contact us to arrange return of the overpaid amount.',
+          array(), array('langcode' => $target_lang)) . '</p>';
+      }
+      break;
+
+    case 'bank_transfer_failed':
+      $content .= '<p>' . t('Unfortunately, your bank transfer payment for Order #@id has been rejected or could not be processed by your bank.',
+        array('@id' => $order_id),
+        array('langcode' => $target_lang)) . '</p>';
+      $content .= '<p>' . t('If you believe this is an error, please contact your bank or reach out to us quoting your order number.',
+        array(), array('langcode' => $target_lang)) . '</p>';
+      break;
+
+    case 'bank_transfer_expired':
+      $content .= '<p>' . t('The payment window for Order #@id has expired. We have not received a matching bank transfer for this order.',
+        array('@id' => $order_id),
+        array('langcode' => $target_lang)) . '</p>';
+      $content .= '<p>' . t('If you still wish to complete your purchase, please place a new order or contact us.',
+        array(), array('langcode' => $target_lang)) . '</p>';
+      break;
+  }
+
+  return $content;
 }
