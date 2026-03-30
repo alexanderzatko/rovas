@@ -838,7 +838,7 @@ function rovas_project_reward_form ($form, &$form_state) {
 
 	$form['submit']['bank'] = [
 		'#type' => 'submit',
-		'#value' => '<span class="icon glyphicon glyphicon-briefcase" aria-hidden="true"></span> ' . t('Pay with bank transfer'),
+		'#value' => '<span class="icon glyphicon glyphicon-qrcode" aria-hidden="true"></span> ' . t('Pay with bank transfer'),
 		'#attributes' => [
 			'id' => ['pay-choice-bank'],
 			'class' => ['btn', 'btn-success', 'btn-credit-bank', 'icon-before'],
