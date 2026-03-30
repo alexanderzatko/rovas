@@ -20,7 +20,8 @@
         }
       },
       { "NOT data_is_empty" : { "data" : [ "commerce-order:field-payment-recipient" ] } },
-      { "NOT commerce_payment_selected_payment_method" : { "commerce_order" : [ "commerce_order" ], "method_id" : "bank_transfer" } }
+      { "NOT commerce_payment_selected_payment_method" : { "commerce_order" : [ "commerce_order" ], "method_id" : "bank_transfer" } },
+      { "NOT php_eval" : { "code" : "return !empty($commerce_order->data['rpr_paytype']) && $commerce_order->data['rpr_paytype'] === 'pay-choice-bank';" } }
     ],
     "DO" : [
       { "variable_add" : {
