@@ -201,8 +201,10 @@ else {
                             <br/>
                             <b><?php print t('Order Date:',[],['langcode' => $target_lang]); ?></b> <?php print date('j F, Y', $info['order_created']); ?><br/>
                             <br/>
+                            <?php if (!empty($info['customer_billing'])): ?>
                             <b><?php print t('Billing Address:',[],['langcode' => $target_lang]); ?></b><br />
-                            <?php print isset($info['customer_billing']) ? $info['customer_billing'] : ''; ?><br />
+                            <?php print $info['customer_billing']; ?><br />
+                            <?php endif; ?>
                           </td>
                           <td valign="top" width="50%">
                             <br/>
