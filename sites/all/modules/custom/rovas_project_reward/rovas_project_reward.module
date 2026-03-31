@@ -2047,8 +2047,8 @@ function rovas_project_reward_cancel($form, &$form_state) {
  * 
  * @param object $order
  *   The commerce order object to clean up
- * @return string|FALSE
- *   The redirect URL or FALSE if unable to determine redirect
+ * @return array|FALSE
+ *   A Drupal $form_state['redirect'] array (path/external + options), or FALSE.
  */
 function _rovas_cleanup_order_and_get_redirect_url($order) {
 
@@ -2058,11 +2058,20 @@ function _rovas_cleanup_order_and_get_redirect_url($order) {
   
   // Get session data
   $session = rovas_project_reward_session_get('rovas_project_reward', array());
-
-watchdog('rovas_project_reward', 'session when canceling <pre>' . print_r($session,1) . '</pre>');
 	
   // Try to get redirect URL from session first
   $redirect_url = isset($session['original_url']) ? $session['original_url'] : NULL;
+
+  // Forex "buy merits for euros" flow enters checkout directly from /forex and
+  // does not have a rewpro session. Those orders are marked as payer_type=user
+  // and payment_recipient points back to the same user (self-purchase).
+  // In that case, cancel should return to the forex page.
+  $order_uid = isset($order->uid) ? (int) $order->uid : 0;
+  $payer_type = isset($order->field_payer_type[LANGUAGE_NONE][0]['value']) ? $order->field_payer_type[LANGUAGE_NONE][0]['value'] : NULL;
+  $payment_recipient = isset($order->field_payment_recipient[LANGUAGE_NONE][0]['value']) ? (int) $order->field_payment_recipient[LANGUAGE_NONE][0]['value'] : 0;
+  if (empty($redirect_url) && $payer_type === 'user' && $order_uid > 0 && $payment_recipient === $order_uid) {
+    $redirect_url = 'forex';
+  }
   
   // If no stored URL, try to build from session data with order fallbacks
   if (!$redirect_url && !empty($session)) {
@@ -2075,8 +2084,23 @@ watchdog('rovas_project_reward', 'session when canceling <pre>' . print_r($sessi
     if (!isset($query_params['recipient']) && isset($order->field_payment_recipient[LANGUAGE_NONE][0]['value'])) {
       $query_params['recipient'] = $order->field_payment_recipient[LANGUAGE_NONE][0]['value'];
     }
-    
-    $redirect_url = url('rewpro', array('query' => $query_params));
+
+    // IMPORTANT: Return a Drupal redirect array instead of a string containing
+    // a "?" query, otherwise Commerce/Drupal may treat it as a path and encode
+    // the question mark into "%3F" (causing "Page not found").
+    $redirect_url = array('rewpro', array('query' => $query_params));
+  }
+
+  // Normalize to the redirect array format expected by Commerce/Drupal.
+  // - Internal paths: ['forex', ['query' => ...]]
+  // - External URLs:  ['https://..', ['external' => TRUE]]
+  if (is_string($redirect_url) && $redirect_url !== '') {
+    if (preg_match('/^https?:\/\//i', $redirect_url)) {
+      $redirect_url = array($redirect_url, array('external' => TRUE));
+    }
+    else {
+      $redirect_url = array($redirect_url, array());
+    }
   }
   
   // If we have a valid redirect URL, clean up the order, cart, and session.
