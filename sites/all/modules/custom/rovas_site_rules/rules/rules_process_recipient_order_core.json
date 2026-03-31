@@ -1,144 +1,145 @@
 { "rules_process_recipient_order_core" : {
-    "LABEL" : "Process recipient order \u2013 core",
-    "PLUGIN" : "rule",
-    "OWNER" : "rules",
-    "REQUIRES" : [
-      "rules",
-      "rules_conditional",
-      "rovas_project_reward",
-      "php",
-      "commerce_order"
-    ],
-    "USES VARIABLES" : {
-      "converted_chrons_paid" : { "label" : "Converted chrons paid", "type" : "decimal" },
-      "payment_status" : { "label" : "Payment status", "type" : "integer" },
-      "order" : { "label" : "Order", "type" : "commerce_order" }
-    },
-    "IF" : [
-      { "entity_is_of_bundle" : {
-          "entity" : [ "order" ],
-          "type" : "commerce_order",
-          "bundle" : { "value" : { "commerce_order" : "commerce_order" } }
-        }
+  "LABEL" : "Process recipient order \u2013 core",
+  "PLUGIN" : "rule",
+  "OWNER" : "rules",
+  "REQUIRES" : [
+    "rules",
+    "rules_i18n",
+    "rules_conditional",
+    "rovas_project_reward",
+    "php",
+    "commerce_order"
+  ],
+  "USES VARIABLES" : {
+    "converted_chrons_paid" : { "label" : "Converted chrons paid", "type" : "decimal" },
+    "payment_status" : { "label" : "Payment status", "type" : "integer" },
+    "order" : { "label" : "Order", "type" : "commerce_order" }
+  },
+  "IF" : [
+    { "entity_is_of_bundle" : {
+        "entity" : [ "order" ],
+        "type" : "commerce_order",
+        "bundle" : { "value" : { "commerce_order" : "commerce_order" } }
       }
-    ],
-    "DO" : [
-      { "variable_add" : {
-          "USING" : {
-            "type" : "text",
-            "value" : "Purchase by [order:owner] in order [order:order-id] for project with ID [order:field-payment-recipient]"
+    }
+  ],
+  "DO" : [
+    { "variable_add" : {
+        "USING" : {
+          "type" : "text",
+          "value" : "Purchase by [order:owner] in order [order:order-id] for project with ID [order:field-payment-recipient]"
+        },
+        "PROVIDE" : { "variable_added" : { "note" : "note" } }
+      }
+    },
+    { "variable_add" : {
+        "USING" : {
+          "type" : "decimal",
+          "value" : [ "order:commerce-order-total:amount-decimal" ]
+        },
+        "PROVIDE" : { "variable_added" : { "order_total" : "order total" } }
+      }
+    },
+    { "variable_add" : {
+        "USING" : { "type" : "integer", "value" : [ "order:field-payment-recipient" ] },
+        "PROVIDE" : { "variable_added" : { "recipient_id" : "recipient ID" } }
+      }
+    },
+    { "SWITCH" : {
+        "USING" : { "data" : [ "order:field-payer-type" ] },
+        "DO" : [
+          { "CASE" : {
+              "USING" : { "value" : "project" },
+              "DO" : [
+                { "component_rules_create_purchase_receipt" : {
+                    "USING" : {
+                      "buyer_uid" : [ "order:uid" ],
+                      "product_id" : [ "recipient-id" ],
+                      "total_reward" : [ "converted-chrons-paid" ],
+                      "description" : [ "note" ],
+                      "wreport_id" : "0"
+                    },
+                    "PROVIDE" : { "receipt_id" : { "receipt_id" : "receipt id" } }
+                  }
+                },
+                { "entity_fetch" : {
+                    "USING" : { "type" : "node", "id" : [ "recipient-id" ], "revision_id" : "0" },
+                    "PROVIDE" : { "entity_fetched" : { "rewarded_entity" : "rewarded entity" } }
+                  }
+                },
+                { "project_merit_updater" : {
+                    "USING" : {
+                      "node" : [ "rewarded-entity" ],
+                      "project_merits" : [ "converted-chrons-paid" ]
+                    },
+                    "PROVIDE" : { "new_merit_value" : { "new_merit_value" : "New merit value" } }
+                  }
+                },
+                { "php_eval" : { "code" : "if (!function_exists(\u0027labor_merit_rewarder\u0027)) {\r\n\tfunction labor_merit_rewarder($purchased_product_id,$userid,$merits) {\r\n\t\t$result = db_query(\u0022SELECT DISTINCT c.field_classification_tid AS cat, SUM(h.field_hours_worked_value) AS hours\r\n\t\tFROM {node} node\r\n\t\tLEFT JOIN {field_data_field_project} p ON node.nid = p.entity_id AND (p.entity_type = \u0027node\u0027 AND p.deleted = \u00270\u0027)\r\n\t\tLEFT JOIN {field_data_field_classification} c ON node.nid = c.entity_id AND (c.entity_type = \u0027node\u0027 AND c.deleted = \u00270\u0027)\r\n\t\tLEFT JOIN {field_data_field_hours_worked} h ON node.nid = h.entity_id AND (h.entity_type = \u0027node\u0027 AND h.deleted = \u00270\u0027)\r\n\t\tWHERE p.field_project_target_id = :prid\r\n\t\tAND c.delta = 0\r\n\t\tAND node.uid = :uid \r\n\t\tAND node.status = \u00271\u0027\r\n\t\tAND node.type IN  (\u0027work_report\u0027)\r\n\t\tGROUP BY c.field_classification_tid\u0022, array(\u0027:prid\u0027 =\u003E $purchased_product_id, \u0027:uid\u0027 =\u003E $userid));\r\n\t\t$resarray = $result-\u003EfetchAll();\r\n\r\n\t\t$total_time = 0;\r\n\t\tforeach ($resarray as $row) {\r\n\t\t\t$total_time += $row-\u003Ehours;\r\n\t\t}\r\n\t\tif ($total_time \u003E 0) {\r\n\t\t\tforeach ($resarray as $row) {\r\n\t\t\t\t$time_share = $row-\u003Ehours \/ $total_time;\r\n\t\t\t\trules_invoke_component(\u0027rules_update_user_expertise\u0027,$time_share,$merits,$row-\u003Ecat,$userid);\r\n\t\t\t}\r\n\t\t}\r\n\t}\r\n}\r\n\r\nif (!function_exists(\u0027shares_merit_rewarder\u0027)) {\r\n\tfunction shares_merit_rewarder($purchased_product_id,$userid,$merits) {\r\n\r\n\t\t$now = time();\r\n\t\t$total_time = rovas_purchase_shares_project_share_hours ($purchased_product_id,$userid);\r\n\r\n\t\tif ($total_time \u003E 0) {\r\n\r\n\t\t\t\/\/64.99 Other financial service activities, except insurance and pension funding n.e.c.\r\n\t\t\t$cat = 1601;\r\n\t\t\t\/\/load the expert table node corresponding to the current category in order to find its existing Merit value\r\n\t\t\t$result = db_query(\u0022SELECT node.nid AS nid, m.field_merits_value AS merits\r\n\t\t\tFROM {node} node\r\n\t\t\tLEFT JOIN {field_data_field_expert} x ON node.nid = x.entity_id AND (x.entity_type = \u0027node\u0027 AND x.deleted = \u00270\u0027)\r\n\t\t\tLEFT JOIN {field_data_field_category} c ON node.nid = c.entity_id AND (c.entity_type = \u0027node\u0027 AND c.deleted = \u00270\u0027)\r\n\t\t\tLEFT JOIN {field_data_field_merits} m ON node.nid = m.entity_id AND (m.entity_type = \u0027node\u0027 AND m.deleted = \u00270\u0027)\r\n\t\t\tWHERE node.type = \u0027user_expertise\u0027\r\n\t\t\tAND field_expert_target_id = :uid\r\n\t\t\tAND c.field_category_tid = :cat\r\n\t\t\t\u0022, array(\u0027:uid\u0027 =\u003E $userid, \u0027:cat\u0027 =\u003E $cat));\r\n\r\n\t\t\t$record = $result-\u003EfetchAssoc();\r\n\t\t\t\/\/for some users and category IDs we will have to create a new user_expertise node\t\t\t\r\n\t\t\tif (empty($record)) {\r\n\t\t\t\t$node = new stdClass();\r\n\t\t\t\t$node-\u003Etype = \u0027user_expertise\u0027;\r\n\t\t\t\t$node-\u003Etitle = \u0027UX-\u0027 . $userid . \u0027-\u0027 . $cat;\r\n\t\t\t\t$node-\u003Elanguage = LANGUAGE_NONE;\r\n\t\t\t\tnode_object_prepare($node);\r\n\t\t\t\t$node-\u003Euid = $userid;\r\n\r\n\t\t\t\t$node-\u003Efield_expert[LANGUAGE_NONE][0][\u0027target_id\u0027] = $userid;\r\n\t\t\t\t$node-\u003Efield_category[LANGUAGE_NONE][0][\u0027tid\u0027] = $cat;\r\n\r\n\t\t\t\t$old_merits = 0;\r\n\t\t\t\t$node-\u003Efield_merits[LANGUAGE_NONE][0][\u0027value\u0027] = $old_merits;\r\n\r\n\t\t\t\t$node-\u003Ecreated = $now;\r\n\t\t\t\t$node-\u003Echanged = $now;\r\n\r\n\t\t\t\t$node = node_submit($node);\r\n\t\t\t\tnode_save($node);\r\n\t\t\t\t$nid = $node-\u003Enid;\r\n\r\n\t\t\t}\r\n\t\t\telse {\r\n\t\t\t\t$old_merits = $record[\u0027merits\u0027];\r\n\t\t\t\t$nid = $record[\u0027nid\u0027];\r\n\t\t\t}\r\n\r\n\t\t\t$cur_merits = $old_merits + $merits;\r\n\r\n\t\t\t\/\/updating the node with new merit value\r\n\t\t\t$xobject = entity_metadata_wrapper(\u0027node\u0027, $nid);\r\n\t\t\t$xobject-\u003Efield_merits = $cur_merits;\r\n\t\t\t$xobject-\u003Esave();\r\n\t\t\t\r\n\t\t}\r\n\t}\r\n}\r\n\r\nif (!function_exists(\u0027mrewarder\u0027)) {\r\n\tfunction mrewarder($purchased_product_id,$amount_paid,$buyeruid,$receipt_id,$note,\u0026$loopcheck=array()) {\r\n\r\n\t\tif (in_array($purchased_product_id,$loopcheck)) {\r\n\t\t\treturn;\r\n\t\t}\r\n\t\telse {\r\n\t\t\t$loopcheck[]=$purchased_product_id;\r\n\r\n\t\t\t\/\/find total shares and total hours for the purchased project\r\n\t\t\t$res = db_query(\u0022SELECT MIN(node.nid) AS projectid, SUM(ma.field_merit_allocation_value) AS shares, SUM(hw.field_total_hours_worked_value) AS hours\r\n\t\t\tFROM {node} node\r\n\t\t\tLEFT JOIN {field_data_field_project} fpr ON node.nid = fpr.entity_id AND (fpr.entity_type = \u0027node\u0027 AND fpr.deleted = \u00270\u0027)\r\n\t\t\tLEFT JOIN {node} n ON fpr.field_project_target_id = n.nid\r\n\t\t\tLEFT JOIN {field_data_field_merit_allocation} ma ON node.nid = ma.entity_id AND (ma.entity_type = \u0027node\u0027 AND ma.deleted = \u00270\u0027)\r\n\t\t\tLEFT JOIN {field_data_field_total_hours_worked} hw ON node.nid = hw.entity_id AND (hw.entity_type = \u0027node\u0027 AND hw.deleted = \u00270\u0027)\r\n\t\t\tWHERE n.nid = :prid\r\n\t\t\tAND (node.status = \u00271\u0027 AND node.type IN  (\u0027project_merit_allocation\u0027, \u0027co_worker_merit_allocation\u0027, \u0027timeshare_merit_allocation\u0027))\r\n\t\t\t\u0022, array(\u0027:prid\u0027 =\u003E $purchased_product_id));\r\n\r\n\t\t\t$sumarray = $res-\u003EfetchAll();\r\n\t\t\t\/\/the sum of all partial shares (and hours) from worker and project shareholders\r\n\t\t\t$tsdiff = 100 - $sumarray[0]-\u003Eshares;\r\n\t\t\t$total_hours = $sumarray[0]-\u003Ehours;\r\n\r\n\t\t\t$result = db_query(\u0022SELECT p.entity_id \r\n\t\t\tFROM {field_data_field_project} p , {node} n\r\n\t\t\tWHERE p.bundle IN (\u0027co_worker_merit_allocation\u0027,\u0027project_merit_allocation\u0027,\u0027timeshare_merit_allocation\u0027)\r\n\t\t\tAND n.status = 1\r\n\t\t\tAND n.nid = p.field_project_target_id\r\n\t\t\tAND p.field_project_target_id = :prid\r\n\t\t\tORDER BY p.bundle ASC\u0022, array(\u0027:prid\u0027 =\u003E $purchased_product_id));\r\n\r\n\t\t\t$resarray = $result-\u003EfetchAll();\r\n\r\n\t\t\t\/\/loop through all shareholders (all types)\r\n\t\t\tforeach ($resarray as $row) {\r\n\t\t\t\t$meritalloc_wrp = entity_metadata_wrapper(\u0027node\u0027, $row-\u003Eentity_id);\r\n\t\t\t\t$share = $meritalloc_wrp-\u003Efield_merit_allocation-\u003Evalue();\r\n\t\t\t\t$bundle = $meritalloc_wrp-\u003EgetBundle();\r\n\r\n\t\t\t\t\/\/processing worker shares, or purchased shares\r\n\t\t\t\tif($bundle == \u0027co_worker_merit_allocation\u0027 || $bundle == \u0027timeshare_merit_allocation\u0027) {\r\n\r\n\t\t\t\t\t$userid = $meritalloc_wrp-\u003Efield_coworker-\u003Euid-\u003Evalue();\r\n\t\t\t\t\t$hours = $meritalloc_wrp-\u003Efield_total_hours_worked-\u003Evalue();\r\n\r\n\t\t\t\t\t\/\/retrieve the merit decimal part from the user profile\r\n\t\t\t\t\t$merits = ($share\/100) * $amount_paid;\r\n\t\t\t\t\t\/\/calculate the total time value of merit reward and add it to the share merit reward\r\n\t\t\t\t\tif($total_hours \u003E 0) {\r\n\t\t\t\t\t\t$merits = $merits + ($tsdiff\/100) * $amount_paid * ($hours\/$total_hours);\r\n\t\t\t\t\t}\r\n\r\n\t\t\t\t\tswitch ($bundle) {\r\n\t\t\t\t\t\t\/\/reward a user\u0027s timeshare with Merits\r\n\t\t\t\t\t\tcase (\u0027timeshare_merit_allocation\u0027):\r\n\t\t\t\t\t\t\tshares_merit_rewarder($purchased_product_id,$userid,$merits);\r\n\t\t\t\t\t\t\tbreak;\r\n\t\t\t\t\t\t\/\/reward a user\u0027s labor time with Merits\r\n\t\t\t\t\t\tdefault:\r\n\t\t\t\t\t\t\tlabor_merit_rewarder($purchased_product_id,$userid,$merits);\r\n\t\t\t\t\t}\r\n\r\n\t\t\t\t\t\/\/read the merit reward for the user from the merit alloc. record\r\n\t\t\t\t\t$old_merit_val = $meritalloc_wrp-\u003Efield_merits_earned-\u003Evalue();\r\n\t\t\t\t\t$new_merit_val = $old_merit_val + $merits;\r\n\t\t\t\t\t\/\/update the merit count for the SHAREHOLDER in this project\r\n\t\t\t\t\t$meritalloc_wrp-\u003Efield_merits_earned = $new_merit_val;\r\n\t\t\t\t\t$meritalloc_wrp-\u003Esave();\r\n\r\n\t\t\t\t\t$user_merit_decimal_part = $meritalloc_wrp-\u003Efield_coworker-\u003Efield_merit_decimal_part-\u003Evalue();\r\n\t\t\t\t\t$merits_usrpoints = $merits + $user_merit_decimal_part;\r\n\r\n\t\t\t\t\t\/\/calculate whole and decimal part of the reward\r\n\t\t\t\t\t$whole = floor($merits_usrpoints);\r\n\t\t\t\t\t$fraction = $merits_usrpoints - $whole;\r\n\r\n\t\t\t\t\t\/\/save the merit decimal part\r\n\t\t\t\t\t$user_wrp = entity_metadata_wrapper(\u0027user\u0027, $userid);\r\n\t\t\t\t\t$user_wrp-\u003Efield_merit_decimal_part = $fraction;\r\n\t\t\t\t\t$user_wrp-\u003Esave(); \r\n\r\n\t\t\t\t\t\/\/record Merits if there are any to reward\r\n\t\t\t\t\tif ($whole != 0) {\r\n\t\t\t\t\t\tif ($whole \u003E 0)\r\n\t\t\t\t\t\t\t$xplain = t(\u0027purchased goods or services\u0027);\r\n\t\t\t\t\t\telse\r\n\t\t\t\t\t\t\t$xplain = t(\u0027was reimbursed for canceled purchase\u0027);\r\n\t\t\t\t\t\t$usrobj = entity_metadata_wrapper(\u0027user\u0027, $buyeruid);\r\n\t\t\t\t\t\t$buyername = $usrobj-\u003Ename-\u003Evalue();\r\n\t\t\t\t\t\t$buyerfullname = $usrobj-\u003Efield_full_name-\u003Evalue();\r\n\t\t\t\t\t\t$params = array (\r\n\t\t\t\t\t\t\t\t\u0027uid\u0027 =\u003E $userid,\r\n\t\t\t\t\t\t\t\t\u0027points\u0027 =\u003E $whole,\r\n\t\t\t\t\t\t\t\t\u0027description\u0027 =\u003E $buyername . \u0027 (\u0027 . $buyerfullname . \u0027) \u0027 . $xplain,\r\n\t\t\t\t\t\t\t\t\u0027display\u0027 =\u003E 0,\r\n\t\t\t\t\t\t\t\t\u0027entity_id\u0027 =\u003E $purchased_product_id,\r\n\t\t\t\t\t\t\t\t\u0027entity_type\u0027 =\u003E \u0027node\u0027,\r\n\t\t\t\t\t\t\t);\r\n\t\t\t\t\t\tuserpoints_userpointsapi($params);\r\n\t\t\t\t\t}\r\n\t\t\t\r\n\t\t\t\t\t\/\/create disbursement record, if the user is getting any Merits\r\n\t\t\t\t\tif ($receipt_id \u003E 0 \u0026\u0026 $merits \u003E 0) {\r\n\t\t\t\t\t\t$disburs_id = rules_invoke_component(\u0027rules_create_merit_disbursement\u0027,$receipt_id,$userid,$merits);\r\n\t\t\t\t\t}\r\n\t\t\t\t}\r\n\r\n\t\t\t\t\/\/processing project_merit_allocation shares\r\n\t\t\t\telse if($bundle == \u0027project_merit_allocation\u0027) {\r\n\t\t\t\t\t$shareprojectid = $meritalloc_wrp-\u003Efield_shareholder_project-\u003Enid-\u003Evalue();\r\n\t\t\t\t\t$sh_project_wrp = entity_metadata_wrapper(\u0027node\u0027, $shareprojectid);\r\n\t\t\t\t\t$timeshare_project_alloc = $meritalloc_wrp-\u003Efield_share_project_time-\u003Evalue();\r\n\r\n\t\t\t\t\t\/\/do not process when the project shareholder nid is the same as the ordered project nid\r\n\t\t\t\t\t\/\/this seems to be an useless\/insufficient condition - refactor?\r\n\t\t\t\t\tif ($purchased_product_id != $shareprojectid) {\r\n\t\t\t\t\t\t\/\/time share product\r\n\t\t\t\t\t\tif ($timeshare_project_alloc) {\r\n\r\n\t\t\t\t\t\t\t$hours = $meritalloc_wrp-\u003Efield_total_hours_worked-\u003Evalue();\r\n\r\n\t\t\t\t\t\t\t\/\/calculate the total time value of merit reward and add it to the share merit reward\r\n\t\t\t\t\t\t\tif($total_hours \u003E 0) {\r\n\t\t\t\t\t\t\t\t$merits = ($tsdiff\/100) * $amount_paid * ($hours\/$total_hours);\r\n\t\t\t\t\t\t\t}\r\n\t\t\t\t\t\t\telse {\r\n\t\t\t\t\t\t\t\t$merits = 0;\r\n\t\t\t\t\t\t\t\tbreak;\r\n\t\t\t\t\t\t\t}\r\n\t\t\t\t\t\t}\r\n\t\t\t\t\t\t\/\/normal product\r\n\t\t\t\t\t\telse {\r\n\t\t\t\t\t\t\t\/\/calculate the total value of merit reward\r\n\t\t\t\t\t\t\t$merits = ($share\/100) * $amount_paid;\r\n\t\t\t\t\t\t}\r\n\r\n\t\t\t\t\t\t\/\/Update the shareholder project merit score\r\n\t\t\t\t\t\t$calc_merit_val = project_merit_updater($shareprojectid,$merits);\r\n\t\t\t\t\t\t$meritalloc_wrp-\u003Efield_merits_earned = $calc_merit_val;\r\n\t\t\t\t\t\t$meritalloc_wrp-\u003Esave();\r\n\r\n\t\t\t\t\t\t\/\/only process amounts greater than the smallest value the table can hold.\r\n\t\t\t\t\t\tif($merits \u003E 0.0000000001) {\r\n\t\t\t\t\t\t\t$merit_share = $sh_project_wrp-\u003Efield_reward_merit_allocation-\u003Evalue()\/100;\r\n\r\n\t\t\t\t\t\t\t\/\/subtract the chron share of the reward and process both parts\r\n\t\t\t\t\t\t\tif (!empty($merit_share) \u0026\u0026 $merit_share \u003C 1) {\r\n\t\t\t\t\t\t\t\t$shareratio = $merit_share \/ 100;\r\n\t\t\t\t\t\t\t\t$new_merits = $shareratio * $merits;\r\n\t\t\t\t\t\t\t\r\n\t\t\t\t\t\t\t\t\/\/transfer a portion of the reward to the project beneficiary\r\n\t\t\t\t\t\t\t\t$chrons4bene = $merits - $new_merits;\r\n\t\r\n\t\t\t\t\t\t\t\t$benef_object = $sh_project_wrp-\u003Efield_chron_beneficiary-\u003Evalue();\r\n\t\r\n\t\t\t\t\t\t\t\tif ($benef_object) {\r\n\t\t\t\t\t\t\t\t\t$beneficiary = $benef_object-\u003Euid;\r\n\t\t\t\t\t\t\t\t}\r\n\t\t\t\t\t\t\t\telse {\r\n\t\t\t\t\t\t\t\t\t$beneficiary = $sh_project_wrp-\u003Eauthor-\u003Evalue();\r\n\t\t\t\t\t\t\t\t}\r\n\r\n\t\t\t\t\t\t\t\t$buyer = user_load($buyeruid);\r\n\t\t\t\t\t\t\t\t\/\/transfer the chrons\r\n\t\t\t\t\t\t\t\trules_invoke_component(\u0027rules_make_money_transfer\u0027,$buyer,$beneficiary,$chrons4bene,$note,TRUE);\r\n\r\n\t\t\t\t\t\t\t\t\/\/process the remaining merits\r\n\t\t\t\t\t\t\t\tmrewarder($shareprojectid,$new_merits,$buyeruid,$receipt_id,$note,$loopcheck);\r\n\t\t\t\t\t\t\t}\r\n\t\t\t\t\t\t\telse {\r\n\t\t\t\t\t\t\t\tmrewarder($shareprojectid,$merits,$buyeruid,$receipt_id,$note,$loopcheck);\r\n\t\t\t\t\t\t\t}\r\n\t\t\t\t\t\t}\r\n\t\t\t\t\t\telse {\r\n\/\/\t\t\t\t\t\t\twatchdog(\u0027rule\u0027,\u0027rules_process_purchase_core; the rules_process_purchase_core asked to store merit reward smaller than allowed by DB schema:\u0027 . $merits . \u0027 ME | alloc node ID: \u0027 . $shareprojectid);\r\n\t\t\t\t\t\t}\r\n\t\t\t\t\t}\r\n\t\t\t\t}\r\n\r\n\t\t\t}\r\n\r\n\t\treturn \u0027OK\u0027;\r\n\t\t\/\/watchdog(\u0027debug\u0027,\u0027END\u0027 );\r\n\t\t}\r\n\t}\r\n}\r\n\r\nini_set(\u0027max_execution_time\u0027, 300);\r\n\r\nmrewarder($recipient_id,$converted_chrons_paid,$order-\u003Euid,$receipt_id,$note);" } }
+              ]
+            }
           },
-          "PROVIDE" : { "variable_added" : { "note" : "note" } }
-        }
-      },
-      { "variable_add" : {
-          "USING" : {
-            "type" : "decimal",
-            "value" : [ "order:commerce-order-total:amount-decimal" ]
-          },
-          "PROVIDE" : { "variable_added" : { "order_total" : "order total" } }
-        }
-      },
-      { "variable_add" : {
-          "USING" : { "type" : "integer", "value" : [ "order:field-payment-recipient" ] },
-          "PROVIDE" : { "variable_added" : { "recipient_id" : "recipient ID" } }
-        }
-      },
-      { "SWITCH" : {
-          "USING" : { "data" : [ "order:field-payer-type" ] },
-          "DO" : [
-            { "CASE" : {
-                "USING" : { "value" : "project" },
-                "DO" : [
-                  { "component_rules_create_purchase_receipt" : {
-                      "USING" : {
-                        "buyer_uid" : [ "order:uid" ],
-                        "product_id" : [ "recipient-id" ],
-                        "total_reward" : [ "converted-chrons-paid" ],
-                        "description" : [ "note" ],
-                        "wreport_id" : "0"
-                      },
-                      "PROVIDE" : { "receipt_id" : { "receipt_id" : "receipt id" } }
-                    }
-                  },
-                  { "entity_fetch" : {
-                      "USING" : { "type" : "node", "id" : [ "recipient-id" ], "revision_id" : "0" },
-                      "PROVIDE" : { "entity_fetched" : { "rewarded_entity" : "rewarded entity" } }
-                    }
-                  },
-                  { "project_merit_updater" : {
-                      "USING" : {
-                        "node" : [ "rewarded-entity" ],
-                        "project_merits" : [ "converted-chrons-paid" ]
-                      },
-                      "PROVIDE" : { "new_merit_value" : { "new_merit_value" : "New merit value" } }
-                    }
-                  },
-                  { "php_eval" : { "code" : "if (!function_exists(\u0027labor_merit_rewarder\u0027)) {\r\n\tfunction labor_merit_rewarder($purchased_product_id,$userid,$merits) {\r\n\t\t$result = db_query(\u0022SELECT DISTINCT c.field_classification_tid AS cat, SUM(h.field_hours_worked_value) AS hours\r\n\t\tFROM {node} node\r\n\t\tLEFT JOIN {field_data_field_project} p ON node.nid = p.entity_id AND (p.entity_type = \u0027node\u0027 AND p.deleted = \u00270\u0027)\r\n\t\tLEFT JOIN {field_data_field_classification} c ON node.nid = c.entity_id AND (c.entity_type = \u0027node\u0027 AND c.deleted = \u00270\u0027)\r\n\t\tLEFT JOIN {field_data_field_hours_worked} h ON node.nid = h.entity_id AND (h.entity_type = \u0027node\u0027 AND h.deleted = \u00270\u0027)\r\n\t\tWHERE p.field_project_target_id = :prid\r\n\t\tAND c.delta = 0\r\n\t\tAND node.uid = :uid \r\n\t\tAND node.status = \u00271\u0027\r\n\t\tAND node.type IN  (\u0027work_report\u0027)\r\n\t\tGROUP BY c.field_classification_tid\u0022, array(\u0027:prid\u0027 =\u003E $purchased_product_id, \u0027:uid\u0027 =\u003E $userid));\r\n\t\t$resarray = $result-\u003EfetchAll();\r\n\r\n\t\t$total_time = 0;\r\n\t\tforeach ($resarray as $row) {\r\n\t\t\t$total_time += $row-\u003Ehours;\r\n\t\t}\r\n\t\tif ($total_time \u003E 0) {\r\n\t\t\tforeach ($resarray as $row) {\r\n\t\t\t\t$time_share = $row-\u003Ehours \/ $total_time;\r\n\t\t\t\trules_invoke_component(\u0027rules_update_user_expertise\u0027,$time_share,$merits,$row-\u003Ecat,$userid);\r\n\t\t\t}\r\n\t\t}\r\n\t}\r\n}\r\n\r\nif (!function_exists(\u0027shares_merit_rewarder\u0027)) {\r\n\tfunction shares_merit_rewarder($purchased_product_id,$userid,$merits) {\r\n\r\n\t\t$now = time();\r\n\t\t$total_time = rovas_purchase_shares_project_share_hours ($purchased_product_id,$userid);\r\n\r\n\t\tif ($total_time \u003E 0) {\r\n\r\n\t\t\t\/\/64.99 Other financial service activities, except insurance and pension funding n.e.c.\r\n\t\t\t$cat = 1601;\r\n\t\t\t\/\/load the expert table node corresponding to the current category in order to find its existing Merit value\r\n\t\t\t$result = db_query(\u0022SELECT node.nid AS nid, m.field_merits_value AS merits\r\n\t\t\tFROM {node} node\r\n\t\t\tLEFT JOIN {field_data_field_expert} x ON node.nid = x.entity_id AND (x.entity_type = \u0027node\u0027 AND x.deleted = \u00270\u0027)\r\n\t\t\tLEFT JOIN {field_data_field_category} c ON node.nid = c.entity_id AND (c.entity_type = \u0027node\u0027 AND c.deleted = \u00270\u0027)\r\n\t\t\tLEFT JOIN {field_data_field_merits} m ON node.nid = m.entity_id AND (m.entity_type = \u0027node\u0027 AND m.deleted = \u00270\u0027)\r\n\t\t\tWHERE node.type = \u0027user_expertise\u0027\r\n\t\t\tAND field_expert_target_id = :uid\r\n\t\t\tAND c.field_category_tid = :cat\r\n\t\t\t\u0022, array(\u0027:uid\u0027 =\u003E $userid, \u0027:cat\u0027 =\u003E $cat));\r\n\r\n\t\t\t$record = $result-\u003EfetchAssoc();\r\n\t\t\t\/\/for some users and category IDs we will have to create a new user_expertise node\t\t\t\r\n\t\t\tif (empty($record)) {\r\n\t\t\t\t$node = new stdClass();\r\n\t\t\t\t$node-\u003Etype = \u0027user_expertise\u0027;\r\n\t\t\t\t$node-\u003Etitle = \u0027UX-\u0027 . $userid . \u0027-\u0027 . $cat;\r\n\t\t\t\t$node-\u003Elanguage = LANGUAGE_NONE;\r\n\t\t\t\tnode_object_prepare($node);\r\n\t\t\t\t$node-\u003Euid = $userid;\r\n\r\n\t\t\t\t$node-\u003Efield_expert[LANGUAGE_NONE][0][\u0027target_id\u0027] = $userid;\r\n\t\t\t\t$node-\u003Efield_category[LANGUAGE_NONE][0][\u0027tid\u0027] = $cat;\r\n\r\n\t\t\t\t$old_merits = 0;\r\n\t\t\t\t$node-\u003Efield_merits[LANGUAGE_NONE][0][\u0027value\u0027] = $old_merits;\r\n\r\n\t\t\t\t$node-\u003Ecreated = $now;\r\n\t\t\t\t$node-\u003Echanged = $now;\r\n\r\n\t\t\t\t$node = node_submit($node);\r\n\t\t\t\tnode_save($node);\r\n\t\t\t\t$nid = $node-\u003Enid;\r\n\r\n\t\t\t}\r\n\t\t\telse {\r\n\t\t\t\t$old_merits = $record[\u0027merits\u0027];\r\n\t\t\t\t$nid = $record[\u0027nid\u0027];\r\n\t\t\t}\r\n\r\n\t\t\t$cur_merits = $old_merits + $merits;\r\n\r\n\t\t\t\/\/updating the node with new merit value\r\n\t\t\t$xobject = entity_metadata_wrapper(\u0027node\u0027, $nid);\r\n\t\t\t$xobject-\u003Efield_merits = $cur_merits;\r\n\t\t\t$xobject-\u003Esave();\r\n\t\t\t\r\n\t\t}\r\n\t}\r\n}\r\n\r\nif (!function_exists(\u0027mrewarder\u0027)) {\r\n\tfunction mrewarder($purchased_product_id,$amount_paid,$buyeruid,$receipt_id,$note,\u0026$loopcheck=array()) {\r\n\r\n\t\tif (in_array($purchased_product_id,$loopcheck)) {\r\n\t\t\treturn;\r\n\t\t}\r\n\t\telse {\r\n\t\t\t$loopcheck[]=$purchased_product_id;\r\n\r\n\t\t\t\/\/find total shares and total hours for the purchased project\r\n\t\t\t$res = db_query(\u0022SELECT MIN(node.nid) AS projectid, SUM(ma.field_merit_allocation_value) AS shares, SUM(hw.field_total_hours_worked_value) AS hours\r\n\t\t\tFROM {node} node\r\n\t\t\tLEFT JOIN {field_data_field_project} fpr ON node.nid = fpr.entity_id AND (fpr.entity_type = \u0027node\u0027 AND fpr.deleted = \u00270\u0027)\r\n\t\t\tLEFT JOIN {node} n ON fpr.field_project_target_id = n.nid\r\n\t\t\tLEFT JOIN {field_data_field_merit_allocation} ma ON node.nid = ma.entity_id AND (ma.entity_type = \u0027node\u0027 AND ma.deleted = \u00270\u0027)\r\n\t\t\tLEFT JOIN {field_data_field_total_hours_worked} hw ON node.nid = hw.entity_id AND (hw.entity_type = \u0027node\u0027 AND hw.deleted = \u00270\u0027)\r\n\t\t\tWHERE n.nid = :prid\r\n\t\t\tAND (node.status = \u00271\u0027 AND node.type IN  (\u0027project_merit_allocation\u0027, \u0027co_worker_merit_allocation\u0027, \u0027timeshare_merit_allocation\u0027))\r\n\t\t\t\u0022, array(\u0027:prid\u0027 =\u003E $purchased_product_id));\r\n\r\n\t\t\t$sumarray = $res-\u003EfetchAll();\r\n\t\t\t\/\/the sum of all partial shares (and hours) from worker and project shareholders\r\n\t\t\t$tsdiff = 100 - $sumarray[0]-\u003Eshares;\r\n\t\t\t$total_hours = $sumarray[0]-\u003Ehours;\r\n\r\n\t\t\t$result = db_query(\u0022SELECT p.entity_id \r\n\t\t\tFROM {field_data_field_project} p , {node} n\r\n\t\t\tWHERE p.bundle IN (\u0027co_worker_merit_allocation\u0027,\u0027project_merit_allocation\u0027,\u0027timeshare_merit_allocation\u0027)\r\n\t\t\tAND n.status = 1\r\n\t\t\tAND n.nid = p.field_project_target_id\r\n\t\t\tAND p.field_project_target_id = :prid\r\n\t\t\tORDER BY p.bundle ASC\u0022, array(\u0027:prid\u0027 =\u003E $purchased_product_id));\r\n\r\n\t\t\t$resarray = $result-\u003EfetchAll();\r\n\r\n\t\t\t\/\/loop through all shareholders (all types)\r\n\t\t\tforeach ($resarray as $row) {\r\n\t\t\t\t$meritalloc_wrp = entity_metadata_wrapper(\u0027node\u0027, $row-\u003Eentity_id);\r\n\t\t\t\t$share = $meritalloc_wrp-\u003Efield_merit_allocation-\u003Evalue();\r\n\t\t\t\t$bundle = $meritalloc_wrp-\u003EgetBundle();\r\n\r\n\t\t\t\t\/\/processing worker shares, or purchased shares\r\n\t\t\t\tif($bundle == \u0027co_worker_merit_allocation\u0027 || $bundle == \u0027timeshare_merit_allocation\u0027) {\r\n\r\n\t\t\t\t\t$userid = $meritalloc_wrp-\u003Efield_coworker-\u003Euid-\u003Evalue();\r\n\t\t\t\t\t$hours = $meritalloc_wrp-\u003Efield_total_hours_worked-\u003Evalue();\r\n\r\n\t\t\t\t\t\/\/retrieve the merit decimal part from the user profile\r\n\t\t\t\t\t$merits = ($share\/100) * $amount_paid;\r\n\t\t\t\t\t\/\/calculate the total time value of merit reward and add it to the share merit reward\r\n\t\t\t\t\tif($total_hours \u003E 0) {\r\n\t\t\t\t\t\t$merits = $merits + ($tsdiff\/100) * $amount_paid * ($hours\/$total_hours);\r\n\t\t\t\t\t}\r\n\r\n\t\t\t\t\tswitch ($bundle) {\r\n\t\t\t\t\t\t\/\/reward a user\u0027s timeshare with Merits\r\n\t\t\t\t\t\tcase (\u0027timeshare_merit_allocation\u0027):\r\n\t\t\t\t\t\t\tshares_merit_rewarder($purchased_product_id,$userid,$merits);\r\n\t\t\t\t\t\t\tbreak;\r\n\t\t\t\t\t\t\/\/reward a user\u0027s labor time with Merits\r\n\t\t\t\t\t\tdefault:\r\n\t\t\t\t\t\t\tlabor_merit_rewarder($purchased_product_id,$userid,$merits);\r\n\t\t\t\t\t}\r\n\r\n\t\t\t\t\t\/\/read the merit reward for the user from the merit alloc. record\r\n\t\t\t\t\t$old_merit_val = $meritalloc_wrp-\u003Efield_merits_earned-\u003Evalue();\r\n\t\t\t\t\t$new_merit_val = $old_merit_val + $merits;\r\n\t\t\t\t\t\/\/update the merit count for the SHAREHOLDER in this project\r\n\t\t\t\t\t$meritalloc_wrp-\u003Efield_merits_earned = $new_merit_val;\r\n\t\t\t\t\t$meritalloc_wrp-\u003Esave();\r\n\r\n\t\t\t\t\t$user_merit_decimal_part = $meritalloc_wrp-\u003Efield_coworker-\u003Efield_merit_decimal_part-\u003Evalue();\r\n\t\t\t\t\t$merits_usrpoints = $merits + $user_merit_decimal_part;\r\n\r\n\t\t\t\t\t\/\/calculate whole and decimal part of the reward\r\n\t\t\t\t\t$whole = floor($merits_usrpoints);\r\n\t\t\t\t\t$fraction = $merits_usrpoints - $whole;\r\n\r\n\t\t\t\t\t\/\/save the merit decimal part\r\n\t\t\t\t\t$user_wrp = entity_metadata_wrapper(\u0027user\u0027, $userid);\r\n\t\t\t\t\t$user_wrp-\u003Efield_merit_decimal_part = $fraction;\r\n\t\t\t\t\t$user_wrp-\u003Esave(); \r\n\r\n\t\t\t\t\t\/\/record Merits if there are any to reward\r\n\t\t\t\t\tif ($whole != 0) {\r\n\t\t\t\t\t\tif ($whole \u003E 0)\r\n\t\t\t\t\t\t\t$xplain = t(\u0027purchased goods or services\u0027);\r\n\t\t\t\t\t\telse\r\n\t\t\t\t\t\t\t$xplain = t(\u0027was reimbursed for canceled purchase\u0027);\r\n\t\t\t\t\t\t$usrobj = entity_metadata_wrapper(\u0027user\u0027, $buyeruid);\r\n\t\t\t\t\t\t$buyername = $usrobj-\u003Ename-\u003Evalue();\r\n\t\t\t\t\t\t$buyerfullname = $usrobj-\u003Efield_full_name-\u003Evalue();\r\n\t\t\t\t\t\t$params = array (\r\n\t\t\t\t\t\t\t\t\u0027uid\u0027 =\u003E $userid,\r\n\t\t\t\t\t\t\t\t\u0027points\u0027 =\u003E $whole,\r\n\t\t\t\t\t\t\t\t\u0027description\u0027 =\u003E $buyername . \u0027 (\u0027 . $buyerfullname . \u0027) \u0027 . $xplain,\r\n\t\t\t\t\t\t\t\t\u0027display\u0027 =\u003E 0,\r\n\t\t\t\t\t\t\t\t\u0027entity_id\u0027 =\u003E $purchased_product_id,\r\n\t\t\t\t\t\t\t\t\u0027entity_type\u0027 =\u003E \u0027node\u0027,\r\n\t\t\t\t\t\t\t);\r\n\t\t\t\t\t\tuserpoints_userpointsapi($params);\r\n\t\t\t\t\t}\r\n\t\t\t\r\n\t\t\t\t\t\/\/create disbursement record, if the user is getting any Merits\r\n\t\t\t\t\tif ($receipt_id \u003E 0 \u0026\u0026 $merits \u003E 0) {\r\n\t\t\t\t\t\t$disburs_id = rules_invoke_component(\u0027rules_create_merit_disbursement\u0027,$receipt_id,$userid,$merits);\r\n\t\t\t\t\t}\r\n\t\t\t\t}\r\n\r\n\t\t\t\t\/\/processing project_merit_allocation shares\r\n\t\t\t\telse if($bundle == \u0027project_merit_allocation\u0027) {\r\n\t\t\t\t\t$shareprojectid = $meritalloc_wrp-\u003Efield_shareholder_project-\u003Enid-\u003Evalue();\r\n\t\t\t\t\t$sh_project_wrp = entity_metadata_wrapper(\u0027node\u0027, $shareprojectid);\r\n\t\t\t\t\t$timeshare_project_alloc = $meritalloc_wrp-\u003Efield_share_project_time-\u003Evalue();\r\n\r\n\t\t\t\t\t\/\/do not process when the project shareholder nid is the same as the ordered project nid\r\n\t\t\t\t\t\/\/this seems to be an useless\/insufficient condition - refactor?\r\n\t\t\t\t\tif ($purchased_product_id != $shareprojectid) {\r\n\t\t\t\t\t\t\/\/time share product\r\n\t\t\t\t\t\tif ($timeshare_project_alloc) {\r\n\r\n\t\t\t\t\t\t\t$hours = $meritalloc_wrp-\u003Efield_total_hours_worked-\u003Evalue();\r\n\r\n\t\t\t\t\t\t\t\/\/calculate the total time value of merit reward and add it to the share merit reward\r\n\t\t\t\t\t\t\tif($total_hours \u003E 0) {\r\n\t\t\t\t\t\t\t\t$merits = ($tsdiff\/100) * $amount_paid * ($hours\/$total_hours);\r\n\t\t\t\t\t\t\t}\r\n\t\t\t\t\t\t\telse {\r\n\t\t\t\t\t\t\t\t$merits = 0;\r\n\t\t\t\t\t\t\t\tbreak;\r\n\t\t\t\t\t\t\t}\r\n\t\t\t\t\t\t}\r\n\t\t\t\t\t\t\/\/normal product\r\n\t\t\t\t\t\telse {\r\n\t\t\t\t\t\t\t\/\/calculate the total value of merit reward\r\n\t\t\t\t\t\t\t$merits = ($share\/100) * $amount_paid;\r\n\t\t\t\t\t\t}\r\n\r\n\t\t\t\t\t\t\/\/Update the shareholder project merit score\r\n\t\t\t\t\t\t$calc_merit_val = project_merit_updater($shareprojectid,$merits);\r\n\t\t\t\t\t\t$meritalloc_wrp-\u003Efield_merits_earned = $calc_merit_val;\r\n\t\t\t\t\t\t$meritalloc_wrp-\u003Esave();\r\n\r\n\t\t\t\t\t\t\/\/only process amounts greater than the smallest value the table can hold.\r\n\t\t\t\t\t\tif($merits \u003E 0.0000000001) {\r\n\t\t\t\t\t\t\t$merit_share = $sh_project_wrp-\u003Efield_reward_merit_allocation-\u003Evalue()\/100;\r\n\r\n\t\t\t\t\t\t\t\/\/subtract the chron share of the reward and process both parts\r\n\t\t\t\t\t\t\tif (!empty($merit_share) \u0026\u0026 $merit_share \u003C 1) {\r\n\t\t\t\t\t\t\t\t$shareratio = $merit_share \/ 100;\r\n\t\t\t\t\t\t\t\t$new_merits = $shareratio * $merits;\r\n\t\t\t\t\t\t\t\r\n\t\t\t\t\t\t\t\t\/\/transfer a portion of the reward to the project beneficiary\r\n\t\t\t\t\t\t\t\t$chrons4bene = $merits - $new_merits;\r\n\t\r\n\t\t\t\t\t\t\t\t$benef_object = $sh_project_wrp-\u003Efield_chron_beneficiary-\u003Evalue();\r\n\t\r\n\t\t\t\t\t\t\t\tif ($benef_object) {\r\n\t\t\t\t\t\t\t\t\t$beneficiary = $benef_object-\u003Euid;\r\n\t\t\t\t\t\t\t\t}\r\n\t\t\t\t\t\t\t\telse {\r\n\t\t\t\t\t\t\t\t\t$beneficiary = $sh_project_wrp-\u003Eauthor-\u003Evalue();\r\n\t\t\t\t\t\t\t\t}\r\n\r\n\t\t\t\t\t\t\t\t$buyer = user_load($buyeruid);\r\n\t\t\t\t\t\t\t\t\/\/transfer the chrons\r\n\t\t\t\t\t\t\t\trules_invoke_component(\u0027rules_make_money_transfer\u0027,$buyer,$beneficiary,$chrons4bene,$note,TRUE);\r\n\r\n\t\t\t\t\t\t\t\t\/\/process the remaining merits\r\n\t\t\t\t\t\t\t\tmrewarder($shareprojectid,$new_merits,$buyeruid,$receipt_id,$note,$loopcheck);\r\n\t\t\t\t\t\t\t}\r\n\t\t\t\t\t\t\telse {\r\n\t\t\t\t\t\t\t\tmrewarder($shareprojectid,$merits,$buyeruid,$receipt_id,$note,$loopcheck);\r\n\t\t\t\t\t\t\t}\r\n\t\t\t\t\t\t}\r\n\t\t\t\t\t\telse {\r\n\/\/\t\t\t\t\t\t\twatchdog(\u0027rule\u0027,\u0027rules_process_purchase_core; the rules_process_purchase_core asked to store merit reward smaller than allowed by DB schema:\u0027 . $merits . \u0027 ME | alloc node ID: \u0027 . $shareprojectid);\r\n\t\t\t\t\t\t}\r\n\t\t\t\t\t}\r\n\t\t\t\t}\r\n\r\n\t\t\t}\r\n\r\n\t\treturn \u0027OK\u0027;\r\n\t\t\/\/watchdog(\u0027debug\u0027,\u0027END\u0027 );\r\n\t\t}\r\n\t}\r\n}\r\n\r\nini_set(\u0027max_execution_time\u0027, 300);\r\n\r\nmrewarder($recipient_id,$converted_chrons_paid,$order-\u003Euid,$receipt_id,$note);" } }
-                ]
-              }
-            },
-            { "CASE" : {
-                "USING" : { "value" : "report" },
-                "DO" : [
-                  { "component_rules_reward_work_report" : {
-                      "USING" : {
-                        "buyer_id" : [ "order:uid" ],
-                        "wreport_id" : [ "recipient-id" ],
-                        "reward_amnt" : [ "converted-chrons-paid" ],
-                        "description" : "\u003C?php \r\n\r\n$node_url = \u0027\/node\/\u0027 . $recipient_id;\r\n\r\n\/\/ Get the language from the entity, fallback to LANGUAGE_NONE if not set\r\n$entity_lang = isset($rewarded_entity-\u003Elanguage) ? $rewarded_entity-\u003Elanguage : LANGUAGE_NONE;\r\n\r\n\/\/ Try to get the title from title_field with proper language, or fallback to the title property\r\n$node_title = isset($rewarded_entity-\u003Etitle_field[$entity_lang][0][\u0027value\u0027]) \r\n    ? $rewarded_entity-\u003Etitle_field[$entity_lang][0][\u0027value\u0027] \r\n    : $rewarded_entity-\u003Etitle;\r\n\r\necho t(\u0027Reward for the \u003Ca href=\u0022@projurl\u0022\u003E@repname\u003C\/a\u003E work report\u0027, array(\u0027@projurl\u0027 =\u003E $node_url, \u0027@repname\u0027 =\u003E $node_title));\r\n?\u003E",
-                        "payment_currency" : "EUR"
-                      },
-                      "PROVIDE" : {
-                        "outcome" : { "outcome" : "outcome" },
-                        "reason" : { "reason" : "outcome-reason" }
-                      }
+          { "CASE" : {
+              "USING" : { "value" : "report" },
+              "DO" : [
+                { "component_rules_reward_work_report" : {
+                    "USING" : {
+                      "buyer_id" : [ "order:uid" ],
+                      "wreport_id" : [ "recipient-id" ],
+                      "reward_amnt" : [ "converted-chrons-paid" ],
+                      "description" : "\u003C?php \r\n\r\n$node_url = \u0027\/node\/\u0027 . (int) $recipient_id;\r\n\r\necho t(\u0027Reward for the \u003Ca href=\u0022@projurl\u0022\u003Ework report with ID @recid\u003C\/a\u003E\u0027, [\r\n  \u0027@projurl\u0027 =\u003E $node_url,\r\n  \u0027@recid\u0027 =\u003E $recipient_id,\r\n]);\r\n\r\n?\u003E",
+                      "payment_currency" : "EUR"
+                    },
+                    "PROVIDE" : {
+                      "outcome" : { "outcome" : "outcome" },
+                      "reason" : { "reason" : "outcome-reason" }
                     }
                   }
-                ]
-              }
-            },
-            { "CASE" : {
-                "USING" : { "value" : "user" },
-                "DO" : [
-                  { "CONDITIONAL" : [
-                      {
-                        "IF" : { "commerce_order_contains_product" : {
-                            "commerce_order" : [ "order" ],
-                            "product_id" : "merits",
-                            "operator" : "\u003E=",
-                            "value" : "1"
+                }
+              ]
+            }
+          },
+          { "CASE" : {
+              "USING" : { "value" : "user" },
+              "DO" : [
+                { "CONDITIONAL" : [
+                    {
+                      "IF" : { "commerce_order_contains_product" : {
+                          "commerce_order" : [ "order" ],
+                          "product_id" : "merits",
+                          "operator" : "\u003E=",
+                          "value" : "1"
+                        }
+                      },
+                      "DO" : [
+                        { "entity_fetch" : {
+                            "USING" : { "type" : "user", "id" : [ "recipient-id" ] },
+                            "PROVIDE" : { "entity_fetched" : { "merits_buyer" : "merits buyer" } }
                           }
                         },
-                        "DO" : [
-                          { "entity_fetch" : {
-                              "USING" : { "type" : "user", "id" : [ "recipient-id" ] },
-                              "PROVIDE" : { "entity_fetched" : { "merits_buyer" : "merits buyer" } }
-                            }
-                          },
-                          { "variable_add" : {
-                              "USING" : { "type" : "integer" },
-                              "PROVIDE" : { "variable_added" : { "sandbox_project_id" : "sandbox project ID" } }
-                            }
-                          },
-                          { "php_eval" : { "code" : "$chrons = -1*$converted_chrons_paid;\r\n_rovas_forex_grant_merits($merits_buyer,$converted_chrons_paid,$chrons);" } },
-                          { "component_rules_update_user_chron_account" : {
-                              "user_object" : [ "merits-buyer" ],
-                              "chrons_to_add" : [ "converted-chrons-paid" ],
-                              "fxsp_id" : [ "sandbox-project-id" ]
-                            }
+                        { "variable_add" : {
+                            "USING" : { "type" : "integer" },
+                            "PROVIDE" : { "variable_added" : { "sandbox_project_id" : "sandbox project ID" } }
                           }
-                        ]
-                      }
-                    ]
-                  }
-                ]
-              }
+                        },
+                        { "php_eval" : { "code" : "$chrons = -1*$converted_chrons_paid;\r\n_rovas_forex_grant_merits($merits_buyer,$converted_chrons_paid,$chrons);" } },
+                        { "component_rules_update_user_chron_account" : {
+                            "user_object" : [ "merits-buyer" ],
+                            "chrons_to_add" : [ "converted-chrons-paid" ],
+                            "fxsp_id" : [ "sandbox-project-id" ]
+                          }
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
             }
-          ]
-        }
-      },
-      { "php_eval" : { "code" : "\/\/set the order status and save\r\ncommerce_order_status_update($order, \u0027completed\u0027, FALSE, TRUE);\r\nif (empty($order-\u003Eplaced)) {\r\n  $order-\u003Eplaced = REQUEST_TIME;\r\n}\r\ncommerce_order_save($order);" } }
-    ]
-  }
+          }
+        ]
+      }
+    },
+    { "php_eval" : { "code" : "\/\/set the order status and save\r\ncommerce_order_status_update($order, \u0027completed\u0027, FALSE, TRUE);\r\nif (empty($order-\u003Eplaced)) {\r\n  $order-\u003Eplaced = REQUEST_TIME;\r\n}\r\ncommerce_order_save($order);" } }
+  ]
+}
 }
