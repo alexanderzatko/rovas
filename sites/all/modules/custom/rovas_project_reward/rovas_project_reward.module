@@ -186,7 +186,10 @@ function rovas_project_reward_form ($form, &$form_state) {
         // Use original_url if available, otherwise request_uri()
         $url = isset($parameters['original_url']) ? $parameters['original_url'] : request_uri();
         
-        $message = remove_signature_from_url_string($url);
+        // Canonical (sorted) query signing is preferred; legacy URL byte-order is
+        // still accepted so existing integrations keep working. See payment API docs.
+        $message_canonical = remove_signature_from_url_string($url, TRUE);
+        $message_legacy = remove_signature_from_url_string($url, FALSE);
         $signature = $parameters['signature'];
         $project = node_load($recipient);
 
@@ -195,14 +198,12 @@ function rovas_project_reward_form ($form, &$form_state) {
         $keys = rules_invoke_component('rules_retrieve_user_s_api_key_and_token',$owner_uid,$service_endpoint);
         $secret = $keys[0];
 
-        $requestIsValid = verifySignature($message, $secret, $signature);
+        $requestIsValid = verifySignature($message_canonical, $secret, $signature)
+          || verifySignature($message_legacy, $secret, $signature);
         
         // Store validation result for AJAX requests
         $form_state['signature_validated'] = $requestIsValid;
     }
-
-    //for debugging
-    $requestIsValid = TRUE;
 
 		if (!$requestIsValid) {
 			drupal_set_message(t('Access denied: Invalid signature'), 'error');
@@ -214,8 +215,16 @@ function rovas_project_reward_form ($form, &$form_state) {
 	}
 
 	//EUR price override from URL
-	if ($requestIsValid && isset($parameters['price_eur']) && is_numeric($parameters['price_eur'])) {
-		$real_eur_price = (int)$parameters['price_eur'] / 100;
+	if ($requestIsValid && isset($parameters['price_eur'])) {
+		$price_eur_raw = trim((string) $parameters['price_eur']);
+		// price_eur is provided as whole euros (integer).
+		if ($price_eur_raw !== '' && preg_match('/^\d+$/', $price_eur_raw)) {
+			$real_eur_price = (int) $price_eur_raw;
+		}
+		else {
+			drupal_set_message(t('Access denied: Invalid price_eur (must be a whole-euro integer).'), 'error');
+			return;
+		}
 	}
 	else {
 		$real_eur_price = null;
@@ -1670,10 +1679,10 @@ function rovas_project_reward_order_callback_url($order) {
  * Parameters appended to callbackurl:
  *   token        – the session token identifying this transaction
  *   signature    – HMAC-SHA256(token, project_api_secret), lowercase hex
- *   amount_paid  – order total in EUR (decimal, e.g. "12.50")
+ *   amount_paid  – order total in EUR (whole euros, e.g. "12")
  *   currency     – always "EUR"
  *   email        – buyer e-mail address
- *   delayed      – always "1" (payment not yet settled)
+ *   delayed      – always 1 (payment not yet settled)
  *
  * Returns empty string when no callback URL or signing is possible.
  */
@@ -1702,7 +1711,8 @@ function rovas_project_reward_bank_order_return_url($order) {
     return '';
   }
 
-  $amount   = isset($intent->amount) ? number_format((float) $intent->amount, 2, '.', '') : '0.00';
+  // For delayed/bank flows we send whole euros (integer).
+  $amount   = isset($intent->amount) ? (int) round((float) $intent->amount) : 0;
   $currency = !empty($intent->currency) ? $intent->currency : 'EUR';
   $email    = !empty($order->mail) ? $order->mail : '';
 
@@ -1712,7 +1722,7 @@ function rovas_project_reward_bank_order_return_url($order) {
     'amount_paid' => $amount,
     'currency'    => $currency,
     'email'       => $email,
-    'delayed'     => '1',
+    'delayed'     => 1,
   );
 
   $base = $intent->callback_url;
@@ -2150,6 +2160,10 @@ function rovas_project_reward_forex_convert($input) {
 /**
  * Notifies external service after successful payment and handles response logic.
  *
+ * POST JSON body fields: event (payment-completed), delayed (0), token, signature,
+ * amount_paid, currency, email, occurred_at (UNIX seconds), and expiration (link
+ * expiry from the payment request, when available). Header X-Rovas-Event: payment-completed.
+ *
  * @param object $rewarded_project
  *   The project or work report object with at least ->uid and ->nid.
  * @param object $paid_amt
@@ -2194,17 +2208,26 @@ function rovas_project_reward_notify_purchase($rewarded_project,$paid_amt,$curre
 
 	$endpoint = isset($rewarded_project->field_webhook_url[LANGUAGE_NONE][0]['value']) ? $rewarded_project->field_webhook_url[LANGUAGE_NONE][0]['value'] : '';
 
+	$payload = array(
+		'event' => 'payment-completed',
+		'delayed' => 0,
+		'token' => $token,
+		'signature' => $signature,
+		'amount_paid' => $paid_amt,
+		'currency' => $currency,
+		'email' => $email,
+		'occurred_at' => (int) REQUEST_TIME,
+	);
+	if (!empty($sessary['expiration']) && $sessary['expiration'] !== INF && is_numeric($sessary['expiration'])) {
+		$payload['expiration'] = (int) $sessary['expiration'];
+	}
+
 	$options = array(
 		'method' => 'POST',
-		'data' => drupal_json_encode(array(
-			'token' => $token,
-			'signature' => $signature,
-			'amount_paid' => $paid_amt,
-			'currency' => $currency,
-			'email' => $email,
-		)),
+		'data' => drupal_json_encode($payload),
 		'headers' => array(
 			'Content-Type' => 'application/json',
+			'X-Rovas-Event' => 'payment-completed',
 		),
 		'timeout' => 5,
 	);
@@ -2627,29 +2650,49 @@ function verifySignature($message, $secret, $providedSignature) {
     return $expectedSignature === $providedSignature;
 }
 
-//removes the "signature" param from URL
-function remove_signature_from_url_string($url) {
+/**
+ * Rebuilds the request URL used for HMAC verification after removing signature.
+ *
+ * @param string $url
+ *   Full or partial request URI (as used when generating the client signature).
+ * @param bool $canonical_sort
+ *   If TRUE (recommended for new integrations), query parameters are sorted by
+ *   name (lexicographic) before encoding so the signed string does not depend on
+ *   parameter order in the browser. If FALSE, preserves the order from the
+ *   incoming query string (legacy behaviour).
+ */
+function remove_signature_from_url_string($url, $canonical_sort = TRUE) {
   // Parse the URL
   $parsed_url = parse_url($url);
-  
+  if (empty($parsed_url['path'])) {
+    $parsed_url['path'] = '';
+  }
+
   // Parse query string into array
-  parse_str($parsed_url['query'], $query_params);
-  
+  $query_params = array();
+  if (!empty($parsed_url['query'])) {
+    parse_str($parsed_url['query'], $query_params);
+  }
+
   // Remove signature parameter
   unset($query_params['signature']);
 
+  if ($canonical_sort && !empty($query_params)) {
+    ksort($query_params);
+  }
+
   global $base_url;
-  
+
   $clean_url = $base_url;
   if (isset($parsed_url['port'])) {
     $clean_url .= ':' . $parsed_url['port'];
   }
   $clean_url .= $parsed_url['path'];
-  
+
   if (!empty($query_params)) {
     $clean_url .= '?' . http_build_query($query_params);
   }
-  
+
   return $clean_url;
 }
 
@@ -3616,8 +3659,9 @@ function rovas_project_reward_process_bank_order_reward($order) {
 /**
  * Notify the originating 3rd party website after a bank transfer order is confirmed.
  *
- * Sends the same synchronous {token, signature, amount_paid, currency, email}
- * payload that rovas_project_reward_notify_purchase() sends for card/express orders,
+ * Sends the same synchronous payload shape as rovas_project_reward_notify_purchase()
+ * ({event, delayed, token, signature, amount_paid, currency, email}) for card/express
+ * orders,
  * but sources the callback token from the rovas_bank_payment_intent record (stored
  * at order-creation time) rather than the PHP session (which is gone by the time
  * the bank payment is confirmed).
@@ -3684,20 +3728,41 @@ function rovas_project_reward_notify_bank_purchase_confirmed($order) {
   $token = $intent->callback_token;
   $signature = strtolower(hash_hmac('sha256', $token, $secret));
 
-  $order_total = $wrapper->commerce_order_total->amount->value() / 100;
+  // Deliver whole euros (integer) to partner webhook for delayed/bank flows.
+  $order_total = (int) round($wrapper->commerce_order_total->amount->value() / 100);
   $email = $order->mail;
+
+  $expiration_webhook = NULL;
+  if (!empty($intent->meta)) {
+    $meta = drupal_json_decode($intent->meta);
+    if (is_array($meta) && isset($meta['expiration']) && is_numeric($meta['expiration'])) {
+      $expiration_webhook = (int) $meta['expiration'];
+    }
+  }
+  if ($expiration_webhook === NULL && !empty($intent->callback_expires)) {
+    $expiration_webhook = (int) $intent->callback_expires;
+  }
+
+  $payload_bank = array(
+    'event' => 'payment-completed',
+    'delayed' => 0,
+    'token' => $token,
+    'signature' => $signature,
+    'amount_paid' => $order_total,
+    'currency' => 'EUR',
+    'email' => $email,
+    'occurred_at' => (int) REQUEST_TIME,
+  );
+  if ($expiration_webhook !== NULL) {
+    $payload_bank['expiration'] = $expiration_webhook;
+  }
 
   $options = array(
     'method' => 'POST',
-    'data' => drupal_json_encode(array(
-      'token' => $token,
-      'signature' => $signature,
-      'amount_paid' => $order_total,
-      'currency' => 'EUR',
-      'email' => $email,
-    )),
+    'data' => drupal_json_encode($payload_bank),
     'headers' => array(
       'Content-Type' => 'application/json',
+      'X-Rovas-Event' => 'payment-completed',
     ),
     'timeout' => 5,
   );
@@ -3837,21 +3902,39 @@ function rovas_project_reward_enqueue_delayed_callback($order, $event_type) {
   if ($sig === FALSE) {
     return FALSE;
   }
-  $amount_paid = isset($intent->amount) ? number_format((float) $intent->amount, 2, '.', '') : '';
+  // For delayed/bank flows we send whole euros (integer).
+  $amount_paid = isset($intent->amount) ? (int) round((float) $intent->amount) : 0;
   $currency = !empty($intent->currency) ? $intent->currency : 'EUR';
   $email = !empty($order->mail) ? $order->mail : '';
+
+  $expiration_delayed = NULL;
+  if (!empty($intent->meta)) {
+    $meta_dec = drupal_json_decode($intent->meta);
+    if (is_array($meta_dec) && isset($meta_dec['expiration']) && is_numeric($meta_dec['expiration'])) {
+      $expiration_delayed = (int) $meta_dec['expiration'];
+    }
+  }
+  if ($expiration_delayed === NULL && !empty($intent->callback_expires)) {
+    $expiration_delayed = (int) $intent->callback_expires;
+  }
 
   $delivery_id = 'cb_' . substr(hash('sha256', microtime(TRUE) . mt_rand() . $order->order_id . $event_type), 0, 40);
   $payload = array(
     'event' => $event_type,
     'delivery_id' => $delivery_id,
-    'occurred_at' => gmdate('c', REQUEST_TIME),
+    // Use integer timestamps for partner simplicity (UNIX epoch seconds).
+    'occurred_at' => (int) REQUEST_TIME,
     'token' => $token,
     'signature' => $sig,
     'amount_paid' => $amount_paid,
     'currency' => $currency,
     'email' => $email,
-    'delayed' => '1',
+    'delayed' => 1,
+  );
+  if ($expiration_delayed !== NULL) {
+    $payload['expiration'] = $expiration_delayed;
+  }
+  $payload += array(
     'order' => array(
       'id' => (int) $order->order_id,
       'status' => !empty($order->status) ? $order->status : '',
@@ -3919,7 +4002,11 @@ function rovas_project_reward_process_callback_delivery_queue($limit = 20) {
     // Deliver delayed callbacks via POST with JSON payload.
     $payload_arr['event'] = isset($payload_arr['event']) ? $payload_arr['event'] : $row->event_type;
     $payload_arr['delivery_id'] = isset($payload_arr['delivery_id']) ? $payload_arr['delivery_id'] : $idempotency;
-    $payload_arr['occurred_at'] = isset($payload_arr['occurred_at']) ? $payload_arr['occurred_at'] : gmdate('c', REQUEST_TIME);
+    $payload_arr['occurred_at'] = isset($payload_arr['occurred_at']) ? (int) $payload_arr['occurred_at'] : (int) REQUEST_TIME;
+    $payload_arr['delayed'] = isset($payload_arr['delayed']) ? (int) $payload_arr['delayed'] : 1;
+    if (isset($payload_arr['amount_paid'])) {
+      $payload_arr['amount_paid'] = (int) $payload_arr['amount_paid'];
+    }
 
     $response = drupal_http_request($row->endpoint, array(
       'method' => 'POST',
