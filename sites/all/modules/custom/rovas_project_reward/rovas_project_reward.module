@@ -2931,10 +2931,10 @@ function _rovas_project_reward_checkout_complete_bank_shutdown($order_id) {
     return;
   }
   rovas_project_reward_process_bank_transfer_checkout_complete($order);
-  // order-placed partner notification removed: the "Return to site" button on
-  // the complete page now carries the signed token/signature/delayed params
-  // directly in its URL, so no separate server-to-server call is needed here.
-  // A future polling job will call the partner once the payment is settled.
+  // Immediately notify 3rd-party partners that an order was placed but is
+  // awaiting settlement. This avoids relying on the buyer clicking the "Return
+  // to site" link on the complete page (which is a best-effort UX convenience).
+  rovas_project_reward_order_placed_partner_notify($order);
 }
 
 /**
