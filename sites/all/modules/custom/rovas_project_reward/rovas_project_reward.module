@@ -3930,6 +3930,8 @@ function rovas_project_reward_enqueue_delayed_callback($order, $event_type) {
     'currency' => $currency,
     'email' => $email,
     'delayed' => 1,
+    // Bank intent row status (e.g. expired / failed / rejected for delayed-rejected).
+    'bank_intent_status' => !empty($intent->status) ? $intent->status : '',
   );
   if ($expiration_delayed !== NULL) {
     $payload['expiration'] = $expiration_delayed;
