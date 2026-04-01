@@ -3828,16 +3828,33 @@ function rovas_project_reward_enqueue_delayed_callback($order, $event_type) {
     return FALSE;
   }
 
+  // Include legacy top-level fields (token/signature/amount_paid/currency/email)
+  // so existing partner webhook handlers can reuse their immediate-payment logic.
+  $token = $intent->callback_token;
+  $sig = rovas_project_reward_sign_delayed_payload($token, $intent->recipient_id, $intent->paytype);
+  if ($sig === FALSE) {
+    return FALSE;
+  }
+  $amount_paid = isset($intent->amount) ? number_format((float) $intent->amount, 2, '.', '') : '';
+  $currency = !empty($intent->currency) ? $intent->currency : 'EUR';
+  $email = !empty($order->mail) ? $order->mail : '';
+
   $delivery_id = 'cb_' . substr(hash('sha256', microtime(TRUE) . mt_rand() . $order->order_id . $event_type), 0, 40);
   $payload = array(
     'event' => $event_type,
     'delivery_id' => $delivery_id,
     'occurred_at' => gmdate('c', REQUEST_TIME),
+    'token' => $token,
+    'signature' => $sig,
+    'amount_paid' => $amount_paid,
+    'currency' => $currency,
+    'email' => $email,
+    'delayed' => '1',
     'order' => array(
       'id' => (int) $order->order_id,
       'status' => !empty($order->status) ? $order->status : '',
-      'amount' => isset($intent->amount) ? number_format((float) $intent->amount, 2, '.', '') : '',
-      'currency' => !empty($intent->currency) ? $intent->currency : 'EUR',
+      'amount' => $amount_paid,
+      'currency' => $currency,
       'reference' => !empty($intent->reference) ? $intent->reference : (string) $order->order_id,
     ),
     'payment' => array(
@@ -3849,7 +3866,7 @@ function rovas_project_reward_enqueue_delayed_callback($order, $event_type) {
       'paytype' => !empty($intent->paytype) ? $intent->paytype : '',
       'recipient_id' => !empty($intent->recipient_id) ? (int) $intent->recipient_id : 0,
       'callbackurl' => !empty($intent->callback_url) ? $intent->callback_url : '',
-      'token' => $intent->callback_token,
+      'token' => $token,
     ),
   );
 
