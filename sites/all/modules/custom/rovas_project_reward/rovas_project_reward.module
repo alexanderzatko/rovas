@@ -2194,22 +2194,21 @@ function rovas_project_reward_notify_purchase($rewarded_project,$paid_amt,$curre
 
 	$endpoint = isset($rewarded_project->field_webhook_url[LANGUAGE_NONE][0]['value']) ? $rewarded_project->field_webhook_url[LANGUAGE_NONE][0]['value'] : '';
 
-	$options = [
-		'method' => 'POST',
-		'data' => drupal_json_encode([
-			'token' => $token,
-			'signature' => $signature,
-			'amount_paid' => $paid_amt,
-			'currency' => $currency,
-			'email' => $email
-		]),
-		'headers' => [
-			'Content-Type' => 'application/json',
-		],
-		'timeout' => 5,
-	];
-	
-	$response = drupal_http_request($endpoint, $options);
+  // Partner webhook uses GET with query-string parameters (legacy behavior).
+  $params = array(
+    'token' => $token,
+    'signature' => $signature,
+    'amount_paid' => $paid_amt,
+    'currency' => $currency,
+    'email' => $email,
+  );
+  $separator = (strpos($endpoint, '?') !== FALSE) ? '&' : '?';
+  $url = $endpoint . $separator . http_build_query($params);
+
+	$response = drupal_http_request($url, array(
+    'method' => 'GET',
+    'timeout' => 5,
+  ));
 
 watchdog('rovas_project_reward', 'response <pre>' . print_r($response,1) . '</pre>');
 
@@ -3687,20 +3686,21 @@ function rovas_project_reward_notify_bank_purchase_confirmed($order) {
   $order_total = $wrapper->commerce_order_total->amount->value() / 100;
   $email = $order->mail;
 
-  $options = array(
-    'method' => 'POST',
-    'data' => drupal_json_encode(array(
-      'token' => $token,
-      'signature' => $signature,
-      'amount_paid' => $order_total,
-      'currency' => 'EUR',
-      'email' => $email,
-    )),
-    'headers' => array('Content-Type' => 'application/json'),
-    'timeout' => 5,
+  // Partner webhook uses GET with query-string parameters (legacy behavior).
+  $params = array(
+    'token' => $token,
+    'signature' => $signature,
+    'amount_paid' => $order_total,
+    'currency' => 'EUR',
+    'email' => $email,
   );
+  $separator = (strpos($endpoint, '?') !== FALSE) ? '&' : '?';
+  $url = $endpoint . $separator . http_build_query($params);
 
-  $response = drupal_http_request($endpoint, $options);
+  $response = drupal_http_request($url, array(
+    'method' => 'GET',
+    'timeout' => 5,
+  ));
 
   // Mark as notified before saving, so a concurrent call cannot also send.
   $order->data['rovas_bank_purchase_notified'] = REQUEST_TIME;
@@ -3908,26 +3908,39 @@ function rovas_project_reward_process_callback_delivery_queue($limit = 20) {
       continue;
     }
 
-    $signature = rovas_project_reward_sign_delayed_payload($payload_arr['context']['token'], $payload_arr['context']['recipient_id'], $payload_arr['context']['paytype']);
-    if ($signature === FALSE) {
-      rovas_project_reward_mark_callback_delivery_retry($row, 0, 'Unable to sign payload');
-      continue;
-    }
-
-    $body = drupal_json_encode($payload_arr);
-    $timestamp = (string) REQUEST_TIME;
     $idempotency = $row->delivery_id;
     $headers = array(
-      'Content-Type' => 'application/json',
       'X-Rovas-Event' => $row->event_type,
       'X-Rovas-Delivery-Id' => $idempotency,
-      'X-Rovas-Timestamp' => $timestamp,
-      'X-Rovas-Signature' => 'sha256=' . hash_hmac('sha256', $timestamp . '.' . $body, $signature),
     );
 
-    $response = drupal_http_request($row->endpoint, array(
-      'method' => 'POST',
-      'data' => $body,
+    // Deliver delayed callbacks via GET to match the legacy partner webhook style.
+    // Use the stored payload to construct query parameters.
+    $params = array(
+      'event' => isset($payload_arr['event']) ? $payload_arr['event'] : $row->event_type,
+      'delivery_id' => isset($payload_arr['delivery_id']) ? $payload_arr['delivery_id'] : $idempotency,
+      'occurred_at' => isset($payload_arr['occurred_at']) ? $payload_arr['occurred_at'] : gmdate('c', REQUEST_TIME),
+      'token' => isset($payload_arr['token']) ? $payload_arr['token'] : $payload_arr['context']['token'],
+      'signature' => isset($payload_arr['signature']) ? $payload_arr['signature'] : '',
+      'amount_paid' => isset($payload_arr['amount_paid']) ? $payload_arr['amount_paid'] : (isset($payload_arr['order']['amount']) ? $payload_arr['order']['amount'] : ''),
+      'currency' => isset($payload_arr['currency']) ? $payload_arr['currency'] : (isset($payload_arr['order']['currency']) ? $payload_arr['order']['currency'] : 'EUR'),
+      'email' => isset($payload_arr['email']) ? $payload_arr['email'] : '',
+      'delayed' => isset($payload_arr['delayed']) ? $payload_arr['delayed'] : '1',
+      'order_id' => isset($payload_arr['order']['id']) ? $payload_arr['order']['id'] : (int) $row->order_id,
+      'order_status' => isset($payload_arr['order']['status']) ? $payload_arr['order']['status'] : '',
+      'reference' => isset($payload_arr['order']['reference']) ? $payload_arr['order']['reference'] : '',
+      'payment_method' => isset($payload_arr['payment']['method']) ? $payload_arr['payment']['method'] : 'bank_transfer',
+      'provider' => isset($payload_arr['payment']['provider']) ? $payload_arr['payment']['provider'] : '',
+      'provider_payment_id' => isset($payload_arr['payment']['provider_payment_id']) ? $payload_arr['payment']['provider_payment_id'] : '',
+      'paytype' => isset($payload_arr['context']['paytype']) ? $payload_arr['context']['paytype'] : '',
+      'recipient_id' => isset($payload_arr['context']['recipient_id']) ? $payload_arr['context']['recipient_id'] : 0,
+      'callbackurl' => isset($payload_arr['context']['callbackurl']) ? $payload_arr['context']['callbackurl'] : '',
+    );
+    $separator = (strpos($row->endpoint, '?') !== FALSE) ? '&' : '?';
+    $url = $row->endpoint . $separator . http_build_query($params);
+
+    $response = drupal_http_request($url, array(
+      'method' => 'GET',
       'headers' => $headers,
       'timeout' => 8,
     ));
