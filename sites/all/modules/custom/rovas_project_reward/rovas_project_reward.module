@@ -3390,16 +3390,21 @@ function rovas_project_reward_bank_manual_review_form($form, &$form_state) {
   $form['#method'] = 'post';
 
   $header = array(
-    t('Order'),
-    t('Status'),
-    t('Reference'),
-    t('Requested'),
-    t('Received'),
-    t('Updated'),
-    t('Action'),
+    'order' => t('Order'),
+    'status' => t('Status'),
+    'reference' => t('Reference'),
+    'requested' => t('Requested'),
+    'received' => t('Received'),
+    'updated' => t('Updated'),
+    'action' => t('Action'),
   );
 
-  $rows = array();
+  $form['intents'] = array(
+    '#type' => 'table',
+    '#header' => $header,
+    '#empty' => t('No bank intents waiting for manual review.'),
+  );
+
   $result = db_select('rovas_bank_payment_intent', 'i')
     ->fields('i', array('order_id', 'status', 'reference', 'amount', 'currency', 'changed', 'meta', 'provider_payment_id'))
     ->condition('status', array('manual_review', 'failed', 'expired'), 'IN')
@@ -3430,8 +3435,33 @@ function rovas_project_reward_bank_manual_review_form($form, &$form_state) {
     $requested_str = check_plain(number_format($expected, 2, '.', '') . ' ' . $currency);
     $received_str  = check_plain(number_format($actual, 2, '.', '') . ' ' . $currency);
 
-    $action = '';
     $is_overpayment = ($row->status === 'manual_review' && $actual > $expected + 0.009);
+
+    $oid = (int) $row->order_id;
+    $form['intents'][$oid]['order'] = array(
+      '#type' => 'markup',
+      '#markup' => l('#' . $row->order_id, 'admin/commerce/orders/' . $row->order_id),
+    );
+    $form['intents'][$oid]['status'] = array(
+      '#type' => 'markup',
+      '#markup' => check_plain($row->status),
+    );
+    $form['intents'][$oid]['reference'] = array(
+      '#type' => 'markup',
+      '#markup' => check_plain($row->reference),
+    );
+    $form['intents'][$oid]['requested'] = array(
+      '#type' => 'markup',
+      '#markup' => $requested_str,
+    );
+    $form['intents'][$oid]['received'] = array(
+      '#type' => 'markup',
+      '#markup' => $received_str,
+    );
+    $form['intents'][$oid]['updated'] = array(
+      '#type' => 'markup',
+      '#markup' => check_plain(format_date($row->changed, 'short')),
+    );
 
     if ($is_overpayment) {
       // Store context server-side; the button only needs an order id.
@@ -3442,36 +3472,20 @@ function rovas_project_reward_bank_manual_review_form($form, &$form_state) {
         'provider_payment_id' => !empty($row->provider_payment_id) ? $row->provider_payment_id : NULL,
       );
 
-      $form['accept_overpayment'][$row->order_id] = array(
+      $form['intents'][$oid]['action'] = array(
         '#type' => 'submit',
         '#value' => t('Accept overpayment'),
         '#order_id' => (int) $row->order_id,
         '#submit' => array('rovas_project_reward_bank_manual_review_form_submit'),
       );
-
-      $action = $form['accept_overpayment'][$row->order_id];
     }
-
-    $rows[] = array(
-      l('#' . $row->order_id, 'admin/commerce/orders/' . $row->order_id),
-      check_plain($row->status),
-      check_plain($row->reference),
-      $requested_str,
-      $received_str,
-      format_date($row->changed, 'short'),
-      $action,
-    );
+    else {
+      $form['intents'][$oid]['action'] = array(
+        '#type' => 'markup',
+        '#markup' => '',
+      );
+    }
   }
-
-  if (empty($rows)) {
-    return array('#markup' => '<p>' . check_plain(t('No bank intents waiting for manual review.')) . '</p>');
-  }
-
-  $form['table'] = array(
-    '#theme' => 'table',
-    '#header' => $header,
-    '#rows' => $rows,
-  );
 
   // Provide an overall submit handler; per-row buttons override it.
   $form['#submit'] = array('rovas_project_reward_bank_manual_review_form_dummy_submit');
