@@ -1328,6 +1328,7 @@ function rovas_project_reward_form_alter(&$form, &$form_state, $form_id) {
     'commerce_checkout_form_checkout',
     'commerce_checkout_form_review',
     'commerce_checkout_form_complete',
+    'commerce_bank_transfer_confirm_form',
   ), TRUE)) {
     return;
   }
@@ -1367,6 +1368,13 @@ function rovas_project_reward_form_alter(&$form, &$form_state, $form_id) {
 
     case 'commerce_checkout_form_complete':
       _handle_complete_form_modifications($form, $form_state);
+      break;
+
+    case 'commerce_bank_transfer_confirm_form':
+      if (isset($form['amount']) && is_array($form['amount']) && !empty($form['amount']['#description'])) {
+        $review_link = l(t('Rewpro bank payment review'), 'admin/commerce/orders/rewpro-bank-review');
+        $form['amount']['#description'] .= '<br /><br />' . t('If this is an overpayment, reconcile it on !link.', array('!link' => $review_link));
+      }
       break;
   }
 }
@@ -3370,30 +3378,203 @@ function rovas_project_reward_bank_poll_page() {
  * Admin table listing intents requiring manual review.
  */
 function rovas_project_reward_bank_manual_review_page() {
-  $header = array(t('Order'), t('Status'), t('Reference'), t('Amount'), t('Updated'));
+  return drupal_get_form('rovas_project_reward_bank_manual_review_form');
+}
+
+/**
+ * Admin table listing bank intents requiring manual review.
+ *
+ * Includes received amount (when available) and an action for overpayments.
+ */
+function rovas_project_reward_bank_manual_review_form($form, &$form_state) {
+  $form['#method'] = 'post';
+
+  $header = array(
+    t('Order'),
+    t('Status'),
+    t('Reference'),
+    t('Requested'),
+    t('Received'),
+    t('Updated'),
+    t('Action'),
+  );
+
   $rows = array();
   $result = db_select('rovas_bank_payment_intent', 'i')
-    ->fields('i', array('order_id', 'status', 'reference', 'amount', 'currency', 'changed'))
+    ->fields('i', array('order_id', 'status', 'reference', 'amount', 'currency', 'changed', 'meta', 'provider_payment_id'))
     ->condition('status', array('manual_review', 'failed', 'expired'), 'IN')
     ->orderBy('changed', 'DESC')
     ->range(0, 200)
     ->execute();
 
+  $form_state['review_intents'] = array();
+
   foreach ($result as $row) {
+    $intent_meta = array();
+    if (!empty($row->meta)) {
+      $decoded = drupal_json_decode($row->meta);
+      if (is_array($decoded)) {
+        $intent_meta = $decoded;
+      }
+    }
+
+    $mismatch = !empty($intent_meta['mismatch']) && is_array($intent_meta['mismatch'])
+      ? $intent_meta['mismatch']
+      : array();
+
+    $expected = isset($mismatch['expected']) ? (float) $mismatch['expected'] : (float) $row->amount;
+    $actual   = isset($mismatch['actual'])   ? (float) $mismatch['actual']   : (float) $row->amount;
+
+    $currency = !empty($row->currency) ? $row->currency : 'EUR';
+
+    $requested_str = check_plain(number_format($expected, 2, '.', '') . ' ' . $currency);
+    $received_str  = check_plain(number_format($actual, 2, '.', '') . ' ' . $currency);
+
+    $action = '';
+    $is_overpayment = ($row->status === 'manual_review' && $actual > $expected + 0.009);
+
+    if ($is_overpayment) {
+      // Store context server-side; the button only needs an order id.
+      $form_state['review_intents'][$row->order_id] = array(
+        'expected' => $expected,
+        'actual' => $actual,
+        'currency' => $currency,
+        'provider_payment_id' => !empty($row->provider_payment_id) ? $row->provider_payment_id : NULL,
+      );
+
+      $form['accept_overpayment'][$row->order_id] = array(
+        '#type' => 'submit',
+        '#value' => t('Accept overpayment'),
+        '#order_id' => (int) $row->order_id,
+        '#submit' => array('rovas_project_reward_bank_manual_review_form_submit'),
+      );
+
+      $action = $form['accept_overpayment'][$row->order_id];
+    }
+
     $rows[] = array(
       l('#' . $row->order_id, 'admin/commerce/orders/' . $row->order_id),
       check_plain($row->status),
       check_plain($row->reference),
-      check_plain(number_format((float) $row->amount, 2) . ' ' . $row->currency),
+      $requested_str,
+      $received_str,
       format_date($row->changed, 'short'),
+      $action,
     );
   }
 
   if (empty($rows)) {
-    return '<p>' . check_plain(t('No bank intents waiting for manual review.')) . '</p>';
+    return array('#markup' => '<p>' . check_plain(t('No bank intents waiting for manual review.')) . '</p>');
   }
 
-  return theme('table', array('header' => $header, 'rows' => $rows));
+  $form['table'] = array(
+    '#theme' => 'table',
+    '#header' => $header,
+    '#rows' => $rows,
+  );
+
+  // Provide an overall submit handler; per-row buttons override it.
+  $form['#submit'] = array('rovas_project_reward_bank_manual_review_form_dummy_submit');
+
+  return $form;
+}
+
+/**
+ * Dummy submit for the form-level handler.
+ */
+function rovas_project_reward_bank_manual_review_form_dummy_submit(&$form, &$form_state) {
+  // No-op.
+}
+
+/**
+ * Submit handler: accept an overpayment from the manual review page.
+ */
+function rovas_project_reward_bank_manual_review_form_submit(&$form, &$form_state) {
+  $clicked = !empty($form_state['clicked_button']) ? $form_state['clicked_button'] : array();
+  $order_id = !empty($clicked['#order_id']) ? (int) $clicked['#order_id'] : 0;
+  if (!$order_id) {
+    return;
+  }
+
+  // Retrieve intended context from server-side store when available.
+  $ctx = !empty($form_state['review_intents'][$order_id]) ? $form_state['review_intents'][$order_id] : array();
+  $actual   = isset($ctx['actual']) ? (float) $ctx['actual'] : NULL;
+  $currency = !empty($ctx['currency']) ? $ctx['currency'] : 'EUR';
+  $provider_payment_id = isset($ctx['provider_payment_id']) ? $ctx['provider_payment_id'] : NULL;
+
+  // Ensure correctness even if the state is missing.
+  if ($actual === NULL) {
+    $intent = db_select('rovas_bank_payment_intent', 'i')
+      ->fields('i')
+      ->condition('order_id', $order_id)
+      ->execute()
+      ->fetchObject();
+    if (!$intent) {
+      drupal_set_message(t('No bank intent found for Order #@id.', array('@id' => $order_id)), 'error');
+      return;
+    }
+
+    $intent_meta = array();
+    if (!empty($intent->meta)) {
+      $decoded = drupal_json_decode($intent->meta);
+      if (is_array($decoded)) {
+        $intent_meta = $decoded;
+      }
+    }
+    $mismatch = !empty($intent_meta['mismatch']) && is_array($intent_meta['mismatch'])
+      ? $intent_meta['mismatch']
+      : array();
+    $expected = isset($mismatch['expected']) ? (float) $mismatch['expected'] : (float) $intent->amount;
+    $actual   = isset($mismatch['actual']) ? (float) $mismatch['actual'] : (float) $intent->amount;
+    $provider_payment_id = !empty($intent->provider_payment_id) ? $intent->provider_payment_id : NULL;
+    $currency = !empty($intent->currency) ? $intent->currency : 'EUR';
+
+    if (!($intent->status === 'manual_review' && $actual > $expected + 0.009)) {
+      drupal_set_message(t('This order is not eligible for overpayment acceptance anymore.'), 'warning');
+      return;
+    }
+  }
+
+  $order = commerce_order_load($order_id);
+  if (!$order) {
+    drupal_set_message(t('Could not load Order #@id.', array('@id' => $order_id)), 'error');
+    return;
+  }
+  if (!empty($order->data['sepa']['status']) && $order->data['sepa']['status'] === 'paid') {
+    drupal_set_message(t('Order #@id is already marked as paid.', array('@id' => $order_id)));
+    return;
+  }
+
+  // Load the pending bank_transfer transaction created at checkout.
+  $query = new EntityFieldQuery();
+  $query->entityCondition('entity_type', 'commerce_payment_transaction')
+    ->propertyCondition('order_id', $order_id)
+    ->propertyCondition('payment_method', 'bank_transfer')
+    ->propertyCondition('status', COMMERCE_PAYMENT_STATUS_PENDING);
+  $result = $query->execute();
+
+  if (!empty($result['commerce_payment_transaction'])) {
+    $txn_ids = array_keys($result['commerce_payment_transaction']);
+    $transaction = commerce_payment_transaction_load(reset($txn_ids));
+  }
+  else {
+    // Fallback for legacy/odd states.
+    $transaction = commerce_payment_transaction_new('bank_transfer', $order_id);
+    $transaction->instance_id = 'bank_transfer|commerce_payment_bank_transfer';
+    $transaction->currency_code = $currency;
+  }
+
+  $transaction->amount = commerce_currency_decimal_to_amount($actual, $currency);
+  $transaction->status = COMMERCE_PAYMENT_STATUS_SUCCESS;
+  if ($provider_payment_id) {
+    $transaction->remote_id = $provider_payment_id;
+  }
+  $transaction->message .= t('Confirmed by admin overpayment acceptance: @date', array('@date' => format_date(REQUEST_TIME, 'short')));
+
+  commerce_payment_transaction_save($transaction);
+
+  drupal_set_message(t('Overpayment accepted for Order #@id.', array('@id' => $order_id)));
+  drupal_goto('admin/commerce/orders/rewpro-bank-review');
 }
 
 /**
@@ -3573,11 +3754,32 @@ function rovas_project_reward_mark_bank_order_success($order_id, $provider_payme
 
   $expected = isset($order->data['sepa']['amount']) ? (float) $order->data['sepa']['amount'] : (float) $intent->amount;
   if ($actual_amount !== NULL && abs($actual_amount - $expected) > 0.009) {
+    $intent_meta = array();
+    if (!empty($intent->meta)) {
+      $decoded = drupal_json_decode($intent->meta);
+      if (is_array($decoded)) {
+        $intent_meta = $decoded;
+      }
+    }
+
+    $is_overpayment = ($actual_amount > $expected + 0.009);
+    $admin_notified_already = !empty($intent_meta['admin_overpayment_notified']);
+    $notify_admin_now = ($is_overpayment && !$admin_notified_already);
+
+    $manual_meta = array(
+      'mismatch' => array('expected' => $expected, 'actual' => $actual_amount),
+      'payload' => $meta,
+    );
+    if ($notify_admin_now) {
+      rovas_project_reward_notify_site_admin_overpayment($order, $expected, $actual_amount);
+      $manual_meta['admin_overpayment_notified'] = REQUEST_TIME;
+    }
+
     db_update('rovas_bank_payment_intent')
       ->fields(array(
         'status' => 'manual_review',
         'provider_payment_id' => $provider_payment_id,
-        'meta' => drupal_json_encode(array('mismatch' => array('expected' => $expected, 'actual' => $actual_amount), 'payload' => $meta)),
+        'meta' => drupal_json_encode($manual_meta),
         'changed' => REQUEST_TIME,
       ))
       ->condition('order_id', $order_id)
@@ -4334,6 +4536,7 @@ function rovas_project_reward_mail($key, &$message, $params) {
     'bank_transfer_mismatch',
     'bank_transfer_failed',
     'bank_transfer_expired',
+    'bank_transfer_overpayment_admin',
   );
   if (!in_array($key, $allowed, TRUE)) {
     return;
@@ -4341,6 +4544,11 @@ function rovas_project_reward_mail($key, &$message, $params) {
 
   $message['headers']['Content-Type'] = 'text/html; charset=UTF-8; format=flowed';
   $message['subject'] = isset($params['subject']) ? $params['subject'] : '';
+  if ($key === 'bank_transfer_overpayment_admin') {
+    $message['body'][] = _rovas_project_reward_admin_overpayment_notification_content($params);
+    return;
+  }
+
   $message['body'][] = theme('commerce_bank_transfer_notification', array(
     'mail_key'    => $key,
     'content'     => _rovas_project_reward_bank_notification_content($key, $params),
@@ -4349,6 +4557,64 @@ function rovas_project_reward_mail($key, &$message, $params) {
     'base_url'    => isset($params['base_url']) ? $params['base_url'] : url('', array('absolute' => TRUE)),
     'site_mail'   => variable_get('site_mail', ''),
   ));
+}
+
+/**
+ * Build the HTML body for site-admin overpayment notifications.
+ */
+function _rovas_project_reward_admin_overpayment_notification_content(array $params) {
+  $order_id = isset($params['order_id']) ? (int) $params['order_id'] : 0;
+  $expected_amount = isset($params['expected_amount']) ? (float) $params['expected_amount'] : 0.0;
+  $actual_amount   = isset($params['actual_amount']) ? (float) $params['actual_amount'] : 0.0;
+  $currency = isset($params['currency']) && !empty($params['currency']) ? (string) $params['currency'] : 'EUR';
+  $review_url = isset($params['review_url']) ? (string) $params['review_url'] : '';
+
+  $expected_str = number_format($expected_amount, 2, '.', '') . ' ' . $currency;
+  $actual_str   = number_format($actual_amount, 2, '.', '') . ' ' . $currency;
+
+  $review_link = !empty($review_url)
+    ? '<a href="' . check_url($review_url) . '">' . check_plain(t('Rewpro bank payment review')) . '</a>'
+    : '';
+
+  $content  = '<p>' . t('Overpayment received for Order #@id.', array('@id' => $order_id)) . '</p>';
+  $content .= '<p>' . t('Requested amount: <strong>@expected</strong>', array('@expected' => $expected_str)) . '</p>';
+  $content .= '<p>' . t('Actually paid: <strong>@actual</strong>', array('@actual' => $actual_str)) . '</p>';
+
+  if ($review_link) {
+    $content .= '<p>' . t('Reconcile here: !review', array('!review' => $review_link)) . '</p>';
+  }
+
+  return $content;
+}
+
+/**
+ * Notify the site admin when a bank transfer overpayment is detected.
+ */
+function rovas_project_reward_notify_site_admin_overpayment($order, $expected_amount, $actual_amount) {
+  $admin_email = variable_get('site_mail', '');
+  if (empty($admin_email)) {
+    return FALSE;
+  }
+
+  $currency = !empty($order->data['sepa']['currency']) ? $order->data['sepa']['currency'] : 'EUR';
+  $review_url = url('admin/commerce/orders/rewpro-bank-review', array(), array('absolute' => TRUE));
+
+  drupal_mail(
+    'rovas_project_reward',
+    'bank_transfer_overpayment_admin',
+    $admin_email,
+    language_default()->language,
+    array(
+      'subject' => t('Rovas: Overpayment received – Order #@id', array('@id' => $order->order_id)),
+      'order_id' => (int) $order->order_id,
+      'expected_amount' => (float) $expected_amount,
+      'actual_amount' => (float) $actual_amount,
+      'currency' => $currency,
+      'review_url' => $review_url,
+    )
+  );
+
+  return TRUE;
 }
 
 /**
