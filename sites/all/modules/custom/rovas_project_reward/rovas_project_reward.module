@@ -3764,15 +3764,13 @@ function rovas_project_reward_process_bank_order_reward($order) {
 
   lock_release($lock_key);
 
-  // Notify the originating 3rd party web app using the same synchronous payload
-  // format that card and express-checkout orders use (notify_purchase). This uses
-  // the callback_token stored in the intent table at order-creation time, so it
-  // works even though the buyer's PHP session is gone.
-  // Reload the order so the notification sees the most recent order->data state.
-  $order = commerce_order_load($order->order_id);
-  if ($order) {
-    rovas_project_reward_notify_bank_purchase_confirmed($order);
-  }
+  // Bank flows: do NOT send the synchronous `payment-completed` webhook
+  // (delayed=0). Instead, rely solely on the delayed callback queue
+  // (`delayed-confirmed`, delayed=1) enqueued by sync_bank_intent_paid().
+  //
+  // Rationale: partners currently treat `payment-completed` as a different
+  // moment in the lifecycle, and sending it during bank reconciliation causes
+  // duplicate/early events.
 
   watchdog('rovas_project_reward', 'bank_order_reward: reward distributed for order @oid (@merit_chrons merit chrons of @total_chrons total, multiplier @mult).', array('@oid' => $order->order_id, '@merit_chrons' => $merit_chrons, '@total_chrons' => $output_amount, '@mult' => $merit_allocation_multiplier), WATCHDOG_INFO);
   return TRUE;
