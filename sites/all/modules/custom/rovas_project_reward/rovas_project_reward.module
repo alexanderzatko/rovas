@@ -3393,8 +3393,7 @@ function rovas_project_reward_bank_manual_review_form($form, &$form_state) {
   $css_path = drupal_get_path('module', 'rovas_project_reward') . '/rovas_project_reward.admin.css';
   drupal_add_css($css_path, array('group' => CSS_DEFAULT, 'every_page' => FALSE));
 
-  // Use a numeric header array. Drupal 7's FormAPI table element expects this
-  // shape for reliable theming into an actual <table>.
+  // Use a numeric header array. Drupal 7's theme_table expects this shape.
   $header = array(
     t('Order'),
     t('Status'),
@@ -3406,10 +3405,10 @@ function rovas_project_reward_bank_manual_review_form($form, &$form_state) {
   );
 
   $form['intents'] = array(
-    '#type' => 'table',
+    '#theme' => 'table',
     '#header' => $header,
-    '#empty' => t('No bank intents waiting for manual review.'),
     '#attributes' => array('class' => array('rovas-bank-review-table')),
+    '#rows' => array(),
   );
 
   $result = db_select('rovas_bank_payment_intent', 'i')
@@ -3445,30 +3444,7 @@ function rovas_project_reward_bank_manual_review_form($form, &$form_state) {
     $is_overpayment = ($row->status === 'manual_review' && $actual > $expected + 0.009);
 
     $oid = (int) $row->order_id;
-    $form['intents'][$oid][0] = array(
-      '#type' => 'markup',
-      '#markup' => l('#' . $row->order_id, 'admin/commerce/orders/' . $row->order_id),
-    );
-    $form['intents'][$oid][1] = array(
-      '#type' => 'markup',
-      '#markup' => check_plain($row->status),
-    );
-    $form['intents'][$oid][2] = array(
-      '#type' => 'markup',
-      '#markup' => check_plain($row->reference),
-    );
-    $form['intents'][$oid][3] = array(
-      '#type' => 'markup',
-      '#markup' => $requested_str,
-    );
-    $form['intents'][$oid][4] = array(
-      '#type' => 'markup',
-      '#markup' => $received_str,
-    );
-    $form['intents'][$oid][5] = array(
-      '#type' => 'markup',
-      '#markup' => check_plain(format_date($row->changed, 'short')),
-    );
+    $form['intents_actions'][$oid] = array('#type' => 'markup', '#markup' => '');
 
     if ($is_overpayment) {
       // Store context server-side; the button only needs an order id.
@@ -3479,19 +3455,36 @@ function rovas_project_reward_bank_manual_review_form($form, &$form_state) {
         'provider_payment_id' => !empty($row->provider_payment_id) ? $row->provider_payment_id : NULL,
       );
 
-      $form['intents'][$oid][6] = array(
+      $form['intents_actions'][$oid] = array(
         '#type' => 'submit',
         '#value' => t('Accept overpayment'),
         '#order_id' => (int) $row->order_id,
         '#submit' => array('rovas_project_reward_bank_manual_review_form_submit'),
       );
     }
-    else {
-      $form['intents'][$oid][6] = array(
-        '#type' => 'markup',
-        '#markup' => '',
-      );
-    }
+
+    // Build the themed table row. Use a reference for the action cell so the
+    // same form element is rendered (avoids duplicate IDs and keeps submit
+    // handling intact).
+    $row_cells = array(
+      array('data' => l('#' . $row->order_id, 'admin/commerce/orders/' . $row->order_id)),
+      array('data' => check_plain($row->status)),
+      array('data' => check_plain($row->reference)),
+      array('data' => $requested_str),
+      array('data' => $received_str),
+      array('data' => check_plain(format_date($row->changed, 'short'))),
+      array('data' => &$form['intents_actions'][$oid]),
+    );
+    $form['intents']['#rows'][$oid] = $row_cells;
+  }
+
+  if (empty($form['intents']['#rows'])) {
+    $form['intents']['#rows'][] = array(
+      array(
+        'data' => t('No bank intents waiting for manual review.'),
+        'colspan' => count($header),
+      ),
+    );
   }
 
   // Provide an overall submit handler; per-row buttons override it.
