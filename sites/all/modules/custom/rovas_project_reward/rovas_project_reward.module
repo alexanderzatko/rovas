@@ -3389,20 +3389,23 @@ function rovas_project_reward_bank_manual_review_page() {
 function rovas_project_reward_bank_manual_review_form($form, &$form_state) {
   $form['#method'] = 'post';
 
+  // Use a numeric header array. Drupal 7's FormAPI table element expects this
+  // shape for reliable theming into an actual <table>.
   $header = array(
-    'order' => t('Order'),
-    'status' => t('Status'),
-    'reference' => t('Reference'),
-    'requested' => t('Requested'),
-    'received' => t('Received'),
-    'updated' => t('Updated'),
-    'action' => t('Action'),
+    t('Order'),
+    t('Status'),
+    t('Reference'),
+    t('Requested'),
+    t('Received'),
+    t('Updated'),
+    t('Action'),
   );
 
   $form['intents'] = array(
     '#type' => 'table',
     '#header' => $header,
     '#empty' => t('No bank intents waiting for manual review.'),
+    '#attributes' => array('class' => array('rovas-bank-review-table')),
   );
 
   $result = db_select('rovas_bank_payment_intent', 'i')
@@ -3438,27 +3441,27 @@ function rovas_project_reward_bank_manual_review_form($form, &$form_state) {
     $is_overpayment = ($row->status === 'manual_review' && $actual > $expected + 0.009);
 
     $oid = (int) $row->order_id;
-    $form['intents'][$oid]['order'] = array(
+    $form['intents'][$oid][0] = array(
       '#type' => 'markup',
       '#markup' => l('#' . $row->order_id, 'admin/commerce/orders/' . $row->order_id),
     );
-    $form['intents'][$oid]['status'] = array(
+    $form['intents'][$oid][1] = array(
       '#type' => 'markup',
       '#markup' => check_plain($row->status),
     );
-    $form['intents'][$oid]['reference'] = array(
+    $form['intents'][$oid][2] = array(
       '#type' => 'markup',
       '#markup' => check_plain($row->reference),
     );
-    $form['intents'][$oid]['requested'] = array(
+    $form['intents'][$oid][3] = array(
       '#type' => 'markup',
       '#markup' => $requested_str,
     );
-    $form['intents'][$oid]['received'] = array(
+    $form['intents'][$oid][4] = array(
       '#type' => 'markup',
       '#markup' => $received_str,
     );
-    $form['intents'][$oid]['updated'] = array(
+    $form['intents'][$oid][5] = array(
       '#type' => 'markup',
       '#markup' => check_plain(format_date($row->changed, 'short')),
     );
@@ -3472,7 +3475,7 @@ function rovas_project_reward_bank_manual_review_form($form, &$form_state) {
         'provider_payment_id' => !empty($row->provider_payment_id) ? $row->provider_payment_id : NULL,
       );
 
-      $form['intents'][$oid]['action'] = array(
+      $form['intents'][$oid][6] = array(
         '#type' => 'submit',
         '#value' => t('Accept overpayment'),
         '#order_id' => (int) $row->order_id,
@@ -3480,7 +3483,7 @@ function rovas_project_reward_bank_manual_review_form($form, &$form_state) {
       );
     }
     else {
-      $form['intents'][$oid]['action'] = array(
+      $form['intents'][$oid][6] = array(
         '#type' => 'markup',
         '#markup' => '',
       );
