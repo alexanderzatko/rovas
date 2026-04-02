@@ -42,6 +42,13 @@ function commerce_bank_transfer_confirm_form($form, &$form_state, $order, $trans
     '#size' => 16,
   );
 
+  $form['allow_amount_override'] = array(
+    '#type' => 'checkbox',
+    '#title' => t('Allow amount override'),
+    '#description' => t('Only enable this if you intentionally want to confirm an amount larger than the transaction amount (e.g. overpayment).'),
+    '#default_value' => 0,
+  );
+
   $form = confirm_form($form,
     t('What amount do you want to confirm?'),
     'admin/commerce/orders/' . $order->order_id . '/payment',
@@ -60,15 +67,19 @@ function commerce_bank_transfer_confirm_form($form, &$form_state, $order, $trans
 function commerce_bank_transfer_confirm_form_validate($form, &$form_state) {
   $transaction = $form_state['transaction'];
   $amount = $form_state['values']['amount'];
+  $allow_override = !empty($form_state['values']['allow_amount_override']);
 
   // Ensure a positive numeric amount has been entered for capture.
   if (!is_numeric($amount) || $amount <= 0) {
     form_set_error('amount', t('You must specify a positive numeric amount to capture.'));
   }
 
-  // Ensure the amount is less than or equal to the transaction amount.
-  if ($amount > commerce_currency_amount_to_decimal($transaction->amount, $transaction->currency_code)) {
-    form_set_error('amount', t('You cannot confirm more than transaction amount.'));
+  // Default safeguard: avoid accidental confirmation of a higher amount.
+  if (!$allow_override) {
+    $max_amount = commerce_currency_amount_to_decimal($transaction->amount, $transaction->currency_code);
+    if ($amount > $max_amount) {
+      form_set_error('amount', t('You cannot confirm more than transaction amount.'));
+    }
   }
 }
 

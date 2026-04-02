@@ -3489,7 +3489,7 @@ function rovas_project_reward_extract_fio_items(array $data) {
  * @return bool
  *   TRUE if the sync completed (or was already done), FALSE on hard failure.
  */
-function rovas_project_reward_sync_bank_intent_paid($order_id, $provider_payment_id = NULL, array $meta = array()) {
+function rovas_project_reward_sync_bank_intent_paid($order_id, $provider_payment_id = NULL, array $meta = array(), $actual_amount = NULL) {
   $order = commerce_order_load($order_id);
   if (!$order) {
     watchdog('rovas_project_reward', 'sync_bank_intent_paid: missing order @order.', array('@order' => $order_id), WATCHDOG_WARNING);
@@ -3500,19 +3500,45 @@ function rovas_project_reward_sync_bank_intent_paid($order_id, $provider_payment
     return TRUE;
   }
 
+  // Preserve existing intent meta (e.g. mismatch details from Fio polling)
+  // and merge any new keys.
+  $intent_meta = array();
+  $existing_meta_json = db_select('rovas_bank_payment_intent', 'i')
+    ->fields('i', array('meta'))
+    ->condition('order_id', $order_id)
+    ->execute()
+    ->fetchField();
+  if (!empty($existing_meta_json)) {
+    $decoded = drupal_json_decode($existing_meta_json);
+    if (is_array($decoded)) {
+      $intent_meta = $decoded;
+    }
+  }
+  if (!empty($meta)) {
+    $intent_meta = array_merge($intent_meta, $meta);
+  }
+
+  $db_fields = array(
+    'status' => 'paid',
+    'provider_payment_id' => $provider_payment_id,
+    'meta' => drupal_json_encode($intent_meta),
+    'changed' => REQUEST_TIME,
+  );
+  if ($actual_amount !== NULL) {
+    $db_fields['amount'] = round((float) $actual_amount, 2);
+  }
+
   db_update('rovas_bank_payment_intent')
-    ->fields(array(
-      'status' => 'paid',
-      'provider_payment_id' => $provider_payment_id,
-      'meta' => drupal_json_encode($meta),
-      'changed' => REQUEST_TIME,
-    ))
+    ->fields($db_fields)
     ->condition('order_id', $order_id)
     ->execute();
 
   $order->data['sepa']['status'] = 'paid';
   if (!empty($provider_payment_id)) {
     $order->data['sepa']['provider_payment_id'] = $provider_payment_id;
+  }
+  if ($actual_amount !== NULL) {
+    $order->data['sepa']['amount'] = number_format((float) $actual_amount, 2, '.', '');
   }
   commerce_order_save($order);
 
@@ -3567,7 +3593,7 @@ function rovas_project_reward_mark_bank_order_success($order_id, $provider_payme
     return FALSE;
   }
 
-  rovas_project_reward_sync_bank_intent_paid($order_id, $provider_payment_id, $meta);
+  rovas_project_reward_sync_bank_intent_paid($order_id, $provider_payment_id, $meta, $actual_amount);
 
   // Reload order so it reflects the sepa status saved by sync helper.
   $order = commerce_order_load($order_id);
@@ -3929,15 +3955,30 @@ function rovas_project_reward_commerce_payment_transaction_update($transaction) 
     return;
   }
 
+  $did_sync = FALSE;
   // Sync intent table / order->data['sepa'] / partner callback if not already done
   // (e.g. Fio cron may have already called mark_bank_order_success()).
   if (empty($order->data['sepa']['status']) || $order->data['sepa']['status'] !== 'paid') {
-    rovas_project_reward_sync_bank_intent_paid($transaction->order_id);
+    $actual_decimal_amount = commerce_currency_amount_to_decimal($transaction->amount, $transaction->currency_code);
+    rovas_project_reward_sync_bank_intent_paid(
+      $transaction->order_id,
+      !empty($transaction->remote_id) ? $transaction->remote_id : NULL,
+      array('confirmed_by_admin' => REQUEST_TIME),
+      $actual_decimal_amount
+    );
+    $did_sync = TRUE;
     // Reload so process_bank_order_reward sees the updated order data.
     $order = commerce_order_load($transaction->order_id);
   }
 
   rovas_project_reward_process_bank_order_reward($order);
+
+  // Match the automatic reconciliation path and deliver the delayed
+  // `delayed-confirmed` webhook immediately after the admin-confirmed
+  // payment has been persisted and rewards are processed.
+  if ($did_sync) {
+    rovas_project_reward_process_callback_delivery_queue(5);
+  }
 }
 
 /**
