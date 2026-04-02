@@ -1628,15 +1628,79 @@ function _handle_complete_form_modifications(&$form, &$form_state) {
 
   $return_url = rovas_project_reward_bank_order_return_url($order);
   if ($return_url !== '') {
+    $domain_label = rovas_project_reward_url_domain_label($return_url);
+    $return_text = $domain_label !== ''
+      ? t('Return to @domain', array('@domain' => $domain_label))
+      : t('Return to the site you came from');
     $form['rovas_rewpro_complete_return'] = array(
       '#type' => 'markup',
-      '#markup' => '<div class="rovas-rewpro-complete-actions">' . l(t('Return to the site you came from'), $return_url, array(
+      '#markup' => '<div class="rovas-rewpro-complete-actions">' . l($return_text, $return_url, array(
         'external' => TRUE,
         'attributes' => array('class' => array('btn', 'btn-success', 'btn-credit-bank', 'icon-before')),
       )) . '</div>',
       '#weight' => 15,
     );
   }
+}
+
+/**
+ * Extract a compact domain label from a URL.
+ *
+ * Examples:
+ * - https://hey.freemap.sk?x=1 => freemap.sk
+ * - https://api.example.co.uk?x=1 => example.co.uk
+ *
+ * @return string
+ *   A lowercase domain label, or an empty string when it can't be derived.
+ */
+function rovas_project_reward_url_domain_label($url) {
+  if (empty($url)) {
+    return '';
+  }
+
+  $host = @parse_url($url, PHP_URL_HOST);
+  if (empty($host)) {
+    return '';
+  }
+
+  // Remove brackets from IPv6 literal hosts.
+  $host = trim($host, '[]');
+  $host_l = strtolower($host);
+
+  // Remove a trailing dot if present.
+  if (substr($host_l, -1) === '.') {
+    $host_l = rtrim($host_l, '.');
+  }
+
+  if ($host_l === '') {
+    return '';
+  }
+
+  if (filter_var($host_l, FILTER_VALIDATE_IP)) {
+    return $host_l;
+  }
+
+  $parts = array_values(array_filter(explode('.', $host_l), 'strlen'));
+  $n = count($parts);
+
+  // For hosts like example.com (2 parts) or localhost (1 part).
+  if ($n <= 2) {
+    return $host_l;
+  }
+
+  $last = $parts[$n - 1];
+  $second_last = $parts[$n - 2];
+
+  // Common 2nd-level domains where the public suffix is 2 parts.
+  $common_second_level = array('co', 'com', 'net', 'org', 'gov', 'edu', 'ac');
+  if (strlen($last) === 2 && in_array($second_last, $common_second_level, TRUE)) {
+    // Example: foo.example.co.uk => example.co.uk
+    return ($n >= 3) ? ($parts[$n - 3] . '.' . $second_last . '.' . $last) : $host_l;
+  }
+
+  // Default: strip one leftmost label.
+  // Example: hey.freemap.sk => freemap.sk
+  return $parts[$n - 2] . '.' . $last;
 }
 
 /**
