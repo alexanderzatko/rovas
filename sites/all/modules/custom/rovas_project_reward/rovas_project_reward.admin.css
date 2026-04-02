@@ -31,3 +31,9 @@
   margin: 0;
 }
 
+/* Drupal may render row submit elements twice; hide only the stray copy outside the table. */
+#rovas-project-reward-bank-manual-review-form > div > .form-submit,
+#rovas-project-reward-bank-manual-review-form > div > input.form-submit {
+  display: none;
+}
+
