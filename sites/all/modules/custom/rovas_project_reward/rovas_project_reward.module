@@ -1704,6 +1704,57 @@ function rovas_project_reward_url_domain_label($url) {
 }
 
 /**
+ * Removes specified query parameters from a URL string.
+ *
+ * This helps prevent duplicated params like `token=...&token=...` which can
+ * break downstream signature verification that expects a scalar value.
+ *
+ * @param string $url
+ * @param string[] $param_names
+ *
+ * @return string
+ */
+function rovas_project_reward_url_strip_query_params($url, array $param_names) {
+  if (empty($url) || empty($param_names)) {
+    return $url;
+  }
+
+  $fragment = '';
+  $url_wo_fragment = $url;
+  $hash_pos = strpos($url, '#');
+  if ($hash_pos !== FALSE) {
+    $fragment = substr($url, $hash_pos);
+    $url_wo_fragment = substr($url, 0, $hash_pos);
+  }
+
+  $q_pos = strpos($url_wo_fragment, '?');
+  if ($q_pos === FALSE) {
+    return $url;
+  }
+
+  $base = substr($url_wo_fragment, 0, $q_pos);
+  $query = substr($url_wo_fragment, $q_pos + 1);
+  if ($query === '') {
+    return $base . $fragment;
+  }
+
+  $query_params = array();
+  parse_str($query, $query_params);
+
+  foreach ($param_names as $name) {
+    if (is_string($name) && $name !== '') {
+      unset($query_params[$name]);
+    }
+  }
+
+  $new_query = http_build_query($query_params);
+  if ($new_query === '') {
+    return $base . $fragment;
+  }
+  return $base . '?' . $new_query . $fragment;
+}
+
+/**
  * Returns validated callback URL for rewpro third-party return link, or empty string.
  *
  * Prefers session; falls back to rovas_bank_payment_intent.callback_url.
@@ -1789,7 +1840,14 @@ function rovas_project_reward_bank_order_return_url($order) {
     'delayed'     => 1,
   );
 
-  $base = $intent->callback_url;
+  // If the base callback URL already contains token/signature query params,
+  // avoid appending signed values again. Duplicates can become arrays on
+  // the receiver side and break HMAC verification.
+  $base = rovas_project_reward_url_strip_query_params($intent->callback_url, array(
+    'token',
+    'signature',
+    'delayed',
+  ));
   $separator = (strpos($base, '?') !== FALSE) ? '&' : '?';
   return $base . $separator . http_build_query($params);
 }
