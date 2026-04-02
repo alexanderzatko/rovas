@@ -1,0 +1,33 @@
+.rovas-bank-review-table {
+  width: 100%;
+  border-collapse: collapse;
+  border-spacing: 0;
+  table-layout: auto;
+}
+
+.rovas-bank-review-table th,
+.rovas-bank-review-table td {
+  padding: 8px 10px;
+  border: 1px solid #d7d7d7;
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
+.rovas-bank-review-table thead th {
+  background: #f4f4f4;
+  font-weight: 600;
+  text-align: left;
+}
+
+.rovas-bank-review-table tbody tr:nth-child(even) td {
+  background: #fafafa;
+}
+
+.rovas-bank-review-table td:last-child {
+  white-space: normal;
+}
+
+.rovas-bank-review-table input.form-submit {
+  margin: 0;
+}
+

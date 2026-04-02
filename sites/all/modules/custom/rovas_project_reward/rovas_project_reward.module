@@ -3389,6 +3389,10 @@ function rovas_project_reward_bank_manual_review_page() {
 function rovas_project_reward_bank_manual_review_form($form, &$form_state) {
   $form['#method'] = 'post';
 
+  // Ensure this admin listing renders as a readable table regardless of theme.
+  $css_path = drupal_get_path('module', 'rovas_project_reward') . '/rovas_project_reward.admin.css';
+  drupal_add_css($css_path, array('group' => CSS_DEFAULT, 'every_page' => FALSE));
+
   // Use a numeric header array. Drupal 7's FormAPI table element expects this
   // shape for reliable theming into an actual <table>.
   $header = array(
