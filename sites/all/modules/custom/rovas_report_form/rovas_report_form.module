@@ -179,8 +179,10 @@ function _recalc_time($form, &$form_state) {
 
 	//combine the hours and minutes into decimal hours
 
-	$hrs = isset($form_state['values']['hours']) ? $form_state['values']['hours'] : 0;
-	$min = isset($form_state['values']['minutes']) ? ($form_state['values']['minutes']/60) : 0;
+	$hrs_raw = isset($form_state['values']['hours']) ? $form_state['values']['hours'] : 0;
+	$min_raw = isset($form_state['values']['minutes']) ? $form_state['values']['minutes'] : 0;
+	$hrs = is_numeric($hrs_raw) ? (float) $hrs_raw : 0;
+	$min = is_numeric($min_raw) ? ((float) $min_raw / 60) : 0;
 
 	$form_state['values']['hrs'] = $hrs;
 	$form_state['values']['min'] = $min;
@@ -206,8 +208,10 @@ function _wr_date_check($element, &$form_state, $form) {
 */
 
 function _validate_labor_time($element, &$form_state, $form) {
-	$hrs = isset($form_state['values']['hours']) ? $form_state['values']['hours'] : 0;
-	$min = isset($form_state['values']['minutes']) ? ($form_state['values']['minutes']/60) : 0;
+	$hrs_raw = isset($form_state['values']['hours']) ? $form_state['values']['hours'] : 0;
+	$min_raw = isset($form_state['values']['minutes']) ? $form_state['values']['minutes'] : 0;
+	$hrs = is_numeric($hrs_raw) ? (float) $hrs_raw : 0;
+	$min = is_numeric($min_raw) ? ((float) $min_raw / 60) : 0;
 
  	$new_time = $hrs + $min;
 
