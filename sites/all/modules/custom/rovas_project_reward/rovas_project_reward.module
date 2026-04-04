@@ -1228,18 +1228,14 @@ function rpr_create_commerce_order($uid, $paid_amt, $paytype, $pid, $email = NUL
         }
     }
     
-    // Modify unit price of the product
-    $product = entity_metadata_wrapper('commerce_product', $product_nid);
-    $product->commerce_price->amount->set($unit_price);
-    $product->commerce_price->currency_code->set('EUR');
-    $product->save();
-    
-    // Load whatever product represents the item the customer will be
-    // paying for and create a line item for it.
+    // Set the payment amount on the line item only. Do not save subs-paymnt:
+    // saving the shared product entity wipes translated titles and races concurrent orders.
     $product = commerce_product_load($product_nid);
     $line_item = commerce_product_line_item_new($product, $quantity, $order->order_id);
-    
-    // Save the line item to get its ID.
+    $line_item_wrapper = entity_metadata_wrapper('commerce_line_item', $line_item);
+    $line_item_wrapper->commerce_unit_price->amount->set($unit_price);
+    $line_item_wrapper->commerce_unit_price->currency_code->set('EUR');
+    commerce_line_item_rebase_unit_price($line_item);
     commerce_line_item_save($line_item);
         
     // Add the line item to the order
