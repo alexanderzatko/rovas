@@ -1252,6 +1252,56 @@ function rpr_create_commerce_order($uid, $paid_amt, $paytype, $pid, $email = NUL
 }
 
 /**
+ * Implements hook_commerce_line_item_type_info_alter().
+ *
+ * Core commerce_product_line_item_title() returns $product->title from the
+ * metadata wrapper without resolving Title field / Entity Translation for the
+ * active language, so cart and checkout summaries show the default-language
+ * name. Delegate to title_entity_label() when the Title module is available.
+ *
+ * @see commerce_product_line_item_title()
+ */
+function rovas_project_reward_commerce_line_item_type_info_alter(&$line_item_types) {
+  if (isset($line_item_types['product']['callbacks']['title'])) {
+    $line_item_types['product']['callbacks']['title'] = 'rovas_project_reward_commerce_product_line_item_translated_title';
+  }
+}
+
+/**
+ * Product line item title: label in the current content (or interface) language.
+ *
+ * @param object $line_item
+ *   A commerce_line_item entity.
+ *
+ * @return string
+ *   Sanitized product title for display.
+ */
+function rovas_project_reward_commerce_product_line_item_translated_title($line_item) {
+  $wrapper = entity_metadata_wrapper('commerce_line_item', $line_item);
+  $product = $wrapper->commerce_product->value();
+  if (!$product) {
+    return '';
+  }
+
+  $langcode = NULL;
+  if (!empty($GLOBALS['language_content']->language)) {
+    $langcode = $GLOBALS['language_content']->language;
+  }
+  elseif (!empty($GLOBALS['language']->language)) {
+    $langcode = $GLOBALS['language']->language;
+  }
+
+  if (function_exists('title_entity_label')) {
+    $label = title_entity_label($product, 'commerce_product', $langcode);
+    if ($label !== NULL && $label !== '') {
+      return check_plain($label);
+    }
+  }
+
+  return check_plain($product->title);
+}
+
+/**
  * Create a customer profile from billing information
  * 
  * @param array $billing_info Associative array with billing details
