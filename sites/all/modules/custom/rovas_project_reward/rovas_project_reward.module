@@ -1282,11 +1282,6 @@ function rovas_project_reward_commerce_line_item_type_info_alter(&$line_item_typ
  * language first would ask title_entity_label() for English and ignore the
  * Slovak product translation.
  *
- * Debugging: set variable rovas_project_reward_debug_line_item_title to TRUE
- * (e.g. drush vset rovas_project_reward_debug_line_item_title 1) to log one
- * watchdog entry per line item (type rpr_line_item_title) with languages,
- * title_field samples, and title_entity_label() results. Then disable with 0.
- *
  * @param object $line_item
  *   A commerce_line_item entity.
  *
@@ -1300,9 +1295,6 @@ function rovas_project_reward_commerce_product_line_item_translated_title($line_
     return '';
   }
 
-  $debug = variable_get('rovas_project_reward_debug_line_item_title', FALSE);
-  $log = array();
-
   $langcodes = array();
   if (!empty($GLOBALS['language']->language)) {
     $langcodes[] = $GLOBALS['language']->language;
@@ -1312,43 +1304,10 @@ function rovas_project_reward_commerce_product_line_item_translated_title($line_
   }
   $langcodes[] = NULL;
 
-  if ($debug) {
-    $log[] = 'product_id=' . (int) $product->product_id . ' sku=' . check_plain($product->sku);
-    $log[] = 'product->language=' . (isset($product->language) ? $product->language : '(unset)') . ' product->title=' . truncate_utf8($product->title, 120, TRUE, TRUE);
-    $log[] = '$language=' . (!empty($GLOBALS['language']->language) ? $GLOBALS['language']->language : '(empty)') . ' $language_content=' . (!empty($GLOBALS['language_content']->language) ? $GLOBALS['language_content']->language : '(empty)');
-    $log[] = 'title_entity_label=' . (function_exists('title_entity_label') ? '1' : '0');
-    if (function_exists('title_field_replacement_info')) {
-      $info = title_field_replacement_info('commerce_product', 'title');
-      $log[] = 'title_field_replacement_info=' . ($info ? '1' : '0');
-      if ($info && function_exists('title_field_replacement_enabled')) {
-        $log[] = 'title_field_replacement_enabled=' . (title_field_replacement_enabled('commerce_product', $product->type, 'title') ? '1' : '0');
-      }
-    }
-    if (module_exists('entity_translation') && function_exists('entity_translation_get_handler')) {
-      $log[] = 'entity_translation_enabled=' . (entity_translation_enabled('commerce_product') ? '1' : '0');
-      $handler = entity_translation_get_handler('commerce_product', $product);
-      $tr = $handler->getTranslations();
-      $log[] = 'entity_translation languages=' . implode(',', array_keys((array) $tr->data));
-    }
-    foreach ($langcodes as $try_lc) {
-      if ($try_lc !== NULL && function_exists('field_get_items')) {
-        $tf = field_info_field('title_field');
-        if ($tf && field_info_instance('commerce_product', 'title_field', $product->type)) {
-          $items = field_get_items('commerce_product', $product, 'title_field', $try_lc);
-          $log[] = 'field title_field[' . $try_lc . ']=' . (!empty($items[0]['value']) ? truncate_utf8($items[0]['value'], 80, TRUE, TRUE) : '(empty)');
-        }
-      }
-    }
-  }
-
   if (function_exists('title_entity_label')) {
     $default_title = isset($product->title) ? $product->title : '';
     foreach ($langcodes as $langcode) {
       $label = title_entity_label($product, 'commerce_product', $langcode);
-      $lc_key = $langcode === NULL ? 'NULL' : $langcode;
-      if ($debug) {
-        $log[] = 'title_entity_label(' . $lc_key . ')=' . ($label === NULL ? '(null)' : truncate_utf8($label, 120, TRUE, TRUE));
-      }
       if ($label !== NULL && $label !== '') {
         // Do not accept a "translation" that is identical to the default title
         // when asking for a non-default language (title_entity_label can fall
@@ -1359,26 +1318,16 @@ function rovas_project_reward_commerce_product_line_item_translated_title($line_
           $def = $handler->getLanguage();
           if ($langcode !== NULL && $langcode !== $def && $default_title !== '' && $label === $default_title) {
             $skip_duplicate = TRUE;
-            if ($debug) {
-              $log[] = 'skip lang ' . $lc_key . ' (label matches default title; likely missing real translation in Title/ET)';
-            }
           }
         }
         if ($skip_duplicate) {
           continue;
-        }
-        if ($debug) {
-          watchdog('rpr_line_item_title', implode("\n", $log), array(), WATCHDOG_NOTICE);
         }
         return check_plain($label);
       }
     }
   }
 
-  if ($debug) {
-    $log[] = 'fallback: check_plain(product->title)';
-    watchdog('rpr_line_item_title', implode("\n", $log), array(), WATCHDOG_NOTICE);
-  }
   return check_plain($product->title);
 }
 
