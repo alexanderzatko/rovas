@@ -1268,7 +1268,13 @@ function rovas_project_reward_commerce_line_item_type_info_alter(&$line_item_typ
 }
 
 /**
- * Product line item title: label in the current content (or interface) language.
+ * Product line item title: label in the language the shopper is using.
+ *
+ * Prefer the interface language ($language) over content language
+ * ($language_content). On many multilingual sites the default content
+ * language stays English while the UI is switched to Slovak; using content
+ * language first would ask title_entity_label() for English and ignore the
+ * Slovak product translation.
  *
  * @param object $line_item
  *   A commerce_line_item entity.
@@ -1283,18 +1289,21 @@ function rovas_project_reward_commerce_product_line_item_translated_title($line_
     return '';
   }
 
-  $langcode = NULL;
-  if (!empty($GLOBALS['language_content']->language)) {
-    $langcode = $GLOBALS['language_content']->language;
+  $langcodes = array();
+  if (!empty($GLOBALS['language']->language)) {
+    $langcodes[] = $GLOBALS['language']->language;
   }
-  elseif (!empty($GLOBALS['language']->language)) {
-    $langcode = $GLOBALS['language']->language;
+  if (!empty($GLOBALS['language_content']->language) && !in_array($GLOBALS['language_content']->language, $langcodes, TRUE)) {
+    $langcodes[] = $GLOBALS['language_content']->language;
   }
+  $langcodes[] = NULL;
 
   if (function_exists('title_entity_label')) {
-    $label = title_entity_label($product, 'commerce_product', $langcode);
-    if ($label !== NULL && $label !== '') {
-      return check_plain($label);
+    foreach ($langcodes as $langcode) {
+      $label = title_entity_label($product, 'commerce_product', $langcode);
+      if ($label !== NULL && $label !== '') {
+        return check_plain($label);
+      }
     }
   }
 
