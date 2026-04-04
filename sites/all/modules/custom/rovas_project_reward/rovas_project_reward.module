@@ -1262,7 +1262,13 @@ function rpr_create_commerce_order($uid, $paid_amt, $paytype, $pid, $email = NUL
  * @see commerce_product_line_item_title()
  */
 function rovas_project_reward_commerce_line_item_type_info_alter(&$line_item_types) {
-  if (isset($line_item_types['product']['callbacks']['title'])) {
+  // Default callbacks are merged AFTER this alter (see commerce_line_item_types()).
+  // The product line item type does not define callbacks['title'] yet, so we must
+  // set our title callback here unconditionally — checking isset(title) never worked.
+  if (!empty($line_item_types['product'])) {
+    if (!isset($line_item_types['product']['callbacks'])) {
+      $line_item_types['product']['callbacks'] = array();
+    }
     $line_item_types['product']['callbacks']['title'] = 'rovas_project_reward_commerce_product_line_item_translated_title';
   }
 }
