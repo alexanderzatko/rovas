@@ -313,6 +313,7 @@ function rovas_api_endpoints_partner_user_create($data) {
     $account->status = 1;
     $account->timezone = date_default_timezone_get();
     $account->language = $mapped_language;
+    require_once DRUPAL_ROOT . '/' . variable_get('password_inc', 'includes/password.inc');
     $account->pass = user_hash_password(user_password(32));
 
     $edit = array(
