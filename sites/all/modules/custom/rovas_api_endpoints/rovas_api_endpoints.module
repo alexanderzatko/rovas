@@ -325,8 +325,6 @@ function rovas_api_endpoints_partner_user_create($data) {
       return services_error(t('Could not create user account.'), 500);
     }
 
-    user_unblock($user_created);
-
     $rovas_uid = (int) $user_created->uid;
 
     services_auth_apikeys_rules_action_generate_token_api_key($rovas_uid, $service_endpoint);
