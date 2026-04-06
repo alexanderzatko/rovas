@@ -1049,23 +1049,12 @@ paths:
       - custom
       summary: List HybridAuth providers for account linking
       description: |
-        Returns provider machine names enabled in HybridAuth—the same values allowed as
-        `hybridauth_provider` in `rules_create_user`. If **Disable API keys authentication**
-        is enabled for this resource operation under Services → `rovas_endpoint` → Resources,
-        omit `API-KEY` and `TOKEN`; otherwise send them like other `rovas_endpoint` calls.
+        Public endpoint: no `API-KEY` or `TOKEN` headers. Returns provider machine names
+        enabled in HybridAuth—the same values allowed as `hybridauth_provider` in
+        `rules_create_user`. The Services endpoint must have **Disable API keys authentication**
+        enabled for this resource operation (`rovas_endpoint` → Resources →
+        `rovas_hybridauth_providers` → index).
       parameters:
-      - in: header
-        name: API-KEY
-        schema:
-          type: string
-        required: false
-        description: Required unless API key authentication is disabled for this operation in Services.
-      - in: header
-        name: TOKEN
-        schema:
-          type: string
-        required: false
-        description: Required unless API key authentication is disabled for this operation in Services.
       - in: header
         name: Accept
         schema:
@@ -1084,8 +1073,6 @@ paths:
                 providers:
                 - id: Nabezky
                   name: Nabezky
-        '401':
-          description: API keys required for this operation but missing or invalid.
 components:
   schemas:
     NewProject:
