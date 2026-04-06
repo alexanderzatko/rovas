@@ -7,7 +7,43 @@
  * in rovas_site_rules.rules_defaults.inc. Rule definitions are stored as JSON
  * in the rules/ subdirectory.
  *
+ * Third-party account creation via Services is documented in README.txt
+ * (rules_create_user, api client role, response fields).
+ *
  * Batch migration callbacks live in rovas_site_rules.migration.inc; the Batch
  * API 'file' key loads that include on progressive batch requests (see
  * rovas_site_rules_migration_run_batch()).
  */
+
+/**
+ * Returns HybridAuth provider machine names that are enabled on this site.
+ *
+ * Uses hybridauth_get_enabled_providers() (HybridAuth admin configuration,
+ * stored in the {variable} table and provider definitions). Modules may alter
+ * the list via hook_rovas_site_rules_hybridauth_providers_alter().
+ *
+ * @return array
+ *   Provider ids, e.g. Nabezky, Facebook.
+ */
+function rovas_site_rules_allowed_hybridauth_providers() {
+  $allowed = array();
+  if (module_exists('hybridauth') && function_exists('hybridauth_get_enabled_providers')) {
+    $allowed = array_keys(hybridauth_get_enabled_providers());
+  }
+  return $allowed;
+}
+
+/**
+ * TRUE if the provider id is enabled in HybridAuth (rules_create_user validation).
+ *
+ * @param string $provider
+ *   Provider machine name (e.g. Nabezky).
+ *
+ * @return bool
+ */
+function rovas_site_rules_hybridauth_provider_is_allowed($provider) {
+  if ($provider === '' || $provider === NULL) {
+    return FALSE;
+  }
+  return in_array($provider, rovas_site_rules_allowed_hybridauth_providers(), TRUE);
+}

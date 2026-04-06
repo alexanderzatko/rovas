@@ -76,3 +76,88 @@ After a code deploy to the server
 
   Option 3 — raise the limit permanently in php.ini (CLI section):
     xdebug.max_nesting_level = 1000
+
+
+Third-party app: creating Rovas accounts (rules_create_user)
+----------------------------------------------------------
+This flow is for integrators whose *backend* calls the Rovas Services REST API
+with API credentials. End users do not call Rovas anonymously for signup.
+
+Trust model
+  - A Rovas administrator assigns the **api client** role to a dedicated Rovas
+    user account used by the partner (automation / “app admin”), not to every
+    end user.
+  - That user opens their Rovas profile, **Rovas API** tab, and generates
+    **API key** and **TOKEN** for the `rovas_endpoint` endpoint (see
+    services_auth_apikeys).
+  - The partner backend stores these secrets and sends them on each request:
+    HTTP headers `API-KEY` and `TOKEN` (as configured for the endpoint).
+
+Permission
+  - The Services Rules bridge exposes Rules components as
+    `POST /rovas/rules/{rule_name}` (path prefix `rovas` is the endpoint path).
+  - Calling `rules_create_user` requires permission
+    **access services_rules rules_create_user**, which is granted to the
+    **api client** and **administrator** roles (verify under
+    People > Permissions). The api client role is the intended choice for
+    partner technical accounts.
+
+HTTP request (conceptual)
+  - Method: POST to the Services action for rule `rules_create_user`.
+  - Headers: `API-KEY`, `TOKEN` (and `Content-Type` / `Accept` as required by
+    your client).
+  - Body: JSON with parameters matching the rule variables (see below).
+
+Rule parameters (JSON keys map to Rules variable names)
+  - **user_name** — Display name for the new Rovas user.
+  - **user_id** — External user id at the partner (stored as HybridAuth
+    provider_identifier; integer).
+  - **user_email** — Email; used to find an existing Rovas account by mail.
+  - **user_country** — Country reference as elsewhere on the site.
+  - **user_language** — Language code; rule maps sk/cs to sk, default en.
+  - **server_url** — Partner base URL; used to build profileURL for HybridAuth
+    data (e.g. `https://partner.example/`).
+  - **hybridauth_provider** — Optional. HybridAuth *provider* machine name
+    (e.g. `Nabezky`). If omitted or empty, **Nabezky** is used for backward
+    compatibility. The value must be **enabled** in HybridAuth (Administration
+    > HybridAuth, or the `hybridauth_providers` variable). Validation uses
+    `hybridauth_get_enabled_providers()` in code (`rovas_site_rules_hybridauth_provider_is_allowed()`).
+    To allow a provider for API linking, enable it in HybridAuth first; optional
+    `hook_rovas_site_rules_hybridauth_providers_alter()` can narrow the list.
+  - **partner_client_id** — Optional arbitrary string stored under
+    `$user->data['rovas_partner_client_id']` for your bookkeeping.
+
+Response (provided variables returned to the client)
+  - **rovas_uid** — Rovas user id.
+  - **api_key** — `rovas_endpoint` API key for that user (after user_insert
+    handling and key generation).
+  - **token** — Matching token for `rovas_endpoint`.
+
+New account vs existing email
+  - If no user exists with the given **user_email**, a new account is created,
+    HybridAuth identity is inserted for **hybridauth_provider** + external
+    **user_id**, **rules_registered_user_populator** runs on user_insert
+    (roles, system project, API keys, etc.), and **component_rules_send_welcome_email**
+    sends the welcome mail (same as before).
+  - If a user **already exists** with that email, the rule sets **rovas_uid** to
+    that account, ensures API keys exist, links HybridAuth identity if missing
+    for this provider, and returns the same **api_key** / **token** fields.
+    No second welcome email is sent for the duplicate-email path unless you
+    add separate logic (not part of this rule).
+
+Email verification
+  - Site-wide **user_email_verification** and registration settings still apply
+    to *other* registration paths. This rule creates users via entity API and
+    unblocks them; confirm your product expectations against Drupal
+    user settings and any custom validation.
+
+After deploy
+  - Run `drush updatedb` (or update.php); `7002` removes the obsolete
+    `rovas_site_rules_hybridauth_providers` variable (allowed providers now
+    follow HybridAuth configuration).
+  - Re-import the updated rule from JSON (migration script in this README) so
+    the database copy matches `rules/rules_create_user.json`.
+
+Public documentation
+  - Keep external docs (e.g. NeoFund Rovas API pages) aligned with the
+    parameters and headers above; they are not stored automatically in the DB.

@@ -4,6 +4,7 @@ core = 7.x
 package = Rovas
 
 dependencies[] = entity
+dependencies[] = hybridauth
 dependencies[] = rules
 dependencies[] = commerce
 dependencies[] = commerce_payment

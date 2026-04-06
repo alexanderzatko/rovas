@@ -6,11 +6,13 @@
     "REQUIRES" : [ "rules", "rules_conditional", "services_auth_apikeys", "php" ],
     "USES VARIABLES" : {
       "user_name" : { "label" : "user name", "type" : "text" },
-      "user_id" : { "label" : "user ID", "type" : "integer" },
+      "user_id" : { "label" : "External user ID (per provider)", "type" : "integer" },
       "user_email" : { "label" : "user email", "type" : "text" },
       "user_country" : { "label" : "user country", "type" : "text" },
       "user_language" : { "label" : "user language", "type" : "text" },
-      "server_url" : { "label" : "server url", "type" : "text" },
+      "server_url" : { "label" : "Partner base URL (for profile link)", "type" : "text" },
+      "hybridauth_provider" : { "label" : "HybridAuth provider id", "type" : "text", "allow null" : true },
+      "partner_client_id" : { "label" : "Partner client id (optional metadata)", "type" : "text", "allow null" : true },
       "rovas_uid" : { "label" : "rovas uid", "type" : "integer", "parameter" : false },
       "api_key" : { "label" : "api key", "type" : "text", "parameter" : false },
       "token" : { "label" : "token", "type" : "text", "parameter" : false }
@@ -21,11 +23,29 @@
           "PROVIDE" : { "variable_added" : { "service_endpoint" : "service endpoint" } }
         }
       },
-      { "variable_add" : {
-          "USING" : { "type" : "text", "value" : "Nabezky" },
-          "PROVIDE" : { "variable_added" : { "provider" : "provider" } }
-        }
+      { "CONDITIONAL" : [
+          {
+            "IF" : { "data_is_empty" : { "data" : [ "hybridauth-provider" ] } },
+            "DO" : [
+              { "variable_add" : {
+                  "USING" : { "type" : "text", "value" : "Nabezky" },
+                  "PROVIDE" : { "variable_added" : { "provider" : "provider" } }
+                }
+              }
+            ]
+          },
+          {
+            "ELSE" : [
+              { "variable_add" : {
+                  "USING" : { "type" : "text", "value" : [ "hybridauth-provider" ] },
+                  "PROVIDE" : { "variable_added" : { "provider" : "provider" } }
+                }
+              }
+            ]
+          }
+        ]
       },
+      { "php_eval" : { "code" : "if (!rovas_site_rules_hybridauth_provider_is_allowed($provider)) {\r\n  watchdog(\u0027rovas_site_rules\u0027, \u0027rules_create_user: HybridAuth provider @p is not enabled on this site\u0027, array(\u0027@p\u0027 =\u003E $provider));\r\n  throw new RulesEvaluationException(t(\u0027Invalid HybridAuth provider for account linking.\u0027));\r\n}" } },
       { "entity_query" : {
           "USING" : {
             "type" : "user",
@@ -88,14 +108,14 @@
                   }
                 }
               },
-              { "php_eval" : { "code" : "\/\/add \u0022nabezky\u0022 hybridauth provider to the Rovas user\u0027s account. This will allow a nabezky user to log into Rovas with nabezky credentials\r\n\r\n$dataarray = array (\r\n\t\u0027identifier\u0027 =\u003E $user_id,\r\n\t\u0027username\u0027 =\u003E $user_name,\r\n\t\u0027photoURL\u0027 =\u003E \u0027\u0027,\r\n\t\u0027emailVerified\u0027 =\u003E $user_email,\r\n\t\u0027email\u0027 =\u003E $user_email,\r\n\t\u0027language\u0027 =\u003E $user_language,\r\n\t\u0027profileURL\u0027 =\u003E $server_url . \u0027user\/\u0027 . $user_id,\r\n\t\u0027provider\u0027 =\u003E $provider,\r\n);\r\n\r\n$data = serialize($dataarray);\r\n\r\n$record = db_insert(\u0027hybridauth_identity\u0027)\r\n-\u003Efields(array(\r\n  \u0027uid\u0027 =\u003E $rovas_uid,\r\n  \u0027provider\u0027 =\u003E $provider,\r\n  \u0027provider_identifier\u0027 =\u003E $user_id,\r\n  \u0027data\u0027 =\u003E $data,\r\n))\r\n-\u003Eexecute();\r\n\r\n$data = $user_created-\u003Edata;\r\nif (!isset($data[\u0027hybridauth\u0027])) {\r\n$edit[\u0027data\u0027] = array(\u0027hybridauth\u0027 =\u003E $dataarray);\r\nuser_save($user_created,$edit);\r\n}" } },
+              { "php_eval" : { "code" : "\/\/ Link HybridAuth identity; optional partner_client_id in user-\u003Edata.\r\n\r\n$dataarray = array (\r\n\t\u0027identifier\u0027 =\u003E $user_id,\r\n\t\u0027username\u0027 =\u003E $user_name,\r\n\t\u0027photoURL\u0027 =\u003E \u0027\u0027,\r\n\t\u0027emailVerified\u0027 =\u003E $user_email,\r\n\t\u0027email\u0027 =\u003E $user_email,\r\n\t\u0027language\u0027 =\u003E $user_language,\r\n\t\u0027profileURL\u0027 =\u003E $server_url . \u0027user\/\u0027 . $user_id,\r\n\t\u0027provider\u0027 =\u003E $provider,\r\n);\r\n\r\n$data_serialized = serialize($dataarray);\r\n\r\ndb_insert(\u0027hybridauth_identity\u0027)\r\n-\u003Efields(array(\r\n  \u0027uid\u0027 =\u003E $rovas_uid,\r\n  \u0027provider\u0027 =\u003E $provider,\r\n  \u0027provider_identifier\u0027 =\u003E $user_id,\r\n  \u0027data\u0027 =\u003E $data_serialized,\r\n))\r\n-\u003Eexecute();\r\n\r\n$data = is_array($user_created-\u003Edata) ? $user_created-\u003Edata : array();\r\nif (!isset($data[\u0027hybridauth\u0027])) {\r\n  $data[\u0027hybridauth\u0027] = $dataarray;\r\n}\r\nif (!empty($partner_client_id)) {\r\n  $data[\u0027rovas_partner_client_id\u0027] = $partner_client_id;\r\n}\r\nuser_save($user_created, array(\u0027data\u0027 =\u003E $data));\r\n" } },
               { "component_rules_send_welcome_email" : { "user_object" : [ "user-created" ] } }
             ]
           },
           { "ELSE" : [
               { "data_set" : { "data" : [ "rovas-uid" ], "value" : [ "existing-user:0:uid" ] } },
               { "component_rules_retrieve_user_s_api_key_and_token" : {
-                  "USING" : { "uid" : [ "user-id" ], "service_endpoint" : [ "service-endpoint" ] },
+                  "USING" : { "uid" : [ "rovas-uid" ], "service_endpoint" : [ "service-endpoint" ] },
                   "PROVIDE" : {
                     "api_key" : { "check_api_key" : "check api key" },
                     "token" : { "check_token" : "check token" }
@@ -130,7 +150,7 @@
                   {
                     "IF" : { "php_eval" : { "code" : "$result = db_query(\u0022SELECT provider FROM {hybridauth_identity} WHERE uid = :uid AND provider = :provider\u0022,array(\u0027:uid\u0027 =\u003E $user_object-\u003Euid,\u0027:provider\u0027 =\u003E $provider));\r\n\r\n$record = $result-\u003EfetchAssoc();\r\nreturn empty($record);" } },
                     "DO" : [
-                      { "php_eval" : { "code" : "$dataarray = array (\r\n\t\u0027identifier\u0027 =\u003E $user_id,\r\n\t\u0027username\u0027 =\u003E $user_name,\r\n\t\u0027photoURL\u0027 =\u003E \u0027\u0027,\r\n\t\u0027emailVerified\u0027 =\u003E $user_email,\r\n\t\u0027email\u0027 =\u003E $user_email,\r\n\t\u0027language\u0027 =\u003E $user_language,\r\n\t\u0027profileURL\u0027 =\u003E $server_url . \u0027user\/\u0027 . $user_id,\r\n\t\u0027provider\u0027 =\u003E $provider,\r\n);\r\n\r\n$data = serialize($dataarray);\r\n\r\n$record = db_insert(\u0027hybridauth_identity\u0027)\r\n-\u003Efields(array(\r\n  \u0027uid\u0027 =\u003E $rovas_uid,\r\n  \u0027provider\u0027 =\u003E $provider,\r\n  \u0027provider_identifier\u0027 =\u003E $user_id,\r\n  \u0027data\u0027 =\u003E $data,\r\n))\r\n-\u003Eexecute();" } }
+                      { "php_eval" : { "code" : "$dataarray = array (\r\n\t\u0027identifier\u0027 =\u003E $user_id,\r\n\t\u0027username\u0027 =\u003E $user_name,\r\n\t\u0027photoURL\u0027 =\u003E \u0027\u0027,\r\n\t\u0027emailVerified\u0027 =\u003E $user_email,\r\n\t\u0027email\u0027 =\u003E $user_email,\r\n\t\u0027language\u0027 =\u003E $user_language,\r\n\t\u0027profileURL\u0027 =\u003E $server_url . \u0027user\/\u0027 . $user_id,\r\n\t\u0027provider\u0027 =\u003E $provider,\r\n);\r\n\r\n$data = serialize($dataarray);\r\n\r\n$record = db_insert(\u0027hybridauth_identity\u0027)\r\n-\u003Efields(array(\r\n  \u0027uid\u0027 =\u003E $rovas_uid,\r\n  \u0027provider\u0027 =\u003E $provider,\r\n  \u0027provider_identifier\u0027 =\u003E $user_id,\r\n  \u0027data\u0027 =\u003E $data,\r\n))\r\n-\u003Eexecute();\r\nif (!empty($partner_client_id)) {\r\n  $ud = is_array($user_object-\u003Edata) ? $user_object-\u003Edata : array();\r\n  $ud[\u0027rovas_partner_client_id\u0027] = $partner_client_id;\r\n  user_save($user_object, array(\u0027data\u0027 =\u003E $ud));\r\n}" } }
                     ]
                   }
                 ]
