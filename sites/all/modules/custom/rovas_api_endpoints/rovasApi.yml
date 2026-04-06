@@ -310,6 +310,59 @@ paths:
           description: Missing or invalid API credentials.
         '403':
           description: Caller lacks permission to invoke this rule.
+  /rovas/rovas_partner_user:
+    post:
+      tags:
+      - rovas
+      summary: Create or link a Rovas user (partner API, replaces rules_create_user)
+      description: |
+        Same purpose as `POST /rovas/rules/rules_create_user`, implemented as a native Services resource
+        for stricter validation and easier evolution. Requires permission
+        `access services_rules rules_create_user` and the same API client headers as other `rovas_endpoint` calls.
+        **user_country** must be two **uppercase** ASCII letters (ISO 3166-1 alpha-2) and must exist in the
+        site country list. **user_language** is normalized to an **enabled** Drupal interface language
+        (`rovas_base_map_partner_user_language`). Request body schema matches **RulesCreateUserRequest**.
+      parameters:
+      - in: header
+        name: API-KEY
+        description: API key for `rovas_endpoint` (api client technical account).
+        schema:
+          type: string
+        required: true
+      - in: header
+        name: TOKEN
+        description: Token for `rovas_endpoint` (api client technical account).
+        schema:
+          type: string
+        required: true
+      requestBody:
+        description: Same fields as rules_create_user (see RulesCreateUserRequest).
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RulesCreateUserRequest'
+          application/xml:
+            schema:
+              $ref: '#/components/schemas/RulesCreateUserRequest'
+        required: true
+      responses:
+        '200':
+          description: Rovas user id and `rovas_endpoint` API credentials for that user.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RulesCreateUserResponse'
+            application/xml:
+              schema:
+                $ref: '#/components/schemas/RulesCreateUserResponse'
+        '400':
+          description: Validation error (country code, language, URL, email, provider, etc.).
+        '401':
+          description: Missing or invalid API credentials.
+        '403':
+          description: Caller lacks permission.
+        '500':
+          description: Server or registration failure.
   /rovas/rules/rules_create_verification:
     post:
       tags:
@@ -2841,7 +2894,9 @@ components:
           description: Used to find an existing Rovas account by mail.
         user_country:
           type: string
-          description: Country reference as used elsewhere on the site.
+          description: |
+            ISO 3166-1 alpha-2 code (e.g. SK). The `rovas_partner_user` endpoint requires **uppercase**
+            ASCII letters only; the legacy Rules endpoint did not enforce casing.
         user_language:
           type: string
           description: Language code; rule maps sk/cs to sk, default en.

@@ -8,5 +8,8 @@ dependencies[] = services_auth_apikeys
 dependencies[] = rovas_site_rules
 dependencies[] = rovas_verify
 dependencies[] = rules
+dependencies[] = rovas_base
+dependencies[] = countries
+dependencies[] = hybridauth
 
 files[] = rovas_api_endpoints.module

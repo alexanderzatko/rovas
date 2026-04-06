@@ -16,6 +16,26 @@
  */
 function rovas_api_endpoints_services_resources() {
   return array(
+    'rovas_partner_user' => array(
+      'operations' => array(
+        'create' => array(
+          'help' => 'Create or link a Rovas user for partner backends (replaces rules_create_user). Requires access services_rules rules_create_user. Same API client headers as other rovas_endpoint calls.',
+          'callback' => 'rovas_api_endpoints_partner_user_create',
+          'access callback' => 'user_access',
+          'access arguments' => array('access services_rules rules_create_user'),
+          'access arguments append' => FALSE,
+          'args' => array(
+            array(
+              'name' => 'data',
+              'type' => 'array',
+              'description' => 'Partner user payload (user_name, user_id, user_email, user_country, user_language, server_url, optional hybridauth_provider, partner_client_id).',
+              'source' => 'data',
+              'optional' => FALSE,
+            ),
+          ),
+        ),
+      ),
+    ),
     'rovas_verifications' => array(
       'operations' => array(
         'index' => array(
@@ -161,4 +181,216 @@ function rovas_api_endpoints_get_user_verifications($uid) {
   }
   
   return $verifications;
+}
+
+/**
+ * Services callback: create or link a partner user (parity with rules_create_user).
+ *
+ * @param array $data
+ *   POST body: user_name, user_id, user_email, user_country, user_language, server_url,
+ *   optional hybridauth_provider, partner_client_id.
+ *
+ * @return array|object
+ *   rovas_uid, api_key, token; or Services error structure.
+ */
+function rovas_api_endpoints_partner_user_create($data) {
+  if (!is_array($data)) {
+    return services_error(t('Request body must be a JSON object.'), 400);
+  }
+
+  $required = array('user_name', 'user_id', 'user_email', 'user_country', 'user_language', 'server_url');
+  foreach ($required as $key) {
+    if (!isset($data[$key]) || $data[$key] === '' || $data[$key] === NULL) {
+      return services_error(t('Missing required field: @field.', array('@field' => $key)), 400);
+    }
+  }
+
+  if (!function_exists('rovas_base_validate_iso3166_alpha2_uppercase')) {
+    return services_error(t('Server configuration error.'), 500);
+  }
+
+  $iso2 = rovas_base_validate_iso3166_alpha2_uppercase($data['user_country']);
+  if ($iso2 === FALSE) {
+    return services_error(t('user_country must be a two-letter ISO 3166-1 alpha-2 code using uppercase ASCII letters only (e.g. SK).'), 400);
+  }
+
+  if (!function_exists('country_load') || !country_load($iso2)) {
+    return services_error(t('Unknown or unavailable country code.'), 400);
+  }
+
+  $mapped_language = rovas_base_map_partner_user_language($data['user_language']);
+
+  if (!valid_email_address($data['user_email'])) {
+    return services_error(t('Invalid email address.'), 400);
+  }
+
+  if (!is_numeric($data['user_id']) || (int) $data['user_id'] != $data['user_id']) {
+    return services_error(t('user_id must be an integer.'), 400);
+  }
+  $external_uid = (int) $data['user_id'];
+  if ($external_uid < 0) {
+    return services_error(t('user_id must be non-negative.'), 400);
+  }
+  $provider_identifier = (string) $external_uid;
+  if (drupal_strlen($provider_identifier) > 32) {
+    return services_error(t('user_id is too large for provider storage.'), 400);
+  }
+
+  $server_url = trim($data['server_url']);
+  if (!valid_url($server_url, TRUE)) {
+    return services_error(t('server_url must be a valid absolute URL (http or https).'), 400);
+  }
+  $server_base = rtrim($server_url, '/') . '/';
+
+  $provider = isset($data['hybridauth_provider']) && drupal_strlen(trim($data['hybridauth_provider'])) > 0
+    ? trim($data['hybridauth_provider'])
+    : 'Nabezky';
+
+  if (!function_exists('rovas_site_rules_hybridauth_provider_is_allowed') || !rovas_site_rules_hybridauth_provider_is_allowed($provider)) {
+    watchdog('rovas_api_endpoints', 'rovas_partner_user_create: HybridAuth provider @p is not allowed.', array('@p' => $provider), WATCHDOG_WARNING);
+    return services_error(t('Invalid HybridAuth provider for account linking.'), 400);
+  }
+
+  $partner_client_id = isset($data['partner_client_id']) ? trim((string) $data['partner_client_id']) : '';
+  if ($partner_client_id === '') {
+    $partner_client_id = NULL;
+  }
+
+  $user_name = trim($data['user_name']);
+  $user_email = trim($data['user_email']);
+  $user_language_raw = $data['user_language'];
+
+  $service_endpoint = 'rovas_endpoint';
+
+  $existing = user_load_by_mail($user_email);
+
+  try {
+    if ($existing && !empty($existing->uid)) {
+      $rovas_uid = (int) $existing->uid;
+      $keys = services_auth_apikeys_load_by_user($rovas_uid);
+      if ($keys === FALSE || empty($keys[$service_endpoint]) || $keys[$service_endpoint]->api_key === '' || $keys[$service_endpoint]->api_key === NULL) {
+        services_auth_apikeys_rules_action_generate_token_api_key($rovas_uid, $service_endpoint);
+        $keys = services_auth_apikeys_load_by_user($rovas_uid);
+      }
+      $api_key = ($keys !== FALSE && isset($keys[$service_endpoint])) ? $keys[$service_endpoint]->api_key : '';
+      $token = ($keys !== FALSE && isset($keys[$service_endpoint])) ? $keys[$service_endpoint]->token : '';
+
+      $user_object = user_load($rovas_uid);
+      $has_identity = db_query(
+        "SELECT 1 FROM {hybridauth_identity} WHERE uid = :uid AND provider = :provider",
+        array(':uid' => $rovas_uid, ':provider' => $provider)
+      )->fetchField();
+      if (!$has_identity) {
+        rovas_api_endpoints_partner_user_save_hybridauth_identity(
+          $user_object,
+          $provider_identifier,
+          $user_name,
+          $user_email,
+          $user_language_raw,
+          $server_base,
+          $provider,
+          $partner_client_id
+        );
+      }
+      elseif (!empty($partner_client_id)) {
+        $ud = is_array($user_object->data) ? $user_object->data : array();
+        $ud['rovas_partner_client_id'] = $partner_client_id;
+        user_save($user_object, array('data' => $ud));
+      }
+
+      return array(
+        'rovas_uid' => $rovas_uid,
+        'api_key' => $api_key,
+        'token' => $token,
+      );
+    }
+
+    $account = new stdClass();
+    $account->is_new = TRUE;
+    $account->name = $user_name;
+    $account->mail = $user_email;
+    $account->init = $user_email;
+    $account->status = 1;
+    $account->timezone = date_default_timezone_get();
+    $account->language = $mapped_language;
+    $account->pass = user_hash_password(user_password(32));
+
+    $edit = array(
+      'field_country' => array(LANGUAGE_NONE => array(0 => array('iso2' => $iso2))),
+    );
+
+    $user_created = user_save($account, $edit);
+    if (!$user_created || empty($user_created->uid)) {
+      return services_error(t('Could not create user account.'), 500);
+    }
+
+    user_unblock($user_created);
+
+    $rovas_uid = (int) $user_created->uid;
+
+    services_auth_apikeys_rules_action_generate_token_api_key($rovas_uid, $service_endpoint);
+    $keys = services_auth_apikeys_load_by_user($rovas_uid);
+    $api_key = ($keys !== FALSE && isset($keys[$service_endpoint])) ? $keys[$service_endpoint]->api_key : '';
+    $token = ($keys !== FALSE && isset($keys[$service_endpoint])) ? $keys[$service_endpoint]->token : '';
+
+    $user_created = user_load($rovas_uid);
+    rovas_api_endpoints_partner_user_save_hybridauth_identity(
+      $user_created,
+      $provider_identifier,
+      $user_name,
+      $user_email,
+      $user_language_raw,
+      $server_base,
+      $provider,
+      $partner_client_id
+    );
+
+    if (function_exists('rules_invoke_component')) {
+      rules_invoke_component('rules_send_welcome_email', $user_created);
+    }
+
+    return array(
+      'rovas_uid' => $rovas_uid,
+      'api_key' => $api_key,
+      'token' => $token,
+    );
+  }
+  catch (Exception $e) {
+    watchdog('rovas_api_endpoints', 'rovas_partner_user_create: @msg', array('@msg' => $e->getMessage()), WATCHDOG_ERROR);
+    return services_error(t('Unable to complete partner user registration.'), 500);
+  }
+}
+
+/**
+ * Inserts hybridauth_identity and merges HybridAuth data into the user account (rules_create_user parity).
+ */
+function rovas_api_endpoints_partner_user_save_hybridauth_identity($account, $provider_identifier, $user_name, $user_email, $user_language, $server_base, $provider, $partner_client_id) {
+  $dataarray = array(
+    'identifier' => $provider_identifier,
+    'username' => $user_name,
+    'photoURL' => '',
+    'emailVerified' => $user_email,
+    'email' => $user_email,
+    'language' => $user_language,
+    'profileURL' => $server_base . 'user/' . $provider_identifier,
+    'provider' => $provider,
+  );
+
+  db_insert('hybridauth_identity')
+    ->fields(array(
+      'uid' => $account->uid,
+      'provider' => $provider,
+      'provider_identifier' => $provider_identifier,
+      'data' => serialize($dataarray),
+    ))
+    ->execute();
+
+  $ud = is_array($account->data) ? $account->data : array();
+  if (!isset($ud['hybridauth'])) {
+    $ud['hybridauth'] = $dataarray;
+  }
+  if (!empty($partner_client_id)) {
+    $ud['rovas_partner_client_id'] = $partner_client_id;
+  }
+  user_save($account, array('data' => $ud));
 }

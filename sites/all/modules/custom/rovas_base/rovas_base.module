@@ -567,26 +567,108 @@ function _rb_translate_term($tid, $language_code) {
 	return $translated_term;
 }
 
+/**
+ * Validates ISO 3166-1 alpha-2 country code format: exactly two uppercase A–Z letters.
+ *
+ * @param string $code
+ *   Raw value from the client (e.g. partner API). Lowercase or mixed case is rejected.
+ *
+ * @return string|false
+ *   The same two-letter code if valid; FALSE otherwise.
+ */
+function rovas_base_validate_iso3166_alpha2_uppercase($code) {
+  $code = trim((string) $code);
+  if ($code === '' || drupal_strlen($code) !== 2) {
+    return FALSE;
+  }
+  if ($code !== drupal_strtoupper($code)) {
+    return FALSE;
+  }
+  return preg_match('/^[A-Z]{2}$/', $code) ? $code : FALSE;
+}
+
+/**
+ * Maps a partner-supplied language string to a Drupal interface language that is enabled on the site.
+ *
+ * Preserves legacy Rules behavior from rules_create_user: prefixes sk, cs, cz map to Slovak
+ * (then constrained to enabled languages); other inputs use the primary BCP 47 subtag (before -/_),
+ * then fall back to English or the first enabled language when needed.
+ *
+ * @param string $raw
+ *   Value sent as user_language (e.g. "sk", "cs-CZ", "en-US").
+ *
+ * @return string
+ *   A language code present in locale_language_list(), suitable for $account->language.
+ */
+function rovas_base_map_partner_user_language($raw) {
+  $raw = trim((string) $raw);
+  if ($raw === '') {
+    return rovas_base_normalize_to_enabled_language('en');
+  }
+  $lower = drupal_strtolower($raw);
+  if (strpos($lower, 'sk') === 0) {
+    $candidate = 'sk';
+  }
+  elseif (strpos($lower, 'cs') === 0) {
+    $candidate = 'sk';
+  }
+  elseif (strpos($lower, 'cz') === 0) {
+    $candidate = 'sk';
+  }
+  else {
+    $parts = preg_split('/[-_]/', $lower, 2);
+    $primary = $parts[0];
+    $candidate = drupal_strlen($primary) >= 2 ? drupal_substr($primary, 0, 2) : $primary;
+  }
+  return rovas_base_normalize_to_enabled_language($candidate);
+}
+
+/**
+ * Maps a short language code to one of the site’s enabled interface languages.
+ *
+ * @param string $lang_code
+ *   Lowercase language code (e.g. "de", "en", "sk").
+ *
+ * @return string
+ *   An enabled language code, with the same fallback rules as _rovas_base_map_lang_code().
+ */
+function rovas_base_normalize_to_enabled_language($lang_code) {
+  $lang_code = drupal_strtolower(trim((string) $lang_code));
+  if (!function_exists('locale_language_list')) {
+    return 'en';
+  }
+  $enabled_languages = locale_language_list('language', FALSE);
+  $supported_languages = array_keys($enabled_languages);
+
+  $language_mapped = 'en';
+  if ($lang_code == 'sk') {
+    $language_mapped = 'sk';
+  }
+  elseif ($lang_code == 'cz' && !in_array('cz', $supported_languages)) {
+    $language_mapped = 'sk';
+  }
+  elseif ($lang_code != 'sk' && $lang_code != 'cz' && !in_array($lang_code, $supported_languages)) {
+    $language_mapped = 'en';
+  }
+  else {
+    $language_mapped = $lang_code;
+  }
+
+  if (in_array($language_mapped, $supported_languages, TRUE)) {
+    return $language_mapped;
+  }
+  if (in_array('en', $supported_languages, TRUE)) {
+    return 'en';
+  }
+  return !empty($supported_languages) ? reset($supported_languages) : language_default()->language;
+}
+
 //maps a language code to a Rovas-supported language code
 function _rovas_base_map_lang_code($lang_code) {
-    // Get enabled language codes from Drupal
-    $enabled_languages = locale_language_list('language', FALSE);
-    $supported_languages = array_keys($enabled_languages);
-    
-    $language_mapped = 'en';
-    
-    if ($lang_code == 'sk') {
-			$language_mapped = 'sk';
-    }
-    elseif ($lang_code == 'cz' && !in_array('cz', $supported_languages)) {
-			$language_mapped = 'sk';
-    }
-    elseif ($lang_code != 'sk' && $lang_code != 'cz' && !in_array($lang_code, $supported_languages)) {
-			$language_mapped = 'en';
-    }
-    else {
-			$language_mapped = $lang_code;
-    }
-    
-    return $language_mapped;
+  $lang_code = drupal_strtolower(trim((string) $lang_code));
+  if (strpos($lang_code, '-') !== FALSE || strpos($lang_code, '_') !== FALSE) {
+    $parts = preg_split('/[-_]/', $lang_code, 2);
+    $lang_code = drupal_strlen($parts[0]) >= 2 ? drupal_substr($parts[0], 0, 2) : $parts[0];
+  }
+  return rovas_base_normalize_to_enabled_language($lang_code);
 }
