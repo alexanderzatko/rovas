@@ -108,6 +108,25 @@ HTTP request (conceptual)
     your client).
   - Body: JSON with parameters matching the rule variables (see below).
 
+Listing available HybridAuth providers (picker before create_user)
+  - Implemented by the **rovas_api_endpoints** module as Services resource
+    **rovas_hybridauth_providers** (index operation). Returns the same provider
+    ids that `rules_create_user` accepts in **hybridauth_provider** (enabled
+    HybridAuth providers, via `rovas_site_rules_allowed_hybridauth_providers()`).
+  - Method: **GET**. Path: `GET /rovas/rovas_hybridauth_providers` (path prefix
+    `rovas` is the endpoint path; your REST server may append a format suffix).
+  - **Public access (no API keys):** In the Services UI, open the endpoint’s
+    resources list, expand **rovas_hybridauth_providers** > **index**, and enable
+    **Disable API keys authentication** under API keys authentication (example:
+    `admin/structure/services/list/rovas_endpoint/resources`). Then clients may
+    call this URL without `API-KEY` / `TOKEN`. If that checkbox is off, send the
+    same headers as for other `rovas_endpoint` calls.
+  - Response JSON: **status** (`success`) and **providers**, an array of objects
+    with **id** (machine name — use this as **hybridauth_provider**) and **name**
+    (display label for UI).
+  - After deploy: enable the resource on the endpoint (same resources screen:
+    enable **index** for **rovas_hybridauth_providers**).
+
 Rule parameters (JSON keys map to Rules variable names)
   - **user_name** — Display name for the new Rovas user.
   - **user_id** — External user id at the partner (stored as HybridAuth

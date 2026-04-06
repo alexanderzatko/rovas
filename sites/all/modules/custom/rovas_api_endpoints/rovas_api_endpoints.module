@@ -28,16 +28,56 @@ function rovas_api_endpoints_services_resources() {
         ),
       ),
     ),
+    'rovas_hybridauth_providers' => array(
+      'operations' => array(
+        'index' => array(
+          'help' => 'List HybridAuth provider ids enabled for account linking (rules_create_user hybridauth_provider). Same validation as Rovas Site Rules. Call without API keys if this operation has "Disable API keys authentication" enabled for rovas_endpoint (Services admin).',
+          'callback' => 'rovas_api_endpoints_get_hybridauth_providers',
+          'access callback' => 'services_access_menu',
+          'args' => array(),
+        ),
+      ),
+    ),
   );
 }
 
 /**
- * Access callback for rovas verifications endpoint.
+ * Access callback for authenticated Rovas API resources (API key session).
  */
 function rovas_api_endpoints_access_callback($op) {
   // Allow access if user is authenticated
   global $user;
   return !empty($user->uid);
+}
+
+/**
+ * Enabled HybridAuth providers for third-party rules_create_user linking.
+ *
+ * Anonymous-safe when API key auth is disabled for this operation in Services.
+ *
+ * @return array
+ *   Success payload with provider id and display name, or a Services error.
+ */
+function rovas_api_endpoints_get_hybridauth_providers() {
+  if (!function_exists('rovas_site_rules_allowed_hybridauth_providers')) {
+    return services_error(t('Provider listing not available'), 500);
+  }
+
+  $ids = rovas_site_rules_allowed_hybridauth_providers();
+  $providers = array();
+
+  foreach ($ids as $id) {
+    $label = function_exists('hybridauth_get_provider_name') ? hybridauth_get_provider_name($id) : NULL;
+    $providers[] = array(
+      'id' => $id,
+      'name' => $label !== NULL && $label !== '' ? $label : $id,
+    );
+  }
+
+  return array(
+    'status' => 'success',
+    'providers' => $providers,
+  );
 }
 
 /**
