@@ -1248,10 +1248,8 @@ function rpr_create_commerce_order($uid, $paid_amt, $paytype, $pid, $email = NUL
 
     $product_obj = commerce_product_load_by_sku('subs-paymnt');
     $product_nid = $product_obj->product_id;
-    $fp = calculate_forex_transaction_params('eur_to_chr', $paid_amt);
     $quantity = 1;
     $unit_price = $paid_amt * 100;
-    $convfee = $paid_amt * $fp['xfee'] + $fp['fixed_fee'];
     
     $order = commerce_order_new($uid, 'checkout_checkout');
     
@@ -1291,21 +1289,33 @@ function rpr_create_commerce_order($uid, $paid_amt, $paytype, $pid, $email = NUL
 
     if (variable_get('rpr_debug_amount', 0)) {
       $li_price = isset($line_item->commerce_unit_price[LANGUAGE_NONE][0]) ? $line_item->commerce_unit_price[LANGUAGE_NONE][0] : NULL;
+      $li_total = isset($line_item->commerce_total[LANGUAGE_NONE][0]) ? $line_item->commerce_total[LANGUAGE_NONE][0] : NULL;
       watchdog('rpr_amount', 'create_order: order_id=@oid line_item_id=@liid unit_price=@amt @cur', array(
         '@oid' => (int) $order->order_id,
         '@liid' => !empty($line_item->line_item_id) ? (int) $line_item->line_item_id : 0,
         '@amt' => $li_price && isset($li_price['amount']) ? ((int) $li_price['amount'] / 100) : -1,
         '@cur' => $li_price && isset($li_price['currency_code']) ? $li_price['currency_code'] : 'n/a',
       ), WATCHDOG_NOTICE);
+      watchdog('rpr_amount', 'create_order: order_id=@oid line_item_id=@liid line_total=@amt @cur', array(
+        '@oid' => (int) $order->order_id,
+        '@liid' => !empty($line_item->line_item_id) ? (int) $line_item->line_item_id : 0,
+        '@amt' => $li_total && isset($li_total['amount']) ? ((int) $li_total['amount'] / 100) : -1,
+        '@cur' => $li_total && isset($li_total['currency_code']) ? $li_total['currency_code'] : 'n/a',
+      ), WATCHDOG_NOTICE);
     }
         
     // Add the line item to the order
     $order_wrapper = entity_metadata_wrapper('commerce_order', $order);
     $order_wrapper->commerce_line_items[] = $line_item;
-    $order_wrapper->field_conversion_fee = $convfee;
     $order_wrapper->field_payer_type = $paytype == 'wreport' ? 'report' : $paytype;
     $order_wrapper->field_payment_recipient = $pid;
     
+    // Force a correct order total based on line item totals.
+    // Some sites have custom totals logic; this ensures the calculated
+    // commerce_order_total reflects the line items we just added.
+    if (function_exists('commerce_order_calculate_total')) {
+      commerce_order_calculate_total($order);
+    }
     commerce_order_save($order);
     commerce_cart_order_session_save($order->order_id);
 
