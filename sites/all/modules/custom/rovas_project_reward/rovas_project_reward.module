@@ -1310,20 +1310,15 @@ function rpr_create_commerce_order($uid, $paid_amt, $paytype, $pid, $email = NUL
     $order_wrapper->field_payer_type = $paytype == 'wreport' ? 'report' : $paytype;
     $order_wrapper->field_payment_recipient = $pid;
     
-    // Rewpro: enforce order total to match the entered EUR amount.
-    //
-    // In this site, some pricing logic overwrites commerce_order_total base_price
-    // to a fixed value (observed as €20) even when the line item total differs.
-    // Since rewpro is a "pay what you enter" flow, the correct total is the
-    // entered amount in cents.
-    $enforced_total = array(
-      'amount' => (int) round($unit_price),
-      'currency_code' => 'EUR',
-      'data' => array(),
-    );
-    $enforced_total['data'] = commerce_price_component_add($enforced_total, 'base_price', $enforced_total, TRUE);
-    $order_wrapper->commerce_order_total = $enforced_total;
     commerce_order_save($order);
+
+    // Rewpro: enforce order total in DB after save.
+    //
+    // Something in this site's stack overwrites commerce_order_total base_price
+    // to a fixed value (observed as €20) regardless of line items. Since the
+    // rewpro flow is "pay what you enter", we force the stored field value after
+    // save so the checkout review footer and downstream logic use the correct amount.
+    _rovas_project_reward_force_order_total_eur($order->order_id, (int) round($unit_price));
     commerce_cart_order_session_save($order->order_id);
 
     if (variable_get('rpr_debug_amount', 0)) {
@@ -1376,6 +1371,121 @@ function rpr_create_commerce_order($uid, $paid_amt, $paytype, $pid, $email = NUL
     }
     
     return $order;
+}
+
+/**
+ * Force commerce_order_total to the provided EUR amount (in cents).
+ *
+ * Updates both field_data and field_revision rows (und, delta 0).
+ */
+function _rovas_project_reward_force_order_total_eur($order_id, $amount_cents) {
+  $order_id = (int) $order_id;
+  $amount_cents = (int) $amount_cents;
+  if ($order_id <= 0 || $amount_cents < 0) {
+    return;
+  }
+
+  $price = array(
+    'amount' => $amount_cents,
+    'currency_code' => 'EUR',
+    'data' => array(),
+  );
+  $price['data'] = commerce_price_component_add($price, 'base_price', $price, TRUE);
+
+  $fields = array(
+    'commerce_order_total_amount' => $price['amount'],
+    'commerce_order_total_currency_code' => $price['currency_code'],
+    'commerce_order_total_data' => serialize($price['data']),
+  );
+
+  // field_data table.
+  db_update('field_data_commerce_order_total')
+    ->fields($fields)
+    ->condition('entity_type', 'commerce_order')
+    ->condition('bundle', 'commerce_order')
+    ->condition('entity_id', $order_id)
+    ->condition('language', LANGUAGE_NONE)
+    ->condition('delta', 0)
+    ->execute();
+
+  // field_revision table (may have multiple revisions; update all).
+  db_update('field_revision_commerce_order_total')
+    ->fields($fields)
+    ->condition('entity_type', 'commerce_order')
+    ->condition('bundle', 'commerce_order')
+    ->condition('entity_id', $order_id)
+    ->condition('language', LANGUAGE_NONE)
+    ->condition('delta', 0)
+    ->execute();
+}
+
+/**
+ * Implements hook_entity_presave().
+ *
+ * Debug helper: when enabled, logs a backtrace whenever a rewpro order's stored
+ * total appears inconsistent with its line item totals (e.g. forced to €20).
+ */
+function rovas_project_reward_entity_presave($entity, $type) {
+  if (!variable_get('rpr_debug_total_backtrace', 0)) {
+    return;
+  }
+  if ($type !== 'commerce_order' || empty($entity->order_id)) {
+    return;
+  }
+
+  // Only target rewpro-originated orders.
+  $rpr_paytype = isset($entity->data['rpr_paytype']) ? (string) $entity->data['rpr_paytype'] : '';
+  if ($rpr_paytype === '') {
+    return;
+  }
+
+  $order_total_cents = isset($entity->commerce_order_total[LANGUAGE_NONE][0]['amount'])
+    ? (int) $entity->commerce_order_total[LANGUAGE_NONE][0]['amount']
+    : NULL;
+  if ($order_total_cents === NULL) {
+    return;
+  }
+
+  // Sum current line item totals (in cents) for comparison.
+  $line_sum = 0;
+  $li_bits = array();
+  if (!empty($entity->commerce_line_items[LANGUAGE_NONE]) && is_array($entity->commerce_line_items[LANGUAGE_NONE])) {
+    foreach ($entity->commerce_line_items[LANGUAGE_NONE] as $ref) {
+      if (empty($ref['line_item_id'])) {
+        continue;
+      }
+      $li = commerce_line_item_load($ref['line_item_id']);
+      if (!$li) {
+        continue;
+      }
+      $t = isset($li->commerce_total[LANGUAGE_NONE][0]) ? $li->commerce_total[LANGUAGE_NONE][0] : array();
+      $amt = isset($t['amount']) ? (int) $t['amount'] : 0;
+      $cur = isset($t['currency_code']) ? $t['currency_code'] : '';
+      $line_sum += $amt;
+      $li_bits[] = 'li#' . (int) $li->line_item_id . ':' . ($amt / 100) . $cur;
+    }
+  }
+
+  // Log only when inconsistent (or specifically when it's 20.00 EUR).
+  if ($line_sum !== $order_total_cents || $order_total_cents === 2000) {
+    $bt = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 25);
+    $frames = array();
+    foreach ($bt as $f) {
+      $fn = (isset($f['class']) ? $f['class'] . $f['type'] : '') . (isset($f['function']) ? $f['function'] : '');
+      $file = isset($f['file']) ? basename($f['file']) : '';
+      $line = isset($f['line']) ? (int) $f['line'] : 0;
+      $frames[] = $fn . ($file ? ('@' . $file . ':' . $line) : '');
+    }
+
+    watchdog('rpr_amount', 'presave_backtrace: order_id=@oid rpr=@rpr order_total=@ot line_sum=@ls line_items=@li stack=@stack', array(
+      '@oid' => (int) $entity->order_id,
+      '@rpr' => $rpr_paytype,
+      '@ot' => $order_total_cents / 100,
+      '@ls' => $line_sum / 100,
+      '@li' => $li_bits ? implode(', ', $li_bits) : '[none]',
+      '@stack' => implode(' <- ', $frames),
+    ), WATCHDOG_WARNING);
+  }
 }
 
 /**
