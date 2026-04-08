@@ -1235,7 +1235,13 @@ function rpr_create_commerce_order($uid, $paid_amt, $paytype, $pid, $email = NUL
     $line_item_wrapper = entity_metadata_wrapper('commerce_line_item', $line_item);
     $line_item_wrapper->commerce_unit_price->amount->set($unit_price);
     $line_item_wrapper->commerce_unit_price->currency_code->set('EUR');
-    commerce_line_item_rebase_unit_price($line_item);
+    // IMPORTANT: Do not call commerce_line_item_rebase_unit_price() here.
+    // Rebase recomputes unit price from the product's pricing rules/default price
+    // (e.g. €20) and would overwrite the custom amount entered on /rewpro.
+    // Refresh totals from the custom unit price instead.
+    if (function_exists('commerce_line_item_refresh')) {
+      commerce_line_item_refresh($line_item);
+    }
     commerce_line_item_save($line_item);
         
     // Add the line item to the order
