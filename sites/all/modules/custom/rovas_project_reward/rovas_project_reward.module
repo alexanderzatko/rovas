@@ -924,29 +924,13 @@ function rovas_project_reward_form_validate($form, &$form_state) {
   global $user;
 
   // Get necessary values
-  // Payment field is nested under payment_wrapper; depending on #tree behavior
-  // it can appear either at top-level or under payment_wrapper.
-  $paid_amt = isset($form_state['values']['payment'])
-    ? $form_state['values']['payment']
-    : (isset($form_state['values']['payment_wrapper']['payment']) ? $form_state['values']['payment_wrapper']['payment'] : '');
-  $pprice = isset($form_state['values']['pprice'])
-    ? $form_state['values']['pprice']
-    : (isset($form_state['values']['payment_wrapper']['pprice']) ? $form_state['values']['payment_wrapper']['pprice'] : 0);
+  $paid_amt = isset($form_state['values']['payment']) ? $form_state['values']['payment'] : '';
+  $pprice = isset($form_state['values']['pprice']) ? $form_state['values']['pprice'] : 0;
   $pid = $form_state['values']['recipient'];
   $paytype = $form_state['values']['paytype'];
   $currency = isset($form_state['values']['payment-currency']) ? $form_state['values']['payment-currency'] : 'CHR';
   
 	$callbackurl = isset($form_state['rovas_session_data']['callbackurl']) ? $form_state['rovas_session_data']['callbackurl'] : NULL;
-
-  if (variable_get('rpr_debug_amount', 0)) {
-    watchdog('rpr_amount', 'validate: uid=@uid currency=@cur paid_amt_raw=@paid pprice=@pprice values_keys=@keys', array(
-      '@uid' => (int) $user->uid,
-      '@cur' => (string) $currency,
-      '@paid' => is_scalar($paid_amt) ? (string) $paid_amt : '[non-scalar]',
-      '@pprice' => is_scalar($pprice) ? (string) $pprice : '[non-scalar]',
-      '@keys' => implode(',', array_keys($form_state['values'])),
-    ), WATCHDOG_NOTICE);
-  }
 
   // Validate payment amount
   if ($paid_amt <= 0) {
@@ -1005,12 +989,8 @@ function rovas_project_reward_form_submit($form, &$form_state) {
   $values = $form_state['values'];
   $pid = $values['recipient'];
   $paytype = $values['paytype'];
-  $paid_amt = isset($values['payment'])
-    ? $values['payment']
-    : (isset($values['payment_wrapper']['payment']) ? $values['payment_wrapper']['payment'] : '');
-  $pprice = isset($values['pprice'])
-    ? $values['pprice']
-    : (isset($values['payment_wrapper']['pprice']) ? $values['payment_wrapper']['pprice'] : 0);
+  $paid_amt = isset($values['payment']) ? $values['payment'] : '';
+  $pprice = isset($values['pprice']) ? $values['pprice'] : 0;
   $currency = isset($values['payment-currency']) ? $values['payment-currency'] : 'CHR';
   $email = isset($values['email']) ? $values['email'] : '';
   $uid = $user->uid;
@@ -1018,18 +998,6 @@ function rovas_project_reward_form_submit($form, &$form_state) {
   // Get session data
   $sessary = rovas_project_reward_session_get('rovas_project_reward', array());
   $callbackurl = isset($sessary['callbackurl']) ? $sessary['callbackurl'] : '';
-
-  if (variable_get('rpr_debug_amount', 0)) {
-    $clicked = isset($form_state['clicked_button']['#attributes']['id'][0]) ? $form_state['clicked_button']['#attributes']['id'][0] : '';
-    watchdog('rpr_amount', 'submit: uid=@uid currency=@cur paid_amt_raw=@paid pprice=@pprice clicked=@clicked sess_callback=@cb', array(
-      '@uid' => (int) $uid,
-      '@cur' => (string) $currency,
-      '@paid' => is_scalar($paid_amt) ? (string) $paid_amt : '[non-scalar]',
-      '@pprice' => is_scalar($pprice) ? (string) $pprice : '[non-scalar]',
-      '@clicked' => (string) $clicked,
-      '@cb' => $callbackurl ? '[set]' : '[empty]',
-    ), WATCHDOG_NOTICE);
-  }
   
   // Process EUR payment
   if ($currency === 'EUR') {
@@ -1233,23 +1201,12 @@ function rpr_create_commerce_order($uid, $paid_amt, $paytype, $pid, $email = NUL
 
     watchdog('rpr', 'creating order for user with uid ' . $uid);
 
-    // Normalize user-entered payment amount.
-    $paid_amt = is_numeric($paid_amt) ? (float) $paid_amt : 0.0;
-    if ($paid_amt < 0) {
-      $paid_amt = 0.0;
-    }
-
-    if (variable_get('rpr_debug_amount', 0)) {
-      watchdog('rpr_amount', 'create_order: uid=@uid paid_amt_norm=@paid', array(
-        '@uid' => (int) $uid,
-        '@paid' => number_format((float) $paid_amt, 2, '.', ''),
-      ), WATCHDOG_NOTICE);
-    }
-
     $product_obj = commerce_product_load_by_sku('subs-paymnt');
     $product_nid = $product_obj->product_id;
+    $fp = calculate_forex_transaction_params('eur_to_chr', $paid_amt);
     $quantity = 1;
     $unit_price = $paid_amt * 100;
+    $convfee = $paid_amt * $fp['xfee'] + $fp['fixed_fee'];
     
     $order = commerce_order_new($uid, 'checkout_checkout');
     
@@ -1278,272 +1235,20 @@ function rpr_create_commerce_order($uid, $paid_amt, $paytype, $pid, $email = NUL
     $line_item_wrapper = entity_metadata_wrapper('commerce_line_item', $line_item);
     $line_item_wrapper->commerce_unit_price->amount->set($unit_price);
     $line_item_wrapper->commerce_unit_price->currency_code->set('EUR');
-    // Persist the entered price so Commerce cart refresh does not re-price this
-    // line item back to the product's default price (e.g. €20).
-    if (!isset($line_item->data) || !is_array($line_item->data)) {
-      $line_item->data = array();
-    }
-    $line_item->data['rpr_custom_unit_price'] = (int) round($unit_price);
-    $line_item->data['rpr_custom_currency'] = 'EUR';
-    // IMPORTANT: Do not call commerce_line_item_rebase_unit_price() here.
-    // Rebase recomputes unit price from the product's pricing rules/default price
-    // (e.g. €20) and would overwrite the custom amount entered on /rewpro.
-    // Refresh totals from the custom unit price instead.
-    if (function_exists('commerce_line_item_refresh')) {
-      commerce_line_item_refresh($line_item);
-    }
+    commerce_line_item_rebase_unit_price($line_item);
     commerce_line_item_save($line_item);
-
-    if (variable_get('rpr_debug_amount', 0)) {
-      $li_price = isset($line_item->commerce_unit_price[LANGUAGE_NONE][0]) ? $line_item->commerce_unit_price[LANGUAGE_NONE][0] : NULL;
-      $li_total = isset($line_item->commerce_total[LANGUAGE_NONE][0]) ? $line_item->commerce_total[LANGUAGE_NONE][0] : NULL;
-      watchdog('rpr_amount', 'create_order: order_id=@oid line_item_id=@liid unit_price=@amt @cur', array(
-        '@oid' => (int) $order->order_id,
-        '@liid' => !empty($line_item->line_item_id) ? (int) $line_item->line_item_id : 0,
-        '@amt' => $li_price && isset($li_price['amount']) ? ((int) $li_price['amount'] / 100) : -1,
-        '@cur' => $li_price && isset($li_price['currency_code']) ? $li_price['currency_code'] : 'n/a',
-      ), WATCHDOG_NOTICE);
-      watchdog('rpr_amount', 'create_order: order_id=@oid line_item_id=@liid line_total=@amt @cur', array(
-        '@oid' => (int) $order->order_id,
-        '@liid' => !empty($line_item->line_item_id) ? (int) $line_item->line_item_id : 0,
-        '@amt' => $li_total && isset($li_total['amount']) ? ((int) $li_total['amount'] / 100) : -1,
-        '@cur' => $li_total && isset($li_total['currency_code']) ? $li_total['currency_code'] : 'n/a',
-      ), WATCHDOG_NOTICE);
-    }
         
     // Add the line item to the order
     $order_wrapper = entity_metadata_wrapper('commerce_order', $order);
     $order_wrapper->commerce_line_items[] = $line_item;
+    $order_wrapper->field_conversion_fee = $convfee;
     $order_wrapper->field_payer_type = $paytype == 'wreport' ? 'report' : $paytype;
     $order_wrapper->field_payment_recipient = $pid;
     
     commerce_order_save($order);
-
-    // Rewpro: enforce order total in DB after save.
-    //
-    // Something in this site's stack overwrites commerce_order_total base_price
-    // to a fixed value (observed as €20) regardless of line items. Since the
-    // rewpro flow is "pay what you enter", we force the stored field value after
-    // save so the checkout review footer and downstream logic use the correct amount.
-    _rovas_project_reward_force_order_total_eur($order->order_id, (int) round($unit_price));
     commerce_cart_order_session_save($order->order_id);
-
-    if (variable_get('rpr_debug_amount', 0)) {
-      $fresh = commerce_order_load($order->order_id);
-      $tot = isset($fresh->commerce_order_total[LANGUAGE_NONE][0]['amount']) ? ((int) $fresh->commerce_order_total[LANGUAGE_NONE][0]['amount'] / 100) : -1;
-      watchdog('rpr_amount', 'create_order: order_id=@oid order_total=@tot EUR', array(
-        '@oid' => (int) $order->order_id,
-        '@tot' => $tot,
-      ), WATCHDOG_NOTICE);
-
-      // Debug: list all saved line items and order total components.
-      if ($fresh) {
-        $li_bits = array();
-        $items = !empty($fresh->commerce_line_items[LANGUAGE_NONE]) && is_array($fresh->commerce_line_items[LANGUAGE_NONE])
-          ? $fresh->commerce_line_items[LANGUAGE_NONE]
-          : array();
-        foreach ($items as $ref) {
-          if (empty($ref['line_item_id'])) {
-            continue;
-          }
-          $li = commerce_line_item_load($ref['line_item_id']);
-          if (!$li) {
-            continue;
-          }
-          $p = isset($li->commerce_unit_price[LANGUAGE_NONE][0]) ? $li->commerce_unit_price[LANGUAGE_NONE][0] : array();
-          $t = isset($li->commerce_total[LANGUAGE_NONE][0]) ? $li->commerce_total[LANGUAGE_NONE][0] : array();
-          $li_bits[] = 'li#' . (int) $li->line_item_id
-            . ' type=' . (isset($li->type) ? $li->type : 'n/a')
-            . ' unit=' . (isset($p['amount']) ? ((int) $p['amount'] / 100) : 'n/a') . (isset($p['currency_code']) ? $p['currency_code'] : '')
-            . ' total=' . (isset($t['amount']) ? ((int) $t['amount'] / 100) : 'n/a') . (isset($t['currency_code']) ? $t['currency_code'] : '');
-        }
-
-        $ot = isset($fresh->commerce_order_total[LANGUAGE_NONE][0]) ? $fresh->commerce_order_total[LANGUAGE_NONE][0] : array();
-        $comp_names = array();
-        if (!empty($ot['data']['components']) && is_array($ot['data']['components'])) {
-          foreach ($ot['data']['components'] as $c) {
-            $comp_names[] = (isset($c['name']) ? $c['name'] : 'n/a') . ':' . (isset($c['price']['amount']) ? ((int) $c['price']['amount'] / 100) : 'n/a');
-          }
-        }
-
-        watchdog('rpr_amount', 'create_order: order_id=@oid saved_line_items=@li', array(
-          '@oid' => (int) $order->order_id,
-          '@li' => $li_bits ? implode(' | ', $li_bits) : '[none]',
-        ), WATCHDOG_NOTICE);
-        watchdog('rpr_amount', 'create_order: order_id=@oid order_total_components=@c', array(
-          '@oid' => (int) $order->order_id,
-          '@c' => $comp_names ? implode(', ', $comp_names) : '[none]',
-        ), WATCHDOG_NOTICE);
-      }
-    }
     
     return $order;
-}
-
-/**
- * Force commerce_order_total to the provided EUR amount (in cents).
- *
- * Updates both field_data and field_revision rows (und, delta 0).
- */
-function _rovas_project_reward_force_order_total_eur($order_id, $amount_cents) {
-  $order_id = (int) $order_id;
-  $amount_cents = (int) $amount_cents;
-  if ($order_id <= 0 || $amount_cents < 0) {
-    return;
-  }
-
-  $price = array(
-    'amount' => $amount_cents,
-    'currency_code' => 'EUR',
-    'data' => array(),
-  );
-  $price['data'] = commerce_price_component_add($price, 'base_price', $price, TRUE);
-
-  $fields = array(
-    'commerce_order_total_amount' => $price['amount'],
-    'commerce_order_total_currency_code' => $price['currency_code'],
-    'commerce_order_total_data' => serialize($price['data']),
-  );
-
-  // field_data table.
-  db_update('field_data_commerce_order_total')
-    ->fields($fields)
-    ->condition('entity_type', 'commerce_order')
-    ->condition('bundle', 'commerce_order')
-    ->condition('entity_id', $order_id)
-    ->condition('language', LANGUAGE_NONE)
-    ->condition('delta', 0)
-    ->execute();
-
-  // field_revision table (may have multiple revisions; update all).
-  db_update('field_revision_commerce_order_total')
-    ->fields($fields)
-    ->condition('entity_type', 'commerce_order')
-    ->condition('bundle', 'commerce_order')
-    ->condition('entity_id', $order_id)
-    ->condition('language', LANGUAGE_NONE)
-    ->condition('delta', 0)
-    ->execute();
-}
-
-/**
- * Implements hook_entity_presave().
- *
- * Debug helper: when enabled, logs a backtrace whenever a rewpro order's stored
- * total appears inconsistent with its line item totals (e.g. forced to €20).
- */
-function rovas_project_reward_entity_presave($entity, $type) {
-  if (!variable_get('rpr_debug_total_backtrace', 0)) {
-    return;
-  }
-  if ($type !== 'commerce_order' || empty($entity->order_id)) {
-    return;
-  }
-
-  // Only target rewpro-originated orders.
-  $rpr_paytype = isset($entity->data['rpr_paytype']) ? (string) $entity->data['rpr_paytype'] : '';
-  if ($rpr_paytype === '') {
-    return;
-  }
-
-  $order_total_cents = isset($entity->commerce_order_total[LANGUAGE_NONE][0]['amount'])
-    ? (int) $entity->commerce_order_total[LANGUAGE_NONE][0]['amount']
-    : NULL;
-  if ($order_total_cents === NULL) {
-    return;
-  }
-
-  // Sum current line item totals (in cents) for comparison.
-  $line_sum = 0;
-  $li_bits = array();
-  if (!empty($entity->commerce_line_items[LANGUAGE_NONE]) && is_array($entity->commerce_line_items[LANGUAGE_NONE])) {
-    foreach ($entity->commerce_line_items[LANGUAGE_NONE] as $ref) {
-      if (empty($ref['line_item_id'])) {
-        continue;
-      }
-      $li = commerce_line_item_load($ref['line_item_id']);
-      if (!$li) {
-        continue;
-      }
-      $t = isset($li->commerce_total[LANGUAGE_NONE][0]) ? $li->commerce_total[LANGUAGE_NONE][0] : array();
-      $amt = isset($t['amount']) ? (int) $t['amount'] : 0;
-      $cur = isset($t['currency_code']) ? $t['currency_code'] : '';
-      $line_sum += $amt;
-      $li_bits[] = 'li#' . (int) $li->line_item_id . ':' . ($amt / 100) . $cur;
-    }
-  }
-
-  // Log only when inconsistent (or specifically when it's 20.00 EUR).
-  if ($line_sum !== $order_total_cents || $order_total_cents === 2000) {
-    $bt = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 25);
-    $frames = array();
-    foreach ($bt as $f) {
-      $fn = (isset($f['class']) ? $f['class'] . $f['type'] : '') . (isset($f['function']) ? $f['function'] : '');
-      $file = isset($f['file']) ? basename($f['file']) : '';
-      $line = isset($f['line']) ? (int) $f['line'] : 0;
-      $frames[] = $fn . ($file ? ('@' . $file . ':' . $line) : '');
-    }
-
-    watchdog('rpr_amount', 'presave_backtrace: order_id=@oid rpr=@rpr order_total=@ot line_sum=@ls line_items=@li stack=@stack', array(
-      '@oid' => (int) $entity->order_id,
-      '@rpr' => $rpr_paytype,
-      '@ot' => $order_total_cents / 100,
-      '@ls' => $line_sum / 100,
-      '@li' => $li_bits ? implode(', ', $li_bits) : '[none]',
-      '@stack' => implode(' <- ', $frames),
-    ), WATCHDOG_WARNING);
-  }
-}
-
-/**
- * Implements hook_commerce_cart_line_item_refresh().
- *
- * Keep rewpro custom-priced line items at their entered unit price during cart
- * refresh (Commerce otherwise recalculates price from product defaults).
- */
-function rovas_project_reward_commerce_cart_line_item_refresh($line_item, $order_wrapper) {
-  if (empty($line_item) || empty($line_item->line_item_id)) {
-    return;
-  }
-  $order = $order_wrapper instanceof EntityMetadataWrapper ? $order_wrapper->value() : NULL;
-  if (!$order || empty($order->data['rpr_paytype'])) {
-    return;
-  }
-  if (empty($line_item->data) || !is_array($line_item->data) || !isset($line_item->data['rpr_custom_unit_price'])) {
-    return;
-  }
-
-  $amount_cents = (int) $line_item->data['rpr_custom_unit_price'];
-  $currency = !empty($line_item->data['rpr_custom_currency']) ? (string) $line_item->data['rpr_custom_currency'] : 'EUR';
-
-  $price = array(
-    'amount' => $amount_cents,
-    'currency_code' => $currency,
-    'data' => array(),
-  );
-  $price['data'] = commerce_price_component_add($price, 'base_price', $price, TRUE);
-
-  $line_item->commerce_unit_price[LANGUAGE_NONE][0] = $price;
-
-  // Ensure totals reflect the enforced unit price.
-  if (function_exists('commerce_line_item_refresh')) {
-    commerce_line_item_refresh($line_item);
-  }
-}
-
-/**
- * Implements hook_commerce_cart_order_refresh().
- *
- * Recalculate the order total for rewpro orders after line items are refreshed.
- */
-function rovas_project_reward_commerce_cart_order_refresh($order_wrapper) {
-  $order = $order_wrapper instanceof EntityMetadataWrapper ? $order_wrapper->value() : NULL;
-  if (!$order || empty($order->order_id) || empty($order->data['rpr_paytype'])) {
-    return;
-  }
-  if (function_exists('commerce_order_calculate_total')) {
-    commerce_order_calculate_total($order);
-  }
 }
 
 /**
@@ -1818,30 +1523,6 @@ function _handle_review_form_modifications(&$form, &$form_state) {
 
 	$order_id = $form_state['order']->order_id;
 	$order = commerce_order_load($order_id);
-
-  if (variable_get('rpr_debug_amount', 0) && $order) {
-    $tot = isset($order->commerce_order_total[LANGUAGE_NONE][0]['amount']) ? ((int) $order->commerce_order_total[LANGUAGE_NONE][0]['amount'] / 100) : -1;
-    $li_debug = array();
-    if (!empty($order->commerce_line_items[LANGUAGE_NONE]) && is_array($order->commerce_line_items[LANGUAGE_NONE])) {
-      foreach ($order->commerce_line_items[LANGUAGE_NONE] as $ref) {
-        if (empty($ref['line_item_id'])) {
-          continue;
-        }
-        $li = commerce_line_item_load($ref['line_item_id']);
-        if (!$li) {
-          continue;
-        }
-        $p = isset($li->commerce_unit_price[LANGUAGE_NONE][0]) ? $li->commerce_unit_price[LANGUAGE_NONE][0] : array();
-        $li_debug[] = 'li#' . (int) $li->line_item_id . ':' . (isset($p['amount']) ? ((int) $p['amount'] / 100) : 'n/a') . (isset($p['currency_code']) ? $p['currency_code'] : '');
-      }
-    }
-    watchdog('rpr_amount', 'review_build: order_id=@oid order_total=@tot EUR line_items=@li paytype=@rpr', array(
-      '@oid' => (int) $order_id,
-      '@tot' => $tot,
-      '@li' => $li_debug ? implode(' | ', $li_debug) : '[none]',
-      '@rpr' => isset($order->data['rpr_paytype']) ? (string) $order->data['rpr_paytype'] : '[none]',
-    ), WATCHDOG_NOTICE);
-  }
 
   // Common review form modifications
   $form['checkout_review']['review']['#data']['cart_contents']['title'] = '';
