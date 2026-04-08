@@ -924,13 +924,29 @@ function rovas_project_reward_form_validate($form, &$form_state) {
   global $user;
 
   // Get necessary values
-  $paid_amt = isset($form_state['values']['payment']) ? $form_state['values']['payment'] : '';
-  $pprice = isset($form_state['values']['pprice']) ? $form_state['values']['pprice'] : 0;
+  // Payment field is nested under payment_wrapper; depending on #tree behavior
+  // it can appear either at top-level or under payment_wrapper.
+  $paid_amt = isset($form_state['values']['payment'])
+    ? $form_state['values']['payment']
+    : (isset($form_state['values']['payment_wrapper']['payment']) ? $form_state['values']['payment_wrapper']['payment'] : '');
+  $pprice = isset($form_state['values']['pprice'])
+    ? $form_state['values']['pprice']
+    : (isset($form_state['values']['payment_wrapper']['pprice']) ? $form_state['values']['payment_wrapper']['pprice'] : 0);
   $pid = $form_state['values']['recipient'];
   $paytype = $form_state['values']['paytype'];
   $currency = isset($form_state['values']['payment-currency']) ? $form_state['values']['payment-currency'] : 'CHR';
   
 	$callbackurl = isset($form_state['rovas_session_data']['callbackurl']) ? $form_state['rovas_session_data']['callbackurl'] : NULL;
+
+  if (variable_get('rpr_debug_amount', 0)) {
+    watchdog('rpr_amount', 'validate: uid=@uid currency=@cur paid_amt_raw=@paid pprice=@pprice values_keys=@keys', array(
+      '@uid' => (int) $user->uid,
+      '@cur' => (string) $currency,
+      '@paid' => is_scalar($paid_amt) ? (string) $paid_amt : '[non-scalar]',
+      '@pprice' => is_scalar($pprice) ? (string) $pprice : '[non-scalar]',
+      '@keys' => implode(',', array_keys($form_state['values'])),
+    ), WATCHDOG_NOTICE);
+  }
 
   // Validate payment amount
   if ($paid_amt <= 0) {
@@ -989,8 +1005,12 @@ function rovas_project_reward_form_submit($form, &$form_state) {
   $values = $form_state['values'];
   $pid = $values['recipient'];
   $paytype = $values['paytype'];
-  $paid_amt = isset($values['payment']) ? $values['payment'] : '';
-  $pprice = isset($values['pprice']) ? $values['pprice'] : 0;
+  $paid_amt = isset($values['payment'])
+    ? $values['payment']
+    : (isset($values['payment_wrapper']['payment']) ? $values['payment_wrapper']['payment'] : '');
+  $pprice = isset($values['pprice'])
+    ? $values['pprice']
+    : (isset($values['payment_wrapper']['pprice']) ? $values['payment_wrapper']['pprice'] : 0);
   $currency = isset($values['payment-currency']) ? $values['payment-currency'] : 'CHR';
   $email = isset($values['email']) ? $values['email'] : '';
   $uid = $user->uid;
@@ -998,6 +1018,18 @@ function rovas_project_reward_form_submit($form, &$form_state) {
   // Get session data
   $sessary = rovas_project_reward_session_get('rovas_project_reward', array());
   $callbackurl = isset($sessary['callbackurl']) ? $sessary['callbackurl'] : '';
+
+  if (variable_get('rpr_debug_amount', 0)) {
+    $clicked = isset($form_state['clicked_button']['#attributes']['id'][0]) ? $form_state['clicked_button']['#attributes']['id'][0] : '';
+    watchdog('rpr_amount', 'submit: uid=@uid currency=@cur paid_amt_raw=@paid pprice=@pprice clicked=@clicked sess_callback=@cb', array(
+      '@uid' => (int) $uid,
+      '@cur' => (string) $currency,
+      '@paid' => is_scalar($paid_amt) ? (string) $paid_amt : '[non-scalar]',
+      '@pprice' => is_scalar($pprice) ? (string) $pprice : '[non-scalar]',
+      '@clicked' => (string) $clicked,
+      '@cb' => $callbackurl ? '[set]' : '[empty]',
+    ), WATCHDOG_NOTICE);
+  }
   
   // Process EUR payment
   if ($currency === 'EUR') {
@@ -1201,6 +1233,19 @@ function rpr_create_commerce_order($uid, $paid_amt, $paytype, $pid, $email = NUL
 
     watchdog('rpr', 'creating order for user with uid ' . $uid);
 
+    // Normalize user-entered payment amount.
+    $paid_amt = is_numeric($paid_amt) ? (float) $paid_amt : 0.0;
+    if ($paid_amt < 0) {
+      $paid_amt = 0.0;
+    }
+
+    if (variable_get('rpr_debug_amount', 0)) {
+      watchdog('rpr_amount', 'create_order: uid=@uid paid_amt_norm=@paid', array(
+        '@uid' => (int) $uid,
+        '@paid' => number_format((float) $paid_amt, 2, '.', ''),
+      ), WATCHDOG_NOTICE);
+    }
+
     $product_obj = commerce_product_load_by_sku('subs-paymnt');
     $product_nid = $product_obj->product_id;
     $fp = calculate_forex_transaction_params('eur_to_chr', $paid_amt);
@@ -1243,6 +1288,16 @@ function rpr_create_commerce_order($uid, $paid_amt, $paytype, $pid, $email = NUL
       commerce_line_item_refresh($line_item);
     }
     commerce_line_item_save($line_item);
+
+    if (variable_get('rpr_debug_amount', 0)) {
+      $li_price = isset($line_item->commerce_unit_price[LANGUAGE_NONE][0]) ? $line_item->commerce_unit_price[LANGUAGE_NONE][0] : NULL;
+      watchdog('rpr_amount', 'create_order: order_id=@oid line_item_id=@liid unit_price=@amt @cur', array(
+        '@oid' => (int) $order->order_id,
+        '@liid' => !empty($line_item->line_item_id) ? (int) $line_item->line_item_id : 0,
+        '@amt' => $li_price && isset($li_price['amount']) ? ((int) $li_price['amount'] / 100) : -1,
+        '@cur' => $li_price && isset($li_price['currency_code']) ? $li_price['currency_code'] : 'n/a',
+      ), WATCHDOG_NOTICE);
+    }
         
     // Add the line item to the order
     $order_wrapper = entity_metadata_wrapper('commerce_order', $order);
@@ -1253,6 +1308,15 @@ function rpr_create_commerce_order($uid, $paid_amt, $paytype, $pid, $email = NUL
     
     commerce_order_save($order);
     commerce_cart_order_session_save($order->order_id);
+
+    if (variable_get('rpr_debug_amount', 0)) {
+      $fresh = commerce_order_load($order->order_id);
+      $tot = isset($fresh->commerce_order_total[LANGUAGE_NONE][0]['amount']) ? ((int) $fresh->commerce_order_total[LANGUAGE_NONE][0]['amount'] / 100) : -1;
+      watchdog('rpr_amount', 'create_order: order_id=@oid order_total=@tot EUR', array(
+        '@oid' => (int) $order->order_id,
+        '@tot' => $tot,
+      ), WATCHDOG_NOTICE);
+    }
     
     return $order;
 }
@@ -1529,6 +1593,30 @@ function _handle_review_form_modifications(&$form, &$form_state) {
 
 	$order_id = $form_state['order']->order_id;
 	$order = commerce_order_load($order_id);
+
+  if (variable_get('rpr_debug_amount', 0) && $order) {
+    $tot = isset($order->commerce_order_total[LANGUAGE_NONE][0]['amount']) ? ((int) $order->commerce_order_total[LANGUAGE_NONE][0]['amount'] / 100) : -1;
+    $li_debug = array();
+    if (!empty($order->commerce_line_items[LANGUAGE_NONE]) && is_array($order->commerce_line_items[LANGUAGE_NONE])) {
+      foreach ($order->commerce_line_items[LANGUAGE_NONE] as $ref) {
+        if (empty($ref['line_item_id'])) {
+          continue;
+        }
+        $li = commerce_line_item_load($ref['line_item_id']);
+        if (!$li) {
+          continue;
+        }
+        $p = isset($li->commerce_unit_price[LANGUAGE_NONE][0]) ? $li->commerce_unit_price[LANGUAGE_NONE][0] : array();
+        $li_debug[] = 'li#' . (int) $li->line_item_id . ':' . (isset($p['amount']) ? ((int) $p['amount'] / 100) : 'n/a') . (isset($p['currency_code']) ? $p['currency_code'] : '');
+      }
+    }
+    watchdog('rpr_amount', 'review_build: order_id=@oid order_total=@tot EUR line_items=@li paytype=@rpr', array(
+      '@oid' => (int) $order_id,
+      '@tot' => $tot,
+      '@li' => $li_debug ? implode(' | ', $li_debug) : '[none]',
+      '@rpr' => isset($order->data['rpr_paytype']) ? (string) $order->data['rpr_paytype'] : '[none]',
+    ), WATCHDOG_NOTICE);
+  }
 
   // Common review form modifications
   $form['checkout_review']['review']['#data']['cart_contents']['title'] = '';
