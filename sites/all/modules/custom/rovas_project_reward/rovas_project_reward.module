@@ -1278,6 +1278,13 @@ function rpr_create_commerce_order($uid, $paid_amt, $paytype, $pid, $email = NUL
     $line_item_wrapper = entity_metadata_wrapper('commerce_line_item', $line_item);
     $line_item_wrapper->commerce_unit_price->amount->set($unit_price);
     $line_item_wrapper->commerce_unit_price->currency_code->set('EUR');
+    // Persist the entered price so Commerce cart refresh does not re-price this
+    // line item back to the product's default price (e.g. €20).
+    if (!isset($line_item->data) || !is_array($line_item->data)) {
+      $line_item->data = array();
+    }
+    $line_item->data['rpr_custom_unit_price'] = (int) round($unit_price);
+    $line_item->data['rpr_custom_currency'] = 'EUR';
     // IMPORTANT: Do not call commerce_line_item_rebase_unit_price() here.
     // Rebase recomputes unit price from the product's pricing rules/default price
     // (e.g. €20) and would overwrite the custom amount entered on /rewpro.
@@ -1485,6 +1492,57 @@ function rovas_project_reward_entity_presave($entity, $type) {
       '@li' => $li_bits ? implode(', ', $li_bits) : '[none]',
       '@stack' => implode(' <- ', $frames),
     ), WATCHDOG_WARNING);
+  }
+}
+
+/**
+ * Implements hook_commerce_cart_line_item_refresh().
+ *
+ * Keep rewpro custom-priced line items at their entered unit price during cart
+ * refresh (Commerce otherwise recalculates price from product defaults).
+ */
+function rovas_project_reward_commerce_cart_line_item_refresh($line_item, $order_wrapper) {
+  if (empty($line_item) || empty($line_item->line_item_id)) {
+    return;
+  }
+  $order = $order_wrapper instanceof EntityMetadataWrapper ? $order_wrapper->value() : NULL;
+  if (!$order || empty($order->data['rpr_paytype'])) {
+    return;
+  }
+  if (empty($line_item->data) || !is_array($line_item->data) || !isset($line_item->data['rpr_custom_unit_price'])) {
+    return;
+  }
+
+  $amount_cents = (int) $line_item->data['rpr_custom_unit_price'];
+  $currency = !empty($line_item->data['rpr_custom_currency']) ? (string) $line_item->data['rpr_custom_currency'] : 'EUR';
+
+  $price = array(
+    'amount' => $amount_cents,
+    'currency_code' => $currency,
+    'data' => array(),
+  );
+  $price['data'] = commerce_price_component_add($price, 'base_price', $price, TRUE);
+
+  $line_item->commerce_unit_price[LANGUAGE_NONE][0] = $price;
+
+  // Ensure totals reflect the enforced unit price.
+  if (function_exists('commerce_line_item_refresh')) {
+    commerce_line_item_refresh($line_item);
+  }
+}
+
+/**
+ * Implements hook_commerce_cart_order_refresh().
+ *
+ * Recalculate the order total for rewpro orders after line items are refreshed.
+ */
+function rovas_project_reward_commerce_cart_order_refresh($order_wrapper) {
+  $order = $order_wrapper instanceof EntityMetadataWrapper ? $order_wrapper->value() : NULL;
+  if (!$order || empty($order->order_id) || empty($order->data['rpr_paytype'])) {
+    return;
+  }
+  if (function_exists('commerce_order_calculate_total')) {
+    commerce_order_calculate_total($order);
   }
 }
 
