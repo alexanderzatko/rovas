@@ -1326,6 +1326,46 @@ function rpr_create_commerce_order($uid, $paid_amt, $paytype, $pid, $email = NUL
         '@oid' => (int) $order->order_id,
         '@tot' => $tot,
       ), WATCHDOG_NOTICE);
+
+      // Debug: list all saved line items and order total components.
+      if ($fresh) {
+        $li_bits = array();
+        $items = !empty($fresh->commerce_line_items[LANGUAGE_NONE]) && is_array($fresh->commerce_line_items[LANGUAGE_NONE])
+          ? $fresh->commerce_line_items[LANGUAGE_NONE]
+          : array();
+        foreach ($items as $ref) {
+          if (empty($ref['line_item_id'])) {
+            continue;
+          }
+          $li = commerce_line_item_load($ref['line_item_id']);
+          if (!$li) {
+            continue;
+          }
+          $p = isset($li->commerce_unit_price[LANGUAGE_NONE][0]) ? $li->commerce_unit_price[LANGUAGE_NONE][0] : array();
+          $t = isset($li->commerce_total[LANGUAGE_NONE][0]) ? $li->commerce_total[LANGUAGE_NONE][0] : array();
+          $li_bits[] = 'li#' . (int) $li->line_item_id
+            . ' type=' . (isset($li->type) ? $li->type : 'n/a')
+            . ' unit=' . (isset($p['amount']) ? ((int) $p['amount'] / 100) : 'n/a') . (isset($p['currency_code']) ? $p['currency_code'] : '')
+            . ' total=' . (isset($t['amount']) ? ((int) $t['amount'] / 100) : 'n/a') . (isset($t['currency_code']) ? $t['currency_code'] : '');
+        }
+
+        $ot = isset($fresh->commerce_order_total[LANGUAGE_NONE][0]) ? $fresh->commerce_order_total[LANGUAGE_NONE][0] : array();
+        $comp_names = array();
+        if (!empty($ot['data']['components']) && is_array($ot['data']['components'])) {
+          foreach ($ot['data']['components'] as $c) {
+            $comp_names[] = (isset($c['name']) ? $c['name'] : 'n/a') . ':' . (isset($c['price']['amount']) ? ((int) $c['price']['amount'] / 100) : 'n/a');
+          }
+        }
+
+        watchdog('rpr_amount', 'create_order: order_id=@oid saved_line_items=@li', array(
+          '@oid' => (int) $order->order_id,
+          '@li' => $li_bits ? implode(' | ', $li_bits) : '[none]',
+        ), WATCHDOG_NOTICE);
+        watchdog('rpr_amount', 'create_order: order_id=@oid order_total_components=@c', array(
+          '@oid' => (int) $order->order_id,
+          '@c' => $comp_names ? implode(', ', $comp_names) : '[none]',
+        ), WATCHDOG_NOTICE);
+      }
     }
     
     return $order;
