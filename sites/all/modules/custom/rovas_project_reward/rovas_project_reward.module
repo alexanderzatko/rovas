@@ -1310,12 +1310,19 @@ function rpr_create_commerce_order($uid, $paid_amt, $paytype, $pid, $email = NUL
     $order_wrapper->field_payer_type = $paytype == 'wreport' ? 'report' : $paytype;
     $order_wrapper->field_payment_recipient = $pid;
     
-    // Force a correct order total based on line item totals.
-    // Some sites have custom totals logic; this ensures the calculated
-    // commerce_order_total reflects the line items we just added.
-    if (function_exists('commerce_order_calculate_total')) {
-      commerce_order_calculate_total($order);
-    }
+    // Rewpro: enforce order total to match the entered EUR amount.
+    //
+    // In this site, some pricing logic overwrites commerce_order_total base_price
+    // to a fixed value (observed as €20) even when the line item total differs.
+    // Since rewpro is a "pay what you enter" flow, the correct total is the
+    // entered amount in cents.
+    $enforced_total = array(
+      'amount' => (int) round($unit_price),
+      'currency_code' => 'EUR',
+      'data' => array(),
+    );
+    $enforced_total['data'] = commerce_price_component_add($enforced_total, 'base_price', $enforced_total, TRUE);
+    $order_wrapper->commerce_order_total = $enforced_total;
     commerce_order_save($order);
     commerce_cart_order_session_save($order->order_id);
 
