@@ -3467,10 +3467,46 @@ function rovas_project_reward_get_bank_transfer_details($order = NULL) {
 }
 
 /**
+ * Logs bank webhook traffic for debugging (filter dblog by type: rovas_bank_webhook).
+ *
+ * @param string $direction
+ *   Short label, e.g. "inbound" or "outbound".
+ * @param string $path_or_url
+ *   Request URI (inbound) or full endpoint URL (outbound).
+ * @param mixed $payload
+ *   Raw string or array/object to JSON-encode for the log line.
+ */
+function _rovas_project_reward_log_bank_webhook($direction, $path_or_url, $payload) {
+  if (is_array($payload) || is_object($payload)) {
+    $payload_str = drupal_json_encode($payload);
+    if ($payload_str === FALSE) {
+      $payload_str = '(json_encode failed)';
+    }
+  }
+  else {
+    $payload_str = (string) $payload;
+  }
+  if ($payload_str === '') {
+    $payload_str = '(empty)';
+  }
+  // Keep dblog rows bounded; large bodies are rare for these webhooks.
+  if (strlen($payload_str) > 32000) {
+    $payload_str = substr($payload_str, 0, 31990) . '…[truncated]';
+  }
+  watchdog('rovas_bank_webhook', '@dir @target @payload', array(
+    '@dir' => $direction,
+    '@target' => $path_or_url,
+    '@payload' => $payload_str,
+  ), WATCHDOG_INFO);
+}
+
+/**
  * Generic provider webhook endpoint for bank payment outcomes.
  */
 function rovas_project_reward_bank_provider_webhook() {
   $raw = file_get_contents('php://input');
+  $path = isset($_SERVER['REQUEST_URI']) ? $_SERVER['REQUEST_URI'] : request_uri();
+  _rovas_project_reward_log_bank_webhook('inbound', $path, $raw);
   $payload = drupal_json_decode($raw);
   if (empty($payload['order_id']) || empty($payload['status'])) {
     drupal_add_http_header('Status', '400 Bad Request');
@@ -4263,6 +4299,8 @@ function rovas_project_reward_notify_bank_purchase_confirmed($order) {
     'timeout' => 5,
   );
 
+  _rovas_project_reward_log_bank_webhook('outbound', $endpoint, $payload_bank);
+
   $response = drupal_http_request($endpoint, $options);
 
   // Mark as notified before saving, so a concurrent call cannot also send.
@@ -4520,6 +4558,8 @@ function rovas_project_reward_process_callback_delivery_queue($limit = 20) {
     if (isset($payload_arr['amount_paid'])) {
       $payload_arr['amount_paid'] = (int) $payload_arr['amount_paid'];
     }
+
+    _rovas_project_reward_log_bank_webhook('outbound', $row->endpoint, $payload_arr);
 
     $response = drupal_http_request($row->endpoint, array(
       'method' => 'POST',
