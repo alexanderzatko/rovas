@@ -4485,6 +4485,7 @@ function rovas_project_reward_enqueue_delayed_callback($order, $event_type) {
   if ($expiration_delayed !== NULL) {
     $payload['expiration'] = $expiration_delayed;
   }
+  // Extra fields for partner debugging and compatibility.
   $payload += array(
     'order' => array(
       'id' => (int) $order->order_id,
@@ -4529,6 +4530,15 @@ function rovas_project_reward_enqueue_delayed_callback($order, $event_type) {
  * Deliver queued delayed callbacks.
  */
 function rovas_project_reward_process_callback_delivery_queue($limit = 20) {
+  // Each attempt may wait for HTTP timeout; many retries in one cron run can
+  // exceed default max_execution_time and leave newer queue rows unprocessed.
+  if (function_exists('drupal_set_time_limit')) {
+    drupal_set_time_limit(240);
+  }
+  elseif (function_exists('set_time_limit')) {
+    @set_time_limit(240);
+  }
+
   $result = db_select('rovas_bank_callback_delivery', 'd')
     ->fields('d')
     ->condition('status', array('queued', 'retrying'), 'IN')
@@ -4539,7 +4549,16 @@ function rovas_project_reward_process_callback_delivery_queue($limit = 20) {
 
   foreach ($result as $row) {
     $payload_arr = drupal_json_decode($row->payload);
-    if (empty($payload_arr['context']['token'])) {
+    if (!is_array($payload_arr)) {
+      rovas_project_reward_mark_callback_delivery_dead($row->id, 0, 'Invalid JSON payload');
+      continue;
+    }
+    // Spec uses top-level token; nested context.token is for compatibility.
+    $has_token = !empty($payload_arr['token']);
+    if (!$has_token && isset($payload_arr['context']) && is_array($payload_arr['context'])) {
+      $has_token = !empty($payload_arr['context']['token']);
+    }
+    if (!$has_token) {
       rovas_project_reward_mark_callback_delivery_dead($row->id, 0, 'Missing token');
       continue;
     }
