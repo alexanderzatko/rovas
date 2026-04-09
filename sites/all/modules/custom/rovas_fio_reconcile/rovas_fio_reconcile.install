@@ -1,0 +1,93 @@
+<?php
+
+/**
+ * @file
+ * Schema and install hooks for rovas_fio_reconcile.
+ */
+
+/**
+ * Implements hook_schema().
+ */
+function rovas_fio_reconcile_schema() {
+  $schema['rovas_fio_seen_transaction'] = array(
+    'description' => 'Dedupe Fio (and future provider) transactions already applied to orders.',
+    'fields' => array(
+      'id' => array(
+        'type' => 'serial',
+        'not null' => TRUE,
+      ),
+      'provider' => array(
+        'type' => 'varchar',
+        'length' => 32,
+        'not null' => TRUE,
+        'default' => 'fio',
+      ),
+      'provider_payment_id' => array(
+        'type' => 'varchar',
+        'length' => 128,
+        'not null' => TRUE,
+      ),
+      'seen_ts' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+      ),
+    ),
+    'primary key' => array('id'),
+    'unique keys' => array(
+      'provider_txn' => array('provider', 'provider_payment_id'),
+    ),
+    'indexes' => array(
+      'seen_ts' => array('seen_ts'),
+    ),
+  );
+
+  return $schema;
+}
+
+/**
+ * Ensure dedupe table exists (e.g. partial deploys).
+ */
+function rovas_fio_reconcile_update_7100() {
+  if (!db_table_exists('rovas_fio_seen_transaction')) {
+    $schema = drupal_get_schema_unprocessed('rovas_fio_reconcile');
+    db_create_table('rovas_fio_seen_transaction', $schema['rovas_fio_seen_transaction']);
+  }
+}
+
+/**
+ * Implements hook_install().
+ */
+function rovas_fio_reconcile_install() {
+  variable_set('rovas_fio_base_url', 'https://www.fio.cz/ib_api/rest');
+  variable_set('rovas_fio_format', 'json');
+  variable_set('rovas_fio_poll_window_days', 7);
+  variable_set('rovas_fio_cron_enabled', TRUE);
+  variable_set('rovas_fio_rate_limit_seconds', 35);
+  variable_set('rovas_fio_fetch_mode', 'period');
+  variable_set('rovas_fio_inter_request_delay', 31);
+}
+
+/**
+ * Implements hook_uninstall().
+ */
+function rovas_fio_reconcile_uninstall() {
+  $vars = array(
+    'rovas_fio_token',
+    'rovas_fio_base_url',
+    'rovas_fio_format',
+    'rovas_fio_poll_window_days',
+    'rovas_fio_cron_enabled',
+    'rovas_fio_rate_limit_seconds',
+    'rovas_fio_last_run_ts',
+    'rovas_fio_last_http_ts',
+    'rovas_fio_period_cursor',
+    'rovas_fio_fetch_mode',
+    'rovas_fio_inter_request_delay',
+    'rovas_fio_last_run_stats',
+    'rovas_fio_last_set_last_id',
+  );
+  foreach ($vars as $v) {
+    variable_del($v);
+  }
+}

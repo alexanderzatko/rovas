@@ -1,0 +1,5 @@
+name = Rovas Fio bank reconcile
+description = Cron-driven Fio Internetbanking API fetch and Commerce bank-transfer reconciliation (VS = order ID).
+core = 7.x
+package = Rovas
+dependencies[] = rovas_project_reward

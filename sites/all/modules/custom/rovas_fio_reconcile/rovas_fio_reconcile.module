@@ -1,0 +1,603 @@
+<?php
+
+/**
+ * @file
+ * Fio Internetbanking API polling and bank-transfer order reconciliation.
+ */
+
+define('ROVAS_FIO_RECONCILE_PROVIDER', 'fio');
+
+/**
+ * Implements hook_menu().
+ */
+function rovas_fio_reconcile_menu() {
+  $items = array();
+
+  $items['admin/config/rovas'] = array(
+    'title' => 'Rovas',
+    'description' => 'Rovas module settings.',
+    'position' => 'left',
+    'weight' => 5,
+    'page callback' => 'system_admin_menu_block_page',
+    'access arguments' => array('administer site configuration'),
+    'file' => 'system.admin.inc',
+    'file path' => drupal_get_path('module', 'system'),
+  );
+
+  $items['admin/config/rovas/fio-reconcile'] = array(
+    'title' => 'Fio bank reconcile',
+    'description' => 'Configure Fio API token and polling for bank transfer reconciliation.',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('rovas_fio_reconcile_settings_form'),
+    'access arguments' => array('administer site configuration'),
+    'type' => MENU_NORMAL_ITEM,
+  );
+
+  $items['admin/config/rovas/fio-reconcile/run'] = array(
+    'title' => 'Run Fio reconcile now',
+    'page callback' => 'rovas_fio_reconcile_run_page',
+    'access arguments' => array('administer site configuration'),
+    'type' => MENU_CALLBACK,
+  );
+
+  return $items;
+}
+
+/**
+ * Implements hook_cron().
+ */
+function rovas_fio_reconcile_cron() {
+  if (!variable_get('rovas_fio_cron_enabled', TRUE)) {
+    watchdog('rovas_fio_reconcile', 'Cron: Fio reconcile disabled (rovas_fio_cron_enabled). Skipping.', array(), WATCHDOG_DEBUG);
+    return;
+  }
+  watchdog('rovas_fio_reconcile', 'Cron: starting Fio reconcile pass.', array(), WATCHDOG_INFO);
+  $result = rovas_fio_reconcile_run_poll(array('source' => 'cron'));
+  if (function_exists('rovas_project_reward_process_callback_delivery_queue')) {
+    rovas_project_reward_process_callback_delivery_queue();
+  }
+}
+
+/**
+ * Runs one Fio fetch + reconcile pass.
+ *
+ * @param array $options
+ *   - source: 'cron' or 'manual' (for logging only).
+ *
+ * @return array
+ *   Keys: ok, processed, skipped_seen, skipped_no_vs, http_error, message, reason.
+ */
+function rovas_fio_reconcile_run_poll(array $options = array()) {
+  $source = isset($options['source']) ? $options['source'] : 'cron';
+  $empty = array(
+    'ok' => FALSE,
+    'processed' => 0,
+    'skipped_seen' => 0,
+    'skipped_no_vs' => 0,
+    'skipped_no_module' => 0,
+    'set_last_id' => FALSE,
+    'http_error' => '',
+    'message' => '',
+    'reason' => '',
+  );
+
+  if (!function_exists('rovas_project_reward_mark_bank_order_success')) {
+    $empty['reason'] = 'missing-rovas_project_reward';
+    $empty['skipped_no_module'] = 1;
+    watchdog('rovas_fio_reconcile', 'Reconcile skipped: rovas_project_reward not available.', array(), WATCHDOG_WARNING);
+    return $empty;
+  }
+
+  $token = trim(variable_get('rovas_fio_token', ''));
+  if ($token === '') {
+    $empty['reason'] = 'missing-token';
+    $empty['message'] = 'Fio API token is not configured.';
+    watchdog('rovas_fio_reconcile', 'Reconcile aborted (@source): Fio API token is not configured.', array(
+      '@source' => $source,
+    ), WATCHDOG_WARNING);
+    return $empty;
+  }
+
+  if (!lock_acquire('rovas_fio_reconcile', 300)) {
+    $empty['reason'] = 'lock-busy';
+    $empty['message'] = 'Another reconcile run is in progress.';
+    watchdog('rovas_fio_reconcile', 'Reconcile skipped (@source): lock rovas_fio_reconcile already held (concurrent run).', array(
+      '@source' => $source,
+    ), WATCHDOG_NOTICE);
+    return $empty;
+  }
+
+  try {
+    $rate = (int) variable_get('rovas_fio_rate_limit_seconds', 35);
+    if ($rate < 30) {
+      $rate = 30;
+    }
+    $last_http = (int) variable_get('rovas_fio_last_http_ts', 0);
+    if ($last_http > 0 && (REQUEST_TIME - $last_http) < $rate) {
+      $empty['reason'] = 'rate-limited';
+      $empty['message'] = 'Fio rate limit: wait before next HTTP call.';
+      $wait = $rate - (REQUEST_TIME - $last_http);
+      watchdog('rovas_fio_reconcile', 'Reconcile skipped (@source): Fio rate limit (@wait s until next allowed HTTP call; min interval @rate s).', array(
+        '@source' => $source,
+        '@wait' => max(0, (int) $wait),
+        '@rate' => (int) $rate,
+      ), WATCHDOG_NOTICE);
+      lock_release('rovas_fio_reconcile');
+      return $empty;
+    }
+
+    $url = rovas_fio_reconcile_build_fetch_url($token);
+    if (empty($url)) {
+      $empty['reason'] = 'bad-url';
+      $empty['message'] = 'Could not build Fio request URL.';
+      watchdog('rovas_fio_reconcile', 'Reconcile failed (@source): could not build Fio request URL (check base URL and fetch mode).', array(
+        '@source' => $source,
+      ), WATCHDOG_ERROR);
+      lock_release('rovas_fio_reconcile');
+      return $empty;
+    }
+
+    $mode = variable_get('rovas_fio_fetch_mode', 'period');
+    watchdog('rovas_fio_reconcile', 'Fio HTTP: requesting statement (@source, mode=@mode, url=@url).', array(
+      '@source' => $source,
+      '@mode' => $mode,
+      '@url' => rovas_fio_reconcile_url_for_log($url, $token),
+    ), WATCHDOG_INFO);
+
+    $response = rovas_fio_reconcile_http_get($url);
+    variable_set('rovas_fio_last_http_ts', REQUEST_TIME);
+
+    if (!empty($response['error']) || (int) $response['code'] >= 300) {
+      $empty['http_error'] = isset($response['error']) ? $response['error'] : 'HTTP ' . (int) $response['code'];
+      $empty['reason'] = 'http-failure';
+      watchdog('rovas_fio_reconcile', 'Fio HTTP failed (@source): @err (code @code).', array(
+        '@source' => $source,
+        '@err' => $empty['http_error'],
+        '@code' => isset($response['code']) ? (int) $response['code'] : 0,
+      ), WATCHDOG_ERROR);
+      lock_release('rovas_fio_reconcile');
+      return $empty;
+    }
+
+    $data = drupal_json_decode($response['data']);
+    if (!is_array($data)) {
+      $empty['reason'] = 'invalid-json';
+      $empty['message'] = 'Fio response was not valid JSON.';
+      $snippet = isset($response['data']) ? substr((string) $response['data'], 0, 200) : '';
+      watchdog('rovas_fio_reconcile', 'Reconcile failed (@source): response is not valid JSON (HTTP @code, first 200 chars: @snippet).', array(
+        '@source' => $source,
+        '@code' => isset($response['code']) ? (int) $response['code'] : 0,
+        '@snippet' => $snippet !== '' ? $snippet : '(empty)',
+      ), WATCHDOG_ERROR);
+      lock_release('rovas_fio_reconcile');
+      return $empty;
+    }
+
+    $items = rovas_fio_reconcile_extract_fio_items($data);
+    $tx_count = count($items);
+    watchdog('rovas_fio_reconcile', 'Fio response parsed (@source, mode=@mode): @count transaction row(s) in payload.', array(
+      '@source' => $source,
+      '@mode' => $mode,
+      '@count' => $tx_count,
+    ), WATCHDOG_INFO);
+    $processed = 0;
+    $skipped_seen = 0;
+    $skipped_no_vs = 0;
+    $max_fio_id = 0;
+
+    foreach ($items as $item) {
+      $fid = rovas_fio_reconcile_fio_row_id($item);
+      if ($fid !== NULL && ctype_digit((string) $fid)) {
+        $max_fio_id = max($max_fio_id, (int) $fid);
+      }
+
+      $dedupe_id = rovas_fio_reconcile_dedupe_id($item);
+      if (rovas_fio_reconcile_transaction_seen(ROVAS_FIO_RECONCILE_PROVIDER, $dedupe_id)) {
+        $skipped_seen++;
+        continue;
+      }
+
+      $reference = isset($item['reference']) ? trim((string) $item['reference']) : '';
+      if ($reference === '' || !ctype_digit($reference)) {
+        $skipped_no_vs++;
+        rovas_fio_reconcile_mark_seen(ROVAS_FIO_RECONCILE_PROVIDER, $dedupe_id);
+        continue;
+      }
+
+      $order_id = (int) $reference;
+      $amount = isset($item['amount']) && $item['amount'] !== NULL && $item['amount'] !== '' ? (float) $item['amount'] : NULL;
+      $provider_payment_id = isset($item['provider_payment_id']) ? $item['provider_payment_id'] : NULL;
+      if ($provider_payment_id !== NULL && $provider_payment_id !== '') {
+        $provider_payment_id = (string) $provider_payment_id;
+      }
+      else {
+        $provider_payment_id = NULL;
+      }
+
+      rovas_project_reward_mark_bank_order_success($order_id, $provider_payment_id, $amount, $item);
+      rovas_fio_reconcile_mark_seen(ROVAS_FIO_RECONCILE_PROVIDER, $dedupe_id);
+      $processed++;
+    }
+
+    if (variable_get('rovas_fio_fetch_mode', 'period') === 'last' && $max_fio_id > 0 && !empty($items)) {
+      $delay = (int) variable_get('rovas_fio_inter_request_delay', 31);
+      if ($delay < 30) {
+        $delay = 31;
+      }
+      sleep($delay);
+      $set_url = rtrim(variable_get('rovas_fio_base_url', 'https://www.fio.cz/ib_api/rest'), '/') . '/set-last-id/' . rawurlencode($token) . '/' . (int) $max_fio_id . '/';
+      $set_resp = rovas_fio_reconcile_http_get($set_url);
+      variable_set('rovas_fio_last_http_ts', REQUEST_TIME);
+      if (empty($set_resp['error']) && (int) $set_resp['code'] < 300) {
+        variable_set('rovas_fio_last_set_last_id', (int) $max_fio_id);
+        watchdog('rovas_fio_reconcile', 'Fio set-last-id succeeded (@source): id=@id.', array(
+          '@source' => $source,
+          '@id' => (int) $max_fio_id,
+        ), WATCHDOG_INFO);
+      }
+      else {
+        watchdog('rovas_fio_reconcile', 'Fio set-last-id failed after last/ fetch: @err (@code).', array(
+          '@err' => isset($set_resp['error']) ? $set_resp['error'] : 'HTTP',
+          '@code' => isset($set_resp['code']) ? (int) $set_resp['code'] : 0,
+        ), WATCHDOG_WARNING);
+      }
+    }
+
+    if (variable_get('rovas_fio_fetch_mode', 'period') === 'period') {
+      variable_set('rovas_fio_period_cursor', date('Y-m-d', REQUEST_TIME));
+    }
+
+    variable_set('rovas_fio_last_run_ts', REQUEST_TIME);
+
+    $stats = array(
+      'ok' => TRUE,
+      'processed' => $processed,
+      'skipped_seen' => $skipped_seen,
+      'skipped_no_vs' => $skipped_no_vs,
+      'skipped_no_module' => 0,
+      'set_last_id' => (variable_get('rovas_fio_fetch_mode', 'period') === 'last' && $max_fio_id > 0 && !empty($items)),
+      'http_error' => '',
+      'message' => '',
+      'reason' => '',
+    );
+    variable_set('rovas_fio_last_run_stats', $stats + array('at' => REQUEST_TIME));
+    watchdog('rovas_fio_reconcile', 'Fio reconcile finished OK (@source, mode=@mode): processed=@p, skipped_already_seen=@s, skipped_no_numeric_vs=@v, tx_rows=@tx, set_last_id=@sl.', array(
+      '@source' => $source,
+      '@mode' => $mode,
+      '@p' => (int) $processed,
+      '@s' => (int) $skipped_seen,
+      '@v' => (int) $skipped_no_vs,
+      '@tx' => $tx_count,
+      '@sl' => !empty($stats['set_last_id']) ? 'yes' : 'no',
+    ), WATCHDOG_INFO);
+    lock_release('rovas_fio_reconcile');
+    return $stats;
+  }
+  catch (Exception $e) {
+    watchdog('rovas_fio_reconcile', 'Reconcile exception (@source): @m', array(
+      '@source' => $source,
+      '@m' => $e->getMessage(),
+    ), WATCHDOG_ERROR);
+    lock_release('rovas_fio_reconcile');
+    return array(
+      'ok' => FALSE,
+      'processed' => 0,
+      'skipped_seen' => 0,
+      'skipped_no_vs' => 0,
+      'skipped_no_module' => 0,
+      'set_last_id' => FALSE,
+      'http_error' => $e->getMessage(),
+      'message' => $e->getMessage(),
+      'reason' => 'exception',
+    );
+  }
+}
+
+/**
+ * Returns a URL safe for logs (token redacted).
+ */
+function rovas_fio_reconcile_url_for_log($url, $token) {
+  if ($token === '' || $url === '') {
+    return $url;
+  }
+  $out = str_replace($token, '[token]', $url);
+  $out = str_replace(rawurlencode($token), '[token]', $out);
+  return $out;
+}
+
+/**
+ * Builds the Fio REST URL for the configured fetch mode.
+ *
+ * @param string $token
+ *   API token.
+ *
+ * @return string
+ *   Absolute URL or empty string on failure.
+ */
+function rovas_fio_reconcile_build_fetch_url($token) {
+  $base = rtrim(variable_get('rovas_fio_base_url', 'https://www.fio.cz/ib_api/rest'), '/');
+  $format = variable_get('rovas_fio_format', 'json');
+  if ($format !== 'json') {
+    $format = 'json';
+  }
+  $suffix = 'transactions.json';
+  $mode = variable_get('rovas_fio_fetch_mode', 'period');
+  if ($mode !== 'last' && $mode !== 'period') {
+    $mode = 'period';
+  }
+
+  if ($mode === 'last') {
+    return $base . '/last/' . rawurlencode($token) . '/' . $suffix;
+  }
+
+  $days = (int) variable_get('rovas_fio_poll_window_days', 7);
+  if ($days < 1) {
+    $days = 7;
+  }
+  if ($days > 90) {
+    $days = 90;
+  }
+  $to_ts = REQUEST_TIME;
+  $from_ts = $to_ts - ($days * 86400);
+  $from = gmdate('Y-m-d', $from_ts);
+  $to = gmdate('Y-m-d', $to_ts);
+
+  return $base . '/periods/' . rawurlencode($token) . '/' . $from . '/' . $to . '/' . $suffix;
+}
+
+/**
+ * HTTP GET helper (wrapped for testing and consistent errors).
+ */
+function rovas_fio_reconcile_http_get($url) {
+  $result = drupal_http_request($url, array('timeout' => 25));
+  $out = array(
+    'code' => isset($result->code) ? (int) $result->code : 0,
+    'error' => !empty($result->error) ? $result->error : '',
+    'data' => isset($result->data) ? $result->data : '',
+  );
+  return $out;
+}
+
+/**
+ * Normalizes Fio JSON to internal transaction rows.
+ *
+ * Mirrors former rovas_project_reward_extract_fio_items().
+ */
+function rovas_fio_reconcile_extract_fio_items(array $data) {
+  $items = array();
+
+  if (!empty($data['transactions']) && is_array($data['transactions'])) {
+    foreach ($data['transactions'] as $tx) {
+      $items[] = array(
+        'reference' => isset($tx['variableSymbol']) ? $tx['variableSymbol'] : (isset($tx['reference']) ? $tx['reference'] : ''),
+        'amount' => isset($tx['amount']) ? $tx['amount'] : NULL,
+        'provider_payment_id' => isset($tx['id']) ? $tx['id'] : (isset($tx['entryReference']) ? $tx['entryReference'] : ''),
+        'raw' => $tx,
+      );
+    }
+  }
+  elseif (!empty($data['accountStatement']['transactionList']['transaction']) && is_array($data['accountStatement']['transactionList']['transaction'])) {
+    foreach ($data['accountStatement']['transactionList']['transaction'] as $tx) {
+      $vs = '';
+      if (!empty($tx['column5']['value'])) {
+        $vs = $tx['column5']['value'];
+      }
+      $amount = !empty($tx['column1']['value']) ? $tx['column1']['value'] : NULL;
+      $provider_id = !empty($tx['column22']['value']) ? $tx['column22']['value'] : '';
+      $items[] = array(
+        'reference' => $vs,
+        'amount' => $amount,
+        'provider_payment_id' => $provider_id,
+        'raw' => $tx,
+      );
+    }
+  }
+
+  return $items;
+}
+
+/**
+ * Fio movement ID for set-last-id (column22 / id).
+ */
+function rovas_fio_reconcile_fio_row_id(array $item) {
+  if (!empty($item['provider_payment_id'])) {
+    return $item['provider_payment_id'];
+  }
+  if (!empty($item['raw']['column22']['value'])) {
+    return $item['raw']['column22']['value'];
+  }
+  if (!empty($item['raw']['id'])) {
+    return $item['raw']['id'];
+  }
+  return NULL;
+}
+
+/**
+ * Stable id for dedupe table.
+ */
+function rovas_fio_reconcile_dedupe_id(array $item) {
+  $pid = isset($item['provider_payment_id']) ? trim((string) $item['provider_payment_id']) : '';
+  if ($pid !== '') {
+    return $pid;
+  }
+  return 'h:' . md5(drupal_json_encode(isset($item['raw']) ? $item['raw'] : $item));
+}
+
+/**
+ * TRUE if this provider transaction was already applied.
+ */
+function rovas_fio_reconcile_transaction_seen($provider, $id) {
+  if ($id === '' || $id === NULL) {
+    return FALSE;
+  }
+  $n = db_select('rovas_fio_seen_transaction', 't')
+    ->fields('t', array('id'))
+    ->condition('provider', $provider)
+    ->condition('provider_payment_id', $id)
+    ->range(0, 1)
+    ->execute()
+    ->fetchField();
+  return (bool) $n;
+}
+
+/**
+ * Records a transaction as seen (insert or update timestamp).
+ */
+function rovas_fio_reconcile_mark_seen($provider, $id) {
+  if ($id === '' || $id === NULL) {
+    return;
+  }
+  if (strlen($id) > 128) {
+    $id = substr($id, 0, 128);
+  }
+  db_merge('rovas_fio_seen_transaction')
+    ->key(array(
+      'provider' => $provider,
+      'provider_payment_id' => $id,
+    ))
+    ->fields(array(
+      'provider' => $provider,
+      'provider_payment_id' => $id,
+      'seen_ts' => REQUEST_TIME,
+    ))
+    ->execute();
+}
+
+/**
+ * Manual run page callback.
+ */
+function rovas_fio_reconcile_run_page() {
+  global $user;
+  watchdog('rovas_fio_reconcile', 'Manual Fio reconcile triggered by user @uid (@name).', array(
+    '@uid' => isset($user->uid) ? (int) $user->uid : 0,
+    '@name' => isset($user->name) ? check_plain($user->name) : '?',
+  ), WATCHDOG_INFO);
+  $result = rovas_fio_reconcile_run_poll(array('source' => 'manual'));
+  if (function_exists('rovas_project_reward_process_callback_delivery_queue')) {
+    rovas_project_reward_process_callback_delivery_queue();
+  }
+
+  if (!empty($result['ok'])) {
+    drupal_set_message(t('Fio reconcile finished: @p processed, @s skipped (already seen), @v skipped (no numeric VS).', array(
+      '@p' => (int) $result['processed'],
+      '@s' => (int) $result['skipped_seen'],
+      '@v' => (int) $result['skipped_no_vs'],
+    )));
+  }
+  else {
+    $msg = !empty($result['message']) ? $result['message'] : (!empty($result['reason']) ? $result['reason'] : 'unknown');
+    drupal_set_message(filter_xss($msg), 'error');
+  }
+
+  drupal_goto('admin/config/rovas/fio-reconcile');
+}
+
+/**
+ * Settings form.
+ */
+function rovas_fio_reconcile_settings_form($form, &$form_state) {
+  $form['rovas_fio_token'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Fio API token'),
+    '#default_value' => variable_get('rovas_fio_token', ''),
+    '#description' => t('Token from Fio Internetbanking (API / e-banking). Stored in the database.'),
+    '#maxlength' => 255,
+  );
+
+  $form['rovas_fio_base_url'] = array(
+    '#type' => 'textfield',
+    '#title' => t('API base URL'),
+    '#default_value' => variable_get('rovas_fio_base_url', 'https://www.fio.cz/ib_api/rest'),
+    '#description' => t('No trailing slash. Default is the official Fio REST base.'),
+    '#maxlength' => 255,
+  );
+
+  $form['rovas_fio_fetch_mode'] = array(
+    '#type' => 'select',
+    '#title' => t('Fetch mode'),
+    '#options' => array(
+      'period' => t('Date range (recommended): one request per run, last N days through today'),
+      'last' => t('Incremental: /last/ since Fio marker (then set-last-id; uses two HTTP calls ≥30s apart)'),
+    ),
+    '#default_value' => variable_get('rovas_fio_fetch_mode', 'period'),
+  );
+
+  $form['rovas_fio_poll_window_days'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Period window (days)'),
+    '#size' => 4,
+    '#default_value' => variable_get('rovas_fio_poll_window_days', 7),
+    '#description' => t('Used when fetch mode is date range. Fio allows limited history; keep reasonably small.'),
+    '#element_validate' => array('element_validate_integer_positive'),
+  );
+
+  $form['rovas_fio_rate_limit_seconds'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Minimum seconds between Fio HTTP calls'),
+    '#size' => 4,
+    '#default_value' => variable_get('rovas_fio_rate_limit_seconds', 35),
+    '#description' => t('Fio enforces about 30 seconds between requests per token.'),
+    '#element_validate' => array('element_validate_integer_positive'),
+  );
+
+  $form['rovas_fio_inter_request_delay'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Delay before set-last-id (seconds)'),
+    '#size' => 4,
+    '#default_value' => variable_get('rovas_fio_inter_request_delay', 31),
+    '#description' => t('Only used in incremental (/last/) mode, between download and set-last-id.'),
+    '#element_validate' => array('element_validate_integer_positive'),
+  );
+
+  $form['rovas_fio_cron_enabled'] = array(
+    '#type' => 'checkbox',
+    '#title' => t('Run Fio reconcile on cron'),
+    '#default_value' => variable_get('rovas_fio_cron_enabled', TRUE),
+  );
+
+  $last = variable_get('rovas_fio_last_run_ts', 0);
+  $stats = variable_get('rovas_fio_last_run_stats', array());
+  $stats_txt = $stats ? '<pre>' . check_plain(print_r($stats, TRUE)) . '</pre>' : '';
+  $form['status'] = array(
+    '#type' => 'item',
+    '#title' => t('Last run'),
+    '#markup' => ($last ? check_plain(format_date($last, 'short')) . $stats_txt : t('Never')) . '<p>' . l(t('Run reconcile once (without saving this form)'), 'admin/config/rovas/fio-reconcile/run') . '</p>',
+  );
+
+  $form['actions'] = array('#type' => 'actions');
+  $form['actions']['submit'] = array(
+    '#type' => 'submit',
+    '#value' => t('Save configuration'),
+    '#submit' => array('rovas_fio_reconcile_settings_form_save'),
+  );
+  $form['actions']['run'] = array(
+    '#type' => 'submit',
+    '#value' => t('Save and run reconcile now'),
+    '#submit' => array('rovas_fio_reconcile_settings_form_save', 'rovas_fio_reconcile_settings_form_redirect_run'),
+  );
+
+  return $form;
+}
+
+/**
+ * Saves Fio reconcile settings from the admin form.
+ */
+function rovas_fio_reconcile_settings_form_save($form, &$form_state) {
+  $v = $form_state['values'];
+  variable_set('rovas_fio_token', trim($v['rovas_fio_token']));
+  variable_set('rovas_fio_base_url', trim($v['rovas_fio_base_url']));
+  variable_set('rovas_fio_fetch_mode', $v['rovas_fio_fetch_mode'] === 'last' ? 'last' : 'period');
+  variable_set('rovas_fio_poll_window_days', (int) $v['rovas_fio_poll_window_days']);
+  variable_set('rovas_fio_rate_limit_seconds', max(30, (int) $v['rovas_fio_rate_limit_seconds']));
+  variable_set('rovas_fio_inter_request_delay', max(30, (int) $v['rovas_fio_inter_request_delay']));
+  variable_set('rovas_fio_cron_enabled', !empty($v['rovas_fio_cron_enabled']));
+  drupal_set_message(t('Configuration saved.'));
+}
+
+/**
+ * Submit handler: redirect to one-shot reconcile after save.
+ */
+function rovas_fio_reconcile_settings_form_redirect_run($form, &$form_state) {
+  $form_state['redirect'] = 'admin/config/rovas/fio-reconcile/run';
+}
+

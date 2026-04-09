@@ -13,21 +13,6 @@ function rovas_project_reward_menu() {
     'access callback' => TRUE,
   );
 
-  $items['rewpro/bank/provider-webhook'] = array(
-    'title' => 'Bank provider webhook',
-    'page callback' => 'rovas_project_reward_bank_provider_webhook',
-    'access callback' => TRUE,
-    'type' => MENU_CALLBACK,
-  );
-
-  $items['rewpro/bank/fio/poll'] = array(
-    'title' => 'Poll Fio bank transactions',
-    'page callback' => 'rovas_project_reward_bank_poll_page',
-    'access callback' => 'user_access',
-    'access arguments' => array('access administration pages'),
-    'type' => MENU_CALLBACK,
-  );
-
   $items['admin/commerce/orders/rewpro-bank-review'] = array(
     'title' => 'Rewpro bank payment review',
     'page callback' => 'rovas_project_reward_bank_manual_review_page',
@@ -3077,7 +3062,6 @@ function project_merit_updater($node, $project_merits) {
  * Implements hook_cron().
  */
 function rovas_project_reward_cron() {
-  rovas_project_reward_poll_fio_transactions();
   rovas_project_reward_process_callback_delivery_queue();
 }
 
@@ -3501,50 +3485,6 @@ function _rovas_project_reward_log_bank_webhook($direction, $path_or_url, $paylo
 }
 
 /**
- * Generic provider webhook endpoint for bank payment outcomes.
- */
-function rovas_project_reward_bank_provider_webhook() {
-  $raw = file_get_contents('php://input');
-  $path = isset($_SERVER['REQUEST_URI']) ? $_SERVER['REQUEST_URI'] : request_uri();
-  _rovas_project_reward_log_bank_webhook('inbound', $path, $raw);
-  $payload = drupal_json_decode($raw);
-  if (empty($payload['order_id']) || empty($payload['status'])) {
-    drupal_add_http_header('Status', '400 Bad Request');
-    print 'Missing order_id/status';
-    drupal_exit();
-  }
-
-  $order_id = (int) $payload['order_id'];
-  $status = strtolower($payload['status']);
-  $provider_payment_id = !empty($payload['provider_payment_id']) ? $payload['provider_payment_id'] : NULL;
-  $actual_amount = isset($payload['amount']) ? (float) $payload['amount'] : NULL;
-
-  if ($status === 'paid' || $status === 'succeeded' || $status === 'confirmed') {
-    rovas_project_reward_mark_bank_order_success($order_id, $provider_payment_id, $actual_amount, $payload);
-  }
-  elseif ($status === 'failed' || $status === 'expired' || $status === 'rejected') {
-    rovas_project_reward_mark_bank_order_failed($order_id, $status, $payload);
-  }
-  else {
-    drupal_add_http_header('Status', '422 Unprocessable Entity');
-    print 'Unsupported status';
-    drupal_exit();
-  }
-
-  print 'ok';
-  drupal_exit();
-}
-
-/**
- * Manual admin endpoint to trigger Fio poll.
- */
-function rovas_project_reward_bank_poll_page() {
-  $result = rovas_project_reward_poll_fio_transactions();
-  drupal_set_message(t('Fio poll finished. Processed: @n.', array('@n' => (int) $result['processed'])));
-  drupal_goto('admin/commerce/orders/rewpro-bank-review');
-}
-
-/**
  * Admin table listing intents requiring manual review.
  */
 function rovas_project_reward_bank_manual_review_page() {
@@ -3759,82 +3699,6 @@ function rovas_project_reward_bank_manual_review_form_submit(&$form, &$form_stat
 
   drupal_set_message(t('Overpayment accepted for Order #@id.', array('@id' => $order_id)));
   drupal_goto('admin/commerce/orders/rewpro-bank-review');
-}
-
-/**
- * Reconcile bank payments from Fio transactions endpoint.
- */
-function rovas_project_reward_poll_fio_transactions() {
-  $endpoint = trim(variable_get('rovas_fio_transactions_endpoint', ''));
-  $processed = 0;
-
-  if (empty($endpoint)) {
-    return array('processed' => 0, 'reason' => 'missing-endpoint');
-  }
-
-  $response = drupal_http_request($endpoint, array('timeout' => 20));
-  if (!empty($response->error) || (int) $response->code >= 300) {
-    watchdog('rovas_project_reward', 'Fio polling failed: @err (@code).', array('@err' => isset($response->error) ? $response->error : 'HTTP error', '@code' => isset($response->code) ? $response->code : 0), WATCHDOG_ERROR);
-    return array('processed' => 0, 'reason' => 'http-failure');
-  }
-
-  $data = drupal_json_decode($response->data);
-  if (empty($data)) {
-    return array('processed' => 0, 'reason' => 'empty-response');
-  }
-
-  $items = rovas_project_reward_extract_fio_items($data);
-  foreach ($items as $item) {
-    $reference = isset($item['reference']) ? trim((string) $item['reference']) : '';
-    if ($reference === '' || !ctype_digit($reference)) {
-      continue;
-    }
-    $order_id = (int) $reference;
-    $amount = isset($item['amount']) ? (float) $item['amount'] : NULL;
-    $provider_payment_id = isset($item['provider_payment_id']) ? $item['provider_payment_id'] : NULL;
-    rovas_project_reward_mark_bank_order_success($order_id, $provider_payment_id, $amount, $item);
-    $processed++;
-  }
-
-  return array('processed' => $processed);
-}
-
-/**
- * Normalize possible Fio JSON formats to an internal list.
- */
-function rovas_project_reward_extract_fio_items(array $data) {
-  $items = array();
-
-  // OpenAPI-shaped payloads can vary by adapter. Keep parser defensive.
-  if (!empty($data['transactions']) && is_array($data['transactions'])) {
-    foreach ($data['transactions'] as $tx) {
-      $items[] = array(
-        'reference' => isset($tx['variableSymbol']) ? $tx['variableSymbol'] : (isset($tx['reference']) ? $tx['reference'] : ''),
-        'amount' => isset($tx['amount']) ? $tx['amount'] : NULL,
-        'provider_payment_id' => isset($tx['id']) ? $tx['id'] : (isset($tx['entryReference']) ? $tx['entryReference'] : ''),
-        'raw' => $tx,
-      );
-    }
-  }
-  elseif (!empty($data['accountStatement']['transactionList']['transaction']) && is_array($data['accountStatement']['transactionList']['transaction'])) {
-    // Backward compatible parser for older Fio statement-like data.
-    foreach ($data['accountStatement']['transactionList']['transaction'] as $tx) {
-      $vs = '';
-      if (!empty($tx['column5']['value'])) {
-        $vs = $tx['column5']['value'];
-      }
-      $amount = !empty($tx['column1']['value']) ? $tx['column1']['value'] : NULL;
-      $provider_id = !empty($tx['column22']['value']) ? $tx['column22']['value'] : '';
-      $items[] = array(
-        'reference' => $vs,
-        'amount' => $amount,
-        'provider_payment_id' => $provider_id,
-        'raw' => $tx,
-      );
-    }
-  }
-
-  return $items;
 }
 
 /**
