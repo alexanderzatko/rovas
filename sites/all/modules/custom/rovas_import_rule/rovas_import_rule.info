@@ -1,9 +1,0 @@
-name = Rovas import rule
-description = imports huge rules
-core = 7.x
-package = Rovas
-dependencies[] = entity
-dependencies[] = rules
-dependencies[] = rules_conditional
-features[features_api][] = api:2
-features[rules_config][] = rules_verifiability
