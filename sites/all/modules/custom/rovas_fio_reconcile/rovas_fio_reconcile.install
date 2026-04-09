@@ -46,20 +46,10 @@ function rovas_fio_reconcile_schema() {
 }
 
 /**
- * Ensure dedupe table exists (e.g. partial deploys).
- */
-function rovas_fio_reconcile_update_7100() {
-  if (!db_table_exists('rovas_fio_seen_transaction')) {
-    $schema = drupal_get_schema_unprocessed('rovas_fio_reconcile');
-    db_create_table('rovas_fio_seen_transaction', $schema['rovas_fio_seen_transaction']);
-  }
-}
-
-/**
  * Implements hook_install().
  */
 function rovas_fio_reconcile_install() {
-  variable_set('rovas_fio_base_url', 'https://www.fio.cz/ib_api/rest');
+  variable_set('rovas_fio_base_url', 'https://fioapi.fio.cz/v1/rest');
   variable_set('rovas_fio_format', 'json');
   variable_set('rovas_fio_poll_window_days', 7);
   variable_set('rovas_fio_cron_enabled', TRUE);
