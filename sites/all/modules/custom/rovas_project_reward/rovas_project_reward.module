@@ -3852,6 +3852,11 @@ function rovas_project_reward_mark_bank_order_success($order_id, $provider_payme
       'expected_amount' => $expected,
     ));
 
+    // Also notify partner webhook consumers that settlement cannot be finalized.
+    // Payload still carries bank_intent_status=manual_review for exact reason.
+    rovas_project_reward_enqueue_delayed_callback($order, 'delayed-rejected');
+    rovas_project_reward_process_callback_delivery_queue(5);
+
     return FALSE;
   }
 
