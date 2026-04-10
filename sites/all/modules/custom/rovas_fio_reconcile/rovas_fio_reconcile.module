@@ -87,6 +87,15 @@ function rovas_fio_reconcile_menu() {
     'type' => MENU_CALLBACK,
   );
 
+  $items['admin/config/rovas/fio-reconcile/simulate'] = array(
+    'title' => 'Simulate bank transaction',
+    'description' => 'Simulate a bank transfer confirmation for testing (no HTTP).',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('rovas_fio_reconcile_simulate_form'),
+    'access arguments' => array('administer site configuration'),
+    'type' => MENU_NORMAL_ITEM,
+  );
+
   // Backwards compatibility: same path/behaviour as former rovas_project_reward_bank_poll_page().
   $items['rewpro/bank/fio/poll'] = array(
     'title' => 'Poll Fio bank transactions',
@@ -647,7 +656,9 @@ function rovas_fio_reconcile_settings_form($form, &$form_state) {
   $form['status'] = array(
     '#type' => 'item',
     '#title' => t('Last run'),
-    '#markup' => ($last ? check_plain(format_date($last, 'short')) . $stats_txt : t('Never')) . '<p>' . l(t('Run reconcile once (without saving this form)'), 'admin/config/rovas/fio-reconcile/run') . '</p>',
+    '#markup' => ($last ? check_plain(format_date($last, 'short')) . $stats_txt : t('Never')) .
+      '<p>' . l(t('Run reconcile once (without saving this form)'), 'admin/config/rovas/fio-reconcile/run') . '</p>' .
+      '<p>' . l(t('Simulate bank transaction (testing)'), 'admin/config/rovas/fio-reconcile/simulate') . '</p>',
   );
 
   $form['actions'] = array('#type' => 'actions');
@@ -685,5 +696,108 @@ function rovas_fio_reconcile_settings_form_save($form, &$form_state) {
  */
 function rovas_fio_reconcile_settings_form_redirect_run($form, &$form_state) {
   $form_state['redirect'] = 'admin/config/rovas/fio-reconcile/run';
+}
+
+/**
+ * Admin form: simulate a bank transaction for an order.
+ *
+ * This bypasses any HTTP calls and directly invokes the existing reconciliation
+ * path in rovas_project_reward, so the same paid/mismatch/manual_review logic
+ * runs as it would for real bank settlement.
+ */
+function rovas_fio_reconcile_simulate_form($form, &$form_state) {
+  $form['order_id'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Order ID'),
+    '#required' => TRUE,
+    '#size' => 12,
+    '#description' => t('Commerce order id to confirm as paid (VS mapping).'),
+  );
+  $form['amount'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Amount (EUR)'),
+    '#required' => TRUE,
+    '#size' => 12,
+    '#description' => t('Decimal amount to confirm (e.g. 12.00). If it differs from expected, order may go to manual review.'),
+  );
+  $form['provider_payment_id'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Provider payment id (optional)'),
+    '#required' => FALSE,
+    '#size' => 32,
+    '#description' => t('Optional id stored on the intent/transaction. If empty, a mock id is generated.'),
+  );
+  $form['notes'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Notes (optional)'),
+    '#required' => FALSE,
+    '#size' => 60,
+    '#description' => t('Stored in meta payload for debugging.'),
+  );
+
+  $form['actions'] = array('#type' => 'actions');
+  $form['actions']['submit'] = array(
+    '#type' => 'submit',
+    '#value' => t('Simulate confirmation'),
+  );
+
+  return $form;
+}
+
+/**
+ * Submit handler for simulate form.
+ */
+function rovas_fio_reconcile_simulate_form_submit($form, &$form_state) {
+  global $user;
+
+  $order_id = (int) trim($form_state['values']['order_id']);
+  $amount_raw = trim((string) $form_state['values']['amount']);
+  $amount = is_numeric($amount_raw) ? (float) $amount_raw : NULL;
+  $provider_payment_id = trim((string) $form_state['values']['provider_payment_id']);
+  $notes = trim((string) $form_state['values']['notes']);
+
+  if (!$order_id || $amount === NULL) {
+    form_set_error('', t('Please enter a valid order id and amount.'));
+    return;
+  }
+  if (!function_exists('rovas_project_reward_mark_bank_order_success')) {
+    drupal_set_message(t('Missing rovas_project_reward: cannot simulate reconciliation.'), 'error');
+    return;
+  }
+
+  if ($provider_payment_id === '') {
+    $provider_payment_id = 'mock:' . $order_id . ':' . REQUEST_TIME . ':' . substr(hash('sha256', microtime(TRUE) . mt_rand()), 0, 10);
+  }
+  // Keep within rovas_bank_payment_intent.provider_payment_id length (128).
+  if (strlen($provider_payment_id) > 128) {
+    $provider_payment_id = substr($provider_payment_id, 0, 128);
+  }
+
+  $meta = array(
+    'reference' => (string) $order_id,
+    'amount' => $amount,
+    'provider_payment_id' => $provider_payment_id,
+    'raw' => array(
+      'source' => 'simulate',
+      'uid' => isset($user->uid) ? (int) $user->uid : 0,
+      'notes' => $notes,
+    ),
+  );
+
+  watchdog('rovas_fio_reconcile', 'Simulating bank confirmation: order @oid, amount @amt, pid @pid (user @uid).', array(
+    '@oid' => $order_id,
+    '@amt' => number_format((float) $amount, 2, '.', ''),
+    '@pid' => $provider_payment_id,
+    '@uid' => isset($user->uid) ? (int) $user->uid : 0,
+  ), WATCHDOG_NOTICE);
+
+  rovas_project_reward_mark_bank_order_success($order_id, $provider_payment_id, $amount, $meta);
+
+  if (function_exists('rovas_project_reward_process_callback_delivery_queue')) {
+    rovas_project_reward_process_callback_delivery_queue(5);
+  }
+
+  drupal_set_message(t('Simulation executed for Order #@id.', array('@id' => $order_id)));
+  $form_state['redirect'] = 'admin/commerce/orders/rewpro-bank-review';
 }
 
