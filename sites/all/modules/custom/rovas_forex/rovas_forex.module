@@ -1604,11 +1604,11 @@ function rovas_forex_session_expiration_validate($form, &$form_state) {
 
   if (isset($form_state['rovas_session_data']) && !isset($form_state['triggering_element']['#ajax'])) {
     $expiration = $form_state['rovas_session_data']['expiration'];
-    $callbackurl = $form_state['rovas_session_data']['callbackurl'];
+    $callback_url = $form_state['rovas_session_data']['callback_url'];
     $curtime = time();
     
     if ($expiration < $curtime) {
-      drupal_goto($callbackurl . '?error=timeout');
+      drupal_goto($callback_url . '?error=timeout');
     }
   }
 }

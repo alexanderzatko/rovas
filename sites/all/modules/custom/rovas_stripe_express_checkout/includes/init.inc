@@ -7,7 +7,7 @@ function _rovas_stripe_express_checkout_init() {
 
 	$sessary = rovas_project_reward_session_get('rovas_project_reward', array());
 
-	$callbackurl = isset($sessary['callbackurl']) ? $sessary['callbackurl'] : '';
+	$callback_url = isset($sessary['callback_url']) ? $sessary['callback_url'] : '';
 	$expiration = isset($sessary['expiration']) ? $sessary['expiration'] : INF;
 	$curtime = time();
 	

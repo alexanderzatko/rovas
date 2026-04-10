@@ -68,7 +68,7 @@
       function getPpriceValue() {
         // Only enforce pprice if there's a callback parameter in the URL
         const urlParams = new URLSearchParams(window.location.search);
-        const hasCallback = urlParams.has('callbackurl');
+        const hasCallback = urlParams.has('callback_url');
 
         if (!hasCallback) {
           return null;

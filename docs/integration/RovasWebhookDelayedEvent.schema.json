@@ -1,0 +1,62 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "RovasWebhookDelayedEvent",
+  "description": "JSON body for bank-transfer lifecycle webhooks (order-placed, delayed-confirmed, delayed-rejected). Keep bank_intent_status enum in sync with rovas_bank_payment_intent.status in rovas_project_reward.",
+  "type": "object",
+  "required": [
+    "event",
+    "delivery_id",
+    "occurred_at",
+    "token",
+    "signature",
+    "amount_paid",
+    "currency",
+    "email",
+    "bank_intent_status"
+  ],
+  "properties": {
+    "event": {
+      "type": "string",
+      "enum": ["order-placed", "delayed-confirmed", "delayed-rejected"]
+    },
+    "delivery_id": {
+      "type": "string",
+      "description": "Idempotency key — deduplicate retries on this value"
+    },
+    "occurred_at": {
+      "type": "integer",
+      "description": "UNIX timestamp (seconds) of the event"
+    },
+    "token": { "type": "string" },
+    "signature": {
+      "type": "string",
+      "description": "HMAC-SHA256(key: project API secret, message: token), lowercase hex"
+    },
+    "amount_paid": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Order total in euro cents"
+    },
+    "currency": { "type": "string", "const": "EUR" },
+    "email": { "type": "string", "format": "email" },
+    "bank_intent_status": {
+      "type": "string",
+      "enum": [
+        "",
+        "created",
+        "pending_settlement",
+        "paid",
+        "manual_review",
+        "expired",
+        "failed",
+        "rejected"
+      ],
+      "description": "rovas_bank_payment_intent.status when the delivery was queued. Empty string if status is unset. Rejection webhooks use expired, failed, or rejected only."
+    },
+    "expiration": {
+      "type": "integer",
+      "description": "Optional: link expiry or bank callback deadline (UNIX seconds)"
+    }
+  },
+  "additionalProperties": true
+}

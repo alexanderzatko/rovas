@@ -53,13 +53,13 @@ function rovas_stripe_express_checkout_thanks() {
 			$intent = \Stripe\PaymentIntent::retrieve($payment_intent_id);
 
 			$project_id = isset($intent->metadata->project_id) ? $intent->metadata->project_id : null;
-			$paid_amt = isset($intent->amount_received) ? $intent->amount_received / 100 : null;
+			$paid_minor = isset($intent->amount_received) ? (int) $intent->amount_received : 0;
 			$email = isset($intent->charges->data[0]->receipt_email) ? $intent->charges->data[0]->receipt_email : null;
 
 			if ($project_id && $project_id !== 'none') {
 					$project = node_load($project_id);
 					if ($project) {
-						rovas_project_reward_notify_purchase($project, $paid_amt, 'EUR', $email);
+						rovas_project_reward_notify_purchase($project, $paid_minor, 'EUR', $email);
 					} else {
 						watchdog('rovas_stripe', 'Project @nid not found for PI: @pi_id', array('@nid' => $project_id, '@pi_id' => $payment_intent_id), WATCHDOG_WARNING);
 					}
@@ -72,7 +72,7 @@ function rovas_stripe_express_checkout_thanks() {
 	}
 
 	// rovas_project_reward_notify_purchase() queues a redirect via
-	// _rovas_project_reward_queue_redirect() (e.g. to the 3rd party callbackurl).
+	// _rovas_project_reward_queue_redirect() (e.g. to the 3rd party callback_url).
 	// Unlike the Commerce checkout flow (which executes it from
 	// rovas_project_reward_review_finalize_payment), we must run it here.
 	$redirect = _rovas_project_reward_queue_redirect();
