@@ -3709,6 +3709,12 @@ function rovas_project_reward_bank_manual_review_form_submit(&$form, &$form_stat
 
   commerce_payment_transaction_save($transaction);
 
+  // Notify the buyer about successful manual reconciliation using the actual
+  // received amount (overpayment accepted by admin).
+  rovas_project_reward_send_bank_transfer_notification($order, 'bank_transfer_confirmed', array(
+    'actual_amount' => $actual,
+  ));
+
   drupal_set_message(t('Overpayment accepted for Order #@id.', array('@id' => $order_id)));
   drupal_goto('admin/commerce/orders/rewpro-bank-review');
 }
@@ -4710,8 +4716,8 @@ function rovas_project_reward_notify_site_admin_overpayment($order, $expected_am
  *   One of: bank_transfer_confirmed, bank_transfer_mismatch,
  *            bank_transfer_failed, bank_transfer_expired.
  * @param array $extra_params
- *   Extra key/value pairs merged into $params (e.g. actual_amount,
- *   expected_amount for the mismatch case).
+ *   Extra key/value pairs merged into $params (e.g. actual_amount for
+ *   confirmed/mismatch and expected_amount for mismatch).
  */
 function rovas_project_reward_send_bank_transfer_notification($order, $mail_key, array $extra_params = array()) {
   if (empty($order->mail)) {
@@ -4771,9 +4777,14 @@ function rovas_project_reward_send_bank_transfer_notification($order, $mail_key,
 
   global $base_url;
 
-  $order_amount = !empty($order->data['sepa']['amount'])
-    ? number_format((float) $order->data['sepa']['amount'], 2, '.', '')
-    : '';
+  $display_amount = NULL;
+  if (isset($extra_params['actual_amount']) && is_numeric($extra_params['actual_amount'])) {
+    $display_amount = (float) $extra_params['actual_amount'];
+  }
+  elseif (!empty($order->data['sepa']['amount']) && is_numeric($order->data['sepa']['amount'])) {
+    $display_amount = (float) $order->data['sepa']['amount'];
+  }
+  $order_amount = ($display_amount !== NULL) ? number_format($display_amount, 2, '.', '') : '';
   $order_date = !empty($order->created) ? format_date($order->created, 'medium') : '';
 
   $params = array(
