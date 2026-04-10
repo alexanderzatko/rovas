@@ -87,6 +87,15 @@ function rovas_fio_reconcile_menu() {
     'type' => MENU_CALLBACK,
   );
 
+  // Backwards compatibility: same path/behaviour as former rovas_project_reward_bank_poll_page().
+  $items['rewpro/bank/fio/poll'] = array(
+    'title' => 'Poll Fio bank transactions',
+    'page callback' => 'rovas_fio_reconcile_legacy_bank_poll_page',
+    'access callback' => 'user_access',
+    'access arguments' => array('access administration pages'),
+    'type' => MENU_CALLBACK,
+  );
+
   return $items;
 }
 
@@ -538,6 +547,35 @@ function rovas_fio_reconcile_run_page() {
   }
 
   drupal_goto('admin/config/rovas/fio-reconcile');
+}
+
+/**
+ * Legacy menu callback: rewpro/bank/fio/poll (admin bookmark / runbooks).
+ *
+ * Matches old flow: run reconcile, flush callback queue, message with processed
+ * count, redirect to Rewpro bank review.
+ */
+function rovas_fio_reconcile_legacy_bank_poll_page() {
+  global $user;
+  watchdog('rovas_fio_reconcile', 'Fio reconcile via legacy URL rewpro/bank/fio/poll (user @uid @name).', array(
+    '@uid' => isset($user->uid) ? (int) $user->uid : 0,
+    '@name' => isset($user->name) ? check_plain($user->name) : '?',
+  ), WATCHDOG_INFO);
+
+  $result = rovas_fio_reconcile_run_poll(array('source' => 'manual-legacy'));
+  if (function_exists('rovas_project_reward_process_callback_delivery_queue')) {
+    rovas_project_reward_process_callback_delivery_queue();
+  }
+
+  if (!empty($result['ok'])) {
+    drupal_set_message(t('Fio poll finished. Processed: @n.', array('@n' => (int) $result['processed'])));
+  }
+  else {
+    $msg = !empty($result['message']) ? $result['message'] : (!empty($result['reason']) ? $result['reason'] : 'unknown');
+    drupal_set_message(filter_xss($msg), 'error');
+  }
+
+  drupal_goto('admin/commerce/orders/rewpro-bank-review');
 }
 
 /**
