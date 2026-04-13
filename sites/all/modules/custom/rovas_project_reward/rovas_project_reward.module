@@ -2535,6 +2535,29 @@ watchdog('rovas_project_reward', 'response <pre>' . print_r($response,1) . '</pr
  *   The remaining reward amount after allocation processing.
  */
 function process_preferred_allocation_payment($project, $reward_amount) {
+  return _process_preferred_allocation_payment_impl($project, $reward_amount, FALSE);
+}
+
+/**
+ * Preferred allocation: same as process_preferred_allocation_payment(), with an
+ * optional merge of the remainder into field_euro_basket on the same save.
+ *
+ * Rules (rules_process_purchase_core) must pass FALSE: they add the remainder
+ * to field_euro_basket via data_calc + data_set after the PHP eval. The Stripe
+ * webhook and bank-transfer confirmation pipelines pass TRUE so behaviour
+ * matches that net effect in one save.
+ *
+ * @param object $project
+ *   The project node.
+ * @param float $reward_amount
+ *   Amount (EUR) to allocate.
+ * @param bool $merge_euro_basket_remainder
+ *   If TRUE, add $rest_reward to field_euro_basket before the project save.
+ *
+ * @return float
+ *   Remainder after allocation (same as process_preferred_allocation_payment()).
+ */
+function _process_preferred_allocation_payment_impl($project, $reward_amount, $merge_euro_basket_remainder) {
   $project_wrapper = entity_metadata_wrapper('node', $project);
   
   if ($project_wrapper->getBundle() == 'project' && $project_wrapper->field_reward_target->value() == 2) {
@@ -2612,6 +2635,14 @@ function process_preferred_allocation_payment($project, $reward_amount) {
       // Update the running total of all payments
       $current_running_total = $project_wrapper->field_runing_total->value() ?: 0;
       $project_wrapper->field_runing_total->set($current_running_total + $reward_amount);
+
+      // Stripe/bank pipelines: mirror rules_process_purchase_core, which adds
+      // this remainder to field_euro_basket after process_preferred_allocation_payment().
+      if ($merge_euro_basket_remainder && $rest_reward > 0) {
+        $eb_raw = $project_wrapper->field_euro_basket->value();
+        $eb = ($eb_raw !== NULL && $eb_raw !== '') ? (float) $eb : 0.0;
+        $project_wrapper->field_euro_basket->set($eb + (float) $rest_reward);
+      }
 
       // Save the project
       $project_wrapper->save();
@@ -2880,7 +2911,7 @@ function _rovas_process_stripe_fees_for_order($order, $payment_intent_id, $fee_a
 
   // Distribute euros within the project if net_after_merit > 0.
   if ($net_after_merit > 0 && $rewarded_project) {
-    process_preferred_allocation_payment($rewarded_project, $net_after_merit);
+    _process_preferred_allocation_payment_impl($rewarded_project, $net_after_merit, TRUE);
   }
 
   // Forex conversion: EUR to CHR for merit_fee, with processor fee, charge_fees=FALSE.
@@ -4082,7 +4113,7 @@ function rovas_project_reward_process_bank_order_reward($order) {
 
   // Remainder after Rovas + merit slice → euro distribution (same as Stripe).
   if ($net_after_merit_eur > 0 && $rewarded_project) {
-    process_preferred_allocation_payment($rewarded_project, $net_after_merit_eur);
+    _process_preferred_allocation_payment_impl($rewarded_project, $net_after_merit_eur, TRUE);
   }
 
   // Fee-free EUR→CHR for merit leg (same as Stripe: charge_fees = FALSE).
