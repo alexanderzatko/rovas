@@ -2640,7 +2640,7 @@ function _process_preferred_allocation_payment_impl($project, $reward_amount, $m
       // this remainder to field_euro_basket after process_preferred_allocation_payment().
       if ($merge_euro_basket_remainder && $rest_reward > 0) {
         $eb_raw = $project_wrapper->field_euro_basket->value();
-        $eb = ($eb_raw !== NULL && $eb_raw !== '') ? (float) $eb : 0.0;
+        $eb = ($eb_raw !== NULL && $eb_raw !== '') ? (float) $eb_raw : 0.0;
         $project_wrapper->field_euro_basket->set($eb + (float) $rest_reward);
       }
 
