@@ -3760,6 +3760,15 @@ function rovas_project_reward_bank_manual_review_form_submit(&$form, &$form_stat
     $transaction->currency_code = $currency;
   }
 
+  // Overpayment acceptance must update the order total before the SUCCESS
+  // transaction save triggers reward distribution logic.
+  rovas_project_reward_apply_bank_settled_amount_to_order(
+    $order_id,
+    $actual,
+    $currency,
+    'admin_overpayment_accept'
+  );
+
   $transaction->amount = commerce_currency_decimal_to_amount($actual, $currency);
   $transaction->status = COMMERCE_PAYMENT_STATUS_SUCCESS;
   if ($provider_payment_id) {
@@ -3777,6 +3786,120 @@ function rovas_project_reward_bank_manual_review_form_submit(&$form, &$form_stat
 
   drupal_set_message(t('Overpayment accepted for Order #@id.', array('@id' => $order_id)));
   drupal_goto('admin/commerce/orders/rewpro-bank-review');
+}
+
+/**
+ * Persist accepted bank-settlement amount as the order total.
+ *
+ * Keeps an audit trail in order->data so original quoted amount remains visible
+ * after an overpayment is accepted.
+ *
+ * @param int $order_id
+ *   Commerce order ID.
+ * @param float $actual_amount
+ *   Accepted/settled decimal amount (major units, e.g. EUR).
+ * @param string $currency
+ *   Currency code (defaults to EUR when empty).
+ * @param string $reason
+ *   Short internal reason tag for the adjustment audit trail.
+ *
+ * @return bool
+ *   TRUE when save succeeded or no change was necessary, FALSE on failure.
+ */
+function rovas_project_reward_apply_bank_settled_amount_to_order($order_id, $actual_amount, $currency = 'EUR', $reason = 'bank_settlement_adjustment') {
+  $order = commerce_order_load($order_id);
+  if (!$order) {
+    return FALSE;
+  }
+
+  $currency = !empty($currency) ? strtoupper($currency) : 'EUR';
+  $new_minor = commerce_currency_decimal_to_amount((float) $actual_amount, $currency);
+  if ($new_minor <= 0) {
+    return FALSE;
+  }
+
+  $current_minor = 0;
+  $current_currency = $currency;
+  if (!empty($order->commerce_order_total[LANGUAGE_NONE][0]['amount'])) {
+    $current_minor = (int) $order->commerce_order_total[LANGUAGE_NONE][0]['amount'];
+    $current_currency = !empty($order->commerce_order_total[LANGUAGE_NONE][0]['currency_code'])
+      ? $order->commerce_order_total[LANGUAGE_NONE][0]['currency_code']
+      : $currency;
+  }
+
+  // Nothing to change.
+  if ($current_minor === $new_minor && $current_currency === $currency) {
+    return TRUE;
+  }
+
+  if (!isset($order->data) || !is_array($order->data)) {
+    $order->data = array();
+  }
+  if (empty($order->data['rpr_original_order_total_minor'])) {
+    $order->data['rpr_original_order_total_minor'] = (int) $current_minor;
+    $order->data['rpr_original_order_total_currency'] = (string) $current_currency;
+    $order->data['rpr_original_order_total_recorded_at'] = REQUEST_TIME;
+  }
+  if (empty($order->data['rpr_bank_amount_adjustments']) || !is_array($order->data['rpr_bank_amount_adjustments'])) {
+    $order->data['rpr_bank_amount_adjustments'] = array();
+  }
+  global $user;
+  $order->data['rpr_bank_amount_adjustments'][] = array(
+    'from_minor' => (int) $current_minor,
+    'to_minor' => (int) $new_minor,
+    'currency' => $currency,
+    'reason' => (string) $reason,
+    'changed' => REQUEST_TIME,
+    'uid' => !empty($user->uid) ? (int) $user->uid : 0,
+  );
+  $order->data['rpr_settled_amount_minor'] = (int) $new_minor;
+  $order->data['rpr_settled_amount_currency'] = $currency;
+
+  // Keep product line-item custom price in sync for rewpro flows so future
+  // refresh/rebase operations preserve the accepted amount.
+  $line_items = field_get_items('commerce_order', $order, 'commerce_line_items');
+  if (!empty($line_items)) {
+    foreach ($line_items as $item_ref) {
+      $line_item = commerce_line_item_load($item_ref['line_item_id']);
+      if (!$line_item || $line_item->type !== 'product') {
+        continue;
+      }
+      $quantity = !empty($line_item->quantity) ? (int) $line_item->quantity : 1;
+      if ($quantity < 1) {
+        $quantity = 1;
+      }
+      $unit_minor = (int) round($new_minor / $quantity);
+      if (!isset($line_item->data) || !is_array($line_item->data)) {
+        $line_item->data = array();
+      }
+      $line_item->data['rpr_custom_unit_price'] = $unit_minor;
+      $line_item->data['rpr_custom_currency'] = $currency;
+      $line_item->commerce_unit_price[LANGUAGE_NONE][0]['amount'] = $unit_minor;
+      $line_item->commerce_unit_price[LANGUAGE_NONE][0]['currency_code'] = $currency;
+      commerce_line_item_rebase_unit_price($line_item);
+      commerce_line_item_save($line_item);
+      // Rewpro orders are expected to contain a single priced product line.
+      break;
+    }
+  }
+
+  // Force order total to the accepted settlement amount.
+  $order->commerce_order_total[LANGUAGE_NONE][0] = array(
+    'amount' => (int) $new_minor,
+    'currency_code' => $currency,
+    'data' => array(),
+  );
+  commerce_order_save($order);
+
+  watchdog('rovas_project_reward', 'bank_settlement_adjusted: order @oid total changed from @from to @to @cur (@reason).', array(
+    '@oid' => (int) $order_id,
+    '@from' => number_format((float) $current_minor / 100, 2, '.', ''),
+    '@to' => number_format((float) $new_minor / 100, 2, '.', ''),
+    '@cur' => $currency,
+    '@reason' => $reason,
+  ), WATCHDOG_INFO);
+
+  return TRUE;
 }
 
 /**
