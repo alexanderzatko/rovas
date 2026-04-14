@@ -3,10 +3,10 @@
     "PLUGIN" : "reaction rule",
     "OWNER" : "rules",
     "TAGS" : [ "project" ],
-    "REQUIRES" : [ "rules", "rules_conditional", "views_bulk_operations" ],
+    "REQUIRES" : [ "rules", "rules_conditional", "views_bulk_operations", "php" ],
     "ON" : { "node_update--project" : { "bundle" : "project" } },
     "IF" : [
-      { "NOT data_is_empty" : { "data" : [ "node-unchanged" ] } },
+      { "php_eval" : { "code" : "return isset($node_unchanged) && !empty($node_unchanged);" } },
       { "NOT data_is" : {
           "data" : [ "node:field-participation" ],
           "value" : [ "node-unchanged:field-participation" ]

@@ -3,10 +3,10 @@
     "PLUGIN" : "reaction rule",
     "OWNER" : "rules",
     "TAGS" : [ "project" ],
-    "REQUIRES" : [ "rules" ],
+    "REQUIRES" : [ "rules", "php" ],
     "ON" : { "node_update--project" : { "bundle" : "project" } },
     "IF" : [
-      { "NOT data_is_empty" : { "data" : [ "node-unchanged" ] } },
+      { "php_eval" : { "code" : "return isset($node_unchanged) && !empty($node_unchanged);" } },
       { "OR" : [
           { "AND" : [
               { "data_is" : { "data" : [ "node-unchanged:field-status" ], "value" : "3" } },
