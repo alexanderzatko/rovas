@@ -3889,6 +3889,13 @@ function rovas_project_reward_apply_bank_settled_amount_to_order($order_id, $act
     'currency_code' => $currency,
     'data' => array(),
   );
+  $order->revision = TRUE;
+  $order->log = t('Bank settlement amount accepted: order total changed from @from to @to @cur (@reason).', array(
+    '@from' => number_format((float) $current_minor / 100, 2, '.', ''),
+    '@to' => number_format((float) $new_minor / 100, 2, '.', ''),
+    '@cur' => $currency,
+    '@reason' => $reason,
+  ));
   commerce_order_save($order);
 
   watchdog('rovas_project_reward', 'bank_settlement_adjusted: order @oid total changed from @from to @to @cur (@reason).', array(
