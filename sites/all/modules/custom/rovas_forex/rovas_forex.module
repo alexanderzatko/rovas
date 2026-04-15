@@ -802,7 +802,7 @@ function rovas_forex_form($form, &$form_state) {
 		$sub_act = TRUE;
 	}
 	else if ($currency == 'EUR' && !empty($eur_buy_merits_too_small)) {
-		$button_note = t('This amount is too small after conversion fees; no Merits would be purchased. Enter a larger amount in Euros.');
+		$button_note = t('This amount is too small to buy Merits. Enter a larger amount in Euros.');
 		$sub_act = TRUE;
 		$css_class = 'color:red;';
 	}
@@ -959,7 +959,7 @@ function rovas_forex_buy_merits_eur_validate($form, &$form_state) {
 	$forex_params = calculate_forex_transaction_params('eur_to_chr', (float) $buy_amount, NULL, TRUE);
 	$out = isset($forex_params['output']) ? (float) $forex_params['output'] : 0.0;
 	if ($out <= 0) {
-		form_set_error('buy_amount', t('This amount is too small after conversion fees; no Merits would be purchased. Enter a larger amount in Euros.'));
+		form_set_error('buy_amount', t('This amount is too small to buy Merits. Enter a larger amount in Euros.'));
 	}
 }
 
