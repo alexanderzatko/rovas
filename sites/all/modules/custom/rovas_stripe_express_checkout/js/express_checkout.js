@@ -8,6 +8,7 @@
   let stripe = null;
   let elements = null;
   let debounceTimeout = null;
+  let eceStateKey = null;
 
   Drupal.behaviors.expressCheckout = {
     attach: function (context, settings) {
@@ -41,6 +42,16 @@
 
       function getBankButton() {
         return $('#pay-choice-bank');
+      }
+
+      function getECEStateKey() {
+        const paymentRaw = $('input[name="payment"]').val().trim();
+        const currency = ($('input[name="payment-currency"]:checked').val() || 'eur').toLowerCase();
+        const email = ($('input[name="email"]').val() || '').trim().toLowerCase();
+        const urlParams = new URLSearchParams(window.location.search);
+        const paytype = urlParams.get('paytype') || '';
+        const recipient = urlParams.get('recipient') || '';
+        return [paymentRaw, currency, email, paytype, recipient].join('|');
       }
 
       function debouncedToggleECE() {
@@ -150,9 +161,10 @@
           containerParent: eceContainerLive.length ? eceContainerLive.parent().attr('id') || eceContainerLive.parent().attr('class') : 'n/a'
         });
 
-        // Reset ECE initialization when currency changes or conditions change
-        if (!shouldShowECE || (shouldShowECE && expressCheckoutElement)) {
+        // Reset only when hidden. Re-init while visible is handled by state-key changes.
+        if (!shouldShowECE) {
           eceInitialized = false;
+          eceStateKey = null;
         }
 
         if (eceContainerLive.length) {
@@ -207,9 +219,20 @@
 					}
 				}
 
-				if (shouldShowECE && !eceInitialized && !eceInitializing) {
+        const nextStateKey = shouldShowECE ? getECEStateKey() : null;
+        const stateChanged = shouldShowECE && eceStateKey !== nextStateKey;
+
+        if (stateChanged && expressCheckoutElement) {
+          expressCheckoutElement.unmount();
+          expressCheckoutElement = null;
+          eceInitialized = false;
+          eceInitializing = false;
+        }
+
+				if (shouldShowECE && (!eceInitialized || stateChanged) && !eceInitializing) {
 					console.log('[ECE] calling initializeStripeECE');
 					eceInitializing = true;
+          eceStateKey = nextStateKey;
 					showLoading();
 					// Disable both buttons while ECE is loading
           const cardButton = getCardButton();
@@ -359,6 +382,7 @@
           expressCheckoutElement = null;
         }
         eceInitialized = false;
+        eceStateKey = null;
         clearTimeout(debounceTimeout);
       }
     }
