@@ -1298,7 +1298,7 @@ function rovas_forex_form_submit($form, &$form_state) {
 			}
 			$fp_submit = calculate_forex_transaction_params('eur_to_chr', (float) $euros, NULL, TRUE);
 			if (!isset($fp_submit['output']) || (float) $fp_submit['output'] <= 0) {
-				drupal_set_message(t('This amount is too small after conversion fees; no Merits would be purchased. Enter a larger amount in Euros.'), 'error');
+				drupal_set_message(t('This amount is too small to buy Merits. Enter a larger amount in Euros.'), 'error');
 				break;
 			}
 
