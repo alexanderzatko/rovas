@@ -363,6 +363,8 @@ function rovas_forex_form($form, &$form_state) {
 		return rovas_preview_form($form, $form_state);
 	}
 
+	$form['#validate'][] = 'rovas_forex_buy_merits_eur_validate';
+
 	global $user;
 
 	//determining if there is a lock active and who owns it
@@ -672,6 +674,12 @@ function rovas_forex_form($form, &$form_state) {
 		$merits_purchased = $convary['merits_purchased'];
 		$unit_price = $convary['unit_price'];
 
+		$eur_buy_merits_too_small = FALSE;
+		if (!$paymentChanged && isset($form_state['values']['buy_amount']) && is_numeric($form_state['values']['buy_amount']) && (float) $form_state['values']['buy_amount'] > 0) {
+			$fp_merits_check = calculate_forex_transaction_params('eur_to_chr', (float) $form_state['values']['buy_amount'], NULL, TRUE);
+			$eur_buy_merits_too_small = (isset($fp_merits_check['output']) ? (float) $fp_merits_check['output'] : 0.0) <= 0;
+		}
+
 		$form['unit_price'] = array(
 				'#type' => 'hidden',
 				'#value' => $unit_price,
@@ -679,6 +687,7 @@ function rovas_forex_form($form, &$form_state) {
 
 	}
 	else if ($currency == 'CHR') {
+		$eur_buy_merits_too_small = FALSE;
 		$merits_btn_name = 'buy_merits_chrons';
 		$sub_label = t('Buy');
 		$cur_suffix = t('CH');
@@ -700,6 +709,7 @@ function rovas_forex_form($form, &$form_state) {
 	
 	}
 	else {
+		$eur_buy_merits_too_small = FALSE;
 		$merits_btn_name = 'default';
 		$sub_label = t('Next');
 		$cur_suffix = NULL;
@@ -790,6 +800,11 @@ function rovas_forex_form($form, &$form_state) {
 
 	if ($paymentChanged || !isset($form_state['values']['buy_amount']) || $form_state['values']['buy_amount'] <= 0) {
 		$sub_act = TRUE;
+	}
+	else if ($currency == 'EUR' && !empty($eur_buy_merits_too_small)) {
+		$button_note = t('This amount is too small after conversion fees; no Merits would be purchased. Enter a larger amount in Euros.');
+		$sub_act = TRUE;
+		$css_class = 'color:red;';
 	}
 	else if ($currency == 'CHR' && $form_state['values']['buy_amount'] > $chrons) {
 
@@ -927,6 +942,25 @@ function rovas_forex_form($form, &$form_state) {
 */
 	return $form;
 
+}
+
+/**
+ * Validates Buy Merits with Euros: amount must yield CHR output after fees.
+ */
+function rovas_forex_buy_merits_eur_validate($form, &$form_state) {
+	if (empty($form_state['clicked_button']['#name']) || $form_state['clicked_button']['#name'] !== 'buy_merits_euros') {
+		return;
+	}
+	$buy_amount = isset($form_state['values']['buy_amount']) ? $form_state['values']['buy_amount'] : NULL;
+	if (!is_numeric($buy_amount) || (float) $buy_amount <= 0) {
+		form_set_error('buy_amount', t('Please enter an amount greater than zero.'));
+		return;
+	}
+	$forex_params = calculate_forex_transaction_params('eur_to_chr', (float) $buy_amount, NULL, TRUE);
+	$out = isset($forex_params['output']) ? (float) $forex_params['output'] : 0.0;
+	if ($out <= 0) {
+		form_set_error('buy_amount', t('This amount is too small after conversion fees; no Merits would be purchased. Enter a larger amount in Euros.'));
+	}
 }
 
 function rovas_preview_form($form, &$form_state) {
@@ -1258,6 +1292,16 @@ function rovas_forex_form_submit($form, &$form_state) {
 		case ($form_state['clicked_button']['#name'] == 'buy_merits_euros'):
 
 			$euros = $form_state['values']['buy_amount'];
+			if (!is_numeric($euros) || (float) $euros <= 0) {
+				drupal_set_message(t('Please enter an amount greater than zero.'), 'error');
+				break;
+			}
+			$fp_submit = calculate_forex_transaction_params('eur_to_chr', (float) $euros, NULL, TRUE);
+			if (!isset($fp_submit['output']) || (float) $fp_submit['output'] <= 0) {
+				drupal_set_message(t('This amount is too small after conversion fees; no Merits would be purchased. Enter a larger amount in Euros.'), 'error');
+				break;
+			}
+
 			$merits = $form_state['values']['buy-merits-converted-value'];
 			$unit_price = $form_state['values']['unit_price'];
 	
@@ -1991,8 +2035,24 @@ function rovas_forex_transaction_params($transact_type, $input, $processor_fee =
  *   Amount in EUR.
  */
 function rovas_forex_rules_action_calculate_merits_execute($buy_amount,$processor_fee = null, $charge_fees = TRUE) {
+  $buy_amount = is_numeric($buy_amount) ? (float) $buy_amount : 0.0;
+  if ($buy_amount <= 0) {
+    return array(
+      'merits_purchased' => 0,
+      'unit_price' => 0,
+    );
+  }
+
   $forex_params = calculate_forex_transaction_params('eur_to_chr', $buy_amount,$processor_fee, $charge_fees);
-  $convary = _rovas_purchase_shares_stripe_convertor($buy_amount, $forex_params['output']);
+  $chr_out = isset($forex_params['output']) ? (float) $forex_params['output'] : 0.0;
+  if ($chr_out <= 0) {
+    return array(
+      'merits_purchased' => 0,
+      'unit_price' => 0,
+    );
+  }
+
+  $convary = _rovas_purchase_shares_stripe_convertor($buy_amount, $chr_out);
 
   return array(
     'merits_purchased' => $convary['units'],

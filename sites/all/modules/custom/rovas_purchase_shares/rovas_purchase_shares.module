@@ -401,6 +401,13 @@ calculated by simple math, to values that Stripe order can process
 */
 function _rovas_purchase_shares_stripe_convertor ($total_reward, $units) {
 
+    $total_reward = is_numeric($total_reward) ? (float) $total_reward : 0.0;
+    $units = is_numeric($units) ? (float) $units : 0.0;
+    if ($units <= 0 || $total_reward <= 0) {
+      watchdog('rovas_purchase_shares', '_rovas_purchase_shares_stripe_convertor: invalid total_reward=@reward units=@units', array('@reward' => $total_reward, '@units' => $units), WATCHDOG_WARNING);
+      return array('units' => 0, 'unit_price' => 0);
+    }
+
     $unit_price = $total_reward / $units;
     $unit_price = round($unit_price, 2);
     $units = ceil($units);
