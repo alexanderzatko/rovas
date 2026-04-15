@@ -3394,11 +3394,124 @@ function rovas_project_reward_create_bank_intent($order, $paytype, $recipient_id
     'epc_payload' => $epc_payload,
     'callback_url' => isset($session_data['callback_url']) ? $session_data['callback_url'] : '',
   );
+  rovas_project_reward_attach_bank_pi_to_order_data($order, $intent_fields + array(
+    'order_id' => (int) $order->order_id,
+    'created' => REQUEST_TIME,
+  ));
   commerce_order_save($order);
 
   watchdog('rovas_project_reward', 'Created bank intent @intent for order @order.', array('@intent' => $intent_id, '@order' => $order->order_id), WATCHDOG_INFO);
 
   return $intent_id;
+}
+
+/**
+ * Build a Stripe-like payment_intent payload for bank transfer orders.
+ *
+ * Persists a complete bank intent snapshot on order->data['bank_pi'] so
+ * integrations can consume a stable PI-shaped object similarly to Stripe.
+ *
+ * @param array|object $intent
+ *   A rovas_bank_payment_intent row.
+ *
+ * @return array
+ *   Normalized payment intent payload.
+ */
+function rovas_project_reward_build_bank_pi_payload($intent) {
+  if (is_object($intent)) {
+    $intent = (array) $intent;
+  }
+  if (!is_array($intent)) {
+    return array();
+  }
+
+  $meta = array();
+  if (!empty($intent['meta'])) {
+    $decoded = drupal_json_decode($intent['meta']);
+    if (is_array($decoded)) {
+      $meta = $decoded;
+    }
+  }
+
+  $amount_decimal = isset($intent['amount']) ? number_format((float) $intent['amount'], 2, '.', '') : '0.00';
+  $amount_minor = (int) round((float) $amount_decimal * 100);
+  $currency = !empty($intent['currency']) ? strtoupper((string) $intent['currency']) : 'EUR';
+
+  // Keep PI-like shape for parity with Stripe while preserving bank specifics.
+  $pi = array(
+    'id' => !empty($intent['intent_id']) ? (string) $intent['intent_id'] : '',
+    'object' => 'payment_intent',
+    'payment_method' => 'bank_transfer',
+    'payment_method_types' => array('bank_transfer'),
+    'provider' => !empty($intent['provider']) ? (string) $intent['provider'] : 'fio',
+    'provider_payment_id' => !empty($intent['provider_payment_id']) ? (string) $intent['provider_payment_id'] : '',
+    'status' => !empty($intent['status']) ? (string) $intent['status'] : '',
+    'reference' => !empty($intent['reference']) ? (string) $intent['reference'] : '',
+    'amount' => $amount_minor,
+    'amount_received' => $amount_minor,
+    'amount_decimal' => $amount_decimal,
+    'currency' => strtolower($currency),
+    'metadata' => $meta + array(
+      'paytype' => !empty($intent['paytype']) ? (string) $intent['paytype'] : '',
+      'recipient_id' => !empty($intent['recipient_id']) ? (int) $intent['recipient_id'] : 0,
+      'callback_url' => !empty($intent['callback_url']) ? (string) $intent['callback_url'] : '',
+      'callback_expires' => !empty($intent['callback_expires']) ? (int) $intent['callback_expires'] : NULL,
+      'product_name' => !empty($meta['product_name']) ? (string) $meta['product_name'] : '',
+      'epc_payload' => !empty($intent['epc_payload']) ? (string) $intent['epc_payload'] : '',
+    ),
+    'created' => !empty($intent['created']) ? (int) $intent['created'] : REQUEST_TIME,
+    'updated' => !empty($intent['changed']) ? (int) $intent['changed'] : REQUEST_TIME,
+  );
+
+  // Keep the full original row for consumers that need all fields unchanged.
+  $pi['rovas_bank_intent_raw'] = $intent;
+  $pi['rovas_bank_intent_raw']['meta_decoded'] = $meta;
+
+  return $pi;
+}
+
+/**
+ * Attach bank PI payload to order data.
+ *
+ * @param object $order
+ *   Loaded commerce order entity (mutated in-place).
+ * @param array|object|null $intent
+ *   Optional intent row. If omitted, loaded by order_id.
+ *
+ * @return bool
+ *   TRUE when attached, FALSE when intent was unavailable.
+ */
+function rovas_project_reward_attach_bank_pi_to_order_data(&$order, $intent = NULL) {
+  if (empty($order->order_id)) {
+    return FALSE;
+  }
+
+  if ($intent === NULL) {
+    $intent = db_select('rovas_bank_payment_intent', 'i')
+      ->fields('i')
+      ->condition('order_id', (int) $order->order_id)
+      ->range(0, 1)
+      ->execute()
+      ->fetchObject();
+  }
+  if (!$intent) {
+    return FALSE;
+  }
+
+  $payload = rovas_project_reward_build_bank_pi_payload($intent);
+  if (empty($payload)) {
+    return FALSE;
+  }
+
+  if (!isset($order->data) || !is_array($order->data)) {
+    $order->data = array();
+  }
+  if (empty($order->data['bank_pi']) || !is_array($order->data['bank_pi'])) {
+    $order->data['bank_pi'] = array();
+  }
+  $order->data['bank_pi']['payment_intent'] = $payload;
+
+  return TRUE;
 }
 
 /**
@@ -3977,6 +4090,7 @@ function rovas_project_reward_sync_bank_intent_paid($order_id, $provider_payment
   if ($actual_amount !== NULL) {
     $order->data['sepa']['amount'] = number_format((float) $actual_amount, 2, '.', '');
   }
+  rovas_project_reward_attach_bank_pi_to_order_data($order);
   commerce_order_save($order);
 
   rovas_project_reward_enqueue_delayed_callback($order, 'delayed-confirmed');
@@ -4040,6 +4154,8 @@ function rovas_project_reward_mark_bank_order_success($order_id, $provider_payme
       ))
       ->condition('order_id', $order_id)
       ->execute();
+    rovas_project_reward_attach_bank_pi_to_order_data($order);
+    commerce_order_save($order);
     watchdog('rovas_project_reward', 'Amount mismatch for order @order. Expected @exp, got @got.', array('@order' => $order_id, '@exp' => $expected, '@got' => $actual_amount), WATCHDOG_WARNING);
 
     // Notify the buyer about the mismatch so they can take action.
@@ -4507,6 +4623,7 @@ function rovas_project_reward_mark_bank_order_failed($order_id, $status = 'faile
     ->execute();
 
   $order->data['sepa']['status'] = ($status === 'expired') ? 'expired' : 'failed';
+  rovas_project_reward_attach_bank_pi_to_order_data($order);
   commerce_order_save($order);
 
   // Mirror the success path: update the PENDING Commerce transaction so the
