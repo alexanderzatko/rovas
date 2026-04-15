@@ -806,10 +806,10 @@ function rovas_project_reward_form ($form, &$form_state) {
 
 	if ($currency == 'EUR') {
 		if ($user_language != 'en') {
-			$butn_label = '<span class="icon glyphicon glyphicon-credit-card" aria-hidden="true"></span> ' . t('Pay with credit card');
+			$butn_label = '<span class="icon glyphicon glyphicon-credit-card" aria-hidden="true"></span> ' . t('Pay by card');
 		} 
 		else {
-			$butn_label = t('Pay with credit card');
+			$butn_label = t('Pay by card');
 		}
 		$disbld_bank = FALSE;
 		$access_bank = TRUE;
