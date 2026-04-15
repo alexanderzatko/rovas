@@ -8,6 +8,23 @@
 define('ROVAS_FIO_RECONCILE_PROVIDER', 'fio');
 
 /**
+ * Whether verbose debug logging is enabled for this module.
+ */
+function rovas_fio_reconcile_debug_enabled() {
+  return !empty(variable_get('rovas_fio_debug_logging', 0));
+}
+
+/**
+ * Writes verbose reconcile logs only when debug logging is enabled.
+ */
+function rovas_fio_reconcile_log_debug($message, array $variables = array(), $severity = WATCHDOG_DEBUG) {
+  if (!rovas_fio_reconcile_debug_enabled()) {
+    return;
+  }
+  watchdog('rovas_fio_reconcile', $message, $variables, $severity);
+}
+
+/**
  * Default REST prefix per Fio API spec (API_Bankovnictvi.pdf): fioapi.fio.cz/v1/rest.
  *
  * Full period URL: {base}/periods/{token}/{od}/{do}/transactions.json
@@ -113,10 +130,10 @@ function rovas_fio_reconcile_menu() {
  */
 function rovas_fio_reconcile_cron() {
   if (!variable_get('rovas_fio_cron_enabled', TRUE)) {
-    watchdog('rovas_fio_reconcile', 'Cron: Fio reconcile disabled (rovas_fio_cron_enabled). Skipping.', array(), WATCHDOG_DEBUG);
+    rovas_fio_reconcile_log_debug('Cron: Fio reconcile disabled (rovas_fio_cron_enabled). Skipping.');
     return;
   }
-  watchdog('rovas_fio_reconcile', 'Cron: starting Fio reconcile pass.', array(), WATCHDOG_INFO);
+  rovas_fio_reconcile_log_debug('Cron: starting Fio reconcile pass.', array(), WATCHDOG_INFO);
   $result = rovas_fio_reconcile_run_poll(array('source' => 'cron'));
   if (function_exists('rovas_project_reward_process_callback_delivery_queue')) {
     rovas_project_reward_process_callback_delivery_queue();
@@ -203,7 +220,7 @@ function rovas_fio_reconcile_run_poll(array $options = array()) {
     }
 
     $mode = variable_get('rovas_fio_fetch_mode', 'period');
-    watchdog('rovas_fio_reconcile', 'Fio HTTP: requesting statement (@source, mode=@mode, url=@url).', array(
+    rovas_fio_reconcile_log_debug('Fio HTTP: requesting statement (@source, mode=@mode, url=@url).', array(
       '@source' => $source,
       '@mode' => $mode,
       '@url' => rovas_fio_reconcile_url_for_log($url, $token),
@@ -240,7 +257,7 @@ function rovas_fio_reconcile_run_poll(array $options = array()) {
 
     $items = rovas_fio_reconcile_extract_fio_items($data);
     $tx_count = count($items);
-    watchdog('rovas_fio_reconcile', 'Fio response parsed (@source, mode=@mode): @count transaction row(s) in payload.', array(
+    rovas_fio_reconcile_log_debug('Fio response parsed (@source, mode=@mode): @count transaction row(s) in payload.', array(
       '@source' => $source,
       '@mode' => $mode,
       '@count' => $tx_count,
@@ -295,7 +312,7 @@ function rovas_fio_reconcile_run_poll(array $options = array()) {
       variable_set('rovas_fio_last_http_ts', REQUEST_TIME);
       if (empty($set_resp['error']) && (int) $set_resp['code'] < 300) {
         variable_set('rovas_fio_last_set_last_id', (int) $max_fio_id);
-        watchdog('rovas_fio_reconcile', 'Fio set-last-id succeeded (@source): id=@id.', array(
+        rovas_fio_reconcile_log_debug('Fio set-last-id succeeded (@source): id=@id.', array(
           '@source' => $source,
           '@id' => (int) $max_fio_id,
         ), WATCHDOG_INFO);
@@ -326,7 +343,7 @@ function rovas_fio_reconcile_run_poll(array $options = array()) {
       'reason' => '',
     );
     variable_set('rovas_fio_last_run_stats', $stats + array('at' => REQUEST_TIME));
-    watchdog('rovas_fio_reconcile', 'Fio reconcile finished OK (@source, mode=@mode): processed=@p, skipped_already_seen=@s, skipped_no_numeric_vs=@v, tx_rows=@tx, set_last_id=@sl.', array(
+    rovas_fio_reconcile_log_debug('Fio reconcile finished OK (@source, mode=@mode): processed=@p, skipped_already_seen=@s, skipped_no_numeric_vs=@v, tx_rows=@tx, set_last_id=@sl.', array(
       '@source' => $source,
       '@mode' => $mode,
       '@p' => (int) $processed,
@@ -534,7 +551,7 @@ function rovas_fio_reconcile_mark_seen($provider, $id) {
  */
 function rovas_fio_reconcile_run_page() {
   global $user;
-  watchdog('rovas_fio_reconcile', 'Manual Fio reconcile triggered by user @uid (@name).', array(
+  rovas_fio_reconcile_log_debug('Manual Fio reconcile triggered by user @uid (@name).', array(
     '@uid' => isset($user->uid) ? (int) $user->uid : 0,
     '@name' => isset($user->name) ? check_plain($user->name) : '?',
   ), WATCHDOG_INFO);
@@ -566,7 +583,7 @@ function rovas_fio_reconcile_run_page() {
  */
 function rovas_fio_reconcile_legacy_bank_poll_page() {
   global $user;
-  watchdog('rovas_fio_reconcile', 'Fio reconcile via legacy URL rewpro/bank/fio/poll (user @uid @name).', array(
+  rovas_fio_reconcile_log_debug('Fio reconcile via legacy URL rewpro/bank/fio/poll (user @uid @name).', array(
     '@uid' => isset($user->uid) ? (int) $user->uid : 0,
     '@name' => isset($user->name) ? check_plain($user->name) : '?',
   ), WATCHDOG_INFO);
