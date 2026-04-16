@@ -30,6 +30,8 @@ What it does (plain language):
     rules that come from these JSON files; other modules' rules are untouched).
   - Re-loads every JSON file and writes fresh copies into the database with
     "Default" status in the Rules UI.
+  - Preserves Rules Scheduler schedules for those rules (does not wipe
+    {rules_scheduler} rows).
 
 How to run it
 

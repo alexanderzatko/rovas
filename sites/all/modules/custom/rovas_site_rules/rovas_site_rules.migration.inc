@@ -150,7 +150,6 @@ function _rovas_site_rules_migration_delete_one($name, &$context) {
     db_delete('rules_config')->condition('id', $id)->execute();
     db_delete('rules_trigger')->condition('id', $id)->execute();
     db_delete('rules_tags')->condition('id', $id)->execute();
-    db_delete('rules_scheduler')->condition('config', $name)->execute();
 
     if (!isset($context['results']['deleted'])) {
       $context['results']['deleted'] = 0;
