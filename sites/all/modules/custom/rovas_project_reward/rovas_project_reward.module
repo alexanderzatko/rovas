@@ -871,6 +871,38 @@ function rovas_project_reward_form ($form, &$form_state) {
 
 	$form['payment_wrapper']['payment']['#attributes']['class'][] = 'edit-payment';
 
+	if ($test && $paytype === 'buyshares' && $user->uid > 0 && is_numeric($recipient) && function_exists('rovas_purchase_shares_compute_share_hours_for_payment') && function_exists('rovas_purchase_shares_buyshares_hours_preview_markup')) {
+		$proj_preview = node_load($recipient);
+		if ($proj_preview && function_exists('rovas_purchase_shares_project_allows_buyshares') && rovas_purchase_shares_project_allows_buyshares($proj_preview)) {
+			$pw = entity_metadata_wrapper('node', $proj_preview);
+			$cur = isset($form_state['values']['payment-currency']) ? $form_state['values']['payment-currency'] : $currency;
+			$raw_pay = isset($form_state['values']['payment']) ? $form_state['values']['payment'] : '';
+			$preview_amt = is_numeric($raw_pay) && (float) $raw_pay > 0 ? (float) $raw_pay : (float) $pprice_hidden;
+			$hour_shares = rovas_purchase_shares_compute_share_hours_for_payment($pw, $cur, $preview_amt);
+			$form['payment_wrapper']['buyshares_hours'] = array(
+				'#type' => 'item',
+				'#prefix' => '<div id="buy-hrs-converted">',
+				'#suffix' => '</div>',
+				'#markup' => rovas_purchase_shares_buyshares_hours_preview_markup($hour_shares),
+				'#weight' => 8,
+			);
+			if (function_exists('rovas_purchase_shares_buyshares_yield_estimate_markup')) {
+				$form['payment_wrapper']['buyshares_yield'] = array(
+					'#type' => 'markup',
+					'#markup' => rovas_purchase_shares_buyshares_yield_estimate_markup($pw, $hour_shares),
+					'#prefix' => '<div id="submit-explain" class="buyshares-yield-estimate">',
+					'#suffix' => '</div>',
+					'#weight' => 9,
+				);
+			}
+			$form['payment_wrapper']['payment']['#ajax'] = array(
+				'callback' => '_rpr_buyshares_payment_preview',
+				'wrapper' => 'payment-wrapper',
+				'event' => 'change',
+			);
+			$form['payment_wrapper']['payment']['#limit_validation_errors'] = array(array('payment'));
+		}
+	}
 
 	if ($user->uid > 0 && !empty($user->language)) {
 		$user_language = $user->language;
@@ -1000,6 +1032,18 @@ function _rpr_currency_switcher ($form, $form_state) {
 	return array(
 		'#type' => 'ajax',
 		'#commands' => $commands,
+	);
+}
+
+/**
+ * AJAX: refresh buyshares time-share hours / yield when payment amount changes.
+ */
+function _rpr_buyshares_payment_preview($form, $form_state) {
+	return array(
+		'#type' => 'ajax',
+		'#commands' => array(
+			ajax_command_replace('#payment-wrapper', render($form['payment_wrapper'])),
+		),
 	);
 }
 

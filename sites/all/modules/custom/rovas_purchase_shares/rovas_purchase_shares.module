@@ -661,6 +661,28 @@ function rovas_purchase_shares_compute_share_hours_for_payment($obj, $currency, 
 }
 
 /**
+ * HTML for the “time share” hours/minutes line (legacy buy-hrs-converted styling).
+ */
+function rovas_purchase_shares_buyshares_hours_preview_markup($hour_shares) {
+  $hour_shares = (float) $hour_shares;
+  $hours = floor($hour_shares);
+  $hours_formated = $hours ? $hours . '<span class="to-unit"> ' . t('hrs') . '</span>' : '';
+  $minutes = ($hour_shares - $hours) * 60;
+  $minutes_formated = $minutes ? round($minutes, 0) . '<span class="to-unit"> ' . t('min') . '</span>' : '';
+  $comma = !empty($hours_formated) && !empty($minutes_formated) ? ' ' : '';
+  return $hours_formated . $comma . $minutes_formated;
+}
+
+/**
+ * “Estimated yield …” line for a hypothetical purchase size (legacy submit-explain).
+ */
+function rovas_purchase_shares_buyshares_yield_estimate_markup($obj, $hour_shares) {
+  $new_yield = rovas_purchase_shares_yield($obj, $hour_shares);
+  $applyeld = round($hour_shares * $new_yield, 2);
+  return t('Estimated yield is <strong>@aplyield Merits</strong> for 100 Chrons of reward', array('@aplyield' => $applyeld));
+}
+
+/**
  * CHR buyshares: shareholder update, AUR, time share (same as legacy form).
  */
 function rovas_purchase_shares_process_chr_buyshares($project, $user, $total_reward, $share) {
