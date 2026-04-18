@@ -1507,11 +1507,13 @@ button#edit-button {
     font-size: 16px;
 }
 
-fieldset#edit-performance {
+fieldset#edit-performance,
+fieldset#edit-buyshares-performance {
     max-width: 540px;
 }
 
-fieldset#edit-performance .panel-heading:before {
+fieldset#edit-performance .panel-heading:before,
+fieldset#edit-buyshares-performance .panel-heading:before {
     font-family: 'Glyphicons Halflings';
     float: left;
     margin-right: 5px;
@@ -1519,7 +1521,8 @@ fieldset#edit-performance .panel-heading:before {
     content: "\e114";
 }
 
-fieldset#edit-performance.collapsed .panel-heading:before {
+fieldset#edit-performance.collapsed .panel-heading:before,
+fieldset#edit-buyshares-performance.collapsed .panel-heading:before {
     content:"\e080";
 }
 
@@ -1540,20 +1543,24 @@ div.form-item-chart label.field-label {
     margin-top: 20px;
 }
 
-fieldset#edit-performance.collapsed legend.panel-heading {
+fieldset#edit-performance.collapsed legend.panel-heading,
+fieldset#edit-buyshares-performance.collapsed legend.panel-heading {
     border-bottom: unset;
 }
 
-fieldset#edit-performance legend.panel-heading {
+fieldset#edit-performance legend.panel-heading,
+fieldset#edit-buyshares-performance legend.panel-heading {
     background-color: unset !important;
 }
 
-fieldset#edit-performance {
+fieldset#edit-performance,
+fieldset#edit-buyshares-performance {
     border-radius: 7px;
     border: solid thin #ccc;
 }
 
-fieldset#edit-performance div.view-project-merit-rewards-chart {
+fieldset#edit-performance div.view-project-merit-rewards-chart,
+fieldset#edit-buyshares-performance div.view-project-merit-rewards-chart {
     max-width: 540px;
     margin-bottom: 30px;
 }
