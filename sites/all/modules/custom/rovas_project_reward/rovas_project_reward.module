@@ -526,6 +526,8 @@ function rovas_project_reward_form ($form, &$form_state) {
 					'#type' => 'markup',
 					'#markup' => $text,
 				);
+				// Same copy is already in prodinfo; do not repeat it in #text-1 (rewpro AJAX).
+				$text = '';
 
 				$form['buyshares_performance'] = array(
 					'#type' => 'fieldset',
