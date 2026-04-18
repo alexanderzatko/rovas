@@ -1507,13 +1507,14 @@ button#edit-button {
     font-size: 16px;
 }
 
-fieldset#edit-performance,
-fieldset#edit-buyshares-performance {
+/* Prefix match: Drupal may suffix IDs after AJAX rebuilds (e.g. edit-buyshares-performance--2). */
+fieldset[id^="edit-performance"],
+fieldset[id^="edit-buyshares-performance"] {
     max-width: 540px;
 }
 
-fieldset#edit-performance .panel-heading:before,
-fieldset#edit-buyshares-performance .panel-heading:before {
+fieldset[id^="edit-performance"] .panel-heading:before,
+fieldset[id^="edit-buyshares-performance"] .panel-heading:before {
     font-family: 'Glyphicons Halflings';
     float: left;
     margin-right: 5px;
@@ -1521,8 +1522,8 @@ fieldset#edit-buyshares-performance .panel-heading:before {
     content: "\e114";
 }
 
-fieldset#edit-performance.collapsed .panel-heading:before,
-fieldset#edit-buyshares-performance.collapsed .panel-heading:before {
+fieldset[id^="edit-performance"].collapsed .panel-heading:before,
+fieldset[id^="edit-buyshares-performance"].collapsed .panel-heading:before {
     content:"\e080";
 }
 
@@ -1543,24 +1544,24 @@ div.form-item-chart label.field-label {
     margin-top: 20px;
 }
 
-fieldset#edit-performance.collapsed legend.panel-heading,
-fieldset#edit-buyshares-performance.collapsed legend.panel-heading {
+fieldset[id^="edit-performance"].collapsed legend.panel-heading,
+fieldset[id^="edit-buyshares-performance"].collapsed legend.panel-heading {
     border-bottom: unset;
 }
 
-fieldset#edit-performance legend.panel-heading,
-fieldset#edit-buyshares-performance legend.panel-heading {
+fieldset[id^="edit-performance"] legend.panel-heading,
+fieldset[id^="edit-buyshares-performance"] legend.panel-heading {
     background-color: unset !important;
 }
 
-fieldset#edit-performance,
-fieldset#edit-buyshares-performance {
+fieldset[id^="edit-performance"],
+fieldset[id^="edit-buyshares-performance"] {
     border-radius: 7px;
     border: solid thin #ccc;
 }
 
-fieldset#edit-performance div.view-project-merit-rewards-chart,
-fieldset#edit-buyshares-performance div.view-project-merit-rewards-chart {
+fieldset[id^="edit-performance"] div.view-project-merit-rewards-chart,
+fieldset[id^="edit-buyshares-performance"] div.view-project-merit-rewards-chart {
     max-width: 540px;
     margin-bottom: 30px;
 }
