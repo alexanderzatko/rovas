@@ -194,7 +194,7 @@ if($obj->field_allow_purchasing_shares->value() == 1) {
 	$tip = t(\'Buy a share of Merits in this project\');
 	$nid = $entity->nid;
 	
-	$result = \'<a class="btn btn-default" href="/buyshares/\'.$nid.\'" role="button" style="color:white; background-color:gray;" title="\'.$tip.\'">\'. t(\'Buy shares\') .\'</a>&nbsp;&nbsp;\';
+	$result = \'<a class="btn btn-default" href="/rewpro?paytype=buyshares&recipient=\'.$nid.\'" role="button" style="color:white; background-color:gray;" title="\'.$tip.\'">\'. t(\'Buy shares\') .\'</a>&nbsp;&nbsp;\';
 //	$result = \'<a href="#" title="\'.$tip.\'">\'. t(\'Buy shares in this project\') .\'</a><br><br>\';
 }
 else {

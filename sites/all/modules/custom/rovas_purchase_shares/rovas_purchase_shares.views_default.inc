@@ -182,7 +182,7 @@ function rovas_purchase_shares_views_default_views() {
 				$tip = t(\'Buy a share of Merits in this project\');
 				$nid = $entity->nid;
 	
-				print \'<a class="btn btn-default" href="/buyshares/\'.$prid.\'" role="button" style="color:white; background-color:#695a8c;" title="\'.$tip.\'">\'. t(\'Buy shares in this project\') .\'</a>&nbsp;&nbsp;\';
+				print \'<a class="btn btn-default" href="/rewpro?paytype=buyshares&recipient=\'.$prid.\'" role="button" style="color:white; background-color:#695a8c;" title="\'.$tip.\'">\'. t(\'Buy shares in this project\') .\'</a>&nbsp;&nbsp;\';
 			}
 
 		}

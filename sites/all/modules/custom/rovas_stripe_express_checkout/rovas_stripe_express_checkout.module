@@ -19,6 +19,13 @@ function rovas_stripe_express_checkout_menu() {
     'access callback' => TRUE,
     'type' => MENU_CALLBACK,
   );
+
+  $items['stripe/express-checkout/init-buyshares'] = array(
+    'page callback' => 'rovas_stripe_express_checkout_init_buyshares',
+    'access callback' => 'user_access',
+    'access arguments' => array('access content'),
+    'type' => MENU_CALLBACK,
+  );
   return $items;
 }
 
@@ -29,6 +36,14 @@ function rovas_stripe_express_checkout_add_js() {
 function rovas_stripe_express_checkout_init_x() {
   module_load_include('inc', 'rovas_stripe_express_checkout', 'includes/init');
   return _rovas_stripe_express_checkout_init();
+}
+
+/**
+ * Menu callback: Express init for buyshares (Commerce order-first).
+ */
+function rovas_stripe_express_checkout_init_buyshares() {
+  module_load_include('inc', 'rovas_stripe_express_checkout', 'includes/init_buyshares');
+  return _rovas_stripe_express_checkout_init_buyshares();
 }
 
 function rovas_stripe_express_checkout_thanks() {
@@ -48,10 +63,17 @@ function rovas_stripe_express_checkout_thanks() {
 			return;
 	}
 
+	$buyshares_redirect = NULL;
+
 	try {
 			\Stripe\Stripe::setApiKey(variable_get('stripe_secret_key'));        
 			$intent = \Stripe\PaymentIntent::retrieve($payment_intent_id);
 
+			$meta_paytype = isset($intent->metadata->paytype) ? (string) $intent->metadata->paytype : '';
+			if ($meta_paytype === 'buyshares' && !empty($intent->metadata->project_id)) {
+				$buyshares_redirect = url('node/' . (int) $intent->metadata->project_id, array('absolute' => TRUE));
+			}
+			else {
 			$project_id = isset($intent->metadata->project_id) ? $intent->metadata->project_id : null;
 			$paid_minor = isset($intent->amount_received) ? (int) $intent->amount_received : 0;
 			$email = isset($intent->charges->data[0]->receipt_email) ? $intent->charges->data[0]->receipt_email : null;
@@ -66,6 +88,7 @@ function rovas_stripe_express_checkout_thanks() {
 			} else {
 					watchdog('rovas_stripe', 'No project_id found in PaymentIntent metadata for PI: @pi_id', array('@pi_id' => $payment_intent_id), WATCHDOG_WARNING);
 			}
+			}
 			
 	} catch (Exception $e) {
 			watchdog('rovas_stripe', 'Error retrieving PaymentIntent: @error', array('@error' => $e->getMessage()), WATCHDOG_ERROR);
@@ -75,7 +98,10 @@ function rovas_stripe_express_checkout_thanks() {
 	// _rovas_project_reward_queue_redirect() (e.g. to the 3rd party callback_url).
 	// Unlike the Commerce checkout flow (which executes it from
 	// rovas_project_reward_review_finalize_payment), we must run it here.
-	$redirect = _rovas_project_reward_queue_redirect();
+	$redirect = $buyshares_redirect;
+	if (!$redirect) {
+		$redirect = _rovas_project_reward_queue_redirect();
+	}
 	if (!$redirect) {
 		$redirect = url('rewpro', array('absolute' => TRUE));
 	}

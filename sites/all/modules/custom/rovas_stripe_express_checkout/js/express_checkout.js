@@ -62,6 +62,10 @@
       }
 
       function checkEmailFieldRequirement() {
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.get('paytype') === 'buyshares') {
+          return true;
+        }
         const emailField = $('input[name="email"]');
         
         if (emailField.length === 0) {
@@ -77,8 +81,16 @@
       }
 
       function getPpriceValue() {
-        // Only enforce pprice if there's a callback parameter in the URL
         const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.get('paytype') === 'buyshares') {
+          const ppriceField = $('input[name="pprice"]');
+          if (ppriceField.length === 0) {
+            return null;
+          }
+          const ppriceValue = parseFloat(ppriceField.val());
+          return isNaN(ppriceValue) ? null : ppriceValue;
+        }
+        // Only enforce pprice if there's a callback parameter in the URL
         const hasCallback = urlParams.has('callback_url');
 
         if (!hasCallback) {
@@ -263,7 +275,21 @@
           const urlParams = new URLSearchParams(window.location.search);
           const paytype = urlParams.get('paytype');
           const recipient = urlParams.get('recipient');
-          
+
+          let fetchUrl;
+
+          if (paytype === 'buyshares' && recipient && Drupal.settings.rovasExpressBuyshares && Drupal.settings.rovasExpressBuyshares.token) {
+            fetchUrl = '/stripe/express-checkout/init-buyshares?amount=' + cents
+              + '&recipient=' + encodeURIComponent(recipient)
+              + '&token=' + encodeURIComponent(Drupal.settings.rovasExpressBuyshares.token);
+          }
+          else if (paytype === 'buyshares') {
+            console.log('[ECE] buyshares init aborted: missing Drupal.settings.rovasExpressBuyshares.token');
+            hideLoading();
+            eceInitializing = false;
+            return;
+          }
+          else {
           // Check for email field value
           const emailField = $('input.form-control.form-text.required[type="text"][id="edit-email"][name="email"]');
           const emailFieldAlt = $('input[name="email"]');
@@ -278,7 +304,7 @@
             return;
           }
           
-          let fetchUrl = `/stripe/express-checkout/init?amount=${cents}&currency=${currency}`;
+          fetchUrl = `/stripe/express-checkout/init?amount=${cents}&currency=${currency}`;
           
           // Add recipient and paytype parameters if both exist
           if (paytype && recipient) {
@@ -288,6 +314,7 @@
           // Add email parameter if email field exists and has a valid value
           if (emailValue && isValidEmail(emailValue)) {
             fetchUrl += `&email=${encodeURIComponent(emailValue)}`;
+          }
           }
           
           console.log('[ECE] fetch URL:', fetchUrl);

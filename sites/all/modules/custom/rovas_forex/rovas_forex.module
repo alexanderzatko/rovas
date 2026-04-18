@@ -1484,7 +1484,7 @@ function lost_lock($message = NULL) {
 		$productID = $lineItem->commerce_product['und'][0]['product_id'];
 
 		if ($productID == 2) {
-			$destination = '/buyshares/' . $paymentRecipient;
+			$destination = '/rewpro?paytype=buyshares&recipient=' . $paymentRecipient;
 		}
 		else {
 			$destination = '/forex';

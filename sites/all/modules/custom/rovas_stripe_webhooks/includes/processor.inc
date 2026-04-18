@@ -41,12 +41,58 @@ function rovas_stripe_webhooks_process_payment_intent_succeeded($event, $record)
       return TRUE;
     }
 
-    // Extract metadata and create order.
     $uid = isset($metadata['user_id']) ? intval($metadata['user_id']) : 0;
     $amount = isset($intent['amount']) ? intval($intent['amount']) : 0;
     $pid = isset($metadata['project_id']) ? $metadata['project_id'] : NULL;
     $paytype = isset($metadata['paytype']) ? $metadata['paytype'] : NULL;
     $paid_amt = $amount / 100;
+
+    // Buyshares: Commerce order was created before PaymentIntent; attach PI here.
+    if (!empty($metadata['paytype']) && $metadata['paytype'] === 'buyshares' && !empty($metadata['commerce_order_id']) && isset($intent['status']) && $intent['status'] === 'succeeded') {
+      $order_id = (int) $metadata['commerce_order_id'];
+      $order = commerce_order_load($order_id);
+      if (!$order) {
+        watchdog('rovas_stripe_webhooks', 'buyshares express: order @oid not found for PI @pi', array('@oid' => $order_id, '@pi' => $payment_intent_id), WATCHDOG_ERROR);
+        return FALSE;
+      }
+      if ($uid > 0 && (int) $order->uid !== $uid) {
+        watchdog('rovas_stripe_webhooks', 'buyshares express: uid mismatch for order @oid', array('@oid' => $order_id), WATCHDOG_WARNING);
+        return FALSE;
+      }
+      $expected = isset($order->commerce_order_total[LANGUAGE_NONE][0]['amount']) ? (int) $order->commerce_order_total[LANGUAGE_NONE][0]['amount'] : 0;
+      if ($expected !== $amount) {
+        watchdog('rovas_stripe_webhooks', 'buyshares express: amount mismatch order=@o exp=@e got=@g', array('@o' => $order_id, '@e' => $expected, '@g' => $amount), WATCHDOG_ERROR);
+        return FALSE;
+      }
+      if (!function_exists('commerce_order_rules_contains_product') || !commerce_order_rules_contains_product($order, 'time-share', '>=', 1)) {
+        watchdog('rovas_stripe_webhooks', 'buyshares express: order @oid has no time-share line', array('@oid' => $order_id), WATCHDOG_WARNING);
+        return FALSE;
+      }
+
+      $order->data['last_cart_refresh'] = REQUEST_TIME;
+      $order->data['stripe_pi'] = array('payment_intent' => $intent);
+      $order->data['payment_method'] = 'commerce_stripe_pi|commerce_payment_commerce_stripe_pi';
+      $order->data['rovas_payment_method'] = 'commerce_stripe_pi|commerce_payment_commerce_stripe_pi';
+      commerce_order_save($order);
+
+      if (function_exists('commerce_stripe_pi_create_transaction')) {
+        $pi = \Stripe\PaymentIntent::retrieve($payment_intent_id);
+        $transaction = commerce_stripe_pi_create_transaction($order->order_id, $pi);
+        if ($transaction) {
+          $order = commerce_order_load($order->order_id);
+          if (module_exists('rules')) {
+            rules_invoke_event('commerce_checkout_complete', $order);
+          }
+          if (function_exists('_rovas_stripe_webhooks_add_balance_fees_and_process')) {
+            _rovas_stripe_webhooks_add_balance_fees_and_process($order, $intent);
+          }
+        }
+        else {
+          watchdog('rovas_stripe_webhooks', 'buyshares express: failed transaction for order @order_id', array('@order_id' => $order->order_id), WATCHDOG_ERROR);
+        }
+      }
+      return TRUE;
+    }
 
     $email = NULL;
     if (!empty($intent['receipt_email'])) {

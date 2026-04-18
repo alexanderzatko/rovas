@@ -6,6 +6,7 @@ dependencies[] = commerce
 dependencies[] = encrypt
 dependencies[] = encryptfapi
 dependencies[] = rovas_project_reward
+dependencies[] = rovas_purchase_shares
 dependencies[] = rovas_forex
 
 

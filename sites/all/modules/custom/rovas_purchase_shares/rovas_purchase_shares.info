@@ -4,12 +4,15 @@ core = 7.x
 version = 7.x-1.0
 package = Rovas
 
+dependencies[] = commerce
 dependencies[] = date
+dependencies[] = entity
 dependencies[] = entityreference
 dependencies[] = field_permissions
 dependencies[] = i18n_taxonomy
 dependencies[] = number
 dependencies[] = php
+dependencies[] = rules
 dependencies[] = rules_conditional
 dependencies[] = rules_i18n
 dependencies[] = term_reference_tree

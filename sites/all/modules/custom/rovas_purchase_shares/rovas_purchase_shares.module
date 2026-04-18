@@ -15,14 +15,30 @@ function rovas_purchase_shares_menu() {
   $items = array();
 
   $items['buyshares/%'] = array(
-    'title' => t('Project investing')	,
-    'description' => t('test'),
-    'page callback' => 'drupal_get_form',
-    'page arguments' => array('rovas_purchase_shares_form',1),
+    'title' => t('Project investing'),
+    'description' => t('Redirect to unified purchase flow.'),
+    'page callback' => 'rovas_purchase_shares_redirect_to_rewpro',
+    'page arguments' => array(1),
     'access callback' => 'rovas_purchase_shares_access',
   );
 
   return $items;
+}
+
+/**
+ * Menu callback: legacy /buyshares/{nid} → unified rewpro flow.
+ */
+function rovas_purchase_shares_redirect_to_rewpro($proj_id) {
+  if (!is_numeric($proj_id) || (int) $proj_id < 1) {
+    drupal_not_found();
+    return;
+  }
+  drupal_goto('rewpro', array(
+    'query' => array(
+      'paytype' => 'buyshares',
+      'recipient' => (string) (int) $proj_id,
+    ),
+  ));
 }
 
 //render a page that allows users to purchase shares
@@ -421,6 +437,287 @@ function _rovas_purchase_shares_stripe_convertor ($total_reward, $units) {
     return array('units' => $units, 'unit_price' => $unit_price);
 }
 
+/**
+ * Returns TRUE if the node is a project that allows purchasing time shares.
+ */
+function rovas_purchase_shares_project_allows_buyshares($node) {
+  if (!$node || empty($node->nid) || $node->type !== 'project') {
+    return FALSE;
+  }
+  $w = entity_metadata_wrapper('node', $node);
+  return (int) $w->field_allow_purchasing_shares->value() === 1;
+}
+
+/**
+ * Minimum CHR and EUR amounts for buyshares (major units).
+ *
+ * @param object $obj
+ *   Entity metadata wrapper for the project node.
+ *
+ * @return array
+ *   Keys: min_chr (float), min_eur (float), rate_chr, rate_eur (nullable).
+ */
+function rovas_purchase_shares_buyshares_minimums($obj) {
+  $rate_chrons = (float) $obj->field_rate->value();
+  $rate_euros = $obj->field_time_share_cost_euros->value();
+  $rate_euros = is_numeric($rate_euros) ? (float) $rate_euros : NULL;
+  $minimum_amount_time = $obj->field_minimum_time->value() > 0 ? (float) $obj->field_minimum_time->value() : 0.0;
+  $min_chr = $minimum_amount_time * $rate_chrons;
+  $min_eur = ($rate_euros !== NULL && $minimum_amount_time > 0) ? $minimum_amount_time * $rate_euros : (($rate_euros !== NULL) ? max(1.0, $rate_euros) : 1.0);
+  return array(
+    'min_chr' => round($min_chr),
+    'min_eur' => round($min_eur > 0 ? $min_eur : 1),
+    'rate_chr' => $rate_chrons,
+    'rate_eur' => $rate_euros,
+  );
+}
+
+/**
+ * Creates a Commerce order for EUR time-share purchase (no shared product save).
+ *
+ * @param int $uid
+ * @param int $project_nid
+ * @param float $total_reward
+ *   Euro amount (major units) entered by the buyer.
+ * @param float $share_hours
+ *   Purchased time share in hours (same semantics as legacy buyshares form).
+ * @param string|null $rpr_paytype
+ *   One of pay-choice-card, pay-choice-bank, or NULL to omit checkout filtering.
+ *
+ * @return object|null
+ *   The commerce order entity, or NULL on failure.
+ */
+function rovas_purchase_shares_create_eur_time_share_order($uid, $project_nid, $total_reward, $share_hours, $rpr_paytype = NULL) {
+  if (!function_exists('commerce_order_new') || !function_exists('commerce_product_load_by_sku')) {
+    return NULL;
+  }
+  $project = node_load($project_nid);
+  if (!rovas_purchase_shares_project_allows_buyshares($project)) {
+    return NULL;
+  }
+
+  $product_obj = commerce_product_load_by_sku('time-share');
+  if (!$product_obj) {
+    watchdog('rovas_purchase_shares', 'time-share product missing', array(), WATCHDOG_ERROR);
+    return NULL;
+  }
+  $anonpay_product_nid = $product_obj->product_id;
+
+  $time_in_minutes = max(0.0, (float) $share_hours) * 60.0;
+  $converted_ary = _rovas_purchase_shares_stripe_convertor((float) $total_reward, $time_in_minutes);
+  $unit_price = $converted_ary['unit_price'];
+  $quantity = (int) round($converted_ary['units']);
+  if ($quantity < 1 || $unit_price <= 0) {
+    watchdog('rovas_purchase_shares', 'Invalid line item for EUR buyshares order: qty=@q unit=@u', array('@q' => $quantity, '@u' => $unit_price), WATCHDOG_WARNING);
+    return NULL;
+  }
+
+  $fee_variable = variable_get('buy_ch_fee');
+  $fee_fixed = variable_get('buy_ch_fixed_fee');
+  $fee = $fee_fixed + $fee_variable * ($quantity * $unit_price);
+  $unit_price_cents = (int) round(100 * $unit_price);
+
+  if ($unit_price_cents > 2147483647 || $quantity * $unit_price_cents > 2147483647) {
+    return NULL;
+  }
+
+  $order = commerce_order_new($uid, 'checkout_checkout');
+  commerce_order_save($order);
+
+  $product = commerce_product_load($anonpay_product_nid);
+  $line_item = commerce_product_line_item_new($product, $quantity, $order->order_id);
+  $line_item_wrapper = entity_metadata_wrapper('commerce_line_item', $line_item);
+  $line_item_wrapper->commerce_unit_price->amount->set($unit_price_cents);
+  $line_item_wrapper->commerce_unit_price->currency_code->set('EUR');
+
+  if (!isset($line_item->data) || !is_array($line_item->data)) {
+    $line_item->data = array();
+  }
+  $line_item->data['rpr_custom_unit_price'] = (int) $unit_price_cents;
+  $line_item->data['rpr_custom_currency'] = 'EUR';
+
+  commerce_line_item_rebase_unit_price($line_item);
+  commerce_line_item_save($line_item);
+
+  $order_wrapper = entity_metadata_wrapper('commerce_order', $order);
+  $order_wrapper->commerce_line_items[] = $line_item;
+  $order_wrapper->field_conversion_fee = $fee;
+  $order_wrapper->field_payer_type = 'project';
+  $order_wrapper->field_payment_recipient = $project_nid;
+
+  if ($rpr_paytype !== NULL && $rpr_paytype !== '') {
+    $order->data['rpr_paytype'] = $rpr_paytype;
+    if (function_exists('_rovas_project_reward_commerce_method_for_rpr_paytype')) {
+      $commerce_method = _rovas_project_reward_commerce_method_for_rpr_paytype($rpr_paytype);
+      if ($commerce_method !== NULL) {
+        $order->data['payment_method'] = $commerce_method;
+        $order->data['rovas_payment_method'] = $commerce_method;
+      }
+    }
+  }
+
+  $order->placed = REQUEST_TIME;
+  commerce_order_save($order);
+  commerce_cart_order_session_save($order->order_id);
+
+  return commerce_order_load($order->order_id);
+}
+
+/**
+ * Finalize EUR time-share order when a bank transfer is marked paid in full.
+ *
+ * Mirrors the non-bank branch of rules_process_card_payment_orders for
+ * time-share recipient orders.
+ */
+function rovas_purchase_shares_commerce_payment_order_paid_in_full($order) {
+  if (empty($order->order_id) || !module_exists('rules')) {
+    return;
+  }
+  if (!function_exists('commerce_order_rules_contains_product') || !commerce_order_rules_contains_product($order, 'time-share', '>=', 1)) {
+    return;
+  }
+  if (!function_exists('commerce_payment_rules_compare_selected_payment_method') || !commerce_payment_rules_compare_selected_payment_method($order, 'bank_transfer')) {
+    return;
+  }
+  $wrapper = entity_metadata_wrapper('commerce_order', $order);
+  $recipient = $wrapper->field_payment_recipient->value();
+  if ($recipient === NULL || $recipient === '') {
+    return;
+  }
+  if (!empty($order->data['rovas_bank_ts_paid_full_handled'])) {
+    return;
+  }
+
+  $order = commerce_order_load($order->order_id);
+  if (!$order) {
+    return;
+  }
+
+  $wrapper = entity_metadata_wrapper('commerce_order', $order);
+  $order_total = (float) $wrapper->commerce_order_total->amount->value() / 100.0;
+  if ($order_total <= 0) {
+    return;
+  }
+
+  $fp = rovas_forex_transaction_params('eur_to_chr', $order_total, 0, TRUE);
+  $output_amount = isset($fp['output_amount']) ? (float) $fp['output_amount'] : 0.0;
+  $eur_basket = $fp['eur_basket'];
+  $chr_basket = $fp['chr_basket'];
+  $variable_fee = $fp['variable_fee'];
+  $fixed_fee_amount = $fp['fixed_fee_amount'];
+  $use_temp_baskets = !empty($fp['use_temp_baskets']);
+
+  rules_invoke_component('rules_process_time_share_order', array('order' => $order));
+
+  $partial_fee = $variable_fee * $order_total;
+  $new_universal_forex_baskets = array(
+    'ch_basket' => $chr_basket - $output_amount,
+    'eur_basket' => $eur_basket + $order_total - ($fixed_fee_amount + $partial_fee),
+  );
+  if ($use_temp_baskets) {
+    variable_set('forex_baskets_temp', $new_universal_forex_baskets);
+  }
+  else {
+    if (variable_get('forex_baskets_temp')) {
+      variable_del('forex_baskets_temp');
+    }
+    variable_set('forex_baskets', $new_universal_forex_baskets);
+  }
+
+  rules_invoke_component('rules_process_recipient_order_core', array(
+    'converted_chrons_paid' => $output_amount,
+    'payment_status' => 1,
+    'order' => $order,
+  ));
+
+  $order = commerce_order_load($order->order_id);
+  if ($order) {
+    $order->data['rovas_bank_ts_paid_full_handled'] = REQUEST_TIME;
+    commerce_order_save($order);
+  }
+}
+
+/**
+ * Time share hours implied by payment amount and project rates.
+ *
+ * @param object $obj
+ *   Project entity metadata wrapper.
+ * @param string $currency
+ *   'EUR' or 'CHR'.
+ * @param float $paid_amt
+ *   Major units (euros or chrons).
+ */
+function rovas_purchase_shares_compute_share_hours_for_payment($obj, $currency, $paid_amt) {
+  $mins = rovas_purchase_shares_buyshares_minimums($obj);
+  $paid_amt = (float) $paid_amt;
+  if ($currency === 'EUR') {
+    if (empty($mins['rate_eur'])) {
+      return 1.0;
+    }
+    return $paid_amt / $mins['rate_eur'];
+  }
+  $rate = max(0.0001, (float) $mins['rate_chr']);
+  return $paid_amt / $rate;
+}
+
+/**
+ * CHR buyshares: shareholder update, AUR, time share (same as legacy form).
+ */
+function rovas_purchase_shares_process_chr_buyshares($project, $user, $total_reward, $share) {
+  $hours = floor($share);
+  $hours_formated = $hours ? $hours . ' ' . t('hrs') : '';
+  $minutes = ($share - $hours) * 60;
+  $minutes_formated = $minutes ? round($minutes, 0) . ' ' . t('min') : '';
+  $comma = !empty($hours_formated) && !empty($minutes_formated) ? ', ' : '';
+  $timeshare = $hours_formated . $comma . $minutes_formated;
+
+  $share_ary = rules_invoke_component('rules_check_or_add_time_shareholder_core', $project, $user->uid);
+  $tshare_obj = entity_metadata_wrapper('node', $share_ary[0]);
+  $old_share = $tshare_obj->field_total_hours_worked->value();
+  $tshare_obj->field_total_hours_worked->set($old_share + $share);
+  $tshare_obj->save();
+
+  $description = t('Purchased @hrs time share', array('@hrs' => $timeshare));
+  $result = rules_invoke_component('rules_create_aur', $project, $total_reward, $user, $description);
+  $proof = node_load($result[0]);
+  rules_invoke_component('rules_create_time_share', $project, $proof, $total_reward, $share);
+
+  return array(
+    'message' => t('Your purchase of @shr time share for @chr Chrons was scheduled for processing.', array('@shr' => $timeshare, '@chr' => $total_reward)),
+    'destination' => drupal_get_path_alias('node/' . $project->nid),
+  );
+}
+
+/**
+ * Markup for rewpro buyshares "Project data" fieldset (yield, rates, chart).
+ */
+function rovas_purchase_shares_buyshares_performance_markup($proj_nid) {
+  $obj = entity_metadata_wrapper('node', $proj_nid);
+  $yield = round(rovas_purchase_shares_yield($obj), 2);
+  $rate_chrons = $obj->field_rate->value();
+  $rate_euros = $obj->field_time_share_cost_euros->value();
+
+  $yield_markup = '<div class="form-item form-item-yield form-type-textfield">';
+  $yield_markup .= '<label class="field-label">' . t('Current yield') . '</label>';
+  $yield_markup .= '<div class="yield"><span class="yield-value">' . check_plain($yield) . ' </span>';
+  $yield_markup .= '<span class="yield-unit">' . t('ME/100 CH /1 hour') . '</span></div>';
+  $yield_markup .= '<div class="help-block">' . t('The number of Merits one (hour) timeshare receives when the project is rewarded  with 100 Chrons') . '</div></div>';
+
+  $rate_markup = '<div class="form-item form-item-rate form-type-textfield field-label-inline">';
+  $rate_markup .= '<label class="field-label">' . t('Timeshare cost') . ': </label><div class="rate">';
+  $rate_markup .= '<span class="rate-value">' . check_plain($rate_chrons) . ' </span><span class="rate-unit">' . t('CH') . '</span>';
+  if ($rate_euros) {
+    $rate_markup .= '<span class="rate-value"> / ' . check_plain($rate_euros) . ' </span><span class="rate-unit">' . t('€') . '</span>';
+  }
+  $rate_markup .= '</div><div class="help-block">' . t('The cost of one hour share') . '</div></div>';
+
+  $me_view = views_embed_view('project_merit_rewards_chart', 'page', $proj_nid);
+  $me_history = '<div class="form-item form-item-chart form-type-textfield"><label class="field-label">';
+  $me_history .= t('Labor time and Merit reward history') . '</label><div class="me-history">' . $me_view . '</div></div>';
+
+  return $yield_markup . $rate_markup . $me_history;
+}
+
 function rovas_purchase_shares_form_submit ($form, &$form_state) {
 
 //watchdog('module','rovas_purchase_shares submit ' . print_r($form_state['values'],1));
@@ -498,60 +795,13 @@ function rovas_purchase_shares_form_submit ($form, &$form_state) {
 	else if ($currency == 'EUR') {
 
 		$uid = $user->uid;
-
-		$product_obj = commerce_product_load_by_sku('time-share');
-		$anonpay_product_nid = $product_obj->product_id;
-
-		//converting the time purchased to minutes
-		$time_in_minutes = $share * 60;
-
-		$convertedAry = _rovas_purchase_shares_stripe_convertor ($total_reward, $time_in_minutes);
-
-		$unit_price = $convertedAry['unit_price'];
-		$quantity = $convertedAry['units'];
-		$quantity = round($quantity);
-
-		$fee_variable = variable_get('buy_ch_fee');
-		$fee_fixed = variable_get('buy_ch_fixed_fee');
-		$fee = $fee_fixed + $fee_variable * ($quantity * $unit_price);
-
-		$unit_price = 100*$unit_price;
-
-		if ($unit_price > 2147483647 || $quantity*$unit_price > 2147483647) {
+		$order = rovas_purchase_shares_create_eur_time_share_order($uid, $product_id, $total_reward, $share, NULL);
+		if (!$order) {
 			$message = t('The amount paid can not be processed. Please split your payment into multiple smaller amounts.');
 			$mestyp = 'status';
 			$dest = FALSE;
 		}
 		else {
-			// Creating a new order in checkout
-			$order = commerce_order_new($uid, 'checkout_checkout');
-			commerce_order_save($order);
-
-			//modify unit price of the product
-			$product = entity_metadata_wrapper('commerce_product', $anonpay_product_nid);
-			$product->commerce_price->amount->set($unit_price);
-			$product->commerce_price->currency_code->set('EUR');
-			$product->save();
-
-			$product = commerce_product_load($anonpay_product_nid);
-			$line_item = commerce_product_line_item_new($product, $quantity, $order->order_id);
-
-			// Save the line item to get its ID.
-			commerce_line_item_save($line_item);
-
-			// Add the line item to the order
-			$order_wrapper = entity_metadata_wrapper('commerce_order', $order);
-			$order_wrapper->commerce_line_items[] = $line_item;
-
-			$order_wrapper->field_conversion_fee = $fee;
-
-			$order_wrapper->field_payer_type = 'project';
-			$order_wrapper->field_payment_recipient = $product_id;
-
-			commerce_order_save($order);
-			commerce_cart_order_session_save($order->order_id);
-
-//dsm($order->order_id,'exec 2');
 			drupal_goto('checkout/' . $order->order_id);
 		}
 	}

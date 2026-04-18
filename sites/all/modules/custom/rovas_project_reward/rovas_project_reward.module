@@ -89,7 +89,7 @@ function rovas_project_reward_form ($form, &$form_state) {
 
 	$altunit = $currency == 'EUR' ? ' ' . t('chrons') : ' €';
 
-	if (isset($parameters['paytype']) && ($parameters['paytype'] == 'user' || $parameters['paytype'] == 'project' || $parameters['paytype'] == 'wreport')) {
+	if (isset($parameters['paytype']) && ($parameters['paytype'] == 'user' || $parameters['paytype'] == 'project' || $parameters['paytype'] == 'wreport' || $parameters['paytype'] == 'buyshares')) {
 		$paytype = $parameters['paytype'];
 	}
 	else if (isset($form_state['values']['paytype'])) {
@@ -116,6 +116,18 @@ function rovas_project_reward_form ($form, &$form_state) {
 	$form['paytype'] = ['#type' => 'hidden','#value' => $paytype];
 	$form['recipient'] = ['#type' => 'hidden','#value' => $recipient];
 	$form['currency'] = ['#type' => 'hidden','#value' => $currency];
+
+	if ($paytype === 'buyshares') {
+		if (!$user->uid) {
+			drupal_set_message(t('Please log in to purchase time shares.'), 'error');
+			drupal_goto('user', array('query' => array('destination' => url('rewpro', array('query' => array('paytype' => 'buyshares', 'recipient' => $recipient))))));
+			return array();
+		}
+		if (!function_exists('user_has_role') || !user_has_role(2, $user)) {
+			drupal_set_message(t('You do not have permission to purchase time shares.'), 'error');
+			return array();
+		}
+	}
 
 	//product name from URL
 	if (isset($parameters['name'])) {
@@ -280,6 +292,10 @@ function rovas_project_reward_form ($form, &$form_state) {
 				$node = node_load($recipient);
 				$test = isset($node->type);
 				break;
+			case 'buyshares':
+				$node = node_load($recipient);
+				$test = isset($node->type) && $node->type === 'project' && function_exists('rovas_purchase_shares_project_allows_buyshares') && rovas_purchase_shares_project_allows_buyshares($node);
+				break;
 			case 'wreport':
 				$node = node_load($recipient);
 				$test = isset($node->type);
@@ -352,6 +368,16 @@ function rovas_project_reward_form ($form, &$form_state) {
 			else {
 				$chrons = '';
 				$euros = '';
+			}
+		}
+		else if ($paytype == 'buyshares') {
+			$obj = entity_metadata_wrapper('node', $recipient);
+			if (function_exists('rovas_purchase_shares_buyshares_minimums')) {
+				$mins = rovas_purchase_shares_buyshares_minimums($obj);
+				$form_state['buyshares_min_chr'] = $mins['min_chr'];
+				$form_state['buyshares_min_eur'] = $mins['min_eur'];
+				$chrons = round($mins['rate_chr'], 0);
+				$euros = isset($mins['rate_eur']) && $mins['rate_eur'] !== NULL ? $mins['rate_eur'] : '';
 			}
 		}
 		else if ($paytype == 'wreport') {
@@ -485,7 +511,45 @@ function rovas_project_reward_form ($form, &$form_state) {
 			$available_chrons = rules_invoke_component('rules_chrons_actually_available',$user);
 			$ch_balance_show = $currency == 'EUR' ? '' : '<strong>' . t('You have') . ': </strong>' . $available_chrons[0] . ' ' . $payment_suffix . '<br/><br/>';
 
-			if ($paytype == 'project') {
+			if ($paytype == 'buyshares') {
+				$obj = entity_metadata_wrapper('node', $recipient);
+				$mins = rovas_purchase_shares_buyshares_minimums($obj);
+				$form_state['buyshares_min_chr'] = $mins['min_chr'];
+				$form_state['buyshares_min_eur'] = $mins['min_eur'];
+
+				$text = '<strong>' . t('Project') . ': </strong>';
+				$text .= '<a href="/node/' . check_plain($recipient) . '">' . check_plain($obj->label()) . '</a><br><br>';
+				$text .= t('Use your Chrons or Euros to buy time shares for this project.') . '<br>';
+				$text .= t('One timeshare earns the same Merits as one hour of time worked in the project.');
+
+				$form['prodinfo'] = array(
+					'#type' => 'markup',
+					'#markup' => $text,
+				);
+
+				$form['buyshares_performance'] = array(
+					'#type' => 'fieldset',
+					'#title' => t('Project data'),
+					'#weight' => 4,
+					'#collapsible' => TRUE,
+					'#collapsed' => TRUE,
+					'#prefix' => '<div id="buyshares-performance-wrap">',
+					'#suffix' => '</div>',
+					'#attributes' => array('class' => array('collapsed', 'collapsed')),
+					'inner' => array(
+						'#type' => 'markup',
+						'#markup' => rovas_purchase_shares_buyshares_performance_markup($recipient),
+					),
+				);
+
+				$access_neo_how = TRUE;
+				$weight_neohow = 30;
+				$disbld = FALSE;
+				$payment_amount = 0;
+				$chrnote = $currency == 'EUR' ? '<br/>' : t('Clicking Confirm will complete your Chron payment.') . '<br/>';
+				$chrnote_weight = 6;
+			}
+			else if ($paytype == 'project') {
 				$usr = entity_metadata_wrapper('user', $user);
 
 				$text = '<strong>';
@@ -646,9 +710,18 @@ function rovas_project_reward_form ($form, &$form_state) {
 		}
 	}
 	else {
-		$text = t('The recipient, or the type of recipient are missing. The payment can not be executed.');
+		if ($paytype === 'buyshares' && $recipient !== '') {
+			$text = t('This project is not set up to allow buying shares.');
+		}
+		else {
+			$text = t('The recipient, or the type of recipient are missing. The payment can not be executed.');
+		}
 	}
 
+	$pprice_hidden = $payment_amount;
+	if ($test && $paytype === 'buyshares' && isset($form_state['buyshares_min_chr'], $form_state['buyshares_min_eur'])) {
+		$pprice_hidden = ($currency === 'EUR') ? $form_state['buyshares_min_eur'] : $form_state['buyshares_min_chr'];
+	}
 
 	if ($test && $user->uid == 0) {
 		$ptitle = t('Payment amount') . ':';
@@ -742,7 +815,7 @@ function rovas_project_reward_form ($form, &$form_state) {
 
 	$form['payment_wrapper']['pprice'] = [
 			'#type' => 'hidden',
-			'#value' => $payment_amount
+			'#value' => $pprice_hidden,
 	];
 
 	if (!$user->uid) {
@@ -859,7 +932,15 @@ function rovas_project_reward_form ($form, &$form_state) {
 
 	$expiration = isset($sessary['expiration']) ? $sessary['expiration'] : INF;
 	$curtime = time();
-	
+
+	if ($paytype === 'buyshares' && $test && $user->uid) {
+		drupal_add_js(array(
+			'rovasExpressBuyshares' => array(
+				'token' => drupal_get_token('rovas_express_buyshares'),
+			),
+		), 'setting');
+	}
+
 	if ($expiration >= $curtime) {
 		$stripe_pub_key = check_plain(variable_get('stripe_publishable_key', 'pk_test_default'));
 	
@@ -900,16 +981,23 @@ function rovas_project_reward_form ($form, &$form_state) {
 
 //ajax callback
 function _rpr_currency_switcher ($form, $form_state) {
-	return array(
-		'#type' => 'ajax',
-		'#commands' => array(
+	$commands = array(
 			ajax_command_replace("#payment-wrapper", render($form['payment_wrapper'])),
 			ajax_command_replace("#final_text", render($form['final'])),
 			ajax_command_replace(".form-item-payment-currency", render($form['payment-currency'])),
 			ajax_command_replace("#submit-buttons", render($form['submit'])),
 			ajax_command_replace("#text-1", render($form['text'])),
 			ajax_command_replace("#ch-balance", render($form['chrblnc'])),
-		)
+	);
+	if (isset($form['express-checkout'])) {
+		$commands[] = ajax_command_replace("#express-checkout-container", render($form['express-checkout']));
+	}
+	if (isset($form['buyshares_performance'])) {
+		$commands[] = ajax_command_replace("#buyshares-performance-wrap", render($form['buyshares_performance']));
+	}
+	return array(
+		'#type' => 'ajax',
+		'#commands' => $commands,
 	);
 }
 
@@ -973,7 +1061,22 @@ function rovas_project_reward_form_validate($form, &$form_state) {
 			form_set_error('email', t('Please enter a valid email address.'));
 		}
   }
-  
+
+  if ($paytype === 'buyshares') {
+    if (!is_numeric($pid) || !function_exists('rovas_purchase_shares_project_allows_buyshares')) {
+      form_set_error('', t('Buyshares is unavailable.'));
+      return;
+    }
+    $bn = node_load($pid);
+    if (!rovas_purchase_shares_project_allows_buyshares($bn)) {
+      form_set_error('', t('This project is not set up to allow buying shares.'));
+      return;
+    }
+    if (is_numeric($pprice) && $paid_amt < $pprice) {
+      form_set_error('payment', t('Please enter value equal to, or greater than @v.', array('@v' => $pprice)));
+    }
+  }
+
 }
 
 //process the purchase
@@ -997,16 +1100,35 @@ function rovas_project_reward_form_submit($form, &$form_state) {
   
   // Process EUR payment
   if ($currency === 'EUR') {
-    $order = rpr_create_commerce_order($uid, $paid_amt, $paytype, $pid);
-    $pay_method = isset($form_state['clicked_button']['#attributes']['id'][0]) ? 
+    $pay_method = isset($form_state['clicked_button']['#attributes']['id'][0]) ?
                   $form_state['clicked_button']['#attributes']['id'][0] : NULL;
-    
-    // Set payment method data: rpr_paytype is the single source of truth; Commerce method is derived.
-    $order->data['rpr_paytype'] = $pay_method;
-    $commerce_method = _rovas_project_reward_commerce_method_for_rpr_paytype($pay_method);
-    if ($commerce_method !== NULL) {
-      $order->data['payment_method'] = $commerce_method;
-      $order->data['rovas_payment_method'] = $commerce_method;
+    if ($pay_method === NULL || $pay_method === '') {
+      $pay_method = 'pay-choice-card';
+    }
+
+    if ($paytype === 'buyshares') {
+      $proj = node_load($pid);
+      if (!$proj || !function_exists('rovas_purchase_shares_project_allows_buyshares') || !rovas_purchase_shares_project_allows_buyshares($proj)) {
+        drupal_set_message(t('This project is not set up to allow buying shares.'), 'error');
+        return;
+      }
+      $proj_wrap = entity_metadata_wrapper('node', $proj);
+      $share = rovas_purchase_shares_compute_share_hours_for_payment($proj_wrap, 'EUR', $paid_amt);
+      $order = rovas_purchase_shares_create_eur_time_share_order($uid, $pid, $paid_amt, $share, $pay_method);
+      if (!$order) {
+        drupal_set_message(t('The amount paid cannot be processed. Please split your payment into smaller amounts or adjust the values.'), 'error');
+        return;
+      }
+    }
+    else {
+      $order = rpr_create_commerce_order($uid, $paid_amt, $paytype, $pid);
+      // Set payment method data: rpr_paytype is the single source of truth; Commerce method is derived.
+      $order->data['rpr_paytype'] = $pay_method;
+      $commerce_method = _rovas_project_reward_commerce_method_for_rpr_paytype($pay_method);
+      if ($commerce_method !== NULL) {
+        $order->data['payment_method'] = $commerce_method;
+        $order->data['rovas_payment_method'] = $commerce_method;
+      }
     }
 
     // Handle anonymous user email
@@ -1014,7 +1136,7 @@ function rovas_project_reward_form_submit($form, &$form_state) {
       $order->mail = $email;
       $order->field_buyer_email[LANGUAGE_NONE][0]['value'] = $email;
     }
-    
+
     // Handle different payment methods
     if ($pay_method === 'pay-choice-bank') {
       // Attach billing profile and update status for bank payments
@@ -1022,7 +1144,7 @@ function rovas_project_reward_form_submit($form, &$form_state) {
       rovas_project_reward_create_bank_intent($order, $paytype, $pid, $sessary);
       $order = commerce_order_status_update($order, 'checkout_review', TRUE);
       commerce_order_save($order);
-      
+
       $target = commerce_checkout_order_uri($order);
       drupal_goto($target);
     }
@@ -1038,12 +1160,24 @@ function rovas_project_reward_form_submit($form, &$form_state) {
     $node = node_load($pid);
     $lang = $user->language;
     $node_url = '/node/' . $node->nid;
-    $node_title = isset($node->title_field[$lang][0]['value']) ? 
+    $node_title = isset($node->title_field[$lang][0]['value']) ?
                   $node->title_field[$lang][0]['value'] : $node->title;
     $user_email = $user->mail;
-    
+
     // Process based on payment type
-    if ($paytype === 'wreport') {
+    if ($paytype === 'buyshares') {
+      if (!function_exists('rovas_purchase_shares_process_chr_buyshares')) {
+        drupal_set_message(t('Buyshares processing is unavailable.'), 'error');
+        return;
+      }
+      $proj_wrap = entity_metadata_wrapper('node', $node);
+      $share = rovas_purchase_shares_compute_share_hours_for_payment($proj_wrap, 'CHR', $paid_amt);
+      $result = rovas_purchase_shares_process_chr_buyshares($node, $user, $paid_amt, $share);
+      drupal_set_message($result['message'], 'status', FALSE);
+      drupal_goto($result['destination']);
+      return;
+    }
+    elseif ($paytype === 'wreport') {
       $msg = _process_work_report_reward($user->uid, $pid, $paid_amt, $node_url, $node_title,'CHR');
     }
     else {
