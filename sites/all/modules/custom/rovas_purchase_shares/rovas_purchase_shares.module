@@ -606,6 +606,62 @@ function _rovas_purchase_shares_order_line_items_contain_sku($order, $sku) {
 }
 
 /**
+ * Commits the pending forex_transaction created at bank checkout (field_payment_status=1).
+ *
+ * Uses the same confirmation-time quote as the finalize path (rovas_forex_transaction_params
+ * with charge_fees TRUE). Skips if no node or already committed.
+ *
+ * @param int $order_id
+ * @param float $order_total
+ *   Order total in EUR (major units).
+ * @param float $output_amount
+ *   CHR output from rovas_forex_transaction_params.
+ * @param float $eur_basket
+ * @param float $chr_basket
+ * @param float $conversion_fee_eur
+ *   Total conversion fee in EUR (variable + fixed), same as card Rule fee_amount.
+ *
+ * @return bool
+ *   TRUE if committed or already paid, FALSE if no forex node found.
+ */
+function _rovas_purchase_shares_commit_forex_transaction_for_bank_time_share_order($order_id, $order_total, $output_amount, $eur_basket, $chr_basket, $conversion_fee_eur) {
+  $order_id = (int) $order_id;
+  if ($order_id < 1) {
+    return FALSE;
+  }
+  $query = new EntityFieldQuery();
+  $query->entityCondition('entity_type', 'node')
+    ->entityCondition('bundle', 'forex_transaction')
+    ->fieldCondition('field_order_record', 'target_id', $order_id);
+  $result = $query->execute();
+  if (empty($result['node'])) {
+    watchdog('rovas_purchase_shares', 'Bank time-share finalize: no forex_transaction node linked to order @oid; payment_status left unchanged.', array('@oid' => $order_id), WATCHDOG_WARNING);
+    return FALSE;
+  }
+  $nid = (int) key($result['node']);
+  $node = node_load($nid);
+  if (!$node || $node->type !== 'forex_transaction') {
+    return FALSE;
+  }
+  $w = entity_metadata_wrapper('node', $node);
+  if ((int) $w->field_payment_status->value() === 1) {
+    return TRUE;
+  }
+  $w->field_chron_basket->set($chr_basket);
+  $w->field_euro_basket->set($eur_basket);
+  $w->field_input_amount->set($order_total);
+  $w->field_output_amount->set($output_amount);
+  $w->field_conversion_fee->set($conversion_fee_eur);
+  $w->field_payment_status->set(1);
+  $w->save();
+  watchdog('rovas_purchase_shares', 'Bank time-share finalize: forex_transaction @nid for order @oid marked paid (field_payment_status=1).', array(
+    '@nid' => $nid,
+    '@oid' => $order_id,
+  ), WATCHDOG_INFO);
+  return TRUE;
+}
+
+/**
  * Finalize EUR time-share when a bank transfer order is paid in full.
  *
  * rules_process_card_payment_orders intentionally skips bank_transfer and
@@ -739,6 +795,16 @@ function rovas_purchase_shares_finalize_bank_paid_time_share_if_applicable($orde
   }
 
   rules_invoke_component('rules_process_recipient_order_core', $output_amount, 1, $order);
+
+  $conversion_fee_eur = $fixed_fee_amount + $partial_fee;
+  _rovas_purchase_shares_commit_forex_transaction_for_bank_time_share_order(
+    $order->order_id,
+    $order_total,
+    $output_amount,
+    $eur_basket,
+    $chr_basket,
+    $conversion_fee_eur
+  );
 
   $order = commerce_order_load($order->order_id);
   if ($order) {
