@@ -564,15 +564,45 @@ function rovas_purchase_shares_create_eur_time_share_order($uid, $project_nid, $
 }
 
 /**
- * Finalize EUR time-share order when a bank transfer is marked paid in full.
+ * Finalize EUR time-share when a bank transfer order is paid in full.
  *
- * Mirrors the non-bank branch of rules_process_card_payment_orders for
- * time-share recipient orders.
+ * rules_process_card_payment_orders intentionally skips bank_transfer and
+ * pay-choice-bank; this path mirrors its time-share + recipient handling.
+ *
+ * @param object $order
+ *   Commerce order (may be a stale in-memory copy; reloaded internally).
  */
-function rovas_purchase_shares_commerce_payment_order_paid_in_full($order) {
+function rovas_purchase_shares_finalize_bank_paid_time_share_if_applicable($order) {
   if (empty($order->order_id) || !module_exists('rules')) {
     return;
   }
+
+  $order = commerce_order_load($order->order_id);
+  if (!$order) {
+    return;
+  }
+
+  if (!empty($order->data['rovas_bank_ts_paid_full_handled'])) {
+    return;
+  }
+
+  // Commerce checkout can clear payment_method on the review step while
+  // rpr_paytype remains set (see rovas_project_reward_review_finalize_payment()).
+  if (!empty($order->data['rpr_paytype']) && $order->data['rpr_paytype'] === 'pay-choice-bank' && empty($order->data['payment_method'])) {
+    if (function_exists('_rovas_project_reward_commerce_method_for_rpr_paytype')) {
+      $commerce_method = _rovas_project_reward_commerce_method_for_rpr_paytype('pay-choice-bank');
+      if ($commerce_method !== NULL) {
+        $order->data['payment_method'] = $commerce_method;
+        $order->data['rovas_payment_method'] = $commerce_method;
+        commerce_order_save($order);
+        $order = commerce_order_load($order->order_id);
+        if (!$order) {
+          return;
+        }
+      }
+    }
+  }
+
   if (!function_exists('commerce_order_rules_contains_product') || !commerce_order_rules_contains_product($order, 'time-share', '>=', 1)) {
     return;
   }
@@ -584,16 +614,7 @@ function rovas_purchase_shares_commerce_payment_order_paid_in_full($order) {
   if ($recipient === NULL || $recipient === '') {
     return;
   }
-  if (!empty($order->data['rovas_bank_ts_paid_full_handled'])) {
-    return;
-  }
 
-  $order = commerce_order_load($order->order_id);
-  if (!$order) {
-    return;
-  }
-
-  $wrapper = entity_metadata_wrapper('commerce_order', $order);
   $order_total = (float) $wrapper->commerce_order_total->amount->value() / 100.0;
   if ($order_total <= 0) {
     return;
@@ -635,6 +656,13 @@ function rovas_purchase_shares_commerce_payment_order_paid_in_full($order) {
     $order->data['rovas_bank_ts_paid_full_handled'] = REQUEST_TIME;
     commerce_order_save($order);
   }
+}
+
+/**
+ * Implements hook_commerce_payment_order_paid_in_full().
+ */
+function rovas_purchase_shares_commerce_payment_order_paid_in_full($order, $transaction = NULL) {
+  rovas_purchase_shares_finalize_bank_paid_time_share_if_applicable($order);
 }
 
 /**
