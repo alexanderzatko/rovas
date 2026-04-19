@@ -48,6 +48,7 @@ function rovas_project_reward_form ($form, &$form_state) {
 
 	$ch_balance_show = '';
 	$payment_currency_weight = 3;
+	$payment_wrapper_weight = 5;
 
   $parameters = drupal_get_query_parameters();
   
@@ -530,8 +531,9 @@ function rovas_project_reward_form ($form, &$form_state) {
 				);
 				// Same copy is already in prodinfo; do not repeat it in #text-1 (rewpro AJAX).
 				$text = '';
-				// Payment method before balance and project block (see #text-1 weight).
-				$payment_currency_weight = 0.5;
+				// Pay-with radios sit directly above the amount block (#payment-wrapper).
+				$payment_currency_weight = 5;
+				$payment_wrapper_weight = 6;
 				$weight_text = 50;
 
 				$form['buyshares_performance'] = array(
@@ -554,7 +556,8 @@ function rovas_project_reward_form ($form, &$form_state) {
 				$disbld = FALSE;
 				$payment_amount = 0;
 				$chrnote = $currency == 'EUR' ? '<br/>' : t('Clicking Confirm will complete your Chron payment.') . '<br/>';
-				$chrnote_weight = 6;
+				// After #payment-wrapper (weight 6) so note does not interleave with amount block.
+				$chrnote_weight = 7;
 			}
 			else if ($paytype == 'project') {
 				$usr = entity_metadata_wrapper('user', $user);
@@ -817,7 +820,7 @@ function rovas_project_reward_form ($form, &$form_state) {
 		'#prefix' => '<div id="payment-wrapper">',
 		'#suffix' => '<div style="color:red; position:relative; top: -10px; margin-bottom: 15px;" id="payment-error"></div></div>',
 		'#type' => 'container',
-		'#weight' => 5,
+		'#weight' => $payment_wrapper_weight,
 	];
 
 	$form['payment_wrapper']['pprice'] = [
@@ -902,7 +905,7 @@ function rovas_project_reward_form ($form, &$form_state) {
 					'#weight' => 9,
 				);
 			}
-			$form['payment_wrapper']['payment']['#field_suffix'] = $payment_suffix . ' <span id="buyshares-ajax-progress-slot" class="buyshares-ajax-progress-slot" role="status" aria-live="polite"></span>';
+			$form['payment_wrapper']['payment']['#field_suffix'] = $payment_suffix . ' <span class="buyshares-ajax-progress-slot" role="status" aria-live="polite"><span class="glyphicon glyphicon-refresh buyshares-ajax-slot-idle" aria-hidden="true"></span></span>';
 			$form['payment_wrapper']['payment']['#ajax'] = array(
 				'callback' => '_rpr_buyshares_payment_preview',
 				'wrapper' => 'payment-wrapper',
@@ -920,14 +923,35 @@ function rovas_project_reward_form ($form, &$form_state) {
     return;
   }
   Drupal.rovasBuysharesAjaxThrobber = true;
+  function rprBuysharesPaymentSlot($el) {
+    return $el.closest('.form-item-payment').find('.buyshares-ajax-progress-slot').first();
+  }
+  function rprBuysharesIsPaymentAmountAjax(el) {
+    return el && (el.name === 'payment' || $(el).hasClass('edit-payment'));
+  }
   var beforeSend = Drupal.ajax.prototype.beforeSend;
   Drupal.ajax.prototype.beforeSend = function (xmlhttprequest, options) {
     beforeSend.call(this, xmlhttprequest, options);
-    if (this.element && this.element.id === 'edit-payment' && this.progress.element) {
-      var $slot = $('#buyshares-ajax-progress-slot');
+    if (rprBuysharesIsPaymentAmountAjax(this.element) && this.progress.element) {
+      var $slot = rprBuysharesPaymentSlot($(this.element));
       if ($slot.length) {
+        $slot.addClass('is-ajaxing');
         this.progress.element.appendTo($slot);
       }
+    }
+  };
+  var success = Drupal.ajax.prototype.success;
+  Drupal.ajax.prototype.success = function (response, status) {
+    success.call(this, response, status);
+    if (rprBuysharesIsPaymentAmountAjax(this.element)) {
+      rprBuysharesPaymentSlot($(this.element)).removeClass('is-ajaxing');
+    }
+  };
+  var error = Drupal.ajax.prototype.error;
+  Drupal.ajax.prototype.error = function (xmlhttprequest, uri, customMessage) {
+    error.call(this, xmlhttprequest, uri, customMessage);
+    if (rprBuysharesIsPaymentAmountAjax(this.element)) {
+      rprBuysharesPaymentSlot($(this.element)).removeClass('is-ajaxing');
     }
   };
 })(jQuery, Drupal);
@@ -1036,7 +1060,7 @@ JS;
 			'#prefix' => '<div id="express-checkout-container" style="display:none;">',
 			'#suffix' => '</div>',
 			'#markup' => $express_text,
-			'#weight' => 6,
+			'#weight' => 8,
 			// Visibility controlled by JS - #states removed, it hid the block from DOM on full URL.
 		);
 	}

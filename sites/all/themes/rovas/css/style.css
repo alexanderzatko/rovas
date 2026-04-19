@@ -1651,7 +1651,7 @@ div#buyshares-performance-wrap {
     gap: 6px;
 }
 
-#payment-wrapper #buyshares-ajax-progress-slot {
+#payment-wrapper .buyshares-ajax-progress-slot {
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -1663,24 +1663,48 @@ div#buyshares-performance-wrap {
     border-radius: 3px;
     background-color: #fff;
     vertical-align: middle;
+    position: relative;
 }
 
-#payment-wrapper #buyshares-ajax-progress-slot .ajax-progress.ajax-progress-throbber {
+#payment-wrapper .buyshares-ajax-progress-slot .buyshares-ajax-slot-idle {
     display: inline-block;
-    position: static;
-    left: auto;
-    top: auto;
-    float: none;
+    font-size: 16px;
+    line-height: 1;
+    color: #555;
+}
+
+#payment-wrapper .buyshares-ajax-progress-slot:not(.is-ajaxing) .buyshares-ajax-slot-idle {
+    animation: rovas-buyshares-glyph-spin 1.4s linear infinite;
+}
+
+@keyframes rovas-buyshares-glyph-spin {
+    from {
+        transform: rotate(0deg);
+    }
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+#payment-wrapper .buyshares-ajax-progress-slot .ajax-progress.ajax-progress-throbber {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 0;
+    bottom: 0;
     margin: 0;
     padding: 0;
-    background: transparent;
+    background-color: rgba(255, 255, 255, 0.92);
 }
 
-#payment-wrapper #buyshares-ajax-progress-slot .ajax-progress-throbber .throbber {
+#payment-wrapper .buyshares-ajax-progress-slot .ajax-progress-throbber .throbber {
     margin: 0;
 }
 
-form#rovas-project-reward-form #payment-wrapper #buyshares-ajax-progress-slot .ajax-progress-throbber {
+form#rovas-project-reward-form #payment-wrapper .buyshares-ajax-progress-slot .ajax-progress-throbber {
     font-size: 16px;
 }
 
