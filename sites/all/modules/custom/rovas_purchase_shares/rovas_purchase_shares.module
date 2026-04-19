@@ -674,11 +674,22 @@ function rovas_purchase_shares_finalize_bank_paid_time_share_if_applicable($orde
     ), WATCHDOG_INFO);
     return;
   }
-  if (!function_exists('commerce_payment_rules_compare_selected_payment_method') || !commerce_payment_rules_compare_selected_payment_method($order, 'bank_transfer')) {
+  // Do not call commerce_payment_rules_compare_selected_payment_method(): it lives
+  // in commerce_payment.rules.inc and is often not loaded during reconcile/cron.
+  $selected_method_id = '-none-';
+  if (!empty($order->data['payment_method']) && is_string($order->data['payment_method'])) {
+    $pm_parts = explode('|', $order->data['payment_method'], 2);
+    $selected_method_id = isset($pm_parts[0]) ? trim($pm_parts[0]) : '-none-';
+  }
+  elseif (!empty($order->data['rpr_paytype']) && $order->data['rpr_paytype'] === 'pay-choice-bank') {
+    $selected_method_id = 'bank_transfer';
+  }
+  if ($selected_method_id !== 'bank_transfer') {
     $pm = isset($order->data['payment_method']) ? $order->data['payment_method'] : '(empty)';
     $rpr = isset($order->data['rpr_paytype']) ? $order->data['rpr_paytype'] : '(empty)';
-    watchdog('rovas_purchase_shares', 'Bank time-share finalize aborted for order @oid: selected method is not bank_transfer (payment_method=@pm, rpr_paytype=@rpr).', array(
+    watchdog('rovas_purchase_shares', 'Bank time-share finalize aborted for order @oid: expected bank_transfer, got @parsed (payment_method=@pm, rpr_paytype=@rpr).', array(
       '@oid' => $order->order_id,
+      '@parsed' => $selected_method_id !== '' ? $selected_method_id : '(empty)',
       '@pm' => $pm,
       '@rpr' => $rpr,
     ), WATCHDOG_WARNING);
