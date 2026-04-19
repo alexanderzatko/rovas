@@ -1613,8 +1613,62 @@ div#edit-payment-choice div.ajax-progress-throbber {
 }
 
 div#buy-hrs-converted {
-    display: inline-block;
+    display: block;
     font-size: 35px;
+}
+
+#payment-wrapper div#buy-hrs-converted {
+    display: block;
+    font-size: inherit;
+}
+
+#payment-wrapper .buy-hrs-converted__subtitle {
+    display: block;
+    font-size: 16px;
+    font-weight: 600;
+    margin-bottom: 6px;
+    color: #333;
+}
+
+#payment-wrapper .buy-hrs-converted__value {
+    font-size: 35px;
+    color: #999;
+}
+
+div#buyshares-performance-wrap {
+    margin-top: 20px;
+    margin-bottom: 30px;
+}
+
+#payment-wrapper .form-item-payment,
+#payment-wrapper button#edit-buyshares-recalc {
+    display: inline-block;
+    vertical-align: middle;
+}
+
+#payment-wrapper button#edit-buyshares-recalc {
+    margin-left: 14px;
+    margin-right: 10px;
+    height: 33px;
+    position: relative;
+    top: -9px;
+    font-weight: bold;
+    font-size: 16px;
+}
+
+#payment-wrapper button#edit-buyshares-recalc:hover {
+    background-color: unset;
+}
+
+form#rovas-project-reward-form #payment-wrapper div.ajax-progress-throbber {
+    display: inline-block;
+    position: relative;
+    left: 7px;
+    top: 5px;
+    background-color: #ffffff;
+    padding-left: 5px;
+    padding-right: 5px;
+    font-size: 16px;
 }
 
 form#rovas-project-reward-shares-form .note {
