@@ -1673,17 +1673,8 @@ div#buyshares-performance-wrap {
     color: #555;
 }
 
-#payment-wrapper .buyshares-ajax-progress-slot:not(.is-ajaxing) .buyshares-ajax-slot-idle {
-    animation: rovas-buyshares-glyph-spin 1.4s linear infinite;
-}
-
-@keyframes rovas-buyshares-glyph-spin {
-    from {
-        transform: rotate(0deg);
-    }
-    to {
-        transform: rotate(360deg);
-    }
+#payment-wrapper .buyshares-ajax-progress-slot.is-ajaxing .buyshares-ajax-slot-idle {
+    opacity: 0;
 }
 
 #payment-wrapper .buyshares-ajax-progress-slot .ajax-progress.ajax-progress-throbber {
