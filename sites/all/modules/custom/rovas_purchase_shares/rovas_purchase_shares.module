@@ -721,7 +721,7 @@ function rovas_purchase_shares_finalize_bank_paid_time_share_if_applicable($orde
   $fixed_fee_amount = $fp['fixed_fee_amount'];
   $use_temp_baskets = !empty($fp['use_temp_baskets']);
 
-  rules_invoke_component('rules_process_time_share_order', array('order' => $order));
+  rules_invoke_component('rules_process_time_share_order', $order);
 
   $partial_fee = $variable_fee * $order_total;
   $new_universal_forex_baskets = array(
@@ -738,11 +738,7 @@ function rovas_purchase_shares_finalize_bank_paid_time_share_if_applicable($orde
     variable_set('forex_baskets', $new_universal_forex_baskets);
   }
 
-  rules_invoke_component('rules_process_recipient_order_core', array(
-    'converted_chrons_paid' => $output_amount,
-    'payment_status' => 1,
-    'order' => $order,
-  ));
+  rules_invoke_component('rules_process_recipient_order_core', $output_amount, 1, $order);
 
   $order = commerce_order_load($order->order_id);
   if ($order) {
