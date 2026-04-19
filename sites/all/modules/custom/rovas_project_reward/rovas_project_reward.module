@@ -85,7 +85,16 @@ function rovas_project_reward_form ($form, &$form_state) {
 
 //	watchdog('rovas_project_reward','form state <pre>' . print_r([$parameters,$vals],1) . "</pre>");
 
-	$currency = isset($form_state['values']['payment-currency']) ? $form_state['values']['payment-currency'] : 'CHR';
+	// #limit_validation_errors on the amount field strips $form_state['values'] to
+	// only "payment" on AJAX preview; read radios from raw input when needed.
+	$currency_raw = '';
+	if (isset($form_state['values']['payment-currency'])) {
+		$currency_raw = $form_state['values']['payment-currency'];
+	}
+	elseif (!empty($form_state['input']['payment-currency'])) {
+		$currency_raw = $form_state['input']['payment-currency'];
+	}
+	$currency = in_array($currency_raw, array('CHR', 'EUR'), TRUE) ? $currency_raw : 'CHR';
 //	$payment_suffix = $currency == 'EUR' ? ' €' : ' ' . t('Chrons');
 	$payment_suffix = $currency == 'EUR' ? ' €' : ' ' . t('Chrons',[],['context' => 'reward project']);
 
