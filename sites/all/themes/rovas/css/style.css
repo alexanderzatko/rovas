@@ -1614,6 +1614,10 @@ div#edit-payment-choice div.ajax-progress-throbber {
 
 div#buy-hrs-converted {
     display: block;
+}
+
+.buy-hrs-wrapper div#buy-hrs-converted {
+    display: inline-block;
     font-size: 35px;
 }
 
@@ -1624,8 +1628,8 @@ div#buy-hrs-converted {
 
 #payment-wrapper .buy-hrs-converted__subtitle {
     display: block;
-    font-size: 16px;
-    font-weight: 600;
+    font-size: 14px;
+    font-weight: bold;
     margin-bottom: 6px;
     color: #333;
 }
@@ -1640,34 +1644,43 @@ div#buyshares-performance-wrap {
     margin-bottom: 30px;
 }
 
-#payment-wrapper .form-item-payment,
-#payment-wrapper button#edit-buyshares-recalc {
-    display: inline-block;
+#payment-wrapper .form-item-payment .field-suffix {
+    display: inline-flex;
+    align-items: center;
+    vertical-align: middle;
+    gap: 6px;
+}
+
+#payment-wrapper #buyshares-ajax-progress-slot {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    box-sizing: border-box;
+    min-width: 36px;
+    height: 33px;
+    padding: 0 6px;
+    border: 1px solid #ccc;
+    border-radius: 3px;
+    background-color: #fff;
     vertical-align: middle;
 }
 
-#payment-wrapper button#edit-buyshares-recalc {
-    margin-left: 14px;
-    margin-right: 10px;
-    height: 33px;
-    position: relative;
-    top: -9px;
-    font-weight: bold;
-    font-size: 16px;
-}
-
-#payment-wrapper button#edit-buyshares-recalc:hover {
-    background-color: unset;
-}
-
-form#rovas-project-reward-form #payment-wrapper div.ajax-progress-throbber {
+#payment-wrapper #buyshares-ajax-progress-slot .ajax-progress.ajax-progress-throbber {
     display: inline-block;
-    position: relative;
-    left: 7px;
-    top: 5px;
-    background-color: #ffffff;
-    padding-left: 5px;
-    padding-right: 5px;
+    position: static;
+    left: auto;
+    top: auto;
+    float: none;
+    margin: 0;
+    padding: 0;
+    background: transparent;
+}
+
+#payment-wrapper #buyshares-ajax-progress-slot .ajax-progress-throbber .throbber {
+    margin: 0;
+}
+
+form#rovas-project-reward-form #payment-wrapper #buyshares-ajax-progress-slot .ajax-progress-throbber {
     font-size: 16px;
 }
 

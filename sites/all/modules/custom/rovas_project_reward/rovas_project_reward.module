@@ -47,6 +47,7 @@ function rovas_project_reward_form ($form, &$form_state) {
 	$callback_url = NULL;
 
 	$ch_balance_show = '';
+	$payment_currency_weight = 3;
 
   $parameters = drupal_get_query_parameters();
   
@@ -525,15 +526,18 @@ function rovas_project_reward_form ($form, &$form_state) {
 				$form['prodinfo'] = array(
 					'#type' => 'markup',
 					'#markup' => $text,
-					'#weight' => 4,
+					'#weight' => 3,
 				);
 				// Same copy is already in prodinfo; do not repeat it in #text-1 (rewpro AJAX).
 				$text = '';
+				// Payment method before balance and project block (see #text-1 weight).
+				$payment_currency_weight = 0.5;
+				$weight_text = 50;
 
 				$form['buyshares_performance'] = array(
 					'#type' => 'fieldset',
 					'#title' => t('Project data'),
-					'#weight' => 5,
+					'#weight' => 4,
 					'#collapsible' => TRUE,
 					'#collapsed' => TRUE,
 					'#prefix' => '<div id="buyshares-performance-wrap">',
@@ -806,14 +810,14 @@ function rovas_project_reward_form ($form, &$form_state) {
 			'method' => 'replace',
 			'effect' => 'fade',
 		],
-		'#weight' => 3,
+		'#weight' => $payment_currency_weight,
 	];
 
 	$form['payment_wrapper'] = [
 		'#prefix' => '<div id="payment-wrapper">',
 		'#suffix' => '<div style="color:red; position:relative; top: -10px; margin-bottom: 15px;" id="payment-error"></div></div>',
 		'#type' => 'container',
-		'#weight' => 6,
+		'#weight' => 5,
 	];
 
 	$form['payment_wrapper']['pprice'] = [
@@ -886,7 +890,7 @@ function rovas_project_reward_form ($form, &$form_state) {
 				'#type' => 'item',
 				'#prefix' => '<div id="buy-hrs-converted">',
 				'#suffix' => '</div>',
-				'#markup' => '<div class="buy-hrs-converted__subtitle">' . t('Purchased time') . '</div><div class="buy-hrs-converted__value">' . $hours_preview . '</div>',
+				'#markup' => '<div class="buy-hrs-converted__subtitle">' . t('Purchased time') . ';</div><div class="buy-hrs-converted__value">' . $hours_preview . '</div>',
 				'#weight' => 8,
 			);
 			if (function_exists('rovas_purchase_shares_buyshares_yield_estimate_markup')) {
@@ -898,30 +902,37 @@ function rovas_project_reward_form ($form, &$form_state) {
 					'#weight' => 9,
 				);
 			}
+			$form['payment_wrapper']['payment']['#field_suffix'] = $payment_suffix . ' <span id="buyshares-ajax-progress-slot" class="buyshares-ajax-progress-slot" role="status" aria-live="polite"></span>';
 			$form['payment_wrapper']['payment']['#ajax'] = array(
 				'callback' => '_rpr_buyshares_payment_preview',
 				'wrapper' => 'payment-wrapper',
 				'event' => 'change',
+				'progress' => array(
+					'type' => 'throbber',
+				),
 			);
 			$form['payment_wrapper']['payment']['#limit_validation_errors'] = array(array('payment'));
 			$form['payment_wrapper']['payment']['#weight'] = 0;
-			$form['payment_wrapper']['buyshares_recalc'] = array(
-				'#type' => 'button',
-				'#name' => 'buyshares_recalc',
-				'#button_type' => 'button',
-				'#value' => '<span class="glyphicon glyphicon-refresh"> </span>',
-				'#submit' => array(),
-				'#ajax' => array(
-					'callback' => '_rpr_buyshares_payment_preview',
-					'effect' => 'fade',
-				),
-				'#limit_validation_errors' => array(),
-				'#weight' => 1,
-				'#attributes' => array(
-					'class' => array('btn', 'btn-default'),
-					'title' => t('Recalculate', array(), array('context' => 'Buyshares payment preview')),
-				),
-			);
+			$form['payment_wrapper']['payment']['#attributes']['class'][] = 'buyshares-payment-ajax-field';
+			$buyshares_ajax_throbber_js = <<<'JS'
+(function ($, Drupal) {
+  if (Drupal.rovasBuysharesAjaxThrobber) {
+    return;
+  }
+  Drupal.rovasBuysharesAjaxThrobber = true;
+  var beforeSend = Drupal.ajax.prototype.beforeSend;
+  Drupal.ajax.prototype.beforeSend = function (xmlhttprequest, options) {
+    beforeSend.call(this, xmlhttprequest, options);
+    if (this.element && this.element.id === 'edit-payment' && this.progress.element) {
+      var $slot = $('#buyshares-ajax-progress-slot');
+      if ($slot.length) {
+        this.progress.element.appendTo($slot);
+      }
+    }
+  };
+})(jQuery, Drupal);
+JS;
+			drupal_add_js($buyshares_ajax_throbber_js, array('type' => 'inline', 'scope' => 'footer', 'weight' => 50));
 		}
 	}
 
@@ -1025,7 +1036,7 @@ function rovas_project_reward_form ($form, &$form_state) {
 			'#prefix' => '<div id="express-checkout-container" style="display:none;">',
 			'#suffix' => '</div>',
 			'#markup' => $express_text,
-			'#weight' => 7,
+			'#weight' => 6,
 			// Visibility controlled by JS - #states removed, it hid the block from DOM on full URL.
 		);
 	}
