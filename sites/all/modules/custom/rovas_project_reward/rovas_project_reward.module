@@ -4390,6 +4390,9 @@ function rovas_project_reward_mark_bank_order_success($order_id, $provider_payme
 
   if (!empty($order->data['sepa']['status']) && $order->data['sepa']['status'] === 'paid') {
     // Allow recovery if a prior run marked SEPA paid but skipped time-share fulfillment.
+    watchdog('rovas_project_reward', 'Bank reconcile: order @oid already had SEPA paid; running time-share finalize recovery if applicable.', array(
+      '@oid' => $order_id,
+    ), WATCHDOG_INFO);
     if (function_exists('rovas_purchase_shares_finalize_bank_paid_time_share_if_applicable')) {
       rovas_purchase_shares_finalize_bank_paid_time_share_if_applicable($order);
     }
@@ -4492,6 +4495,9 @@ function rovas_project_reward_mark_bank_order_success($order_id, $provider_payme
   // Commerce's paid_in_full hook chain. Call the finalize helper again here so
   // reconciliation still grants shares if that hook exited early (e.g.
   // payment_method missing while rpr_paytype is pay-choice-bank).
+  watchdog('rovas_project_reward', 'Bank reconcile: invoking time-share finalize helper after payment save for order @oid.', array(
+    '@oid' => $order_id,
+  ), WATCHDOG_INFO);
   if (function_exists('rovas_purchase_shares_finalize_bank_paid_time_share_if_applicable')) {
     rovas_purchase_shares_finalize_bank_paid_time_share_if_applicable(commerce_order_load($order_id));
   }

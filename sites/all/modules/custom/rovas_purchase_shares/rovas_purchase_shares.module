@@ -583,6 +583,10 @@ function rovas_purchase_shares_finalize_bank_paid_time_share_if_applicable($orde
   }
 
   if (!empty($order->data['rovas_bank_ts_paid_full_handled'])) {
+    watchdog('rovas_purchase_shares', 'Bank time-share finalize skipped for order @oid: already completed at @ts.', array(
+      '@oid' => $order->order_id,
+      '@ts' => format_date((int) $order->data['rovas_bank_ts_paid_full_handled'], 'short'),
+    ), WATCHDOG_INFO);
     return;
   }
 
@@ -595,6 +599,10 @@ function rovas_purchase_shares_finalize_bank_paid_time_share_if_applicable($orde
         $order->data['payment_method'] = $commerce_method;
         $order->data['rovas_payment_method'] = $commerce_method;
         commerce_order_save($order);
+        watchdog('rovas_purchase_shares', 'Restored payment_method on order @oid from rpr_paytype for bank time-share finalize (@method).', array(
+          '@oid' => $order->order_id,
+          '@method' => $commerce_method,
+        ), WATCHDOG_INFO);
         $order = commerce_order_load($order->order_id);
         if (!$order) {
           return;
@@ -603,20 +611,35 @@ function rovas_purchase_shares_finalize_bank_paid_time_share_if_applicable($orde
     }
   }
 
-  if (!function_exists('commerce_order_rules_contains_product') || !commerce_order_rules_contains_product($order, 'time-share', '>=', 1)) {
+  $has_time_share = function_exists('commerce_order_rules_contains_product') && commerce_order_rules_contains_product($order, 'time-share', '>=', 1);
+  if (!$has_time_share) {
     return;
   }
   if (!function_exists('commerce_payment_rules_compare_selected_payment_method') || !commerce_payment_rules_compare_selected_payment_method($order, 'bank_transfer')) {
+    $pm = isset($order->data['payment_method']) ? $order->data['payment_method'] : '(empty)';
+    $rpr = isset($order->data['rpr_paytype']) ? $order->data['rpr_paytype'] : '(empty)';
+    watchdog('rovas_purchase_shares', 'Bank time-share finalize aborted for order @oid: selected method is not bank_transfer (payment_method=@pm, rpr_paytype=@rpr).', array(
+      '@oid' => $order->order_id,
+      '@pm' => $pm,
+      '@rpr' => $rpr,
+    ), WATCHDOG_WARNING);
     return;
   }
   $wrapper = entity_metadata_wrapper('commerce_order', $order);
   $recipient = $wrapper->field_payment_recipient->value();
   if ($recipient === NULL || $recipient === '') {
+    watchdog('rovas_purchase_shares', 'Bank time-share finalize aborted for order @oid: missing field_payment_recipient.', array(
+      '@oid' => $order->order_id,
+    ), WATCHDOG_WARNING);
     return;
   }
 
   $order_total = (float) $wrapper->commerce_order_total->amount->value() / 100.0;
   if ($order_total <= 0) {
+    watchdog('rovas_purchase_shares', 'Bank time-share finalize aborted for order @oid: non-positive order total (@amt).', array(
+      '@oid' => $order->order_id,
+      '@amt' => $order_total,
+    ), WATCHDOG_WARNING);
     return;
   }
 
@@ -655,6 +678,12 @@ function rovas_purchase_shares_finalize_bank_paid_time_share_if_applicable($orde
   if ($order) {
     $order->data['rovas_bank_ts_paid_full_handled'] = REQUEST_TIME;
     commerce_order_save($order);
+    watchdog('rovas_purchase_shares', 'Bank time-share finalize completed for order @oid (recipient @rid, @eur EUR, CHR output @chr).', array(
+      '@oid' => $order->order_id,
+      '@rid' => $recipient,
+      '@eur' => number_format($order_total, 2, '.', ''),
+      '@chr' => number_format($output_amount, 4, '.', ''),
+    ), WATCHDOG_INFO);
   }
 }
 
