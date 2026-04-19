@@ -564,6 +564,48 @@ function rovas_purchase_shares_create_eur_time_share_order($uid, $project_nid, $
 }
 
 /**
+ * TRUE if the order has at least one product line referencing the given SKU.
+ *
+ * commerce_order_rules_contains_product() can return FALSE when the legacy
+ * $order->commerce_line_items property is unset even though the field has
+ * values; this follows the same EFQ logic but only uses field_get_items().
+ */
+function _rovas_purchase_shares_order_line_items_contain_sku($order, $sku) {
+  if (empty($order) || empty($order->order_id) || !function_exists('commerce_product_line_item_types')) {
+    return FALSE;
+  }
+  $line_item_ids = array();
+  if ($items = field_get_items('commerce_order', $order, 'commerce_line_items')) {
+    foreach ($items as $item) {
+      if (!empty($item['line_item_id'])) {
+        $line_item_ids[] = (int) $item['line_item_id'];
+      }
+    }
+  }
+  if (empty($line_item_ids)) {
+    return FALSE;
+  }
+  $product_id = db_query("SELECT product_id FROM {commerce_product} WHERE sku = :sku", array(':sku' => $sku))->fetchField();
+  if (!$product_id) {
+    return FALSE;
+  }
+  $query = new EntityFieldQuery();
+  $query
+    ->entityCondition('entity_type', 'commerce_line_item')
+    ->entityCondition('bundle', commerce_product_line_item_types(), 'IN')
+    ->entityCondition('entity_id', $line_item_ids, 'IN')
+    ->fieldCondition('commerce_product', 'product_id', $product_id);
+  $result = $query->execute();
+  if (empty($result['commerce_line_item'])) {
+    return FALSE;
+  }
+  $count = function_exists('commerce_line_items_quantity_by_id')
+    ? commerce_line_items_quantity_by_id(array_keys($result['commerce_line_item']))
+    : count($result['commerce_line_item']);
+  return $count >= 1;
+}
+
+/**
  * Finalize EUR time-share when a bank transfer order is paid in full.
  *
  * rules_process_card_payment_orders intentionally skips bank_transfer and
@@ -573,12 +615,19 @@ function rovas_purchase_shares_create_eur_time_share_order($uid, $project_nid, $
  *   Commerce order (may be a stale in-memory copy; reloaded internally).
  */
 function rovas_purchase_shares_finalize_bank_paid_time_share_if_applicable($order) {
-  if (empty($order->order_id) || !module_exists('rules')) {
+  if (empty($order->order_id)) {
+    return;
+  }
+  if (!module_exists('rules')) {
+    watchdog('rovas_purchase_shares', 'Bank time-share finalize skipped for order @oid: Rules module not enabled.', array('@oid' => $order->order_id), WATCHDOG_WARNING);
     return;
   }
 
-  $order = commerce_order_load($order->order_id);
+  $oid = (int) $order->order_id;
+  $orders = entity_load('commerce_order', array($oid), array(), TRUE);
+  $order = !empty($orders[$oid]) ? $orders[$oid] : FALSE;
   if (!$order) {
+    watchdog('rovas_purchase_shares', 'Bank time-share finalize skipped: could not load order @oid.', array('@oid' => $oid), WATCHDOG_WARNING);
     return;
   }
 
@@ -611,8 +660,18 @@ function rovas_purchase_shares_finalize_bank_paid_time_share_if_applicable($orde
     }
   }
 
-  $has_time_share = function_exists('commerce_order_rules_contains_product') && commerce_order_rules_contains_product($order, 'time-share', '>=', 1);
+  $has_time_share = _rovas_purchase_shares_order_line_items_contain_sku($order, 'time-share');
   if (!$has_time_share) {
+    $n = 0;
+    if ($items = field_get_items('commerce_order', $order, 'commerce_line_items')) {
+      $n = count($items);
+    }
+    $legacy_prop_empty = empty($order->commerce_line_items);
+    watchdog('rovas_purchase_shares', 'Bank time-share finalize skipped for order @oid: no time-share SKU on order line items (commerce_line_items field rows=@n, legacy commerce_line_items property empty=@e).', array(
+      '@oid' => $order->order_id,
+      '@n' => $n,
+      '@e' => $legacy_prop_empty ? 'yes' : 'no',
+    ), WATCHDOG_INFO);
     return;
   }
   if (!function_exists('commerce_payment_rules_compare_selected_payment_method') || !commerce_payment_rules_compare_selected_payment_method($order, 'bank_transfer')) {
