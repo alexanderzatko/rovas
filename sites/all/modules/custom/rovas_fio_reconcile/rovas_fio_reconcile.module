@@ -279,14 +279,12 @@ function rovas_fio_reconcile_run_poll(array $options = array()) {
         continue;
       }
 
-      $reference = isset($item['reference']) ? trim((string) $item['reference']) : '';
-      if ($reference === '' || !ctype_digit($reference)) {
+      $order_id = rovas_fio_reconcile_resolve_order_id_from_item($item);
+      if ($order_id === NULL) {
         $skipped_no_vs++;
         rovas_fio_reconcile_mark_seen(ROVAS_FIO_RECONCILE_PROVIDER, $dedupe_id);
         continue;
       }
-
-      $order_id = (int) $reference;
       $amount = isset($item['amount']) && $item['amount'] !== NULL && $item['amount'] !== '' ? (float) $item['amount'] : NULL;
       $provider_payment_id = isset($item['provider_payment_id']) ? $item['provider_payment_id'] : NULL;
       if ($provider_payment_id !== NULL && $provider_payment_id !== '') {
@@ -343,7 +341,7 @@ function rovas_fio_reconcile_run_poll(array $options = array()) {
       'reason' => '',
     );
     variable_set('rovas_fio_last_run_stats', $stats + array('at' => REQUEST_TIME));
-    rovas_fio_reconcile_log_debug('Fio reconcile finished OK (@source, mode=@mode): processed=@p, skipped_already_seen=@s, skipped_no_numeric_vs=@v, tx_rows=@tx, set_last_id=@sl.', array(
+    rovas_fio_reconcile_log_debug('Fio reconcile finished OK (@source, mode=@mode): processed=@p, skipped_already_seen=@s, skipped_no_order_ref=@v, tx_rows=@tx, set_last_id=@sl.', array(
       '@source' => $source,
       '@mode' => $mode,
       '@p' => (int) $processed,
@@ -442,6 +440,72 @@ function rovas_fio_reconcile_http_get($url) {
 }
 
 /**
+ * Collects Fio text fields that may carry the Commerce order id (VS, reference, remittance).
+ *
+ * @param array $item
+ *   Normalized row from rovas_fio_reconcile_extract_fio_items() with 'raw' set.
+ *
+ * @return array
+ *   List of unique non-empty strings to scan (order preserved).
+ */
+function rovas_fio_reconcile_collect_reference_strings(array $item) {
+  $raw = isset($item['raw']) && is_array($item['raw']) ? $item['raw'] : array();
+  $strings = array();
+  foreach (array('variableSymbol', 'reference', 'specification', 'comment', 'note') as $key) {
+    if (!array_key_exists($key, $raw) || $raw[$key] === NULL) {
+      continue;
+    }
+    $s = trim((string) $raw[$key]);
+    if ($s !== '') {
+      $strings[] = $s;
+    }
+  }
+  foreach (array('column5', 'column16', 'column27', 'column7', 'column25', 'column18') as $col) {
+    if (empty($raw[$col]['value'])) {
+      continue;
+    }
+    $s = trim((string) $raw[$col]['value']);
+    if ($s !== '') {
+      $strings[] = $s;
+    }
+  }
+  $out = array();
+  foreach ($strings as $s) {
+    if (!in_array($s, $out, TRUE)) {
+      $out[] = $s;
+    }
+  }
+  return $out;
+}
+
+/**
+ * Resolves Commerce order id from a normalized Fio transaction row.
+ *
+ * Prefers /VS… markers (e.g. SEPA remittance) before whole-string numeric VS.
+ *
+ * @param array $item
+ *   Row with 'raw' from rovas_fio_reconcile_extract_fio_items().
+ *
+ * @return int|null
+ *   Order id or NULL.
+ */
+function rovas_fio_reconcile_resolve_order_id_from_item(array $item) {
+  $candidates = rovas_fio_reconcile_collect_reference_strings($item);
+  foreach ($candidates as $cand) {
+    if (preg_match('#/VS(\d{1,10})#i', $cand, $m)) {
+      return (int) $m[1];
+    }
+  }
+  foreach ($candidates as $cand) {
+    $cand = trim((string) $cand);
+    if ($cand !== '' && ctype_digit($cand)) {
+      return (int) $cand;
+    }
+  }
+  return NULL;
+}
+
+/**
  * Normalizes Fio JSON to internal transaction rows.
  *
  * Mirrors former rovas_project_reward_extract_fio_items().
@@ -452,7 +516,6 @@ function rovas_fio_reconcile_extract_fio_items(array $data) {
   if (!empty($data['transactions']) && is_array($data['transactions'])) {
     foreach ($data['transactions'] as $tx) {
       $items[] = array(
-        'reference' => isset($tx['variableSymbol']) ? $tx['variableSymbol'] : (isset($tx['reference']) ? $tx['reference'] : ''),
         'amount' => isset($tx['amount']) ? $tx['amount'] : NULL,
         'provider_payment_id' => isset($tx['id']) ? $tx['id'] : (isset($tx['entryReference']) ? $tx['entryReference'] : ''),
         'raw' => $tx,
@@ -461,14 +524,9 @@ function rovas_fio_reconcile_extract_fio_items(array $data) {
   }
   elseif (!empty($data['accountStatement']['transactionList']['transaction']) && is_array($data['accountStatement']['transactionList']['transaction'])) {
     foreach ($data['accountStatement']['transactionList']['transaction'] as $tx) {
-      $vs = '';
-      if (!empty($tx['column5']['value'])) {
-        $vs = $tx['column5']['value'];
-      }
       $amount = !empty($tx['column1']['value']) ? $tx['column1']['value'] : NULL;
       $provider_id = !empty($tx['column22']['value']) ? $tx['column22']['value'] : '';
       $items[] = array(
-        'reference' => $vs,
         'amount' => $amount,
         'provider_payment_id' => $provider_id,
         'raw' => $tx,
@@ -561,7 +619,7 @@ function rovas_fio_reconcile_run_page() {
   }
 
   if (!empty($result['ok'])) {
-    drupal_set_message(t('Fio reconcile finished: @p processed, @s skipped (already seen), @v skipped (no numeric VS).', array(
+    drupal_set_message(t('Fio reconcile finished: @p processed, @s skipped (already seen), @v skipped (no order reference).', array(
       '@p' => (int) $result['processed'],
       '@s' => (int) $result['skipped_seen'],
       '@v' => (int) $result['skipped_no_vs'],

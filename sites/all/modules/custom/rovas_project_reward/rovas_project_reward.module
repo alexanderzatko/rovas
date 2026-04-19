@@ -3515,7 +3515,8 @@ function rovas_project_reward_create_bank_intent($order, $paytype, $recipient_id
   $iban = !empty($bank_details['account_iban']) ? $bank_details['account_iban'] : variable_get('rovas_bank_iban', '');
   $bic = !empty($bank_details['account_swift']) ? $bank_details['account_swift'] : variable_get('rovas_bank_bic', 'FIOZSKBAXXX');
   $message = t('Order @id', array('@id' => $order->order_id));
-  $epc_payload = rovas_project_reward_build_epc_qr_payload($beneficiary, $iban, $bic, $amount, $reference, $message);
+  $epc_remittance = rovas_project_reward_format_epc_vs_remittance($order->order_id);
+  $epc_payload = rovas_project_reward_build_epc_qr_payload($beneficiary, $iban, $bic, $amount, $epc_remittance, $message);
   $callback_expires = REQUEST_TIME + (int) variable_get('rovas_bank_delayed_token_ttl', 3 * 24 * 3600);
 
   $intent_fields = array(
@@ -3692,6 +3693,30 @@ function rovas_project_reward_attach_bank_pi_to_order_data(&$order, $intent = NU
   $order->data['bank_pi']['payment_intent'] = $payload;
 
   return TRUE;
+}
+
+/**
+ * Formats an order id for the EPC unstructured remittance line (Slovak/CZ style).
+ *
+ * Prefixes with /VS so domestic banks may map the value to variable symbol.
+ * Uses up to 10 numeric digits (national VS length); longer ids use the last 10 digits.
+ *
+ * @param int|string $order_id
+ *   Commerce order id.
+ *
+ * @return string
+ *   Value for EPC line 10 (e.g. "/VS12345").
+ */
+function rovas_project_reward_format_epc_vs_remittance($order_id) {
+  $digits = preg_replace('/\D/', '', (string) $order_id);
+  if ($digits === '') {
+    $fallback = trim((string) $order_id);
+    return $fallback !== '' ? $fallback : '0';
+  }
+  if (strlen($digits) > 10) {
+    $digits = substr($digits, -10);
+  }
+  return '/VS' . $digits;
 }
 
 /**
