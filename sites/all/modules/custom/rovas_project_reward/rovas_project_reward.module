@@ -4737,9 +4737,10 @@ function rovas_project_reward_notify_bank_purchase_confirmed($order) {
  * bank_transfer transaction is saved as SUCCESS by commerce_bank_transfer_confirm_form_submit(),
  * Commerce core fires commerce_payment_order_paid_in_full on its own (via
  * hook_commerce_payment_transaction_update in commerce_payment.module). This hook
- * handles the two operations that the admin path would otherwise miss:
+ * handles the operations that the admin path would otherwise miss:
  *   1. Syncing the rovas_bank_payment_intent record and order->data['sepa'] to 'paid'.
  *   2. Running the merit/chron reward distribution.
+ *   3. Sending the buyer bank_transfer_confirmed e-mail (deduped with the Fio path).
  */
 function rovas_project_reward_commerce_payment_transaction_update($transaction) {
   if (empty($transaction->payment_method) || $transaction->payment_method !== 'bank_transfer') {
@@ -4775,6 +4776,11 @@ function rovas_project_reward_commerce_payment_transaction_update($transaction) 
   }
 
   rovas_project_reward_process_bank_order_reward($order);
+
+  $order = commerce_order_load($transaction->order_id);
+  if ($order) {
+    rovas_project_reward_send_bank_transfer_notification($order, 'bank_transfer_confirmed');
+  }
 
   // Match the automatic reconciliation path and deliver the delayed
   // `delayed-confirmed` webhook immediately after the admin-confirmed
@@ -5249,10 +5255,22 @@ function rovas_project_reward_notify_site_admin_overpayment($order, $expected_am
  * @param array $extra_params
  *   Extra key/value pairs merged into $params (e.g. actual_amount for
  *   confirmed/mismatch and expected_amount for mismatch).
+ *
+ * @return bool
+ *   TRUE if the message was sent or bank_transfer_confirmed was already sent
+ *   for this order; FALSE if there is no e-mail address or sending failed.
  */
 function rovas_project_reward_send_bank_transfer_notification($order, $mail_key, array $extra_params = array()) {
   if (empty($order->mail)) {
     return FALSE;
+  }
+
+  if ($mail_key === 'bank_transfer_confirmed') {
+    $existing = commerce_order_load($order->order_id);
+    if ($existing && !empty($existing->data['rpr_bank_transfer_confirmed_mail_sent'])) {
+      watchdog('rovas_project_reward', 'Skipped duplicate @key notification for order @oid (already sent).', array('@key' => $mail_key, '@oid' => $order->order_id), WATCHDOG_INFO);
+      return TRUE;
+    }
   }
 
   // Determine target language, mirroring the invoice template logic.
@@ -5361,8 +5379,26 @@ function rovas_project_reward_send_bank_transfer_notification($order, $mail_key,
       $params['subject'] = t('Rovas: Order #@id notification', array('@id' => $order->order_id), array('langcode' => $target_lang));
   }
 
-  drupal_mail('rovas_project_reward', $mail_key, $order->mail, $target_lang, $params);
+  $mail_result = drupal_mail('rovas_project_reward', $mail_key, $order->mail, $target_lang, $params);
+  if (empty($mail_result['result'])) {
+    watchdog('rovas_project_reward', 'Failed to send @key notification for order @oid to @mail.', array('@key' => $mail_key, '@oid' => $order->order_id, '@mail' => $order->mail), WATCHDOG_WARNING);
+    return FALSE;
+  }
+
   watchdog('rovas_project_reward', 'Sent @key notification for order @oid to @mail.', array('@key' => $mail_key, '@oid' => $order->order_id, '@mail' => $order->mail), WATCHDOG_INFO);
+
+  if ($mail_key === 'bank_transfer_confirmed') {
+    $order_reload = commerce_order_load($order->order_id);
+    if ($order_reload) {
+      if (!isset($order_reload->data) || !is_array($order_reload->data)) {
+        $order_reload->data = array();
+      }
+      $order_reload->data['rpr_bank_transfer_confirmed_mail_sent'] = REQUEST_TIME;
+      commerce_order_save($order_reload);
+    }
+  }
+
+  return TRUE;
 }
 
 /**
