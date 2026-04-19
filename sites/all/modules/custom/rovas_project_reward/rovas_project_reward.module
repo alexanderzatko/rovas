@@ -893,7 +893,7 @@ function rovas_project_reward_form ($form, &$form_state) {
 				'#type' => 'item',
 				'#prefix' => '<div id="buy-hrs-converted">',
 				'#suffix' => '</div>',
-				'#markup' => '<div class="buy-hrs-converted__subtitle">' . t('Purchased time') . ';</div><div class="buy-hrs-converted__value">' . $hours_preview . '</div>',
+				'#markup' => '<div class="buy-hrs-converted__subtitle">' . t('Purchased time') . ':</div><div class="buy-hrs-converted__value">' . $hours_preview . '</div>',
 				'#weight' => 8,
 			);
 			if (function_exists('rovas_purchase_shares_buyshares_yield_estimate_markup')) {
