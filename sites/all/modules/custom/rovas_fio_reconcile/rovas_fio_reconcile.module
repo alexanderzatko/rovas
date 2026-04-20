@@ -491,9 +491,38 @@ function rovas_fio_reconcile_collect_reference_strings(array $item) {
  */
 function rovas_fio_reconcile_resolve_order_id_from_item(array $item) {
   $candidates = rovas_fio_reconcile_collect_reference_strings($item);
+  $raw = isset($item['raw']) && is_array($item['raw']) ? $item['raw'] : array();
+  if (!empty($raw['column27']['value'])) {
+    $payer_reference = trim((string) $raw['column27']['value']);
+    if ($payer_reference !== '') {
+      if (ctype_digit($payer_reference)) {
+        return (int) $payer_reference;
+      }
+      if (preg_match('/\b(\d{1,10})\b/u', $payer_reference, $m)) {
+        return (int) $m[1];
+      }
+    }
+  }
   foreach ($candidates as $cand) {
     if (preg_match('#/VS(\d{1,10})#i', $cand, $m)) {
       return (int) $m[1];
+    }
+  }
+  foreach ($candidates as $cand) {
+    $cand = trim((string) $cand);
+    if ($cand === '') {
+      continue;
+    }
+    // Accept common free-text variants such as "Order 2640" or "Objednavka #2640".
+    if (preg_match('/\b(?:order|objednavka|objedn[áa]vka)\b[^\d]{0,8}(\d{1,10})\b/iu', $cand, $m)) {
+      return (int) $m[1];
+    }
+    // Some senders duplicate the same id (e.g. "Order 2640, 2640").
+    if (preg_match_all('/\b(\d{1,10})\b/u', $cand, $m) && !empty($m[1])) {
+      $unique = array_values(array_unique($m[1]));
+      if (count($unique) === 1) {
+        return (int) $unique[0];
+      }
     }
   }
   foreach ($candidates as $cand) {
