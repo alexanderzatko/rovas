@@ -32,6 +32,12 @@
         if (loadingIndicator.length) loadingIndicator.hide();
       }
 
+      /** Rewpro amount lives in #payment-wrapper; avoid a stale duplicate input[name=payment] elsewhere on the page. */
+      function getRewproPaymentInput() {
+        const $scoped = $('#payment-wrapper input[name="payment"]');
+        return $scoped.length ? $scoped.first() : $('input[name="payment"]').first();
+      }
+
       function getSubmitButtons() {
         return $('#submit-buttons button');
       }
@@ -45,7 +51,7 @@
       }
 
       function getECEStateKey() {
-        const paymentRaw = $('input[name="payment"]').val().trim();
+        const paymentRaw = (getRewproPaymentInput().val() || '').trim();
         const currency = ($('input[name="payment-currency"]:checked').val() || 'eur').toLowerCase();
         const email = ($('input[name="email"]').val() || '').trim().toLowerCase();
         const urlParams = new URLSearchParams(window.location.search);
@@ -83,7 +89,7 @@
       function getPpriceValue() {
         const urlParams = new URLSearchParams(window.location.search);
         if (urlParams.get('paytype') === 'buyshares') {
-          const ppriceField = $('input[name="pprice"]');
+          const ppriceField = $('#payment-wrapper input[name="pprice"]');
           if (ppriceField.length === 0) {
             return null;
           }
@@ -106,13 +112,13 @@
       }
 
       function toggleECEVisibility() {
-        const paymentInputLive = $('input[name="payment"]');
+        const paymentInputLive = getRewproPaymentInput();
         const currencyInput = $('input[name="payment-currency"]:checked');
         const eceContainerLive = $('#express-checkout-container');
         console.log('[ECE] toggleECEVisibility called, paymentInputs:', paymentInputLive.length, 'currencyInputs:', currencyInput.length, 'containers:', eceContainerLive.length);
 				const currencyLabel = currencyInput.val() === 'CHR' ? Drupal.t('CHR') : Drupal.t('€');
 
-				const rawVal = $('input[name="payment"]').val().trim();
+				const rawVal = (getRewproPaymentInput().val() || '').trim();
         const pprice = getPpriceValue();
         const urlParamsPay = new URLSearchParams(window.location.search);
         const currency = (currencyInput.val() || 'eur').toLowerCase();
@@ -273,7 +279,7 @@
       }
 
       async function initializeStripeECE() {
-        const paymentInput = $('input[name="payment"]');
+        const paymentInput = getRewproPaymentInput();
         const amount = parseFloat(paymentInput.val() || '0');
         console.log('[ECE] initializeStripeECE: amount=', amount, 'cents=', Math.round(amount * 100));
         if (amount <= 0) {
@@ -448,7 +454,7 @@
       });
 
       // Attach event listeners using context to avoid duplicate bindings
-      $('input[name="payment"]', context).once('express-checkout-payment')
+      $('#payment-wrapper input[name="payment"]').once('express-checkout-payment')
         .on('input', function() { console.log('[ECE] payment input'); debouncedToggleECE(); })
         .on('blur', function() { console.log('[ECE] payment blur'); toggleECEVisibility(); })
         .on('change', function() { console.log('[ECE] payment change'); toggleECEVisibility(); });

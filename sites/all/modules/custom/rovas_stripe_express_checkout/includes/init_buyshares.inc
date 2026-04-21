@@ -66,12 +66,17 @@ function _rovas_stripe_express_checkout_init_buyshares() {
     drupal_json_output(array('error' => 'Invalid order total.'));
     drupal_exit();
   }
-  if ($expected_cents !== $amount_cents) {
-    watchdog('rovas_stripe_express', 'buyshares init: request amount differs from order total order=@o order_total=@e request=@g (PI uses order total)', array(
+  // Typed GET amount is pre-normalization; order total matches Stripe line cents. Compare to computed line, not raw request.
+  $line_from_typed = function_exists('rovas_purchase_shares_eur_buyshares_line_total_cents')
+    ? rovas_purchase_shares_eur_buyshares_line_total_cents($proj_wrap, $paid_eur)
+    : FALSE;
+  if ($line_from_typed !== FALSE && (int) $line_from_typed !== $expected_cents) {
+    watchdog('rovas_stripe_express', 'buyshares init: order total mismatch order=@o order_total=@e line_from_typed=@l paid_eur=@p', array(
       '@o' => $order->order_id,
       '@e' => $expected_cents,
-      '@g' => $amount_cents,
-    ), WATCHDOG_NOTICE);
+      '@l' => (int) $line_from_typed,
+      '@p' => $paid_eur,
+    ), WATCHDOG_ERROR);
   }
 
   $secret_key = variable_get('stripe_secret_key', '');

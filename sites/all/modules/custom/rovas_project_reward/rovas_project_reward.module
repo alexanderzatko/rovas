@@ -902,21 +902,34 @@ function rovas_project_reward_form ($form, &$form_state) {
 			elseif (isset($form_state['input']['payment'])) {
 				$raw_pay = $form_state['input']['payment'];
 			}
-			$preview_amt = is_numeric($raw_pay) && (float) $raw_pay > 0 ? (float) $raw_pay : (float) $pprice_hidden;
-			$hour_shares = rovas_purchase_shares_compute_share_hours_for_payment($pw, $currency, $preview_amt);
-			if ($currency === 'EUR' && function_exists('rovas_purchase_shares_eur_buyshares_form_preview_data')) {
-				$eur_preview = rovas_purchase_shares_eur_buyshares_form_preview_data($pw, $preview_amt);
-				if ($eur_preview) {
-					$hour_shares = $eur_preview['hour_shares_display'];
-					$form['payment_wrapper']['payment']['#default_value'] = $eur_preview['normalized_display'];
-					if (!empty($eur_preview['adjusted']) && !empty($eur_preview['message'])) {
-						$form['payment_wrapper']['buyshares_eur_adjust_notice'] = array(
-							'#type' => 'markup',
-							'#markup' => '<div class="messages warning buyshares-eur-adjusted-notice" role="status">' . check_plain($eur_preview['message']) . '</div>',
-							'#weight' => 5,
-						);
+			$raw_trim = is_string($raw_pay) ? trim($raw_pay) : $raw_pay;
+			$user_entered_pay = ($raw_trim !== '' && is_numeric($raw_trim) && (float) $raw_trim > 0);
+			// Do not treat hidden min (pprice) as "typed €" on currency switch — empty field + min caused
+			// false adjustment notices and init-buyshares amount=100 (1.00 €) vs normalized order (0.60 €).
+			$hour_shares = NULL;
+			if ($currency === 'EUR') {
+				if ($user_entered_pay && function_exists('rovas_purchase_shares_eur_buyshares_form_preview_data')) {
+					$preview_amt = (float) $raw_trim;
+					$eur_preview = rovas_purchase_shares_eur_buyshares_form_preview_data($pw, $preview_amt);
+					if ($eur_preview) {
+						$hour_shares = $eur_preview['hour_shares_display'];
+						$form['payment_wrapper']['payment']['#default_value'] = $eur_preview['normalized_display'];
+						if (!empty($eur_preview['adjusted']) && !empty($eur_preview['message'])) {
+							$form['payment_wrapper']['buyshares_eur_adjust_notice'] = array(
+								'#type' => 'markup',
+								'#markup' => '<div class="messages warning buyshares-eur-adjusted-notice" role="status">' . check_plain($eur_preview['message']) . '</div>',
+								'#weight' => 5,
+							);
+						}
+					}
+					else {
+						$hour_shares = rovas_purchase_shares_compute_share_hours_for_payment($pw, 'EUR', $preview_amt);
 					}
 				}
+			}
+			else {
+				$preview_amt = $user_entered_pay ? (float) $raw_trim : (float) $pprice_hidden;
+				$hour_shares = rovas_purchase_shares_compute_share_hours_for_payment($pw, 'CHR', $preview_amt);
 			}
 			// EUR amounts use cents; without this, step=1 + pattern [0-9]* block decimals so preview never tracks typed €.
 			if ($currency === 'EUR') {
@@ -925,7 +938,12 @@ function rovas_project_reward_form ($form, &$form_state) {
 					unset($form['payment_wrapper']['payment']['#attributes']['pattern']);
 				}
 			}
-			$hours_preview = rovas_purchase_shares_buyshares_hours_preview_markup($hour_shares);
+			if ($hour_shares === NULL) {
+				$hours_preview = '<span class="buy-hrs-converted__placeholder">&mdash;</span>';
+			}
+			else {
+				$hours_preview = rovas_purchase_shares_buyshares_hours_preview_markup($hour_shares);
+			}
 			$form['payment_wrapper']['buyshares_hours'] = array(
 				'#type' => 'item',
 				'#prefix' => '<div id="buy-hrs-converted">',
@@ -933,7 +951,7 @@ function rovas_project_reward_form ($form, &$form_state) {
 				'#markup' => '<div class="buy-hrs-converted__subtitle">' . t('Purchased time') . ':</div><div class="buy-hrs-converted__value">' . $hours_preview . '</div>',
 				'#weight' => 8,
 			);
-			if (function_exists('rovas_purchase_shares_buyshares_yield_estimate_markup')) {
+			if ($hour_shares !== NULL && function_exists('rovas_purchase_shares_buyshares_yield_estimate_markup')) {
 				$form['payment_wrapper']['buyshares_yield'] = array(
 					'#type' => 'markup',
 					'#markup' => rovas_purchase_shares_buyshares_yield_estimate_markup($pw, $hour_shares),
@@ -946,7 +964,7 @@ function rovas_project_reward_form ($form, &$form_state) {
 			$form['payment_wrapper']['payment']['#ajax'] = array(
 				'callback' => '_rpr_buyshares_payment_preview',
 				'wrapper' => 'payment-wrapper',
-				'event' => 'change',
+				'event' => 'change blur',
 				'progress' => array(
 					'type' => 'throbber',
 				),
