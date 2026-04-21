@@ -478,6 +478,58 @@ function rovas_purchase_shares_eur_buyshares_line_total_cents($proj_wrap, $paid_
 }
 
 /**
+ * Rewpro buyshares EUR preview: normalized charge, display hours, adjustment text.
+ *
+ * @param object $proj_wrap
+ *   Entity metadata wrapper for the project node.
+ * @param float $typed_eur
+ *   Amount the user entered (major units).
+ *
+ * @return array|null
+ *   Keys: normalized_eur, normalized_display, hour_shares_display, adjusted,
+ *   message (plain string, empty when not adjusted).
+ */
+function rovas_purchase_shares_eur_buyshares_form_preview_data($proj_wrap, $typed_eur) {
+  $typed_eur = is_numeric($typed_eur) ? (float) $typed_eur : 0.0;
+  if ($typed_eur <= 0) {
+    return NULL;
+  }
+  $line_cents = rovas_purchase_shares_eur_buyshares_line_total_cents($proj_wrap, $typed_eur);
+  if ($line_cents === FALSE || $line_cents < 1) {
+    return NULL;
+  }
+  $normalized_eur = $line_cents / 100.0;
+  $share = rovas_purchase_shares_compute_share_hours_for_payment($proj_wrap, 'EUR', $typed_eur);
+  $time_in_minutes = max(0.0, (float) $share) * 60.0;
+  $conv = rovas_purchase_shares_stripe_convertor($typed_eur, $time_in_minutes);
+  $qty = (int) $conv['units'];
+  $unit_price = (float) $conv['unit_price'];
+  if ($qty < 1 || $unit_price <= 0) {
+    return NULL;
+  }
+  $hour_shares_display = $qty / 60.0;
+  $typed_cents = (int) round($typed_eur * 100);
+  $adjusted = ($typed_cents !== $line_cents);
+  $message = '';
+  if ($adjusted) {
+    $message = t('The amount you entered (@orig €) was adjusted to @adj € to accommodate accounting constraints.', array(
+      '@orig' => number_format($typed_eur, 2, '.', ''),
+      '@adj' => number_format($normalized_eur, 2, '.', ''),
+    ));
+  }
+  $norm_display = (abs($normalized_eur - round($normalized_eur)) < 0.00001)
+    ? (string) (int) round($normalized_eur)
+    : number_format($normalized_eur, 2, '.', '');
+  return array(
+    'normalized_eur' => $normalized_eur,
+    'normalized_display' => $norm_display,
+    'hour_shares_display' => $hour_shares_display,
+    'adjusted' => $adjusted,
+    'message' => $message,
+  );
+}
+
+/**
  * Returns TRUE if the node is a project that allows purchasing time shares.
  */
 function rovas_purchase_shares_project_allows_buyshares($node) {

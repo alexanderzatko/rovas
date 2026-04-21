@@ -122,7 +122,6 @@
           : /^[0-9]+$/.test(rawVal));
 
         const $errorDiv = $('#payment-error');
-        const $adjustNotice = $('#buyshares-eur-adjustment-notice');
 
         // Clear any existing error messages first
         $errorDiv.hide();
@@ -184,9 +183,6 @@
         if (!shouldShowECE) {
           eceInitialized = false;
           eceStateKey = null;
-          if ($adjustNotice.length) {
-            $adjustNotice.empty().hide();
-          }
         }
 
         if (eceContainerLive.length) {
@@ -227,7 +223,7 @@
           }
         }
 
-				if (!shouldShowECE && expressCheckoutElement) {
+        if (!shouldShowECE && expressCheckoutElement) {
 					expressCheckoutElement.unmount();
 					expressCheckoutElement = null;
 					eceInitialized = false;
@@ -240,6 +236,17 @@
             if (bankButton.length) bankButton.prop('disabled', false);
 					}
 				}
+
+        function expressCheckoutMountEmpty() {
+          const el = document.getElementById('express-checkout-element');
+          return !el || el.childElementCount === 0;
+        }
+
+        // Stripe mount can be lost while flags still say "ready" (e.g. after Drupal AJAX replaces markup).
+        if (shouldShowECE && eceInitialized && expressCheckoutMountEmpty()) {
+          eceInitialized = false;
+          eceInitializing = false;
+        }
 
         const nextStateKey = shouldShowECE ? getECEStateKey() : null;
         const stateChanged = shouldShowECE && eceStateKey !== nextStateKey;
@@ -265,70 +272,6 @@
 				}
       }
 
-      function getOrCreateBuysharesAdjustmentNotice() {
-        let $n = $('#buyshares-eur-adjustment-notice');
-        if ($n.length) {
-          return $n;
-        }
-        $n = $('<div id="buyshares-eur-adjustment-notice" class="messages warning" style="display:none;margin-top:0.5em;" role="status"></div>');
-        const $err = $('#payment-error');
-        if ($err.length) {
-          $err.after($n);
-        }
-        else {
-          const $pay = $('input[name="payment"]');
-          const $wrap = $pay.closest('.form-item');
-          if ($wrap.length) {
-            $wrap.append($n);
-          }
-          else {
-            $pay.parent().append($n);
-          }
-        }
-        return $n;
-      }
-
-      /**
-       * Fetch server-normalized EUR buyshares cents; update payment field and notice.
-       * @return {Promise<number|null>} normalized cents, or null on failure.
-       */
-      async function normalizeBuysharesEurPaymentCents(centsTyped) {
-        const urlParams = new URLSearchParams(window.location.search);
-        if (urlParams.get('paytype') !== 'buyshares') {
-          return centsTyped;
-        }
-        const recipient = urlParams.get('recipient');
-        if (!recipient || !Drupal.settings.rovasExpressBuyshares || !Drupal.settings.rovasExpressBuyshares.token) {
-          return centsTyped;
-        }
-        const cur = ($('input[name="payment-currency"]:checked').val() || 'eur').toLowerCase();
-        if (cur !== 'eur') {
-          $('#buyshares-eur-adjustment-notice').empty().hide();
-          return centsTyped;
-        }
-        const token = Drupal.settings.rovasExpressBuyshares.token;
-        const url = '/stripe/express-checkout/normalize-buyshares-amount?amount=' + encodeURIComponent(String(centsTyped))
-          + '&recipient=' + encodeURIComponent(recipient)
-          + '&token=' + encodeURIComponent(token);
-        const response = await fetch(url);
-        const data = await response.json();
-        const $notice = getOrCreateBuysharesAdjustmentNotice();
-        if (!data.ok) {
-          $notice.text(data.error || Drupal.t('Unable to normalize amount.')).show();
-          return null;
-        }
-        if (data.adjusted && data.message) {
-          $notice.text(data.message).show();
-        }
-        else {
-          $notice.empty().hide();
-        }
-        const paymentInput = $('input[name="payment"]');
-        paymentInput.val(Number(data.normalizedEuro).toFixed(2));
-        eceStateKey = getECEStateKey();
-        return typeof data.normalizedCents === 'number' ? data.normalizedCents : centsTyped;
-      }
-
       async function initializeStripeECE() {
         const paymentInput = $('input[name="payment"]');
         const amount = parseFloat(paymentInput.val() || '0');
@@ -337,6 +280,12 @@
           console.log('[ECE] initializeStripeECE aborted: amount <= 0');
           eceInitialized = false;
 			    eceInitializing = false;
+          eceStateKey = null;
+          hideLoading();
+          const c0 = getCardButton();
+          const b0 = getBankButton();
+          if (c0.length) c0.prop('disabled', false);
+          if (b0.length) b0.prop('disabled', false);
           return;
         }
 
@@ -353,19 +302,6 @@
           let fetchUrl;
 
           if (paytype === 'buyshares' && recipient && Drupal.settings.rovasExpressBuyshares && Drupal.settings.rovasExpressBuyshares.token) {
-            if (currency === 'eur') {
-              const normalizedCents = await normalizeBuysharesEurPaymentCents(cents);
-              if (normalizedCents === null) {
-                hideLoading();
-                eceInitializing = false;
-                const cardBtnNorm = getCardButton();
-                const bankBtnNorm = getBankButton();
-                if (cardBtnNorm.length) cardBtnNorm.prop('disabled', false);
-                if (bankBtnNorm.length) bankBtnNorm.prop('disabled', false);
-                return;
-              }
-              cents = normalizedCents;
-            }
             fetchUrl = '/stripe/express-checkout/init-buyshares?amount=' + cents
               + '&recipient=' + encodeURIComponent(recipient)
               + '&token=' + encodeURIComponent(Drupal.settings.rovasExpressBuyshares.token);
@@ -374,6 +310,11 @@
             console.log('[ECE] buyshares init aborted: missing Drupal.settings.rovasExpressBuyshares.token');
             hideLoading();
             eceInitializing = false;
+            eceStateKey = null;
+            const cTok = getCardButton();
+            const bTok = getBankButton();
+            if (cTok.length) cTok.prop('disabled', false);
+            if (bTok.length) bTok.prop('disabled', false);
             return;
           }
           else {
@@ -388,6 +329,11 @@
             console.log('[ECE] init aborted: invalid email');
             hideLoading();
             eceInitializing = false;
+            eceStateKey = null;
+            const cEm = getCardButton();
+            const bEm = getBankButton();
+            if (cEm.length) cEm.prop('disabled', false);
+            if (bEm.length) bEm.prop('disabled', false);
             return;
           }
           
@@ -414,6 +360,12 @@
             console.log('[ECE] init aborted: no clientSecret in response');
             hideLoading();
             eceInitializing = false;
+            eceInitialized = false;
+            eceStateKey = null;
+            const c1 = getCardButton();
+            const b1 = getBankButton();
+            if (c1.length) c1.prop('disabled', false);
+            if (b1.length) b1.prop('disabled', false);
             return;
           }
 
@@ -467,8 +419,33 @@
           console.log('[ECE] init error:', err);
           hideLoading();
 			    eceInitializing = false;
+          const cardErr = getCardButton();
+          const bankErr = getBankButton();
+          if (cardErr.length) cardErr.prop('disabled', false);
+          if (bankErr.length) bankErr.prop('disabled', false);
         }
       }
+
+      $(document).off('rovasBuysharesPaymentAjaxed.rovasExpressEce').on('rovasBuysharesPaymentAjaxed.rovasExpressEce', function () {
+        const urlParamsAjax = new URLSearchParams(window.location.search);
+        if (urlParamsAjax.get('paytype') !== 'buyshares') {
+          return;
+        }
+        if (expressCheckoutElement) {
+          try {
+            expressCheckoutElement.unmount();
+          } catch (eUn) {
+            console.log('[ECE] unmount after buyshares payment ajax:', eUn);
+          }
+          expressCheckoutElement = null;
+        }
+        eceInitialized = false;
+        eceInitializing = false;
+        eceStateKey = null;
+        setTimeout(function () {
+          toggleECEVisibility();
+        }, 0);
+      });
 
       // Attach event listeners using context to avoid duplicate bindings
       $('input[name="payment"]', context).once('express-checkout-payment')
