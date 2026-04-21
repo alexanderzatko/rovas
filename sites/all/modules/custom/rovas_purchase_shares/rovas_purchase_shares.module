@@ -507,7 +507,14 @@ function rovas_purchase_shares_eur_buyshares_form_preview_data($proj_wrap, $type
   if ($qty < 1 || $unit_price <= 0) {
     return NULL;
   }
-  $hour_shares_display = $qty / 60.0;
+  $mins = rovas_purchase_shares_buyshares_minimums($proj_wrap);
+  $rate_eur = (isset($mins['rate_eur']) && $mins['rate_eur'] !== '' && is_numeric($mins['rate_eur'])) ? (float) $mins['rate_eur'] : 0.0;
+  if ($rate_eur > 0) {
+    $hour_shares_display = $normalized_eur / $rate_eur;
+  }
+  else {
+    $hour_shares_display = $qty / 60.0;
+  }
   $typed_cents = (int) round($typed_eur * 100);
   $adjusted = ($typed_cents !== $line_cents);
   $message = '';
@@ -932,10 +939,11 @@ function rovas_purchase_shares_compute_share_hours_for_payment($obj, $currency, 
   $mins = rovas_purchase_shares_buyshares_minimums($obj);
   $paid_amt = (float) $paid_amt;
   if ($currency === 'EUR') {
-    if (empty($mins['rate_eur'])) {
+    $rate_eur = (isset($mins['rate_eur']) && $mins['rate_eur'] !== '' && is_numeric($mins['rate_eur'])) ? (float) $mins['rate_eur'] : 0.0;
+    if ($rate_eur <= 0) {
       return 1.0;
     }
-    return $paid_amt / $mins['rate_eur'];
+    return $paid_amt / $rate_eur;
   }
   $rate = max(0.0001, (float) $mins['rate_chr']);
   return $paid_amt / $rate;

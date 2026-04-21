@@ -906,7 +906,7 @@ function rovas_project_reward_form ($form, &$form_state) {
 						$form['payment_wrapper']['buyshares_eur_adjust_notice'] = array(
 							'#type' => 'markup',
 							'#markup' => '<div class="messages warning buyshares-eur-adjusted-notice" role="status">' . check_plain($eur_preview['message']) . '</div>',
-							'#weight' => -2,
+							'#weight' => 5,
 						);
 					}
 					$form['payment_wrapper']['payment']['#attributes']['step'] = '0.01';
