@@ -893,7 +893,7 @@ function rovas_project_reward_form ($form, &$form_state) {
 		$proj_preview = node_load($recipient);
 		if ($proj_preview && function_exists('rovas_purchase_shares_project_allows_buyshares') && rovas_purchase_shares_project_allows_buyshares($proj_preview)) {
 			$pw = entity_metadata_wrapper('node', $proj_preview);
-			$cur = isset($form_state['values']['payment-currency']) ? $form_state['values']['payment-currency'] : $currency;
+			// Use $currency (resolved from input when payment #ajax strips values), not values alone.
 			// #limit_validation_errors on payment AJAX leaves values sparse; amount is in input.
 			$raw_pay = '';
 			if (isset($form_state['values']['payment'])) {
@@ -903,8 +903,8 @@ function rovas_project_reward_form ($form, &$form_state) {
 				$raw_pay = $form_state['input']['payment'];
 			}
 			$preview_amt = is_numeric($raw_pay) && (float) $raw_pay > 0 ? (float) $raw_pay : (float) $pprice_hidden;
-			$hour_shares = rovas_purchase_shares_compute_share_hours_for_payment($pw, $cur, $preview_amt);
-			if ($cur === 'EUR' && function_exists('rovas_purchase_shares_eur_buyshares_form_preview_data')) {
+			$hour_shares = rovas_purchase_shares_compute_share_hours_for_payment($pw, $currency, $preview_amt);
+			if ($currency === 'EUR' && function_exists('rovas_purchase_shares_eur_buyshares_form_preview_data')) {
 				$eur_preview = rovas_purchase_shares_eur_buyshares_form_preview_data($pw, $preview_amt);
 				if ($eur_preview) {
 					$hour_shares = $eur_preview['hour_shares_display'];
@@ -916,10 +916,13 @@ function rovas_project_reward_form ($form, &$form_state) {
 							'#weight' => 5,
 						);
 					}
-					$form['payment_wrapper']['payment']['#attributes']['step'] = '0.01';
-					if (isset($form['payment_wrapper']['payment']['#attributes']['pattern'])) {
-						unset($form['payment_wrapper']['payment']['#attributes']['pattern']);
-					}
+				}
+			}
+			// EUR amounts use cents; without this, step=1 + pattern [0-9]* block decimals so preview never tracks typed €.
+			if ($currency === 'EUR') {
+				$form['payment_wrapper']['payment']['#attributes']['step'] = '0.01';
+				if (isset($form['payment_wrapper']['payment']['#attributes']['pattern'])) {
+					unset($form['payment_wrapper']['payment']['#attributes']['pattern']);
 				}
 			}
 			$hours_preview = rovas_purchase_shares_buyshares_hours_preview_markup($hour_shares);
