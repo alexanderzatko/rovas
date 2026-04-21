@@ -894,7 +894,14 @@ function rovas_project_reward_form ($form, &$form_state) {
 		if ($proj_preview && function_exists('rovas_purchase_shares_project_allows_buyshares') && rovas_purchase_shares_project_allows_buyshares($proj_preview)) {
 			$pw = entity_metadata_wrapper('node', $proj_preview);
 			$cur = isset($form_state['values']['payment-currency']) ? $form_state['values']['payment-currency'] : $currency;
-			$raw_pay = isset($form_state['values']['payment']) ? $form_state['values']['payment'] : '';
+			// #limit_validation_errors on payment AJAX leaves values sparse; amount is in input.
+			$raw_pay = '';
+			if (isset($form_state['values']['payment'])) {
+				$raw_pay = $form_state['values']['payment'];
+			}
+			elseif (isset($form_state['input']['payment'])) {
+				$raw_pay = $form_state['input']['payment'];
+			}
 			$preview_amt = is_numeric($raw_pay) && (float) $raw_pay > 0 ? (float) $raw_pay : (float) $pprice_hidden;
 			$hour_shares = rovas_purchase_shares_compute_share_hours_for_payment($pw, $cur, $preview_amt);
 			if ($cur === 'EUR' && function_exists('rovas_purchase_shares_eur_buyshares_form_preview_data')) {
