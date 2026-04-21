@@ -2052,7 +2052,7 @@ function rovas_forex_rules_action_calculate_merits_execute($buy_amount,$processo
     );
   }
 
-  $convary = _rovas_purchase_shares_stripe_convertor($buy_amount, $chr_out);
+  $convary = rovas_purchase_shares_stripe_convertor($buy_amount, $chr_out);
 
   return array(
     'merits_purchased' => $convary['units'],

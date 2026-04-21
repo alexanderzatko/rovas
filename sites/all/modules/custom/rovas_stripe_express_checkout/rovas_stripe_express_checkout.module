@@ -26,6 +26,13 @@ function rovas_stripe_express_checkout_menu() {
     'access arguments' => array('access content'),
     'type' => MENU_CALLBACK,
   );
+
+  $items['stripe/express-checkout/normalize-buyshares-amount'] = array(
+    'page callback' => 'rovas_stripe_express_checkout_normalize_buyshares_amount',
+    'access callback' => 'user_access',
+    'access arguments' => array('access content'),
+    'type' => MENU_CALLBACK,
+  );
   return $items;
 }
 
@@ -44,6 +51,14 @@ function rovas_stripe_express_checkout_init_x() {
 function rovas_stripe_express_checkout_init_buyshares() {
   module_load_include('inc', 'rovas_stripe_express_checkout', 'includes/init_buyshares');
   return _rovas_stripe_express_checkout_init_buyshares();
+}
+
+/**
+ * Menu callback: JSON normalized EUR buyshares cents (Express Checkout alignment).
+ */
+function rovas_stripe_express_checkout_normalize_buyshares_amount() {
+  module_load_include('inc', 'rovas_stripe_express_checkout', 'includes/normalize_buyshares');
+  return _rovas_stripe_express_checkout_normalize_buyshares_amount();
 }
 
 function rovas_stripe_express_checkout_thanks() {

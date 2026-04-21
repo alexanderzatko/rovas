@@ -61,14 +61,17 @@ function _rovas_stripe_express_checkout_init_buyshares() {
 
   $order = commerce_order_load($order->order_id);
   $expected_cents = isset($order->commerce_order_total[LANGUAGE_NONE][0]['amount']) ? (int) $order->commerce_order_total[LANGUAGE_NONE][0]['amount'] : 0;
+  if ($expected_cents < 1) {
+    watchdog('rovas_stripe_express', 'buyshares init: invalid order total order=@o', array('@o' => $order->order_id), WATCHDOG_ERROR);
+    drupal_json_output(array('error' => 'Invalid order total.'));
+    drupal_exit();
+  }
   if ($expected_cents !== $amount_cents) {
-    watchdog('rovas_stripe_express', 'buyshares init: amount mismatch order=@o expected=@e got=@g', array(
+    watchdog('rovas_stripe_express', 'buyshares init: request amount differs from order total order=@o order_total=@e request=@g (PI uses order total)', array(
       '@o' => $order->order_id,
       '@e' => $expected_cents,
       '@g' => $amount_cents,
-    ), WATCHDOG_ERROR);
-    drupal_json_output(array('error' => 'Order amount mismatch.'));
-    drupal_exit();
+    ), WATCHDOG_NOTICE);
   }
 
   $secret_key = variable_get('stripe_secret_key', '');
@@ -81,7 +84,7 @@ function _rovas_stripe_express_checkout_init_buyshares() {
 
   try {
     $intent = \Stripe\PaymentIntent::create(array(
-      'amount' => $amount_cents,
+      'amount' => $expected_cents,
       'currency' => 'eur',
       'receipt_email' => $user->mail,
       'automatic_payment_methods' => array('enabled' => TRUE),

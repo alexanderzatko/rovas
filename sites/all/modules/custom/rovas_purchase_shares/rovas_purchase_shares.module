@@ -126,12 +126,12 @@ function rovas_purchase_shares_form ($form, &$form_state,$proj_id) {
 		if ($currency == 'EUR') {
 			if ($paymentChanged || !isset($form_state['values']['buy_amount']) || empty($form_state['values']['buy_amount'])) {
 				$hour_shares = $widget_default / $rate_euros;
-				$convary = _rovas_purchase_shares_stripe_convertor ($widget_default, $hour_shares*60);
+				$convary = rovas_purchase_shares_stripe_convertor($widget_default, $hour_shares * 60);
 				$hour_shares = $convary['units']/60;
 			}
 			else {
 				$hour_shares = $form_state['values']['buy_amount'] / $rate_euros;
-				$convary = _rovas_purchase_shares_stripe_convertor ($form_state['values']['buy_amount'], $hour_shares*60);
+				$convary = rovas_purchase_shares_stripe_convertor($form_state['values']['buy_amount'], $hour_shares * 60);
 				$hour_shares = $convary['units']/60;
 			}
 		}
@@ -411,30 +411,70 @@ function rovas_purchase_shares_form ($form, &$form_state,$proj_id) {
 	return $form;
 }
 
-/*
-converts the total amount paid and the number of units (like time share values),
-calculated by simple math, to values that Stripe order can process
-*/
-function _rovas_purchase_shares_stripe_convertor ($total_reward, $units) {
+/**
+ * Discretizes total paid and unit count for Commerce/Stripe line items.
+ *
+ * Whole units are rounded up; unit price is floored to 2 decimal places so
+ * units × unit_price never exceeds total_reward.
+ *
+ * @param float $total_reward
+ *   Amount in major units (e.g. EUR or CHR depending on caller).
+ * @param float $units
+ *   Raw unit count (e.g. minutes of time share, or merit count); may be fractional.
+ *
+ * @return array
+ *   Keys: units (int), unit_price (float).
+ */
+function rovas_purchase_shares_stripe_convertor($total_reward, $units) {
+  $total_reward = is_numeric($total_reward) ? (float) $total_reward : 0.0;
+  $units = is_numeric($units) ? (float) $units : 0.0;
+  if ($units <= 0 || $total_reward <= 0) {
+    watchdog('rovas_purchase_shares', 'rovas_purchase_shares_stripe_convertor: invalid total_reward=@reward units=@units', array(
+      '@reward' => $total_reward,
+      '@units' => $units,
+    ), WATCHDOG_WARNING);
+    return array('units' => 0, 'unit_price' => 0);
+  }
 
-    $total_reward = is_numeric($total_reward) ? (float) $total_reward : 0.0;
-    $units = is_numeric($units) ? (float) $units : 0.0;
-    if ($units <= 0 || $total_reward <= 0) {
-      watchdog('rovas_purchase_shares', '_rovas_purchase_shares_stripe_convertor: invalid total_reward=@reward units=@units', array('@reward' => $total_reward, '@units' => $units), WATCHDOG_WARNING);
-      return array('units' => 0, 'unit_price' => 0);
-    }
+  $units = (int) ceil($units);
+  $unit_price = floor(($total_reward / $units) * 100) / 100;
 
-    $unit_price = $total_reward / $units;
-    $unit_price = round($unit_price, 2);
-    $units = ceil($units);
-    $total_price = $units * $unit_price;
+  if ($unit_price <= 0) {
+    return array('units' => 0, 'unit_price' => 0);
+  }
 
-    while ($total_price > $total_reward) {
-        $units--;
-        $total_price = $units * $unit_price;
-    }
+  return array('units' => $units, 'unit_price' => $unit_price);
+}
 
-    return array('units' => $units, 'unit_price' => $unit_price);
+/**
+ * Commerce line-total cents for a typed EUR buyshares payment (no order saved).
+ *
+ * @param object $proj_wrap
+ *   Entity metadata wrapper for the project node.
+ * @param float $paid_eur
+ *   Buyer-entered amount in EUR (major units).
+ *
+ * @return int|false
+ *   Line total in euro cents, or FALSE if invalid.
+ */
+function rovas_purchase_shares_eur_buyshares_line_total_cents($proj_wrap, $paid_eur) {
+  $paid_eur = is_numeric($paid_eur) ? (float) $paid_eur : 0.0;
+  if ($paid_eur <= 0) {
+    return FALSE;
+  }
+  $share = rovas_purchase_shares_compute_share_hours_for_payment($proj_wrap, 'EUR', $paid_eur);
+  $time_in_minutes = max(0.0, (float) $share) * 60.0;
+  $converted_ary = rovas_purchase_shares_stripe_convertor($paid_eur, $time_in_minutes);
+  $quantity = (int) $converted_ary['units'];
+  $unit_price = (float) $converted_ary['unit_price'];
+  if ($quantity < 1 || $unit_price <= 0) {
+    return FALSE;
+  }
+  $unit_price_cents = (int) round(100 * $unit_price);
+  if ($unit_price_cents > 2147483647 || $quantity * $unit_price_cents > 2147483647) {
+    return FALSE;
+  }
+  return $quantity * $unit_price_cents;
 }
 
 /**
@@ -504,7 +544,7 @@ function rovas_purchase_shares_create_eur_time_share_order($uid, $project_nid, $
   $anonpay_product_nid = $product_obj->product_id;
 
   $time_in_minutes = max(0.0, (float) $share_hours) * 60.0;
-  $converted_ary = _rovas_purchase_shares_stripe_convertor((float) $total_reward, $time_in_minutes);
+  $converted_ary = rovas_purchase_shares_stripe_convertor((float) $total_reward, $time_in_minutes);
   $unit_price = $converted_ary['unit_price'];
   $quantity = (int) round($converted_ary['units']);
   if ($quantity < 1 || $unit_price <= 0) {

@@ -114,26 +114,31 @@
 
 				const rawVal = $('input[name="payment"]').val().trim();
         const pprice = getPpriceValue();
+        const urlParamsPay = new URLSearchParams(window.location.search);
+        const currency = (currencyInput.val() || 'eur').toLowerCase();
+        const isBuysharesEur = urlParamsPay.get('paytype') === 'buyshares' && currency === 'eur';
+        const isValidPaymentFormat = rawVal === '' ? false : (isBuysharesEur
+          ? /^\d+(\.\d{1,2})?$/.test(rawVal)
+          : /^[0-9]+$/.test(rawVal));
 
-				const isWholeInteger = /^[0-9]+$/.test(rawVal);
-				const $errorDiv = $('#payment-error');
-        
+        const $errorDiv = $('#payment-error');
+        const $adjustNotice = $('#buyshares-eur-adjustment-notice');
+
         // Clear any existing error messages first
         $errorDiv.hide();
-        
-        // Check for decimal validation first
-				if (rawVal !== '' && !isWholeInteger) {
+
+        // Check for amount format: whole euros elsewhere; buyshares EUR allows up to 2 decimals (normalized totals).
+				if (rawVal !== '' && !isValidPaymentFormat) {
 					$errorDiv
-						.text(Drupal.t('The amount must be a whole number (no decimals).'))
+						.text(isBuysharesEur
+              ? Drupal.t('Enter a valid amount (up to two decimal places).')
+              : Drupal.t('The amount must be a whole number (no decimals).'))
 						.show();
 				}
         // Check for minimum amount if pprice exists
-        else if (pprice !== null && rawVal !== '' && isWholeInteger) {
-          const actualAmt = parseInt(rawVal, 10);
-          if (actualAmt < pprice) {
-//            $errorDiv
-//              .text(Drupal.t('The amount must be at least @min euro.', {'@min': pprice.toFixed(2)}))
-//              .show();
+        else if (pprice !== null && rawVal !== '' && isValidPaymentFormat) {
+          const amtForMin = isBuysharesEur ? parseFloat(rawVal, 10) : parseInt(rawVal, 10);
+          if (amtForMin < pprice) {
 						$errorDiv
 							.text(Drupal.t('The amount must be at least @amount @currency.', {
 								'@amount': pprice.toFixed(2),
@@ -144,18 +149,19 @@
         }
 
         const paymentValue = parseFloat(paymentInputLive.val() || '0');
-        const actualAmt = isWholeInteger ? parseInt(rawVal, 10) : 0;
-        
-        const currency = (currencyInput.val() || 'eur').toLowerCase();
+        const actualAmt = isValidPaymentFormat
+          ? (isBuysharesEur ? parseFloat(rawVal, 10) : parseInt(rawVal, 10))
+          : 0;
+
         const emailRequirementMet = checkEmailFieldRequirement();
 
         // ECE visibility logic
         const hasPprice = pprice !== null;
         const meetsMinimumAmount = hasPprice ? actualAmt >= pprice : actualAmt > 0;
-        
-        const shouldShowECE = meetsMinimumAmount && 
-                             isWholeInteger && 
-                             (currency === 'eur') && 
+
+        const shouldShowECE = meetsMinimumAmount &&
+                             isValidPaymentFormat &&
+                             (currency === 'eur') &&
                              emailRequirementMet;
 
         console.log('[ECE] visibility calc:', {
@@ -165,7 +171,8 @@
           currency: currency,
           hasPprice: hasPprice,
           meetsMinimumAmount: meetsMinimumAmount,
-          isWholeInteger: isWholeInteger,
+          isValidPaymentFormat: isValidPaymentFormat,
+          isBuysharesEur: isBuysharesEur,
           emailRequirementMet: emailRequirementMet,
           shouldShowECE: shouldShowECE,
           containerInDOM: eceContainerLive.length,
@@ -177,6 +184,9 @@
         if (!shouldShowECE) {
           eceInitialized = false;
           eceStateKey = null;
+          if ($adjustNotice.length) {
+            $adjustNotice.empty().hide();
+          }
         }
 
         if (eceContainerLive.length) {
@@ -203,9 +213,9 @@
           // - Email requirement not met
           // - Not a whole integer
           // - Amount is less than pprice (when pprice exists)
-					const disableSubmit = (actualAmt <= 0) || 
-                               !emailRequirementMet || 
-                               !isWholeInteger ||
+					const disableSubmit = (actualAmt <= 0) ||
+                               !emailRequirementMet ||
+                               !isValidPaymentFormat ||
                                (pprice !== null && actualAmt < pprice);
           
           // Apply the same logic to both buttons
@@ -255,6 +265,70 @@
 				}
       }
 
+      function getOrCreateBuysharesAdjustmentNotice() {
+        let $n = $('#buyshares-eur-adjustment-notice');
+        if ($n.length) {
+          return $n;
+        }
+        $n = $('<div id="buyshares-eur-adjustment-notice" class="messages warning" style="display:none;margin-top:0.5em;" role="status"></div>');
+        const $err = $('#payment-error');
+        if ($err.length) {
+          $err.after($n);
+        }
+        else {
+          const $pay = $('input[name="payment"]');
+          const $wrap = $pay.closest('.form-item');
+          if ($wrap.length) {
+            $wrap.append($n);
+          }
+          else {
+            $pay.parent().append($n);
+          }
+        }
+        return $n;
+      }
+
+      /**
+       * Fetch server-normalized EUR buyshares cents; update payment field and notice.
+       * @return {Promise<number|null>} normalized cents, or null on failure.
+       */
+      async function normalizeBuysharesEurPaymentCents(centsTyped) {
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.get('paytype') !== 'buyshares') {
+          return centsTyped;
+        }
+        const recipient = urlParams.get('recipient');
+        if (!recipient || !Drupal.settings.rovasExpressBuyshares || !Drupal.settings.rovasExpressBuyshares.token) {
+          return centsTyped;
+        }
+        const cur = ($('input[name="payment-currency"]:checked').val() || 'eur').toLowerCase();
+        if (cur !== 'eur') {
+          $('#buyshares-eur-adjustment-notice').empty().hide();
+          return centsTyped;
+        }
+        const token = Drupal.settings.rovasExpressBuyshares.token;
+        const url = '/stripe/express-checkout/normalize-buyshares-amount?amount=' + encodeURIComponent(String(centsTyped))
+          + '&recipient=' + encodeURIComponent(recipient)
+          + '&token=' + encodeURIComponent(token);
+        const response = await fetch(url);
+        const data = await response.json();
+        const $notice = getOrCreateBuysharesAdjustmentNotice();
+        if (!data.ok) {
+          $notice.text(data.error || Drupal.t('Unable to normalize amount.')).show();
+          return null;
+        }
+        if (data.adjusted && data.message) {
+          $notice.text(data.message).show();
+        }
+        else {
+          $notice.empty().hide();
+        }
+        const paymentInput = $('input[name="payment"]');
+        paymentInput.val(Number(data.normalizedEuro).toFixed(2));
+        eceStateKey = getECEStateKey();
+        return typeof data.normalizedCents === 'number' ? data.normalizedCents : centsTyped;
+      }
+
       async function initializeStripeECE() {
         const paymentInput = $('input[name="payment"]');
         const amount = parseFloat(paymentInput.val() || '0');
@@ -266,7 +340,7 @@
           return;
         }
 
-        const cents = Math.round(amount * 100);
+        let cents = Math.round(amount * 100);
         const selectedCurrencyInput = $('input[name="payment-currency"]:checked');
         const currency = (selectedCurrencyInput.val() || 'eur').toLowerCase();
 
@@ -279,6 +353,19 @@
           let fetchUrl;
 
           if (paytype === 'buyshares' && recipient && Drupal.settings.rovasExpressBuyshares && Drupal.settings.rovasExpressBuyshares.token) {
+            if (currency === 'eur') {
+              const normalizedCents = await normalizeBuysharesEurPaymentCents(cents);
+              if (normalizedCents === null) {
+                hideLoading();
+                eceInitializing = false;
+                const cardBtnNorm = getCardButton();
+                const bankBtnNorm = getBankButton();
+                if (cardBtnNorm.length) cardBtnNorm.prop('disabled', false);
+                if (bankBtnNorm.length) bankBtnNorm.prop('disabled', false);
+                return;
+              }
+              cents = normalizedCents;
+            }
             fetchUrl = '/stripe/express-checkout/init-buyshares?amount=' + cents
               + '&recipient=' + encodeURIComponent(recipient)
               + '&token=' + encodeURIComponent(Drupal.settings.rovasExpressBuyshares.token);
