@@ -937,8 +937,10 @@ function rovas_project_reward_form ($form, &$form_state) {
 				}
 			}
 			else {
-				$preview_amt = $user_entered_pay ? (float) $raw_trim : (float) $pprice_hidden;
-				$hour_shares = rovas_purchase_shares_compute_share_hours_for_payment($pw, 'CHR', $preview_amt);
+				if ($user_entered_pay) {
+					$preview_amt = (float) $raw_trim;
+					$hour_shares = rovas_purchase_shares_compute_share_hours_for_payment($pw, 'CHR', $preview_amt);
+				}
 			}
 			// EUR amounts use cents; without this, step=1 + pattern [0-9]* block decimals so preview never tracks typed €.
 			if ($currency === 'EUR') {

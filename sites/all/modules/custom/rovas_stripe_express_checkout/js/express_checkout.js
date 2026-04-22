@@ -60,6 +60,25 @@
         return [paymentRaw, currency, email, paytype, recipient].join('|');
       }
 
+      function isBuysharesContext() {
+        const urlParams = new URLSearchParams(window.location.search);
+        return urlParams.get('paytype') === 'buyshares';
+      }
+
+      function resetECEState() {
+        if (expressCheckoutElement) {
+          try {
+            expressCheckoutElement.unmount();
+          } catch (eUn) {
+            console.log('[ECE] unmount on state reset:', eUn);
+          }
+          expressCheckoutElement = null;
+        }
+        eceInitialized = false;
+        eceInitializing = false;
+        eceStateKey = null;
+      }
+
       function debouncedToggleECE() {
         clearTimeout(debounceTimeout);
         debounceTimeout = setTimeout(() => {
@@ -455,20 +474,49 @@
 
       // Attach event listeners using context to avoid duplicate bindings
       $('#payment-wrapper input[name="payment"]').once('express-checkout-payment')
-        .on('input', function() { console.log('[ECE] payment input'); debouncedToggleECE(); })
-        .on('blur', function() { console.log('[ECE] payment blur'); toggleECEVisibility(); })
-        .on('change', function() { console.log('[ECE] payment change'); toggleECEVisibility(); });
+        .on('input', function() {
+          console.log('[ECE] payment input');
+          if (isBuysharesContext()) {
+            return;
+          }
+          debouncedToggleECE();
+        })
+        .on('blur', function() {
+          console.log('[ECE] payment blur');
+          if (isBuysharesContext()) {
+            return;
+          }
+          toggleECEVisibility();
+        })
+        .on('change', function() {
+          console.log('[ECE] payment change');
+          if (isBuysharesContext()) {
+            return;
+          }
+          toggleECEVisibility();
+        });
 
       $('input[name="email"]', context).once('express-checkout-email').on('input', function() {
         debouncedToggleECE();
       });
 
       $('input[name="payment-currency"]', context).once('express-checkout-currency').on('change', function() {
+        if (isBuysharesContext()) {
+          resetECEState();
+          const eceContainerLive = $('#express-checkout-container');
+          if (eceContainerLive.length) {
+            eceContainerLive.toggle(false);
+          }
+          return;
+        }
         setTimeout(() => toggleECEVisibility(), 0);
       });
 
-      // Initial visibility check
-      toggleECEVisibility();
+      // Initial visibility check.
+      // On buyshares, let explicit recalculation (AJAX complete event) drive ECE refresh.
+      if (!isBuysharesContext()) {
+        toggleECEVisibility();
+      }
     },
 
     detach: function (context, settings, trigger) {
