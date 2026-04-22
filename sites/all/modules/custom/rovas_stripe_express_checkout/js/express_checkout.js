@@ -507,6 +507,13 @@
           if (eceContainerLive.length) {
             eceContainerLive.toggle(false);
           }
+          const selectedCurrency = (($('input[name="payment-currency"]:checked').val() || '') + '').toUpperCase();
+          const amountRaw = (getRewproPaymentInput().val() || '').trim();
+          // Buyshares: only refresh ECE on currency switch when moving to EUR
+          // and there is an entered amount to evaluate.
+          if (selectedCurrency === 'EUR' && amountRaw !== '') {
+            setTimeout(() => toggleECEVisibility(), 0);
+          }
           return;
         }
         setTimeout(() => toggleECEVisibility(), 0);
