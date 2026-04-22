@@ -64,7 +64,15 @@ function rovas_stripe_webhooks_process_payment_intent_succeeded($event, $record)
         watchdog('rovas_stripe_webhooks', 'buyshares express: amount mismatch order=@o exp=@e got=@g', array('@o' => $order_id, '@e' => $expected, '@g' => $amount), WATCHDOG_ERROR);
         return FALSE;
       }
-      if (!function_exists('commerce_order_rules_contains_product') || !commerce_order_rules_contains_product($order, 'time-share', '>=', 1)) {
+      // commerce_order_rules_contains_product() requires $order->commerce_line_items
+      // to be populated; freshly loaded orders often omit it even when the field
+      // has line items (see _rovas_purchase_shares_order_line_items_contain_sku).
+      $has_timeshare = function_exists('_rovas_purchase_shares_order_line_items_contain_sku')
+        && _rovas_purchase_shares_order_line_items_contain_sku($order, 'time-share');
+      if (!$has_timeshare && function_exists('commerce_order_rules_contains_product')) {
+        $has_timeshare = commerce_order_rules_contains_product($order, 'time-share', '>=', 1);
+      }
+      if (!$has_timeshare) {
         watchdog('rovas_stripe_webhooks', 'buyshares express: order @oid has no time-share line', array('@oid' => $order_id), WATCHDOG_WARNING);
         return FALSE;
       }
@@ -80,11 +88,21 @@ function rovas_stripe_webhooks_process_payment_intent_succeeded($event, $record)
         $transaction = commerce_stripe_pi_create_transaction($order->order_id, $pi);
         if ($transaction) {
           $order = commerce_order_load($order->order_id);
-          if (module_exists('rules')) {
+          if (function_exists('commerce_checkout_complete')) {
+            commerce_checkout_complete($order);
+          }
+          elseif (module_exists('rules')) {
             rules_invoke_event('commerce_checkout_complete', $order);
           }
           if (function_exists('_rovas_stripe_webhooks_add_balance_fees_and_process')) {
             _rovas_stripe_webhooks_add_balance_fees_and_process($order, $intent);
+          }
+
+          $order = commerce_order_load($order->order_id);
+          $order_status = commerce_order_status_load($order->status);
+          if ($order_status && $order_status['state'] == 'checkout') {
+            commerce_order_status_update($order, 'completed', FALSE, NULL,
+              'Order completed via Stripe buyshares express payment_intent.succeeded webhook.');
           }
         }
         else {

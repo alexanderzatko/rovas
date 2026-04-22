@@ -58,6 +58,7 @@ function rovas_stripe_express_checkout_thanks() {
 	$parameters = drupal_get_query_parameters();
 	
 	$payment_intent_id = isset($parameters['payment_intent']) ? $parameters['payment_intent'] : null;
+	$redirect_status = isset($parameters['redirect_status']) ? $parameters['redirect_status'] : '';
 
 	if (!$payment_intent_id) {
 			drupal_goto('rewpro');
@@ -72,7 +73,54 @@ function rovas_stripe_express_checkout_thanks() {
 
 			$meta_paytype = isset($intent->metadata->paytype) ? (string) $intent->metadata->paytype : '';
 			if ($meta_paytype === 'buyshares' && !empty($intent->metadata->project_id)) {
-				$buyshares_redirect = url('node/' . (int) $intent->metadata->project_id, array('absolute' => TRUE));
+				$recipient_nid = (int) $intent->metadata->project_id;
+				$rewpro_retry = url('rewpro', array(
+					'absolute' => TRUE,
+					'query' => array(
+						'paytype' => 'buyshares',
+						'recipient' => $recipient_nid,
+					),
+				));
+				$pi_status = isset($intent->status) ? (string) $intent->status : '';
+				$payment_failed = ($redirect_status === 'failed' || $redirect_status === 'canceled')
+					|| ($pi_status !== '' && $pi_status !== 'succeeded');
+				if ($payment_failed) {
+					drupal_set_message(t('Your payment was not completed. You have not been charged. You can try again from the purchase page.'), 'error');
+					$buyshares_redirect = $rewpro_retry;
+				}
+				else {
+					global $user;
+					$order_label = '';
+					if (!empty($intent->metadata->commerce_order_id) && function_exists('commerce_order_load')) {
+						$buy_oid = (int) $intent->metadata->commerce_order_id;
+						$buy_order = commerce_order_load($buy_oid);
+						if ($buy_order && !empty($buy_order->order_number)) {
+							$order_label = $buy_order->order_number;
+						}
+						elseif ($buy_oid > 0) {
+							$order_label = (string) $buy_oid;
+						}
+					}
+					$project_url = url('node/' . $recipient_nid, array('absolute' => TRUE));
+					$thanks_parts = array(t('Thank you! Your payment for time shares was received.'));
+					if ($order_label !== '') {
+						$thanks_parts[] = t('Your order number is @number.', array('@number' => $order_label));
+					}
+					if (!empty($user->uid) && !empty($intent->metadata->commerce_order_id)) {
+						$buy_oid = (int) $intent->metadata->commerce_order_id;
+						$thanks_parts[] = t('You can !order_link or !project_link.', array(
+							'!order_link' => l(t('view your order'), 'user/' . $user->uid . '/orders/' . $buy_oid),
+							'!project_link' => l(t('return to the project'), 'node/' . $recipient_nid),
+						));
+					}
+					else {
+						$thanks_parts[] = t('You can !project_link.', array(
+							'!project_link' => l(t('continue to the project'), 'node/' . $recipient_nid),
+						));
+					}
+					drupal_set_message(implode(' ', $thanks_parts));
+					$buyshares_redirect = $project_url;
+				}
 			}
 			else {
 			$project_id = isset($intent->metadata->project_id) ? $intent->metadata->project_id : null;
