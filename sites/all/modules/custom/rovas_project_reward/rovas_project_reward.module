@@ -47,6 +47,7 @@ function rovas_project_reward_form ($form, &$form_state) {
 	$callback_url = NULL;
 
 	$ch_balance_show = '';
+	$ch_balance_weight = 2;
 	$payment_currency_weight = 3;
 	$payment_wrapper_weight = 5;
 
@@ -543,6 +544,8 @@ function rovas_project_reward_form ($form, &$form_state) {
 				// Pay-with radios sit directly above the amount block (#payment-wrapper).
 				$payment_currency_weight = 5;
 				$payment_wrapper_weight = 6;
+				// Keep #ch-balance directly above pay-with radios on rewpro buyshares.
+				$ch_balance_weight = 4.5;
 				$weight_text = 50;
 
 				$form['buyshares_performance'] = array(
@@ -783,7 +786,7 @@ function rovas_project_reward_form ($form, &$form_state) {
 		'#prefix' => '<div id="ch-balance">',
 		'#suffix' => '</div>',
 		'#markup' => $ch_balance_show,
-		'#weight' => 2,
+		'#weight' => $ch_balance_weight,
 	];
 
 
