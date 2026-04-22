@@ -567,11 +567,29 @@ function rovas_purchase_shares_buyshares_minimums($obj) {
   $rate_euros = $obj->field_time_share_cost_euros->value();
   $rate_euros = is_numeric($rate_euros) ? (float) $rate_euros : NULL;
   $minimum_amount_time = $obj->field_minimum_time->value() > 0 ? (float) $obj->field_minimum_time->value() : 0.0;
-  $min_chr = $minimum_amount_time * $rate_chrons;
-  $min_eur = ($rate_euros !== NULL && $minimum_amount_time > 0) ? $minimum_amount_time * $rate_euros : (($rate_euros !== NULL) ? max(1.0, $rate_euros) : 1.0);
+  // If project minimum share is not configured, default to one minute.
+  $minimum_hours = $minimum_amount_time > 0 ? $minimum_amount_time : (1.0 / 60.0);
+
+  $min_chr_raw = $minimum_hours * $rate_chrons;
+
+  if ($rate_euros !== NULL && $rate_euros > 0) {
+    $min_eur_raw = $minimum_hours * $rate_euros;
+  }
+  else {
+    $min_eur_raw = 0.0;
+    if ($rate_chrons > 0 && function_exists('calculate_forex_transaction_params')) {
+      $fx = calculate_forex_transaction_params('chr_to_eur', $rate_chrons, NULL, FALSE);
+      if (isset($fx['output']) && is_numeric($fx['output']) && (float) $fx['output'] > 0) {
+        $min_eur_raw = $minimum_hours * (float) $fx['output'];
+      }
+    }
+  }
+
+  $min_chr = max(1, (int) ceil($min_chr_raw));
+  $min_eur = max(0.01, ceil(($min_eur_raw > 0 ? $min_eur_raw : 0.01) * 100) / 100);
   return array(
-    'min_chr' => round($min_chr),
-    'min_eur' => round($min_eur > 0 ? $min_eur : 1),
+    'min_chr' => $min_chr,
+    'min_eur' => $min_eur,
     'rate_chr' => $rate_chrons,
     'rate_eur' => $rate_euros,
   );
