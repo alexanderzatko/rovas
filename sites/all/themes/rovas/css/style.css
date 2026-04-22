@@ -1630,8 +1630,15 @@ div#buy-hrs-converted {
     display: block;
     font-size: 14px;
     font-weight: bold;
+    margin-top: 20px;
     margin-bottom: 6px;
     color: #333;
+}
+
+#payment-wrapper #payment-error {
+    color: red;
+    margin-top: 6px;
+    margin-bottom: 15px;
 }
 
 #payment-wrapper .buy-hrs-converted__value {

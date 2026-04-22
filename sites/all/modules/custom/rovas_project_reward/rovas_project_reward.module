@@ -830,7 +830,7 @@ function rovas_project_reward_form ($form, &$form_state) {
 
 	$form['payment_wrapper'] = [
 		'#prefix' => '<div id="payment-wrapper">',
-		'#suffix' => '<div style="color:red; position:relative; top: -10px; margin-bottom: 15px;" id="payment-error"></div></div>',
+		'#suffix' => '</div>',
 		'#type' => 'container',
 		'#weight' => $payment_wrapper_weight,
 	];
@@ -888,6 +888,12 @@ function rovas_project_reward_form ($form, &$form_state) {
         'pattern' => '[0-9]*',
         'class' => ['edit-payment']
     ],
+	];
+
+	$form['payment_wrapper']['payment_error'] = [
+		'#type' => 'markup',
+		'#markup' => '<div id="payment-error"></div>',
+		'#weight' => 1,
 	];
 
 	$form['payment_wrapper']['payment']['#attributes']['class'][] = 'edit-payment';
