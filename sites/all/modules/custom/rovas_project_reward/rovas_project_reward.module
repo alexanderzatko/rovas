@@ -5446,9 +5446,22 @@ function rovas_project_reward_commerce_invoice_receipt_action_mail_execute($orde
     }
   }
 
-  commerce_invoice_receipt_action_mail($order, $to, $subject, $from);
-  watchdog('rovas_project_reward', 'Invoice wrapper called contrib mail action for order @oid', array(
+  global $user;
+  $original_user = $user;
+  $acting_user = user_load($order->uid);
+  if ($acting_user && !empty($acting_user->uid)) {
+    $user = $acting_user;
+  }
+  watchdog('rovas_project_reward', 'Invoice wrapper executing contrib mail for order @oid as uid @uid (original uid @orig)', array(
     '@oid' => (int) $order->order_id,
+    '@uid' => !empty($user->uid) ? (int) $user->uid : 0,
+    '@orig' => !empty($original_user->uid) ? (int) $original_user->uid : 0,
+  ), WATCHDOG_DEBUG);
+  commerce_invoice_receipt_action_mail($order, $to, $subject, $from);
+  $user = $original_user;
+  watchdog('rovas_project_reward', 'Invoice wrapper restored user after contrib mail for order @oid to uid @uid', array(
+    '@oid' => (int) $order->order_id,
+    '@uid' => !empty($user->uid) ? (int) $user->uid : 0,
   ), WATCHDOG_DEBUG);
 
   if (rovas_project_reward_is_express_buyshares_order($order)) {
