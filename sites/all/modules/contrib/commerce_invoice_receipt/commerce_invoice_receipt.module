@@ -437,3 +437,4 @@ function _commerce_invoice_receipt_get_invoice_info($order, $build) {
 
   return $info;
 }
+

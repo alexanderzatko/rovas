@@ -104,6 +104,24 @@ function rovas_stripe_webhooks_process_payment_intent_succeeded($event, $record)
             commerce_order_status_update($order, 'completed', FALSE, NULL,
               'Order completed via Stripe buyshares express payment_intent.succeeded webhook.');
           }
+          $order = commerce_order_load($order->order_id, TRUE);
+          if (!isset($order->data) || !is_array($order->data)) {
+            $order->data = array();
+          }
+          // Mark invoice as ready only after all webhook-side updates are done.
+          $order->data['rovas_express_invoice_ready'] = REQUEST_TIME;
+          commerce_order_save($order);
+
+          if (function_exists('rovas_project_reward_commerce_invoice_receipt_action_mail_execute')) {
+            $to = token_replace('[commerce-order:owner] <[commerce-order:mail]>', array('commerce-order' => $order), array('clear' => TRUE));
+            $subject = token_replace('[site:name]: Order #[commerce-order:order-id]', array('commerce-order' => $order), array('clear' => TRUE));
+            rovas_project_reward_commerce_invoice_receipt_action_mail_execute($order, $to, $subject, NULL);
+          }
+          elseif (function_exists('commerce_invoice_receipt_action_mail')) {
+            $to = token_replace('[commerce-order:owner] <[commerce-order:mail]>', array('commerce-order' => $order), array('clear' => TRUE));
+            $subject = token_replace('[site:name]: Order #[commerce-order:order-id]', array('commerce-order' => $order), array('clear' => TRUE));
+            commerce_invoice_receipt_action_mail($order, $to, $subject, NULL);
+          }
         }
         else {
           watchdog('rovas_stripe_webhooks', 'buyshares express: failed transaction for order @order_id', array('@order_id' => $order->order_id), WATCHDOG_ERROR);

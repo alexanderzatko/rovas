@@ -5382,6 +5382,79 @@ function _rovas_project_reward_admin_overpayment_notification_content(array $par
 }
 
 /**
+ * Implements hook_rules_action_info_alter().
+ *
+ * Routes invoice send action through custom wrapper so express-checkout
+ * buyshares can be deferred until webhook processing fully finalizes.
+ */
+function rovas_project_reward_rules_action_info_alter(&$actions) {
+  if (isset($actions['commerce_invoice_receipt_action_mail']['callbacks']['execute'])) {
+    $actions['commerce_invoice_receipt_action_mail']['callbacks']['execute'] = 'rovas_project_reward_commerce_invoice_receipt_action_mail_execute';
+  }
+}
+
+/**
+ * Wrapper for commerce invoice action mail with express buyshares timing guard.
+ */
+function rovas_project_reward_commerce_invoice_receipt_action_mail_execute($order, $to, $subject, $from = NULL) {
+  if (empty($order->order_id) || !function_exists('commerce_invoice_receipt_action_mail')) {
+    return;
+  }
+
+  $order = commerce_order_load($order->order_id, TRUE);
+  if (!$order) {
+    return;
+  }
+
+  if (rovas_project_reward_is_express_buyshares_order($order)) {
+    if (!empty($order->data['rovas_express_invoice_sent'])) {
+      watchdog('rovas_project_reward', 'Invoice send skipped: order @oid already sent at @ts', array(
+        '@oid' => (int) $order->order_id,
+        '@ts' => (int) $order->data['rovas_express_invoice_sent'],
+      ), WATCHDOG_DEBUG);
+      return;
+    }
+    if (empty($order->data['rovas_express_invoice_ready'])) {
+      watchdog('rovas_project_reward', 'Invoice send deferred: order @oid express buyshares not ready yet', array(
+        '@oid' => (int) $order->order_id,
+      ), WATCHDOG_DEBUG);
+      return;
+    }
+  }
+
+  commerce_invoice_receipt_action_mail($order, $to, $subject, $from);
+
+  if (rovas_project_reward_is_express_buyshares_order($order)) {
+    $order = commerce_order_load($order->order_id, TRUE);
+    if ($order) {
+      if (!isset($order->data) || !is_array($order->data)) {
+        $order->data = array();
+      }
+      $order->data['rovas_express_invoice_sent'] = REQUEST_TIME;
+      commerce_order_save($order);
+    }
+  }
+}
+
+/**
+ * TRUE when order came from express checkout buyshares flow.
+ */
+function rovas_project_reward_is_express_buyshares_order($order) {
+  if (empty($order) || empty($order->order_id)) {
+    return FALSE;
+  }
+  if (empty($order->data) || !is_array($order->data)) {
+    return FALSE;
+  }
+  if (empty($order->data['stripe_pi']['payment_intent']['metadata'])) {
+    return FALSE;
+  }
+  $meta = $order->data['stripe_pi']['payment_intent']['metadata'];
+  return !empty($meta['context']) && $meta['context'] === 'express_checkout'
+    && !empty($meta['paytype']) && $meta['paytype'] === 'buyshares';
+}
+
+/**
  * Notify the site admin when a bank transfer overpayment is detected.
  */
 function rovas_project_reward_notify_site_admin_overpayment($order, $expected_amount, $actual_amount) {
