@@ -5415,11 +5415,21 @@ function rovas_project_reward_commerce_invoice_receipt_action_mail_execute($orde
   }
 
   if (rovas_project_reward_is_express_buyshares_order($order)) {
+    $invoice_debug = _rovas_project_reward_invoice_debug_snapshot($order, $line_item_ids);
     watchdog('rovas_project_reward', 'Invoice wrapper precheck: order @oid express buyshares, ready=@ready sent=@sent line_item_ids=@ids', array(
       '@oid' => (int) $order->order_id,
       '@ready' => empty($order->data['rovas_express_invoice_ready']) ? 'no' : 'yes',
       '@sent' => empty($order->data['rovas_express_invoice_sent']) ? 'no' : 'yes',
       '@ids' => !empty($line_item_ids) ? implode(',', $line_item_ids) : '(none)',
+    ), WATCHDOG_DEBUG);
+    watchdog('rovas_project_reward', 'Invoice wrapper line-item snapshot: order @oid details=@details', array(
+      '@oid' => (int) $order->order_id,
+      '@details' => $invoice_debug['line_item_details'],
+    ), WATCHDOG_DEBUG);
+    watchdog('rovas_project_reward', 'Invoice wrapper view snapshot: order @oid markup_len=@len contains_empty_text=@empty', array(
+      '@oid' => (int) $order->order_id,
+      '@len' => $invoice_debug['view_markup_len'],
+      '@empty' => $invoice_debug['view_contains_empty_text'] ? 'yes' : 'no',
     ), WATCHDOG_DEBUG);
     if (!empty($order->data['rovas_express_invoice_sent'])) {
       watchdog('rovas_project_reward', 'Invoice send skipped: order @oid already sent at @ts', array(
@@ -5473,6 +5483,38 @@ function rovas_project_reward_is_express_buyshares_order($order) {
   $meta = $order->data['stripe_pi']['payment_intent']['metadata'];
   return !empty($meta['context']) && $meta['context'] === 'express_checkout'
     && !empty($meta['paytype']) && $meta['paytype'] === 'buyshares';
+}
+
+/**
+ * Captures line-item and view-render diagnostics for invoice mail debugging.
+ */
+function _rovas_project_reward_invoice_debug_snapshot($order, array $line_item_ids) {
+  $details = array();
+  if (!empty($line_item_ids)) {
+    $line_items = function_exists('commerce_line_item_load_multiple') ? commerce_line_item_load_multiple($line_item_ids) : array();
+    foreach ($line_item_ids as $line_item_id) {
+      if (empty($line_items[$line_item_id])) {
+        $details[] = $line_item_id . ':missing';
+        continue;
+      }
+      $line_item = $line_items[$line_item_id];
+      $type = !empty($line_item->type) ? $line_item->type : 'unknown';
+      $qty = isset($line_item->quantity) ? $line_item->quantity : '?';
+      $has_product = (!empty($line_item->commerce_product[LANGUAGE_NONE][0]['product_id'])) ? 'yes' : 'no';
+      $details[] = $line_item_id . ':type=' . $type . ',qty=' . $qty . ',has_product=' . $has_product;
+    }
+  }
+
+  $view_markup = '';
+  if (!empty($line_item_ids) && function_exists('commerce_embed_view')) {
+    $view_markup = commerce_embed_view('commerce_line_item_table', 'default', array(implode(',', $line_item_ids)));
+  }
+
+  return array(
+    'line_item_details' => !empty($details) ? implode(' | ', $details) : '(none)',
+    'view_markup_len' => strlen((string) $view_markup),
+    'view_contains_empty_text' => (strpos((string) $view_markup, 'No line items found') !== FALSE),
+  );
 }
 
 /**
