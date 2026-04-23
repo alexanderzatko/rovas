@@ -82,20 +82,36 @@ function rovas_stripe_webhooks_process_payment_intent_succeeded($event, $record)
       $order->data['payment_method'] = 'commerce_stripe_pi|commerce_payment_commerce_stripe_pi';
       $order->data['rovas_payment_method'] = 'commerce_stripe_pi|commerce_payment_commerce_stripe_pi';
       commerce_order_save($order);
+      watchdog('rovas_stripe_webhooks', 'buyshares express: saved PI metadata on order @oid; status=@status', array(
+        '@oid' => (int) $order->order_id,
+        '@status' => $order->status,
+      ), WATCHDOG_DEBUG);
 
       if (function_exists('commerce_stripe_pi_create_transaction')) {
         $pi = \Stripe\PaymentIntent::retrieve($payment_intent_id);
         $transaction = commerce_stripe_pi_create_transaction($order->order_id, $pi);
         if ($transaction) {
+          watchdog('rovas_stripe_webhooks', 'buyshares express: transaction created for order @oid', array(
+            '@oid' => (int) $order->order_id,
+          ), WATCHDOG_DEBUG);
           $order = commerce_order_load($order->order_id);
           if (function_exists('commerce_checkout_complete')) {
             commerce_checkout_complete($order);
+            watchdog('rovas_stripe_webhooks', 'buyshares express: commerce_checkout_complete invoked for order @oid', array(
+              '@oid' => (int) $order->order_id,
+            ), WATCHDOG_DEBUG);
           }
           elseif (module_exists('rules')) {
             rules_invoke_event('commerce_checkout_complete', $order);
+            watchdog('rovas_stripe_webhooks', 'buyshares express: rules commerce_checkout_complete invoked for order @oid', array(
+              '@oid' => (int) $order->order_id,
+            ), WATCHDOG_DEBUG);
           }
           if (function_exists('_rovas_stripe_webhooks_add_balance_fees_and_process')) {
             _rovas_stripe_webhooks_add_balance_fees_and_process($order, $intent);
+            watchdog('rovas_stripe_webhooks', 'buyshares express: fee processing finished for order @oid', array(
+              '@oid' => (int) $order->order_id,
+            ), WATCHDOG_DEBUG);
           }
 
           $order = commerce_order_load($order->order_id);
@@ -111,16 +127,35 @@ function rovas_stripe_webhooks_process_payment_intent_succeeded($event, $record)
           // Mark invoice as ready only after all webhook-side updates are done.
           $order->data['rovas_express_invoice_ready'] = REQUEST_TIME;
           commerce_order_save($order);
+          $line_item_ids = array();
+          if ($line_items = field_get_items('commerce_order', $order, 'commerce_line_items')) {
+            foreach ($line_items as $line_item) {
+              if (!empty($line_item['line_item_id'])) {
+                $line_item_ids[] = (int) $line_item['line_item_id'];
+              }
+            }
+          }
+          watchdog('rovas_stripe_webhooks', 'buyshares express: marked invoice ready for order @oid; status=@status line_item_ids=@ids', array(
+            '@oid' => (int) $order->order_id,
+            '@status' => $order->status,
+            '@ids' => !empty($line_item_ids) ? implode(',', $line_item_ids) : '(none)',
+          ), WATCHDOG_DEBUG);
 
           if (function_exists('rovas_project_reward_commerce_invoice_receipt_action_mail_execute')) {
             $to = token_replace('[commerce-order:owner] <[commerce-order:mail]>', array('commerce-order' => $order), array('clear' => TRUE));
             $subject = token_replace('[site:name]: Order #[commerce-order:order-id]', array('commerce-order' => $order), array('clear' => TRUE));
             rovas_project_reward_commerce_invoice_receipt_action_mail_execute($order, $to, $subject, NULL);
+            watchdog('rovas_stripe_webhooks', 'buyshares express: invoice wrapper invoked for order @oid', array(
+              '@oid' => (int) $order->order_id,
+            ), WATCHDOG_DEBUG);
           }
           elseif (function_exists('commerce_invoice_receipt_action_mail')) {
             $to = token_replace('[commerce-order:owner] <[commerce-order:mail]>', array('commerce-order' => $order), array('clear' => TRUE));
             $subject = token_replace('[site:name]: Order #[commerce-order:order-id]', array('commerce-order' => $order), array('clear' => TRUE));
             commerce_invoice_receipt_action_mail($order, $to, $subject, NULL);
+            watchdog('rovas_stripe_webhooks', 'buyshares express: direct invoice action invoked for order @oid', array(
+              '@oid' => (int) $order->order_id,
+            ), WATCHDOG_DEBUG);
           }
         }
         else {

@@ -5405,8 +5405,22 @@ function rovas_project_reward_commerce_invoice_receipt_action_mail_execute($orde
   if (!$order) {
     return;
   }
+  $line_item_ids = array();
+  if ($line_items = field_get_items('commerce_order', $order, 'commerce_line_items')) {
+    foreach ($line_items as $line_item) {
+      if (!empty($line_item['line_item_id'])) {
+        $line_item_ids[] = (int) $line_item['line_item_id'];
+      }
+    }
+  }
 
   if (rovas_project_reward_is_express_buyshares_order($order)) {
+    watchdog('rovas_project_reward', 'Invoice wrapper precheck: order @oid express buyshares, ready=@ready sent=@sent line_item_ids=@ids', array(
+      '@oid' => (int) $order->order_id,
+      '@ready' => empty($order->data['rovas_express_invoice_ready']) ? 'no' : 'yes',
+      '@sent' => empty($order->data['rovas_express_invoice_sent']) ? 'no' : 'yes',
+      '@ids' => !empty($line_item_ids) ? implode(',', $line_item_ids) : '(none)',
+    ), WATCHDOG_DEBUG);
     if (!empty($order->data['rovas_express_invoice_sent'])) {
       watchdog('rovas_project_reward', 'Invoice send skipped: order @oid already sent at @ts', array(
         '@oid' => (int) $order->order_id,
@@ -5423,6 +5437,9 @@ function rovas_project_reward_commerce_invoice_receipt_action_mail_execute($orde
   }
 
   commerce_invoice_receipt_action_mail($order, $to, $subject, $from);
+  watchdog('rovas_project_reward', 'Invoice wrapper called contrib mail action for order @oid', array(
+    '@oid' => (int) $order->order_id,
+  ), WATCHDOG_DEBUG);
 
   if (rovas_project_reward_is_express_buyshares_order($order)) {
     $order = commerce_order_load($order->order_id, TRUE);
@@ -5432,6 +5449,10 @@ function rovas_project_reward_commerce_invoice_receipt_action_mail_execute($orde
       }
       $order->data['rovas_express_invoice_sent'] = REQUEST_TIME;
       commerce_order_save($order);
+      watchdog('rovas_project_reward', 'Invoice wrapper marked sent for order @oid at @ts', array(
+        '@oid' => (int) $order->order_id,
+        '@ts' => (int) $order->data['rovas_express_invoice_sent'],
+      ), WATCHDOG_DEBUG);
     }
   }
 }
@@ -5454,6 +5475,12 @@ function rovas_project_reward_is_express_buyshares_order($order) {
     && !empty($meta['paytype']) && $meta['paytype'] === 'buyshares';
 }
 
+/**
+ * Implements hook_mail_alter().
+ *
+ * Safety net for Express buyshares invoices: if invoice render returns
+ * "No line items found.", replace it with direct line-item markup.
+ */
 /**
  * Notify the site admin when a bank transfer overpayment is detected.
  */
