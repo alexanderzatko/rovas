@@ -414,7 +414,15 @@ function _commerce_invoice_receipt_get_invoice_info($order, $build) {
   }
 
   if (isset($build['commerce_order'][$order->order_id]['commerce_line_items'])) {
-    $info['line_items'] = $build['commerce_order'][$order->order_id]['commerce_line_items'][0]['#markup'];
+    $line_items_element = $build['commerce_order'][$order->order_id]['commerce_line_items'];
+    if (isset($line_items_element[0]['#markup'])) {
+      $info['line_items'] = $line_items_element[0]['#markup'];
+    }
+    else {
+      // Some formatter/view configs return a render array without index 0;
+      // render the field element directly instead of assuming [0]['#markup'].
+      $info['line_items'] = drupal_render($line_items_element);
+    }
   }
   watchdog('commerce_invoice_receipt', 'Invoice info extracted: order @oid, build_has_line_items=@build_has, markup_len=@len, contains_empty_text=@empty_text', array(
     '@oid' => (int) $order->order_id,
