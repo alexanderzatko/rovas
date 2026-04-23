@@ -146,7 +146,7 @@ function commerce_invoice_receipt_view_print($order, $view_mode = 'invoice', $br
     views_ui_contextual_links_suppress(TRUE);
   }
 
-  $build = entity_view('commerce_order', array($order->order_id => $order), $view_mode, NULL, TRUE);
+  $build = entity_view('commerce_order', array($order->order_id => $order), $view_mode, LANGUAGE_NONE, TRUE);
 
   $invoice_info = _commerce_invoice_receipt_get_invoice_info($order, $build);
 
@@ -282,7 +282,7 @@ function commerce_invoice_receipt_mail($key, &$message, $params) {
         views_ui_contextual_links_suppress(TRUE);
       }
 
-      $build = entity_view('commerce_order', array($params['order']->order_id => $params['order']), 'invoice', NULL, TRUE);
+      $build = entity_view('commerce_order', array($params['order']->order_id => $params['order']), 'invoice', LANGUAGE_NONE, TRUE);
       $invoice_info = _commerce_invoice_receipt_get_invoice_info($params['order'], $build);
       watchdog('commerce_invoice_receipt', 'Invoice mail build rendered: order @oid, has_line_items_markup=@has, contains_empty_text=@empty_text', array(
         '@oid' => (int) $params['order']->order_id,
