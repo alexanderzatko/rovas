@@ -126,6 +126,9 @@ function commerce_invoice_receipt_css_path() {
 }
 
 function commerce_invoice_receipt_view_print($order, $view_mode = 'invoice', $breadcrumb = TRUE) {
+  if (!empty($order->order_id)) {
+    $order = commerce_order_load($order->order_id, TRUE);
+  }
 
   $styles[] = array(
     'type' => 'file',
@@ -247,6 +250,9 @@ function commerce_invoice_receipt_mail($key, &$message, $params) {
   switch ($key) {
     // Setup an e-mailed invoice.
     case 'invoice':
+      if (!empty($params['order']->order_id)) {
+        $params['order'] = commerce_order_load($params['order']->order_id, TRUE);
+      }
       $styles[] = array(
         'type' => 'file',
         'media' => 'all',
@@ -321,6 +327,11 @@ function commerce_invoice_receipt_rules_action_info() {
 }
 
 function commerce_invoice_receipt_action_mail($order, $to, $subject, $from = NULL) {
+  // Rules / webhooks may pass an order object whose field cache does not expose
+  // line items to formatters; entity_view() would then render an empty table.
+  if (!empty($order->order_id)) {
+    $order = commerce_order_load($order->order_id, TRUE);
+  }
   $to = str_replace(array("\r", "\n"), '', $to);
   $from = !empty($from) ? str_replace(array("\r", "\n"), '', $from) : NULL;
 

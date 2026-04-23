@@ -893,15 +893,9 @@ function rovas_purchase_shares_finalize_bank_paid_time_share_if_applicable($orde
   elseif (!empty($order->data['rpr_paytype']) && $order->data['rpr_paytype'] === 'pay-choice-bank') {
     $selected_method_id = 'bank_transfer';
   }
+  // Card / Stripe (and other non-bank) orders also fire paid_in_full; this helper
+  // is only for bank settlement. Exit quietly — not an error condition.
   if ($selected_method_id !== 'bank_transfer') {
-    $pm = isset($order->data['payment_method']) ? $order->data['payment_method'] : '(empty)';
-    $rpr = isset($order->data['rpr_paytype']) ? $order->data['rpr_paytype'] : '(empty)';
-    watchdog('rovas_purchase_shares', 'Bank time-share finalize aborted for order @oid: expected bank_transfer, got @parsed (payment_method=@pm, rpr_paytype=@rpr).', array(
-      '@oid' => $order->order_id,
-      '@parsed' => $selected_method_id !== '' ? $selected_method_id : '(empty)',
-      '@pm' => $pm,
-      '@rpr' => $rpr,
-    ), WATCHDOG_WARNING);
     return;
   }
   $wrapper = entity_metadata_wrapper('commerce_order', $order);

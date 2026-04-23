@@ -2,7 +2,19 @@
 
 global $base_url;
 
-$order = commerce_order_load($info['order_number']);
+// Prefer the order passed into the theme (same as Rules/mail); reload from DB
+// so line-item fields and formatters match what is stored (avoids empty tables).
+if (!empty($order->order_id)) {
+  $order = commerce_order_load($order->order_id, TRUE);
+}
+elseif (!empty($info['order_number']) && ctype_digit((string) $info['order_number'])) {
+  $order = commerce_order_load((int) $info['order_number'], TRUE);
+}
+
+if (empty($order) || empty($order->order_id)) {
+  print '<p>' . t('Order details are not available.') . '</p>';
+  return;
+}
 
 $payment_method_id = !empty($order->data['payment_method']) ? $order->data['payment_method'] : '';
 $payment_method = $payment_method_id ? commerce_payment_method_instance_load($payment_method_id) : FALSE;
@@ -24,9 +36,14 @@ $order_total = isset($order->commerce_order_total[LANGUAGE_NONE][0]['amount']) ?
 $currency = $order->commerce_order_total[LANGUAGE_NONE][0]['currency_code'] == 'EUR' ? '€' : '';
 $payer_type = $order->field_payer_type[LANGUAGE_NONE][0]['value'];
 
-$lid = $order->commerce_line_items[LANGUAGE_NONE][0]['line_item_id'];
-$liobj = commerce_line_item_load($lid);
-$prod_id = $liobj->commerce_product[LANGUAGE_NONE][0]['product_id'];
+$prod_id = 0;
+$line_item_refs = field_get_items('commerce_order', $order, 'commerce_line_items');
+if (!empty($line_item_refs[0]['line_item_id'])) {
+  $liobj = commerce_line_item_load($line_item_refs[0]['line_item_id']);
+  if ($liobj && !empty($liobj->commerce_product[LANGUAGE_NONE][0]['product_id'])) {
+    $prod_id = (int) $liobj->commerce_product[LANGUAGE_NONE][0]['product_id'];
+  }
+}
 
 $show_order_table = TRUE;
 
