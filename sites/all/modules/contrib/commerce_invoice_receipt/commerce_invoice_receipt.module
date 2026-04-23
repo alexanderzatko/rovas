@@ -253,6 +253,19 @@ function commerce_invoice_receipt_mail($key, &$message, $params) {
       if (!empty($params['order']->order_id)) {
         $params['order'] = commerce_order_load($params['order']->order_id, TRUE);
       }
+      $debug_line_item_ids = array();
+      if (!empty($params['order']) && ($debug_items = field_get_items('commerce_order', $params['order'], 'commerce_line_items'))) {
+        foreach ($debug_items as $debug_item) {
+          if (!empty($debug_item['line_item_id'])) {
+            $debug_line_item_ids[] = (int) $debug_item['line_item_id'];
+          }
+        }
+      }
+      watchdog('commerce_invoice_receipt', 'Invoice mail build start: order @oid, field line_items_count=@cnt, line_item_ids=@ids', array(
+        '@oid' => !empty($params['order']->order_id) ? (int) $params['order']->order_id : 0,
+        '@cnt' => count($debug_line_item_ids),
+        '@ids' => !empty($debug_line_item_ids) ? implode(',', $debug_line_item_ids) : '(none)',
+      ), WATCHDOG_DEBUG);
       $styles[] = array(
         'type' => 'file',
         'media' => 'all',
@@ -271,6 +284,11 @@ function commerce_invoice_receipt_mail($key, &$message, $params) {
 
       $build = entity_view('commerce_order', array($params['order']->order_id => $params['order']), 'invoice', NULL, TRUE);
       $invoice_info = _commerce_invoice_receipt_get_invoice_info($params['order'], $build);
+      watchdog('commerce_invoice_receipt', 'Invoice mail build rendered: order @oid, has_line_items_markup=@has, contains_empty_text=@empty_text', array(
+        '@oid' => (int) $params['order']->order_id,
+        '@has' => !empty($invoice_info['line_items']) ? 'yes' : 'no',
+        '@empty_text' => (!empty($invoice_info['line_items']) && strpos($invoice_info['line_items'], 'No line items found') !== FALSE) ? 'yes' : 'no',
+      ), WATCHDOG_DEBUG);
 
       if (isset($params['headers'])) {
         $message['headers'] = $params['headers'];
@@ -332,6 +350,20 @@ function commerce_invoice_receipt_action_mail($order, $to, $subject, $from = NUL
   if (!empty($order->order_id)) {
     $order = commerce_order_load($order->order_id, TRUE);
   }
+  $debug_line_item_ids = array();
+  if (!empty($order) && ($debug_items = field_get_items('commerce_order', $order, 'commerce_line_items'))) {
+    foreach ($debug_items as $debug_item) {
+      if (!empty($debug_item['line_item_id'])) {
+        $debug_line_item_ids[] = (int) $debug_item['line_item_id'];
+      }
+    }
+  }
+  watchdog('commerce_invoice_receipt', 'Invoice action mail: order @oid, recipients @to, field line_items_count=@cnt, line_item_ids=@ids', array(
+    '@oid' => !empty($order->order_id) ? (int) $order->order_id : 0,
+    '@to' => $to,
+    '@cnt' => count($debug_line_item_ids),
+    '@ids' => !empty($debug_line_item_ids) ? implode(',', $debug_line_item_ids) : '(none)',
+  ), WATCHDOG_DEBUG);
   $to = str_replace(array("\r", "\n"), '', $to);
   $from = !empty($from) ? str_replace(array("\r", "\n"), '', $from) : NULL;
 
@@ -384,6 +416,12 @@ function _commerce_invoice_receipt_get_invoice_info($order, $build) {
   if (isset($build['commerce_order'][$order->order_id]['commerce_line_items'])) {
     $info['line_items'] = $build['commerce_order'][$order->order_id]['commerce_line_items'][0]['#markup'];
   }
+  watchdog('commerce_invoice_receipt', 'Invoice info extracted: order @oid, build_has_line_items=@build_has, markup_len=@len, contains_empty_text=@empty_text', array(
+    '@oid' => (int) $order->order_id,
+    '@build_has' => isset($build['commerce_order'][$order->order_id]['commerce_line_items']) ? 'yes' : 'no',
+    '@len' => !empty($info['line_items']) ? strlen($info['line_items']) : 0,
+    '@empty_text' => (!empty($info['line_items']) && strpos($info['line_items'], 'No line items found') !== FALSE) ? 'yes' : 'no',
+  ), WATCHDOG_DEBUG);
 
   if (isset($build['commerce_order'][$order->order_id]['commerce_order_total'])) {
     $info['order_total'] = $build['commerce_order'][$order->order_id]['commerce_order_total'][0]['#markup'];
