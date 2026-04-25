@@ -150,7 +150,21 @@
             { "CASE" : {
                 "USING" : { "value" : "report" },
                 "DO" : [
-                  { "drupal_message" : { "message" : "The reward was successfully processed", "repeat" : "0" } }
+                  { "variable_add" : {
+                      "USING" : { "type" : "text", "value" : [ "commerce-order:mail" ] },
+                      "PROVIDE" : { "variable_added" : { "email" : "email" } }
+                    }
+                  },
+                  { "entity_fetch" : {
+                      "USING" : {
+                        "type" : "node",
+                        "id" : [ "commerce-order:field-payment-recipient" ],
+                        "revision_id" : "0"
+                      },
+                      "PROVIDE" : { "entity_fetched" : { "rewarded_node" : "rewarded node" } }
+                    }
+                  },
+                  { "php_eval" : { "code" : "\/*\r\n* Queue post-checkout redirect (work report reward); same express_checkout guard as project.\r\n*\/\r\nif (\r\n\t!isset($commerce_order-\u003Edata[\u0027stripe_pi\u0027][\u0027payment_intent\u0027][\u0027metadata\u0027][\u0027context\u0027]) ||\r\n\t$commerce_order-\u003Edata[\u0027stripe_pi\u0027][\u0027payment_intent\u0027][\u0027metadata\u0027][\u0027context\u0027] != \u0027express_checkout\u0027\r\n) {\r\n\trovas_project_reward_notify_purchase($rewarded_node, rovas_project_reward_commerce_order_total_minor_units($commerce_order), \u0027EUR\u0027, $email);\r\n}" } }
                 ]
               }
             },

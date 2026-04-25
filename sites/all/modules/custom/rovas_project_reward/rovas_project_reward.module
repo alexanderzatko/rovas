@@ -2760,7 +2760,7 @@ function rovas_project_reward_notify_purchase($rewarded_project, $amount_paid_mi
     // webhook to fire paid_in_full a second time and produce duplicate emails
     // and forex nodes. The redirect is executed later from
     // rovas_project_reward_review_finalize_payment, after all hooks complete.
-    $msg = t('Thank you for the payment. It might take a couple of minutes to have it completely processed.');
+    $msg = t('Your payment was processed successfully. Thank you for your support.');
     drupal_set_message($msg, 'status', FALSE);
     _rovas_project_reward_queue_redirect(url('node/' . $rewarded_project->nid, array('absolute' => TRUE)));
 		return;
