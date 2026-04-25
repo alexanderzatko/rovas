@@ -9,7 +9,7 @@
 		print render($content['commerce_order_total']);
   ?>
 
-	<?php if($element->data['payment_method'] == 'bank_transfer|commerce_payment_bank_transfer'): ?>
+	<?php if (!empty($element->data['payment_method']) && $element->data['payment_method'] == 'bank_transfer|commerce_payment_bank_transfer'): ?>
 		<div class="payment-info">
 			<div class="payment-info-label"><?php print t('Payment information:'); ?></div>
 		<?php
