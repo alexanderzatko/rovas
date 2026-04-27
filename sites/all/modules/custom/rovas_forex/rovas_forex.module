@@ -655,8 +655,6 @@ function rovas_forex_form($form, &$form_state) {
 	$currency = isset($form_state['values']['payment-choice']) ? ((int)$form_state['values']['payment-choice'] === 1 ? 'EUR' : 'CHR') : 'EUR';
 
 	if ($currency == 'EUR') {
-		$merits_btn_name = 'buy_merits_euros';
-		$sub_label = t('Next');
 		$cur_suffix = t('€');
 		$currency_default = 1;
 		$input_displ = 'block';
@@ -672,7 +670,6 @@ function rovas_forex_form($form, &$form_state) {
 		}
 
 		$merits_purchased = $convary['merits_purchased'];
-		$unit_price = $convary['unit_price'];
 
 		$eur_buy_merits_too_small = FALSE;
 		if (!$paymentChanged && isset($form_state['values']['buy_amount']) && is_numeric($form_state['values']['buy_amount']) && (float) $form_state['values']['buy_amount'] > 0) {
@@ -680,16 +677,9 @@ function rovas_forex_form($form, &$form_state) {
 			$eur_buy_merits_too_small = (isset($fp_merits_check['output']) ? (float) $fp_merits_check['output'] : 0.0) <= 0;
 		}
 
-		$form['unit_price'] = array(
-				'#type' => 'hidden',
-				'#value' => $unit_price,
-			);
-
 	}
 	else if ($currency == 'CHR') {
 		$eur_buy_merits_too_small = FALSE;
-		$merits_btn_name = 'buy_merits_chrons';
-		$sub_label = t('Buy');
 		$cur_suffix = t('CH');
 		$enforce_value = TRUE;
 
@@ -710,8 +700,6 @@ function rovas_forex_form($form, &$form_state) {
 	}
 	else {
 		$eur_buy_merits_too_small = FALSE;
-		$merits_btn_name = 'default';
-		$sub_label = t('Next');
 		$cur_suffix = NULL;
 		$currency_default = NULL;
 		$input_displ = 'none';
@@ -720,6 +708,9 @@ function rovas_forex_form($form, &$form_state) {
 		$merits_purchased = 0;
 	
 	}
+
+	$merits_btn_name = 'buy_merits_continue';
+	$sub_label = t('Continue to payment');
 	
 	$form['buy-merits'] = [
 		'#type' => 'markup',
@@ -814,12 +805,7 @@ function rovas_forex_form($form, &$form_state) {
 	}
 	else {
 		$sub_act = FALSE;
-		if ($currency == 'CHR') {
-			$button_note = '<div style="font-weight: bold; color:#4cae4c;">' . t('Clicking the button finalizes the transaction') . '</div>';
- 		}
- 		else if ($currency == 'EUR') {
-			$button_note = '<div style="font-weight: bold; color:#4cae4c;">' . t('Continue to Payment Information') . '</div>';
- 		}
+		$button_note = '<div style="font-weight: bold; color:#4cae4c;">' . t('Choose card, bank transfer, or express wallet on the next page.') . '</div>';
 	}	
 
 	$form['buy-merits']['final-note'] = array(
@@ -948,12 +934,16 @@ function rovas_forex_form($form, &$form_state) {
  * Validates Buy Merits with Euros: amount must yield CHR output after fees.
  */
 function rovas_forex_buy_merits_eur_validate($form, &$form_state) {
-	if (empty($form_state['clicked_button']['#name']) || $form_state['clicked_button']['#name'] !== 'buy_merits_euros') {
+	if (empty($form_state['clicked_button']['#name']) || $form_state['clicked_button']['#name'] !== 'buy_merits_continue') {
 		return;
 	}
 	$buy_amount = isset($form_state['values']['buy_amount']) ? $form_state['values']['buy_amount'] : NULL;
 	if (!is_numeric($buy_amount) || (float) $buy_amount <= 0) {
 		form_set_error('buy_amount', t('Please enter an amount greater than zero.'));
+		return;
+	}
+	$pay_choice = isset($form_state['values']['payment-choice']) ? (int) $form_state['values']['payment-choice'] : 1;
+	if ($pay_choice !== 1) {
 		return;
 	}
 	$forex_params = calculate_forex_transaction_params('eur_to_chr', (float) $buy_amount, NULL, TRUE);
@@ -1271,89 +1261,51 @@ function rovas_forex_form_submit($form, &$form_state) {
 		case ($form_state['clicked_button']['#name'] == 'ord_cancel'):
 			lost_lock();
 			break;
-		case ($form_state['clicked_button']['#name'] == 'buy_merits_chrons'):
+		case ($form_state['clicked_button']['#name'] == 'buy_merits_continue'):
+			$pay_choice = isset($form_state['values']['payment-choice']) ? (int) $form_state['values']['payment-choice'] : 1;
+			$cur = $pay_choice === 1 ? 'EUR' : 'CHR';
+			$amt = isset($form_state['values']['buy_amount']) ? $form_state['values']['buy_amount'] : 0;
+			$merits = isset($form_state['values']['buy-merits-converted-value']) ? $form_state['values']['buy-merits-converted-value'] : 0;
 
-			$chrons = -1 * $form_state['values']['buy_amount'];
-			$merits = $form_state['values']['buy-merits-converted-value'];
-			$calcMerits = _convert_chr_2_merits($form_state['values']['buy_amount']);
-			
-			if ($calcMerits == $merits) {
-				_rovas_forex_grant_merits($user,$merits,$chrons);
-				$message = t('Conversion of @chrons Chrons to @merits Merits was completed',['@chrons' => $form_state['values']['buy_amount'], '@merits' => $merits]);
-				$type = 'status';
-			}
-			else {
-				$message = t('The order can not be submitted, because you did not recalculate the Merit value after changing the Chron value.');
-				$type = 'error';
-			}
-			drupal_set_message($message,$type);
-
-			break;
-		case ($form_state['clicked_button']['#name'] == 'buy_merits_euros'):
-
-			$euros = $form_state['values']['buy_amount'];
-			if (!is_numeric($euros) || (float) $euros <= 0) {
+			if (!is_numeric($amt) || (float) $amt <= 0) {
 				drupal_set_message(t('Please enter an amount greater than zero.'), 'error');
 				break;
 			}
-			$fp_submit = calculate_forex_transaction_params('eur_to_chr', (float) $euros, NULL, TRUE);
-			if (!isset($fp_submit['output']) || (float) $fp_submit['output'] <= 0) {
-				drupal_set_message(t('This amount is too small to buy Merits. Enter a larger amount in Euros.'), 'error');
-				break;
-			}
 
-			$merits = $form_state['values']['buy-merits-converted-value'];
-			$unit_price = $form_state['values']['unit_price'];
-	
-			$product_obj = commerce_product_load_by_sku('merits');
-			$product_nid = $product_obj->product_id;
-		
-			$quantity = $merits;	
-
-			$fee_variable = variable_get('buy_ch_fee');
-			$fee_fixed = variable_get('buy_ch_fixed_fee');
-			$fee = $fee_fixed + $fee_variable * $quantity * $unit_price;
-	
-			$unit_price = 100*$unit_price;
-
-			if ($unit_price > 2147483647 || $quantity*$unit_price > 2147483647) {
-				$message = t('The amount paid can not be processed. Please split your payment into multiple smaller amounts.');
-				$mestyp = 'status';
-				$dest = FALSE;
+			if ($cur === 'EUR') {
+				$fp_submit = calculate_forex_transaction_params('eur_to_chr', (float) $amt, NULL, TRUE);
+				if (!isset($fp_submit['output']) || (float) $fp_submit['output'] <= 0) {
+					drupal_set_message(t('This amount is too small to buy Merits. Enter a larger amount in Euros.'), 'error');
+					break;
+				}
+				$calc = rovas_forex_rules_action_calculate_merits_execute((float) $amt);
+				if ((int) $calc['merits_purchased'] !== (int) $merits) {
+					drupal_set_message(t('The order can not be submitted, because you did not recalculate the Merit value after changing the amount.'), 'error');
+					break;
+				}
 			}
 			else {
-				// Creating a new order in checkout
-				$order = commerce_order_new($uid, 'checkout_checkout');
-				commerce_order_save($order);
-	
-				//modify unit price of the product
-				$product = entity_metadata_wrapper('commerce_product', $product_nid);
-				$product->commerce_price->amount->set($unit_price);
-				$product->commerce_price->currency_code->set('EUR');
-				$product->save();
-	
-				$product = commerce_product_load($product_nid);
-				$line_item = commerce_product_line_item_new($product, $quantity, $order->order_id);
-	
-				// Save the line item to get its ID.
-				commerce_line_item_save($line_item);
-	
-				// Add the line item to the order
-				$order_wrapper = entity_metadata_wrapper('commerce_order', $order);
-				$order_wrapper->commerce_line_items[] = $line_item;
-	
-				$order_wrapper->field_conversion_fee = $fee;
-	
-				$order_wrapper->field_payer_type = 'user';
-				$order_wrapper->field_payment_recipient = $uid;
-	
-				commerce_order_save($order);
-				commerce_cart_order_session_save($order->order_id);
-	
-				drupal_goto('checkout/' . $order->order_id);
+				$calcMerits = _convert_chr_2_merits($amt);
+				if ((int) $calcMerits !== (int) $merits) {
+					drupal_set_message(t('The order can not be submitted, because you did not recalculate the Merit value after changing the Chron value.'), 'error');
+					break;
+				}
+				$chronsary = rules_invoke_component('rules_chrons_actually_available', $user);
+				if ((float) $amt > (float) $chronsary[0]) {
+					drupal_set_message(t('Please enter a value lower than your account balance of @chr Chrons', array('@chr' => $chronsary[0])), 'error');
+					break;
+				}
 			}
 
-				break;
+			$_SESSION['rovas_buymerits_prefill'] = array(
+				'currency' => $cur,
+				'amount' => (float) $amt,
+			);
+			drupal_goto('rewpro', array('query' => array(
+				'paytype' => 'buymerits',
+				'recipient' => $uid,
+			)));
+			break;
 		default : //user clicked the refresh button
 			$form_state["rebuild"] = TRUE;
 	}
@@ -2058,5 +2010,117 @@ function rovas_forex_rules_action_calculate_merits_execute($buy_amount,$processo
     'merits_purchased' => $convary['units'],
     'unit_price' => $convary['unit_price'],
   );
+}
+
+/**
+ * Smallest EUR amount (major units) that yields at least one Merit at default fees.
+ *
+ * @return float
+ */
+function rovas_forex_minimum_eur_for_one_merit() {
+  $lo = 0.01;
+  $hi = 500.0;
+  $probe = rovas_forex_rules_action_calculate_merits_execute($hi);
+  if ($probe['merits_purchased'] < 1) {
+    return 1.0;
+  }
+  for ($i = 0; $i < 45; $i++) {
+    $mid = ($lo + $hi) / 2.0;
+    $m = rovas_forex_rules_action_calculate_merits_execute($mid);
+    if ($m['merits_purchased'] >= 1) {
+      $hi = $mid;
+    }
+    else {
+      $lo = $mid;
+    }
+  }
+  return round($hi, 2);
+}
+
+/**
+ * Create a Commerce order for buying Merits with euros (same line item rules as legacy forex flow).
+ *
+ * @param int $uid
+ * @param float $euros
+ *   Amount in major EUR units.
+ * @param string|null $rpr_paytype
+ *   One of pay-choice-card, pay-choice-bank, or NULL.
+ *
+ * @return object|null
+ *   Saved commerce order, or NULL on failure.
+ */
+function rovas_forex_create_merits_eur_order($uid, $euros, $rpr_paytype = NULL) {
+  if (!function_exists('commerce_order_new') || !function_exists('commerce_product_load_by_sku')) {
+    return NULL;
+  }
+  $euros = is_numeric($euros) ? (float) $euros : 0.0;
+  if ($euros <= 0) {
+    return NULL;
+  }
+  $fp_submit = calculate_forex_transaction_params('eur_to_chr', $euros, NULL, TRUE);
+  if (!isset($fp_submit['output']) || (float) $fp_submit['output'] <= 0) {
+    return NULL;
+  }
+
+  $convary = rovas_forex_rules_action_calculate_merits_execute($euros);
+  $merits = isset($convary['merits_purchased']) ? (int) $convary['merits_purchased'] : 0;
+  $unit_price = isset($convary['unit_price']) ? (float) $convary['unit_price'] : 0.0;
+  if ($merits < 1 || $unit_price <= 0) {
+    return NULL;
+  }
+
+  $quantity = $merits;
+  $fee_variable = variable_get('buy_ch_fee');
+  $fee_fixed = variable_get('buy_ch_fixed_fee');
+  $fee = $fee_fixed + $fee_variable * $quantity * $unit_price;
+  $unit_price_cents = (int) round(100 * $unit_price);
+
+  if ($unit_price_cents > 2147483647 || $quantity * $unit_price_cents > 2147483647) {
+    return NULL;
+  }
+
+  $product_obj = commerce_product_load_by_sku('merits');
+  if (!$product_obj) {
+    return NULL;
+  }
+  $product_nid = $product_obj->product_id;
+
+  $order = commerce_order_new($uid, 'checkout_checkout');
+  commerce_order_save($order);
+
+  $product = commerce_product_load($product_nid);
+  $line_item = commerce_product_line_item_new($product, $quantity, $order->order_id);
+  $line_item_wrapper = entity_metadata_wrapper('commerce_line_item', $line_item);
+  $line_item_wrapper->commerce_unit_price->amount->set($unit_price_cents);
+  $line_item_wrapper->commerce_unit_price->currency_code->set('EUR');
+
+  if (!isset($line_item->data) || !is_array($line_item->data)) {
+    $line_item->data = array();
+  }
+  $line_item->data['rpr_custom_unit_price'] = (int) $unit_price_cents;
+  $line_item->data['rpr_custom_currency'] = 'EUR';
+
+  commerce_line_item_rebase_unit_price($line_item);
+  commerce_line_item_save($line_item);
+
+  $order_wrapper = entity_metadata_wrapper('commerce_order', $order);
+  $order_wrapper->commerce_line_items[] = $line_item;
+  $order_wrapper->field_conversion_fee = $fee;
+  $order_wrapper->field_payer_type = 'user';
+  $order_wrapper->field_payment_recipient = $uid;
+
+  if ($rpr_paytype !== NULL && $rpr_paytype !== '' && function_exists('_rovas_project_reward_commerce_method_for_rpr_paytype')) {
+    $order->data['rpr_paytype'] = $rpr_paytype;
+    $commerce_method = _rovas_project_reward_commerce_method_for_rpr_paytype($rpr_paytype);
+    if ($commerce_method !== NULL) {
+      $order->data['payment_method'] = $commerce_method;
+      $order->data['rovas_payment_method'] = $commerce_method;
+    }
+  }
+
+  commerce_order_save($order);
+  commerce_cart_order_session_save($order->order_id);
+
+  return commerce_order_load($order->order_id);
 }
 

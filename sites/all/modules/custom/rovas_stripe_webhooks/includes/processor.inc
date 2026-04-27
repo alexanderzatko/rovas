@@ -130,6 +130,85 @@ function rovas_stripe_webhooks_process_payment_intent_succeeded($event, $record)
       return TRUE;
     }
 
+    // Buymerits: same order-first flow as buyshares, merits product line.
+    if (!empty($metadata['paytype']) && $metadata['paytype'] === 'buymerits' && !empty($metadata['commerce_order_id']) && isset($intent['status']) && $intent['status'] === 'succeeded') {
+      $order_id = (int) $metadata['commerce_order_id'];
+      $order = commerce_order_load($order_id);
+      if (!$order) {
+        watchdog('rovas_stripe_webhooks', 'buymerits express: order @oid not found for PI @pi', array('@oid' => $order_id, '@pi' => $payment_intent_id), WATCHDOG_ERROR);
+        return FALSE;
+      }
+      if ($uid > 0 && (int) $order->uid !== $uid) {
+        watchdog('rovas_stripe_webhooks', 'buymerits express: uid mismatch for order @oid', array('@oid' => $order_id), WATCHDOG_WARNING);
+        return FALSE;
+      }
+      $expected = isset($order->commerce_order_total[LANGUAGE_NONE][0]['amount']) ? (int) $order->commerce_order_total[LANGUAGE_NONE][0]['amount'] : 0;
+      if ($expected !== $amount) {
+        watchdog('rovas_stripe_webhooks', 'buymerits express: amount mismatch order=@o exp=@e got=@g', array('@o' => $order_id, '@e' => $expected, '@g' => $amount), WATCHDOG_ERROR);
+        return FALSE;
+      }
+      $has_merits = function_exists('_rovas_purchase_shares_order_line_items_contain_sku')
+        && _rovas_purchase_shares_order_line_items_contain_sku($order, 'merits');
+      if (!$has_merits && function_exists('commerce_order_rules_contains_product')) {
+        $has_merits = commerce_order_rules_contains_product($order, 'merits', '>=', 1);
+      }
+      if (!$has_merits) {
+        watchdog('rovas_stripe_webhooks', 'buymerits express: order @oid has no merits line', array('@oid' => $order_id), WATCHDOG_WARNING);
+        return FALSE;
+      }
+
+      $order->data['last_cart_refresh'] = REQUEST_TIME;
+      $order->data['stripe_pi'] = array('payment_intent' => $intent);
+      $order->data['payment_method'] = 'commerce_stripe_pi|commerce_payment_commerce_stripe_pi';
+      $order->data['rovas_payment_method'] = 'commerce_stripe_pi|commerce_payment_commerce_stripe_pi';
+      commerce_order_save($order);
+
+      if (function_exists('commerce_stripe_pi_create_transaction')) {
+        $pi = \Stripe\PaymentIntent::retrieve($payment_intent_id);
+        $transaction = commerce_stripe_pi_create_transaction($order->order_id, $pi);
+        if ($transaction) {
+          $order = commerce_order_load($order->order_id);
+          if (function_exists('commerce_checkout_complete')) {
+            commerce_checkout_complete($order);
+          }
+          elseif (module_exists('rules')) {
+            rules_invoke_event('commerce_checkout_complete', $order);
+          }
+          if (function_exists('_rovas_stripe_webhooks_add_balance_fees_and_process')) {
+            _rovas_stripe_webhooks_add_balance_fees_and_process($order, $intent);
+          }
+
+          $order = commerce_order_load($order->order_id);
+          $order_status = commerce_order_status_load($order->status);
+          if ($order_status && $order_status['state'] == 'checkout') {
+            commerce_order_status_update($order, 'completed', FALSE, NULL,
+              'Order completed via Stripe buymerits express payment_intent.succeeded webhook.');
+          }
+          $order = commerce_order_load($order->order_id, TRUE);
+          if (!isset($order->data) || !is_array($order->data)) {
+            $order->data = array();
+          }
+          $order->data['rovas_express_invoice_ready'] = REQUEST_TIME;
+          commerce_order_save($order);
+
+          if (function_exists('rovas_project_reward_commerce_invoice_receipt_action_mail_execute')) {
+            $to = token_replace('[commerce-order:owner] <[commerce-order:mail]>', array('commerce-order' => $order), array('clear' => TRUE));
+            $subject = token_replace('[site:name]: Order #[commerce-order:order-id]', array('commerce-order' => $order), array('clear' => TRUE));
+            rovas_project_reward_commerce_invoice_receipt_action_mail_execute($order, $to, $subject, NULL);
+          }
+          elseif (function_exists('commerce_invoice_receipt_action_mail')) {
+            $to = token_replace('[commerce-order:owner] <[commerce-order:mail]>', array('commerce-order' => $order), array('clear' => TRUE));
+            $subject = token_replace('[site:name]: Order #[commerce-order:order-id]', array('commerce-order' => $order), array('clear' => TRUE));
+            commerce_invoice_receipt_action_mail($order, $to, $subject, NULL);
+          }
+        }
+        else {
+          watchdog('rovas_stripe_webhooks', 'buymerits express: failed transaction for order @order_id', array('@order_id' => $order->order_id), WATCHDOG_ERROR);
+        }
+      }
+      return TRUE;
+    }
+
     $email = NULL;
     if (!empty($intent['receipt_email'])) {
       $email = $intent['receipt_email'];

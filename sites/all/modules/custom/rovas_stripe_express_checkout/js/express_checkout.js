@@ -60,9 +60,11 @@
         return [paymentRaw, currency, email, paytype, recipient].join('|');
       }
 
-      function isBuysharesContext() {
+      /** buyshares / buymerits: order-first express init + EUR decimals + payment AJAX refresh. */
+      function isRewproOrderFirstContext() {
         const urlParams = new URLSearchParams(window.location.search);
-        return urlParams.get('paytype') === 'buyshares';
+        const p = urlParams.get('paytype');
+        return p === 'buyshares' || p === 'buymerits';
       }
 
       function resetECEState() {
@@ -88,7 +90,8 @@
 
       function checkEmailFieldRequirement() {
         const urlParams = new URLSearchParams(window.location.search);
-        if (urlParams.get('paytype') === 'buyshares') {
+        const pt = urlParams.get('paytype');
+        if (pt === 'buyshares' || pt === 'buymerits') {
           return true;
         }
         const emailField = $('input[name="email"]');
@@ -107,7 +110,8 @@
 
       function getPpriceValue() {
         const urlParams = new URLSearchParams(window.location.search);
-        if (urlParams.get('paytype') === 'buyshares') {
+        const pt = urlParams.get('paytype');
+        if (pt === 'buyshares' || pt === 'buymerits') {
           const ppriceField = $('#payment-wrapper input[name="pprice"]');
           if (ppriceField.length === 0) {
             return null;
@@ -141,8 +145,9 @@
         const pprice = getPpriceValue();
         const urlParamsPay = new URLSearchParams(window.location.search);
         const currency = (currencyInput.val() || 'eur').toLowerCase();
-        const isBuysharesEur = urlParamsPay.get('paytype') === 'buyshares' && currency === 'eur';
-        const isValidPaymentFormat = rawVal === '' ? false : (isBuysharesEur
+        const ptPay = urlParamsPay.get('paytype');
+        const isRewproDecimalsEur = (ptPay === 'buyshares' || ptPay === 'buymerits') && currency === 'eur';
+        const isValidPaymentFormat = rawVal === '' ? false : (isRewproDecimalsEur
           ? /^\d+(\.\d{1,2})?$/.test(rawVal)
           : /^[0-9]+$/.test(rawVal));
 
@@ -151,17 +156,17 @@
         // Clear any existing error messages first
         $errorDiv.hide();
 
-        // Check for amount format: whole euros elsewhere; buyshares EUR allows up to 2 decimals (normalized totals).
+        // Check for amount format: whole euros elsewhere; buyshares/buymerits EUR allow up to 2 decimals.
 				if (rawVal !== '' && !isValidPaymentFormat) {
 					$errorDiv
-						.text(isBuysharesEur
+						.text(isRewproDecimalsEur
               ? Drupal.t('Enter a valid amount (up to two decimal places).')
               : Drupal.t('The amount must be a whole number (no decimals).'))
 						.show();
 				}
         // Check for minimum amount if pprice exists
         else if (pprice !== null && rawVal !== '' && isValidPaymentFormat) {
-          const amtForMin = isBuysharesEur ? parseFloat(rawVal, 10) : parseInt(rawVal, 10);
+          const amtForMin = isRewproDecimalsEur ? parseFloat(rawVal, 10) : parseInt(rawVal, 10);
           if (amtForMin < pprice) {
 						$errorDiv
 							.text(Drupal.t('The amount must be at least @amount @currency.', {
@@ -174,7 +179,7 @@
 
         const paymentValue = parseFloat(paymentInputLive.val() || '0');
         const actualAmt = isValidPaymentFormat
-          ? (isBuysharesEur ? parseFloat(rawVal, 10) : parseInt(rawVal, 10))
+          ? (isRewproDecimalsEur ? parseFloat(rawVal, 10) : parseInt(rawVal, 10))
           : 0;
 
         const emailRequirementMet = checkEmailFieldRequirement();
@@ -196,7 +201,7 @@
           hasPprice: hasPprice,
           meetsMinimumAmount: meetsMinimumAmount,
           isValidPaymentFormat: isValidPaymentFormat,
-          isBuysharesEur: isBuysharesEur,
+          isRewproDecimalsEur: isRewproDecimalsEur,
           emailRequirementMet: emailRequirementMet,
           shouldShowECE: shouldShowECE,
           containerInDOM: eceContainerLive.length,
@@ -342,6 +347,22 @@
             if (bTok.length) bTok.prop('disabled', false);
             return;
           }
+          else if (paytype === 'buymerits' && recipient && Drupal.settings.rovasExpressBuymerits && Drupal.settings.rovasExpressBuymerits.token) {
+            fetchUrl = '/stripe/express-checkout/init-buymerits?amount=' + cents
+              + '&recipient=' + encodeURIComponent(recipient)
+              + '&token=' + encodeURIComponent(Drupal.settings.rovasExpressBuymerits.token);
+          }
+          else if (paytype === 'buymerits') {
+            console.log('[ECE] buymerits init aborted: missing Drupal.settings.rovasExpressBuymerits.token');
+            hideLoading();
+            eceInitializing = false;
+            eceStateKey = null;
+            const cTokM = getCardButton();
+            const bTokM = getBankButton();
+            if (cTokM.length) cTokM.prop('disabled', false);
+            if (bTokM.length) bTokM.prop('disabled', false);
+            return;
+          }
           else {
           // Check for email field value
           const emailField = $('input.form-control.form-text.required[type="text"][id="edit-email"][name="email"]');
@@ -451,16 +472,17 @@
         }
       }
 
-      $(document).off('rovasBuysharesPaymentAjaxed.rovasExpressEce').on('rovasBuysharesPaymentAjaxed.rovasExpressEce', function () {
+      $(document).off('rovasRewproPaymentPreviewed.rovasExpressEce').on('rovasRewproPaymentPreviewed.rovasExpressEce', function () {
         const urlParamsAjax = new URLSearchParams(window.location.search);
-        if (urlParamsAjax.get('paytype') !== 'buyshares') {
+        const ptAjax = urlParamsAjax.get('paytype');
+        if (ptAjax !== 'buyshares' && ptAjax !== 'buymerits') {
           return;
         }
         if (expressCheckoutElement) {
           try {
             expressCheckoutElement.unmount();
           } catch (eUn) {
-            console.log('[ECE] unmount after buyshares payment ajax:', eUn);
+            console.log('[ECE] unmount after rewpro payment ajax:', eUn);
           }
           expressCheckoutElement = null;
         }
@@ -476,21 +498,21 @@
       $('#payment-wrapper input[name="payment"]').once('express-checkout-payment')
         .on('input', function() {
           console.log('[ECE] payment input');
-          if (isBuysharesContext()) {
+          if (isRewproOrderFirstContext()) {
             return;
           }
           debouncedToggleECE();
         })
         .on('blur', function() {
           console.log('[ECE] payment blur');
-          if (isBuysharesContext()) {
+          if (isRewproOrderFirstContext()) {
             return;
           }
           toggleECEVisibility();
         })
         .on('change', function() {
           console.log('[ECE] payment change');
-          if (isBuysharesContext()) {
+          if (isRewproOrderFirstContext()) {
             return;
           }
           toggleECEVisibility();
@@ -501,7 +523,7 @@
       });
 
       $('input[name="payment-currency"]', context).once('express-checkout-currency').on('change', function() {
-        if (isBuysharesContext()) {
+        if (isRewproOrderFirstContext()) {
           resetECEState();
           const eceContainerLive = $('#express-checkout-container');
           if (eceContainerLive.length) {
@@ -509,7 +531,7 @@
           }
           const selectedCurrency = (($('input[name="payment-currency"]:checked').val() || '') + '').toUpperCase();
           const amountRaw = (getRewproPaymentInput().val() || '').trim();
-          // Buyshares: only refresh ECE on currency switch when moving to EUR
+          // Order-first rewpro: only refresh ECE on currency switch when moving to EUR
           // and there is an entered amount to evaluate.
           if (selectedCurrency === 'EUR' && amountRaw !== '') {
             setTimeout(() => toggleECEVisibility(), 0);
@@ -520,8 +542,8 @@
       });
 
       // Initial visibility check.
-      // On buyshares, let explicit recalculation (AJAX complete event) drive ECE refresh.
-      if (!isBuysharesContext()) {
+      // On buyshares/buymerits, let payment preview AJAX drive ECE refresh.
+      if (!isRewproOrderFirstContext()) {
         toggleECEVisibility();
       }
     },

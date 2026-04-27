@@ -27,6 +27,13 @@ function rovas_stripe_express_checkout_menu() {
     'type' => MENU_CALLBACK,
   );
 
+  $items['stripe/express-checkout/init-buymerits'] = array(
+    'page callback' => 'rovas_stripe_express_checkout_init_buymerits',
+    'access callback' => 'user_access',
+    'access arguments' => array('access content'),
+    'type' => MENU_CALLBACK,
+  );
+
   return $items;
 }
 
@@ -47,6 +54,14 @@ function rovas_stripe_express_checkout_init_buyshares() {
   return _rovas_stripe_express_checkout_init_buyshares();
 }
 
+/**
+ * Menu callback: Express init for buymerits (Commerce order-first).
+ */
+function rovas_stripe_express_checkout_init_buymerits() {
+  module_load_include('inc', 'rovas_stripe_express_checkout', 'includes/init_buymerits');
+  return _rovas_stripe_express_checkout_init_buymerits();
+}
+
 function rovas_stripe_express_checkout_thanks() {
     /*
     https://dev.rovas.app/stripe/express-checkout/thank-you?
@@ -54,6 +69,8 @@ function rovas_stripe_express_checkout_thanks() {
     payment_intent_client_secret=pi_3RSwIbDM0rK3al8P1gUwGvgt_secret_gDDr73ZBgAVfPlXRqkLKCKNyD&
     redirect_status=succeeded
     */
+
+	global $user;
 
 	$parameters = drupal_get_query_parameters();
 	
@@ -72,7 +89,55 @@ function rovas_stripe_express_checkout_thanks() {
 			$intent = \Stripe\PaymentIntent::retrieve($payment_intent_id);
 
 			$meta_paytype = isset($intent->metadata->paytype) ? (string) $intent->metadata->paytype : '';
-			if ($meta_paytype === 'buyshares' && !empty($intent->metadata->project_id)) {
+			if ($meta_paytype === 'buymerits' && !empty($intent->metadata->commerce_order_id)) {
+				$merits_uid = !empty($intent->metadata->user_id) ? (int) $intent->metadata->user_id : (int) $user->uid;
+				$rewpro_retry = url('rewpro', array(
+					'absolute' => TRUE,
+					'query' => array(
+						'paytype' => 'buymerits',
+						'recipient' => $merits_uid > 0 ? $merits_uid : $user->uid,
+					),
+				));
+				$pi_status = isset($intent->status) ? (string) $intent->status : '';
+				$payment_failed = ($redirect_status === 'failed' || $redirect_status === 'canceled')
+					|| ($pi_status !== '' && $pi_status !== 'succeeded');
+				if ($payment_failed) {
+					drupal_set_message(t('Your payment was not completed. You have not been charged. You can try again from the purchase page.'), 'error');
+					$buyshares_redirect = $rewpro_retry;
+				}
+				else {
+					$order_label = '';
+					if (!empty($intent->metadata->commerce_order_id) && function_exists('commerce_order_load')) {
+						$buy_oid = (int) $intent->metadata->commerce_order_id;
+						$buy_order = commerce_order_load($buy_oid);
+						if ($buy_order && !empty($buy_order->order_number)) {
+							$order_label = $buy_order->order_number;
+						}
+						elseif ($buy_oid > 0) {
+							$order_label = (string) $buy_oid;
+						}
+					}
+					$thanks_parts = array(t('Thank you! Your payment for Merits was received.'));
+					if ($order_label !== '') {
+						$thanks_parts[] = t('Your order number is @number.', array('@number' => $order_label));
+					}
+					if (!empty($user->uid) && !empty($intent->metadata->commerce_order_id)) {
+						$buy_oid = (int) $intent->metadata->commerce_order_id;
+						$thanks_parts[] = t('You can !order_link or !forex_link.', array(
+							'!order_link' => l(t('view your order'), 'user/' . $user->uid . '/orders/' . $buy_oid),
+							'!forex_link' => l(t('return to Forex'), 'forex'),
+						));
+					}
+					else {
+						$thanks_parts[] = t('You can !forex_link.', array(
+							'!forex_link' => l(t('continue to Forex'), 'forex'),
+						));
+					}
+					drupal_set_message(implode(' ', $thanks_parts));
+					$buyshares_redirect = url('forex', array('absolute' => TRUE));
+				}
+			}
+			elseif ($meta_paytype === 'buyshares' && !empty($intent->metadata->project_id)) {
 				$recipient_nid = (int) $intent->metadata->project_id;
 				$rewpro_retry = url('rewpro', array(
 					'absolute' => TRUE,
@@ -89,7 +154,6 @@ function rovas_stripe_express_checkout_thanks() {
 					$buyshares_redirect = $rewpro_retry;
 				}
 				else {
-					global $user;
 					$order_label = '';
 					if (!empty($intent->metadata->commerce_order_id) && function_exists('commerce_order_load')) {
 						$buy_oid = (int) $intent->metadata->commerce_order_id;
