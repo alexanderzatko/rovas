@@ -363,8 +363,6 @@ function rovas_forex_form($form, &$form_state) {
 		return rovas_preview_form($form, $form_state);
 	}
 
-	$form['#validate'][] = 'rovas_forex_buy_merits_eur_validate';
-
 	global $user;
 
 	//determining if there is a lock active and who owns it
@@ -635,204 +633,26 @@ function rovas_forex_form($form, &$form_state) {
 
 
 /* Buy Merits */
-
-	//payment choice - CHR or EUR
-	$storage = isset($form_state['storage']['old-payment-choice']) ? $form_state['storage']['old-payment-choice'] : -1;
-	$payment_choice = isset($form_state['values']['payment-choice']) ? $form_state['values']['payment-choice'] : 1;
-
-	$widget_default = 1;
-
-	//erase the buy amount when switching currencies
-	if ($storage != $payment_choice) {
-		$paymentChanged = TRUE;
-		$form_state['input']['buy_amount'] = $widget_default;
-		$form_state['values']['buy_amount'] = $widget_default;
-	}
-	else {
-		$paymentChanged = FALSE;
-	}
-
-	$currency = isset($form_state['values']['payment-choice']) ? ((int)$form_state['values']['payment-choice'] === 1 ? 'EUR' : 'CHR') : 'EUR';
-
-	if ($currency == 'EUR') {
-		$cur_suffix = t('€');
-		$currency_default = 1;
-		$input_displ = 'block';
-		$enforce_value = TRUE;
-
-		//for the forex calculations we are using THE DEFAULT Rovas fees. 
-		//The actual amount of Merits and their price will be different at the end of the ordering process!!
-		if ($paymentChanged || !isset($form_state['values']['buy_amount']) || empty($form_state['values']['buy_amount'])) {
-			$convary = rovas_forex_rules_action_calculate_merits_execute($widget_default);
-		}
-		else {
-			$convary = rovas_forex_rules_action_calculate_merits_execute($form_state['values']['buy_amount']);
-		}
-
-		$merits_purchased = $convary['merits_purchased'];
-
-		$eur_buy_merits_too_small = FALSE;
-		if (!$paymentChanged && isset($form_state['values']['buy_amount']) && is_numeric($form_state['values']['buy_amount']) && (float) $form_state['values']['buy_amount'] > 0) {
-			$fp_merits_check = calculate_forex_transaction_params('eur_to_chr', (float) $form_state['values']['buy_amount'], NULL, TRUE);
-			$eur_buy_merits_too_small = (isset($fp_merits_check['output']) ? (float) $fp_merits_check['output'] : 0.0) <= 0;
-		}
-
-	}
-	else if ($currency == 'CHR') {
-		$eur_buy_merits_too_small = FALSE;
-		$cur_suffix = t('CH');
-		$enforce_value = TRUE;
-
-		$chronsary = rules_invoke_component('rules_chrons_actually_available',$user);
-		$chrons = $chronsary[0];
-
-		$currency_default = 0;
-		$input_displ = 'block';
-
-
-		if ($paymentChanged || !isset($form_state['values']['buy_amount']) || empty($form_state['values']['buy_amount'])) {
-			$merits_purchased = _convert_chr_2_merits($widget_default);
-		}
-		else {
-			$merits_purchased = _convert_chr_2_merits($form_state['values']['buy_amount']);
-		}
-	
-	}
-	else {
-		$eur_buy_merits_too_small = FALSE;
-		$cur_suffix = NULL;
-		$currency_default = NULL;
-		$input_displ = 'none';
-		$enforce_value = FALSE;
-
-		$merits_purchased = 0;
-	
-	}
-
-	$merits_btn_name = 'buy_merits_continue';
-	$sub_label = t('Continue to payment');
-	
-	$form['buy-merits'] = [
+	$form['buy-merits'] = array(
 		'#type' => 'markup',
 		'#prefix' => '<div class="buy-merits-wrapper">',
 		'#suffix' => '</div>',
 		'#weight' => 6,
-	];
-
-	$widget_text = '<div class="icon merit" style="width: 30px; display: inline-block; margin-right: 7px; top: -3px; position: relative;"><img src="/sites/all/themes/rovas/images/meritIcon.svg"></div>';
-	$widget_text .= '<div class="forex subhead">' . t('Buy Merits') . '</div>';
-
-//	$widget_text .= '<div class="explain-char">' . t('Get Merits for your donation') . '</div>';
-	$widget_text .= '<div class="explain-char"></div>';
-
-	$form['buy-merits']['buy-merits-markup'] = array(
-		'#type' => 'markup',
-		'#markup' => $widget_text,
 	);
-
-	//payment type selector
-	$form['buy-merits']['payment-choice'] = [
-		'#type' => 'radios',
-		'#title' => t('Select payment type'),
-		'#default_value' => $currency_default,
-		'#options' => [
-			0 => t('Chrons'),
-			1 => t('Euros')
-		],
-		'#ajax' => [
-			'callback' => '_switch_payment_currency_forex',
-			'effect' => 'fade',
-			],
-	];
-
-	$form['buy-merits']['newline'] = [
-		'#markup' => '<div id="newline" style="display:block"></div>',
-	];
-
-	$form['buy-merits']['buy_amount'] = [
-		'#type' => 'textfield', 
-		'#default_value' => $widget_default,
-		'#field_suffix' => $cur_suffix,
-		'#attributes' => [
-			'class' => ['input']
-		],
-		'#size' => 60,
-		'#maxlength' => 128,
-		'#required' => $enforce_value,
-	];
-
-	$form['buy-merits']['convert']['button'] = [
-		'#type' => 'button',
-		'#name' => 'con_merits',
-		'#button_type' => 'button',
-		'#value' => '<span class="glyphicon glyphicon-refresh"> </span>', //recalculate icon
-		"#submit" => [],
-		'#ajax' => [
-			'callback' => '_convert_chr_merits',
-			'effect' => 'fade',
-			],
-	];
-
-	$form['buy-merits']['buy-merits-converted-value'] = array(
-			'#type' => 'hidden',
-			'#value' => $merits_purchased,
-		);
-
-	$form['buy-merits']['buy-merits-converted'] = [
-		'#type' => 'item',
-		'#prefix' => '<div id="buy-merits-converted">',
-		'#suffix' => '</div>',
-		'#markup' => $merits_purchased . '<span class="to-unit"> ' . t('ME') . '</span>',
-	];
-
-	$btn_type = 'btn-success';
-	$css_class = '';
-	$button_note = '';
-
-	if ($paymentChanged || !isset($form_state['values']['buy_amount']) || $form_state['values']['buy_amount'] <= 0) {
-		$sub_act = TRUE;
-	}
-	else if ($currency == 'EUR' && !empty($eur_buy_merits_too_small)) {
-		$button_note = t('This amount is too small to buy Merits. Enter a larger amount in Euros.');
-		$sub_act = TRUE;
-		$css_class = 'color:red;';
-	}
-	else if ($currency == 'CHR' && $form_state['values']['buy_amount'] > $chrons) {
-
-		$button_note =  t('Please enter value lower than your account balance of @chr Chrons',array('@chr' => $chrons));
-		$sub_act = TRUE;
-		$css_class = 'color:red;';
-	}
-	else {
-		$sub_act = FALSE;
-		$button_note = '<div style="font-weight: bold; color:#4cae4c;">' . t('Choose card, bank transfer, or express wallet on the next page.') . '</div>';
-	}	
-
-	$form['buy-merits']['final-note'] = array(
-		'#markup' => $button_note,
-		'#prefix' => '<div id="final-note" style="'.$css_class.'">',
-		'#suffix' => '</div>',
-		'#weight' => 10,
-	);
-
 
 	$form['buy-merits']['submit'] = array(
 		'#type' => 'submit',
-		'#name' => $merits_btn_name,
-		'#value' => $sub_label,
-		'#attributes' => [
-			'id' => ['pay-choice'],
-			'class' => ['btn',$btn_type],
-			'role' => ['button']
-		],
-		'#disabled' => $sub_act,
+		'#name' => 'buy_merits_start',
+		'#value' => '<img src="/sites/all/themes/rovas/images/meritIcon.svg" alt="" style="width:20px; height:20px; margin-right:8px; vertical-align:middle;">' . t('Buy Merits'),
+		'#attributes' => array(
+			'id' => array('buy-merits-start'),
+			'class' => array('btn', 'btn-success'),
+			'role' => array('button'),
+		),
+		'#html' => TRUE,
 		'#prefix' => '<div id="buy-merits-subbutton">',
 		'#suffix' => '</div>',
-		'#weight' => 20,
 	);
-	
-	$old_payment_choice = isset($form_state['values']['payment-choice']) ? $form_state['values']['payment-choice'] : 1;
-	$form_state['storage']['old-payment-choice'] = $old_payment_choice;
 
 
 /* Buy Chrons */
@@ -928,29 +748,6 @@ function rovas_forex_form($form, &$form_state) {
 */
 	return $form;
 
-}
-
-/**
- * Validates Buy Merits with Euros: amount must yield CHR output after fees.
- */
-function rovas_forex_buy_merits_eur_validate($form, &$form_state) {
-	if (empty($form_state['clicked_button']['#name']) || $form_state['clicked_button']['#name'] !== 'buy_merits_continue') {
-		return;
-	}
-	$buy_amount = isset($form_state['values']['buy_amount']) ? $form_state['values']['buy_amount'] : NULL;
-	if (!is_numeric($buy_amount) || (float) $buy_amount <= 0) {
-		form_set_error('buy_amount', t('Please enter an amount greater than zero.'));
-		return;
-	}
-	$pay_choice = isset($form_state['values']['payment-choice']) ? (int) $form_state['values']['payment-choice'] : 1;
-	if ($pay_choice !== 1) {
-		return;
-	}
-	$forex_params = calculate_forex_transaction_params('eur_to_chr', (float) $buy_amount, NULL, TRUE);
-	$out = isset($forex_params['output']) ? (float) $forex_params['output'] : 0.0;
-	if ($out <= 0) {
-		form_set_error('buy_amount', t('This amount is too small to buy Merits. Enter a larger amount in Euros.'));
-	}
 }
 
 function rovas_preview_form($form, &$form_state) {
@@ -1261,46 +1058,7 @@ function rovas_forex_form_submit($form, &$form_state) {
 		case ($form_state['clicked_button']['#name'] == 'ord_cancel'):
 			lost_lock();
 			break;
-		case ($form_state['clicked_button']['#name'] == 'buy_merits_continue'):
-			$pay_choice = isset($form_state['values']['payment-choice']) ? (int) $form_state['values']['payment-choice'] : 1;
-			$cur = $pay_choice === 1 ? 'EUR' : 'CHR';
-			$amt = isset($form_state['values']['buy_amount']) ? $form_state['values']['buy_amount'] : 0;
-			$merits = isset($form_state['values']['buy-merits-converted-value']) ? $form_state['values']['buy-merits-converted-value'] : 0;
-
-			if (!is_numeric($amt) || (float) $amt <= 0) {
-				drupal_set_message(t('Please enter an amount greater than zero.'), 'error');
-				break;
-			}
-
-			if ($cur === 'EUR') {
-				$fp_submit = calculate_forex_transaction_params('eur_to_chr', (float) $amt, NULL, TRUE);
-				if (!isset($fp_submit['output']) || (float) $fp_submit['output'] <= 0) {
-					drupal_set_message(t('This amount is too small to buy Merits. Enter a larger amount in Euros.'), 'error');
-					break;
-				}
-				$calc = rovas_forex_rules_action_calculate_merits_execute((float) $amt);
-				if ((int) $calc['merits_purchased'] !== (int) $merits) {
-					drupal_set_message(t('The order can not be submitted, because you did not recalculate the Merit value after changing the amount.'), 'error');
-					break;
-				}
-			}
-			else {
-				$calcMerits = _convert_chr_2_merits($amt);
-				if ((int) $calcMerits !== (int) $merits) {
-					drupal_set_message(t('The order can not be submitted, because you did not recalculate the Merit value after changing the Chron value.'), 'error');
-					break;
-				}
-				$chronsary = rules_invoke_component('rules_chrons_actually_available', $user);
-				if ((float) $amt > (float) $chronsary[0]) {
-					drupal_set_message(t('Please enter a value lower than your account balance of @chr Chrons', array('@chr' => $chronsary[0])), 'error');
-					break;
-				}
-			}
-
-			$_SESSION['rovas_buymerits_prefill'] = array(
-				'currency' => $cur,
-				'amount' => (float) $amt,
-			);
+		case ($form_state['clicked_button']['#name'] == 'buy_merits_start'):
 			drupal_goto('rewpro', array('query' => array(
 				'paytype' => 'buymerits',
 				'recipient' => $uid,
