@@ -999,6 +999,27 @@ div#buy-merits-subbutton {
     display: inline-block;
 }
 
+#buy-merits-start .buy-merits-button-content {
+    display: inline-flex;
+    align-items: center;
+}
+
+#buy-merits-start .icon.merit {
+    width: 30px;
+    display: inline-block;
+    margin-right: 7px;
+    top: -3px;
+    position: relative;
+}
+
+#buy-merits-start .icon.merit img {
+    width: 100%;
+}
+
+#buy-merits-start .forex.subhead {
+    margin-bottom: 0;
+}
+
 /* buy Merits STOP */
 
 /* Forex page STOP */
