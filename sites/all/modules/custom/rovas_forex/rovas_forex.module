@@ -643,10 +643,11 @@ function rovas_forex_form($form, &$form_state) {
 	$form['buy-merits']['submit'] = array(
 		'#type' => 'submit',
 		'#name' => 'buy_merits_start',
-		'#value' => '<img src="/sites/all/themes/rovas/images/meritIcon.svg" alt="" style="width:20px; height:20px; margin-right:8px; vertical-align:middle;">' . t('Buy Merits'),
+		'#value' => '<span style="display:inline-flex; align-items:center; gap:12px;"><img src="/sites/all/themes/rovas/images/meritIcon.svg" alt="" style="width:46px; height:46px; display:inline-block;"><span style="font-size:32px; font-weight:700; line-height:1.1;">' . t('Buy Merits') . '</span></span>',
 		'#attributes' => array(
 			'id' => array('buy-merits-start'),
-			'class' => array('btn', 'btn-success'),
+			'class' => array('btn', 'btn-default'),
+			'style' => array('padding: 14px 20px; color: #222; border-color: #bdbdbd;'),
 			'role' => array('button'),
 		),
 		'#html' => TRUE,
