@@ -999,25 +999,13 @@ div#buy-merits-subbutton {
     display: inline-block;
 }
 
-#buy-merits-start .buy-merits-button-content {
-    display: inline-flex;
-    align-items: center;
-}
-
-#buy-merits-start .icon.merit {
-    width: 30px;
-    display: inline-block;
-    margin-right: 7px;
-    top: -3px;
-    position: relative;
-}
-
-#buy-merits-start .icon.merit img {
+.buy-merits-wrapper .icon.merit img {
     width: 100%;
 }
 
-#buy-merits-start .forex.subhead {
-    margin-bottom: 0;
+.buy-merits-wrapper .buy-merits-explain {
+    margin-bottom: 12px;
+    line-height: 1.5;
 }
 
 /* buy Merits STOP */

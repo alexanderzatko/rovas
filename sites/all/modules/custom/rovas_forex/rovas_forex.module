@@ -640,10 +640,19 @@ function rovas_forex_form($form, &$form_state) {
 		'#weight' => 6,
 	);
 
+	$widget_text = '<div class="icon merit" style="width: 30px; display: inline-block; margin-right: 7px; top: -3px; position: relative;"><img src="/sites/all/themes/rovas/images/meritIcon.svg"></div>';
+	$widget_text .= '<div class="forex subhead">' . t('Buying Merits') . '</div>';
+	$widget_text .= '<div class="buy-merits-explain">' . t('Your Merit score shows how much economic value you donated to the society. Whether you exchange Chrons or national currency (Euros) for Merits, you improve the Chron to Euro exchange rate, in effect funnelling money to volunteers and the economically most vulnerable.') . '</div>';
+
+	$form['buy-merits']['buy-merits-markup'] = array(
+		'#type' => 'markup',
+		'#markup' => $widget_text,
+	);
+
 	$form['buy-merits']['submit'] = array(
 		'#type' => 'submit',
 		'#name' => 'buy_merits_start',
-		'#value' => '<span class="buy-merits-button-content"><span class="icon merit"><img src="/sites/all/themes/rovas/images/meritIcon.svg" alt=""></span><span class="forex subhead">' . t('Buy Merits') . '</span></span>',
+		'#value' => t('Buy Merits'),
 		'#attributes' => array(
 			'id' => array('buy-merits-start'),
 			'class' => array('btn', 'btn-default'),
