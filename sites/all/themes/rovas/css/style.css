@@ -1667,7 +1667,8 @@ div#buyshares-performance-wrap {
     gap: 6px;
 }
 
-#payment-wrapper .buyshares-ajax-progress-slot {
+#payment-wrapper .buyshares-ajax-progress-slot, 
+#payment-wrapper .buymerits-ajax-progress-slot {
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -1682,18 +1683,21 @@ div#buyshares-performance-wrap {
     position: relative;
 }
 
-#payment-wrapper .buyshares-ajax-progress-slot .buyshares-ajax-slot-idle {
+#payment-wrapper .buyshares-ajax-progress-slot .buyshares-ajax-slot-idle,
+#payment-wrapper .buymerits-ajax-progress-slot .buymerits-ajax-slot-idle {
     display: inline-block;
     font-size: 16px;
     line-height: 1;
     color: #555;
 }
 
-#payment-wrapper .buyshares-ajax-progress-slot.is-ajaxing .buyshares-ajax-slot-idle {
+#payment-wrapper .buyshares-ajax-progress-slot.is-ajaxing .buyshares-ajax-slot-idle,
+#payment-wrapper .buymerits-ajax-progress-slot.is-ajaxing .buymerits-ajax-slot-idle {
     opacity: 0;
 }
 
-#payment-wrapper .buyshares-ajax-progress-slot .ajax-progress.ajax-progress-throbber {
+#payment-wrapper .buyshares-ajax-progress-slot .ajax-progress.ajax-progress-throbber,
+#payment-wrapper .buymerits-ajax-progress-slot .ajax-progress.ajax-progress-throbber {
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -1707,11 +1711,13 @@ div#buyshares-performance-wrap {
     background-color: rgba(255, 255, 255, 0.92);
 }
 
-#payment-wrapper .buyshares-ajax-progress-slot .ajax-progress-throbber .throbber {
+#payment-wrapper .buyshares-ajax-progress-slot .ajax-progress-throbber .throbber,
+#payment-wrapper .buymerits-ajax-progress-slot .ajax-progress-throbber .throbber {
     margin: 0;
 }
 
-form#rovas-project-reward-form #payment-wrapper .buyshares-ajax-progress-slot .ajax-progress-throbber {
+form#rovas-project-reward-form #payment-wrapper .buyshares-ajax-progress-slot .ajax-progress-throbber,
+form#rovas-project-reward-form #payment-wrapper .buymerits-ajax-progress-slot .ajax-progress-throbber {
     font-size: 16px;
 }
 
