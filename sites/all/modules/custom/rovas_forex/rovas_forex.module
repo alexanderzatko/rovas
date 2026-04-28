@@ -656,7 +656,7 @@ function rovas_forex_form($form, &$form_state) {
 		'#attributes' => array(
 			'id' => array('buy-merits-start'),
 			'class' => array('btn', 'btn-default'),
-			'style' => array('padding: 14px 20px; color: #222; border-color: #bdbdbd;'),
+			'style' => array('color: #222; border-color: #bdbdbd;'),
 			'role' => array('button'),
 		),
 		'#html' => TRUE,
