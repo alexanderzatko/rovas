@@ -40,12 +40,11 @@ cd /var/www/rovdev
 drush74 --uri=dev.rovas.app scr scripts/export-locale-po.php fr default translations/po/fr.default.po
 ```
 
-Examples for common groups:
+Examples for common groups (group names are Drupal locale `textgroup` values):
 
 ```bash
 cd /var/www/rovdev
 drush74 --uri=dev.rovas.app scr scripts/export-locale-po.php fr default translations/po/fr.default.po
-drush74 --uri=dev.rovas.app scr scripts/export-locale-po.php fr custom  translations/po/fr.custom.po
 drush74 --uri=dev.rovas.app scr scripts/export-locale-po.php fr views   translations/po/fr.views.po
 ```
 
@@ -60,23 +59,24 @@ cd /var/www/rovdev
 scripts/export-locale-po-all.sh dev.rovas.app
 ```
 
-This exports all enabled languages for these groups by default:
-
-- `default`
-- `custom`
-- `views`
+By default it exports all enabled languages for every Drupal `textgroup` that currently has translations in the DB.
 
 Output files are written as:
 
-- `translations/po/<langcode>.default.po`
-- `translations/po/<langcode>.custom.po`
-- `translations/po/<langcode>.views.po`
+- `translations/po/<langcode>.<textgroup>.po`
 
-You can pass custom groups as the second argument:
+You can pass an explicit whitespace-separated list of textgroups as the second argument (e.g. to export only a subset):
 
 ```bash
 cd /var/www/rovdev
-scripts/export-locale-po-all.sh dev.rovas.app "default custom"
+scripts/export-locale-po-all.sh dev.rovas.app "default views taxonomy"
+```
+
+To see which `textgroup` values currently have translations (for enabled languages), you can run:
+
+```bash
+cd /var/www/rovdev
+drush74 --uri=dev.rovas.app sqlq "SELECT DISTINCT s.textgroup FROM locales_target t JOIN locales_source s ON s.lid=t.lid WHERE t.language IN (SELECT language FROM languages WHERE enabled=1) ORDER BY s.textgroup;"
 ```
 
 ## Import versioned `.po` files
