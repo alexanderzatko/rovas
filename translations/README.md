@@ -33,7 +33,7 @@ mv /var/www/rovdev/general.pot /var/www/rovdev/translations/templates/custom-mod
 Use the included Drush script to export translations from locale tables.
 This produces real importable `.po` files and avoids Potx translation-export edge cases.
 
-Export one language + one text group:
+Export one language (French in this case) + one text group:
 
 ```bash
 cd /var/www/rovdev
@@ -51,6 +51,34 @@ drush74 --uri=dev.rovas.app scr scripts/export-locale-po.php fr views   translat
 
 You can keep separate files per text group, or merge them later into one `fr.po` if you prefer.
 
+### One-command export for all enabled languages
+
+Use the wrapper script:
+
+```bash
+cd /var/www/rovdev
+scripts/export-locale-po-all.sh dev.rovas.app
+```
+
+This exports all enabled languages for these groups by default:
+
+- `default`
+- `custom`
+- `views`
+
+Output files are written as:
+
+- `translations/po/<langcode>.default.po`
+- `translations/po/<langcode>.custom.po`
+- `translations/po/<langcode>.views.po`
+
+You can pass custom groups as the second argument:
+
+```bash
+cd /var/www/rovdev
+scripts/export-locale-po-all.sh dev.rovas.app "default custom"
+```
+
 ## Import versioned `.po` files
 
 ```bash
@@ -58,6 +86,22 @@ cd /var/www/rovdev
 drush74 --uri=dev.rovas.app language-import fr translations/po/fr.po --replace
 drush74 --uri=dev.rovas.app cc all
 ```
+
+### One-command import for all `.po` files
+
+Import everything in `translations/po/*.po` using filename convention
+`<langcode>.<group>.po`:
+
+```bash
+cd /var/www/rovdev
+scripts/import-locale-po-all.sh dev.rovas.app replace yes
+```
+
+Arguments:
+
+- `uri` (default: `dev.rovas.app`)
+- `replace-mode` (`replace` or `keep`, default: `replace`)
+- `clear-cache` (`yes` or `no`, default: `yes`)
 
 ## Recommended repeatable flow
 
