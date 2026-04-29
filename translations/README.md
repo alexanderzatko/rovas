@@ -79,6 +79,54 @@ cd /var/www/rovdev
 drush74 --uri=dev.rovas.app sqlq "SELECT DISTINCT s.textgroup FROM locales_target t JOIN locales_source s ON s.lid=t.lid WHERE t.language IN (SELECT language FROM languages WHERE enabled=1) ORDER BY s.textgroup;"
 ```
 
+## Export only custom module strings (for translation/MT)
+
+If you need only strings whose source location is in custom modules,
+use the dedicated exporter (location filter):
+
+```bash
+cd /var/www/rovdev
+drush74 --uri=dev.rovas.app scr scripts/export-custom-module-po.php sk translations/po/sk.custom-modules.po
+```
+
+Bulk all enabled languages:
+
+```bash
+cd /var/www/rovdev
+scripts/export-custom-module-po-all.sh dev.rovas.app
+```
+
+Optional custom location prefix:
+
+```bash
+cd /var/www/rovdev
+scripts/export-custom-module-po-all.sh dev.rovas.app sites/all/modules/custom/
+```
+
+## Export only theme strings (for translation/MT)
+
+If you need only strings whose source location is in theme files,
+use the dedicated exporter:
+
+```bash
+cd /var/www/rovdev
+drush74 --uri=dev.rovas.app scr scripts/export-theme-po.php sk translations/po/sk.themes.po
+```
+
+Bulk all enabled languages:
+
+```bash
+cd /var/www/rovdev
+scripts/export-theme-po-all.sh dev.rovas.app
+```
+
+Optional custom location prefix:
+
+```bash
+cd /var/www/rovdev
+scripts/export-theme-po-all.sh dev.rovas.app sites/all/themes/
+```
+
 ## Import versioned `.po` files
 
 ```bash
