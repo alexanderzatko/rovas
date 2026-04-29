@@ -41,18 +41,32 @@ echo "Import mode: ${MODE}"
 for FILE in "${FILES[@]}"; do
   BASE="$(basename "${FILE}" .po)"
   LANG="${BASE%%.*}"
+  GROUP_PART="${BASE#*.}"
 
   if [ -z "${LANG}" ]; then
     echo "Skipping malformed filename: ${FILE}"
     continue
   fi
 
+  # Default textgroup when filename does not carry one.
+  GROUP="default"
+  if [ "${GROUP_PART}" != "${BASE}" ] && [ -n "${GROUP_PART}" ]; then
+    GROUP="${GROUP_PART}"
+  fi
+
+  # Location-scoped files are for translator convenience and can contain
+  # entries from multiple internal textgroups. Import them into default
+  # to avoid creating ad-hoc textgroups.
+  if [ "${GROUP}" = "custom-modules" ] || [ "${GROUP}" = "themes" ]; then
+    GROUP="default"
+  fi
+
   if [ "${MODE}" = "replace" ]; then
-    echo "Importing ${FILE} -> ${LANG} (replace)"
-    drush74 --uri="${URI}" language-import "${LANG}" "${FILE}" --replace
+    echo "Importing ${FILE} -> ${LANG} (replace, group=${GROUP})"
+    drush74 --uri="${URI}" scr scripts/import-locale-po.php "${LANG}" "${FILE}" replace "${GROUP}"
   else
-    echo "Importing ${FILE} -> ${LANG} (keep existing)"
-    drush74 --uri="${URI}" language-import "${LANG}" "${FILE}"
+    echo "Importing ${FILE} -> ${LANG} (keep, group=${GROUP})"
+    drush74 --uri="${URI}" scr scripts/import-locale-po.php "${LANG}" "${FILE}" keep "${GROUP}"
   fi
 done
 

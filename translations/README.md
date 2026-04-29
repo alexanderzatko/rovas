@@ -165,7 +165,7 @@ scripts/export-theme-po-all.sh dev.rovas.app sites/all/themes/
 
 ```bash
 cd /var/www/rovdev
-drush74 --uri=dev.rovas.app language-import fr translations/po/fr.po --replace
+drush74 --uri=dev.rovas.app scr scripts/import-locale-po.php fr translations/po/fr.default.po replace default
 drush74 --uri=dev.rovas.app cc all
 ```
 
