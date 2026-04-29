@@ -23,19 +23,6 @@ not_a_label: 'Meta-data that should not be translated'
 {{ 'This is a concatenated string ' . 'that should not be picked up.'|t }}
 {{ 'This is an untranslated string.' }}
 
-{% set variableString = 'Variable string.'|t %}
-{% set variableString = 'Variable string with @placeholder.'|t({'@placeholder': 'placeholder'}) %}
-{% set variableString = 'Variable string with @translatedPlaceholder.'|t({'@translatedPlaceholder': 'translatedPlaceholder'|t}) %}
-
-{{ variableString|default('Default value text'|t) }}
-
-{# Test include string with t filter. #}
-{% include '@testnamespace/components/a-component-template.twig' with {
-  'text': 'An include component template'|t,
-  }
-%}
-
-
 {# Test trans tag with string argument. #}
 <div>
   {% trans 'Hello sun.' %}

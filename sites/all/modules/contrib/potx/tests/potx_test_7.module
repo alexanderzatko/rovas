@@ -1,8 +1,8 @@
 <?php
-// @codingStandardsIgnoreFile
+
 /**
  * @file
- * File used purely to test the parser in potx.
+ *   File used purely to test the parser in potx.
  */
 
 /**
@@ -36,9 +36,6 @@ function potx_test_7_menu_alter(&$items) {
   );
 }
 
-/**
- *
- */
 function potx_test_7_page() {
   t('This is a test string.');
   format_plural($count, '1 test string', '@count test strings');
@@ -55,27 +52,24 @@ function potx_test_7_page() {
   $t('Dynamic string in context', array(), array('context' => 'Dynamic context'));
 
   dt('This could have been in a drush file');
+
+  t('Oh god why would @you omit a parenthesis?', array('@you' => 'fool');
+  t('PHP Syntax error gracefully handled');
 }
 
-/**
- *
- */
 function potx_test_7_perm() {
   return array('test potx permission', 'one more test potx permission', '');
 }
 
-/**
- *
- */
 function potx_test_7_permission() {
   return array(
     'test potx permission' => array(
-      'title' => t('Test potx permission'),
-      'description' => t('Test potx permission description'),
+     'title' => t('Test potx permission'),
+     'description' => t('Test potx permission description'),
     ),
     'one more test potx permission' => array(
-      'title' => t('One more test potx permission'),
-      'description' => t('One more test potx permission description'),
+     'title' => t('One more test potx permission'),
+     'description' => t('One more test potx permission description'),
     ),
   );
 }

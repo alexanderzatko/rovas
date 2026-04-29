@@ -1,8 +1,8 @@
 <?php
-// @codingStandardsIgnoreFile
+
 /**
  * @file
- * File used purely to test the parser in potx.
+ *   File used purely to test the parser in potx.
  */
 
 /**
@@ -36,9 +36,6 @@ function potx_test_6_menu_alter(&$items) {
   );
 }
 
-/**
- *
- */
 function potx_test_6_page() {
   t('This is a test string.');
   format_plural($count, '1 test string', '@count test strings');
@@ -57,25 +54,19 @@ function potx_test_6_page() {
   $t('Dynamic string in context', array(), array('context' => 'Dynamic context'));
 }
 
-/**
- *
- */
 function potx_test_6_perm() {
   return array('test potx permission', 'one more test potx permission', '');
 }
 
-/**
- *
- */
 function potx_test_6_permission() {
   return array(
     'test potx permission' => array(
-      'title' => t('Test potx permission'),
-      'description' => t('Test potx permission description'),
+     'title' => t('Test potx permission'),
+     'description' => t('Test potx permission description'),
     ),
     'one more test potx permission' => array(
-      'title' => t('One more test potx permission'),
-      'description' => t('One more test potx permission description'),
+     'title' => t('One more test potx permission'),
+     'description' => t('One more test potx permission description'),
     ),
   );
 }

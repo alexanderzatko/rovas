@@ -2,16 +2,13 @@ name: Translation template extractor tester
 type: module
 description: 'Test description'
 package: Test package
+# version: 8.x
 core: 8.x
-core_version_requirement: ^8 || ^9
 hidden: true
-regions:
-  test_region: 'Test region'
-  another_region: 'Another region'
 dependencies:
-  - potx:potx
+  - potx
 
-# Information added by Drupal.org packaging script on 2024-07-09
-version: '8.x-1.1'
+# Information added by Drupal.org packaging script on 2020-09-08
+version: '7.x-3.0'
 project: 'potx'
-datestamp: 1720516290
+datestamp: 1599561778

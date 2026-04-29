@@ -4,8 +4,7 @@ translation_patterns:
       - name
       - description
       - package
-      - key: regions
-        array_translatables: true
+      - regions
   - matches: '*.routing.yml'
     translatable_keys:
       - key: _title
@@ -29,7 +28,3 @@ translation_patterns:
   - matches: 'config/schema/*.yml'
     translatable_keys:
       - label
-  - matches: '*.field_type_categories.yml'
-    translatable_keys:
-      - label
-      - description

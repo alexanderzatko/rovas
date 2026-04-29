@@ -4,3 +4,4 @@ translation_patterns:
       - name
       - key: test_label
         context: label_context
+

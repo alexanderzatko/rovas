@@ -1,8 +1,8 @@
 <?php
-// @codingStandardsIgnoreFile
+
 /**
  * @file
- * File used purely to test the parser in potx.
+ *   File used purely to test the parser in potx.
  */
 
 /**
@@ -11,16 +11,14 @@
 function potx_test_5_menu($may_cache) {
   $items = array();
   if ($may_cache) {
-    $items[] = array(
-      'path' =>
+    $items[] = array('path' =>
       'node/add/blog',
       'title' => t('Test menu item in 5'),
       'description' => t('This is a test menu item in 5'),
       'access' => user_access('access content'),
       'callback' => 'potx_test_5_page',
     );
-    $items[] = array(
-      'path' =>
+    $items[] = array('path' =>
       'test-empty-t',
       'title' => t(''),
     );
@@ -28,9 +26,6 @@ function potx_test_5_menu($may_cache) {
   return $items;
 }
 
-/**
- *
- */
 function potx_test_5_page() {
   t('This is a test string.');
   format_plural($count, '1 test string', '@count test strings');
@@ -47,25 +42,19 @@ function potx_test_5_page() {
   $t('Dynamic string in context', array(), array('context' => 'Dynamic context'));
 }
 
-/**
- *
- */
 function potx_test_5_perm() {
   return array('test potx permission', 'one more test potx permission', '');
 }
 
-/**
- *
- */
 function potx_test_5_permission() {
   return array(
     'test potx permission' => array(
-      'title' => t('Test potx permission'),
-      'description' => t('Test potx permission description'),
+     'title' => t('Test potx permission'),
+     'description' => t('Test potx permission description'),
     ),
     'one more test potx permission' => array(
-      'title' => t('One more test potx permission'),
-      'description' => t('One more test potx permission description'),
+     'title' => t('One more test potx permission'),
+     'description' => t('One more test potx permission description'),
     ),
   );
 }
