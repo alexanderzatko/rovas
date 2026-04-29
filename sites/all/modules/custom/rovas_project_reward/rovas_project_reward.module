@@ -3022,6 +3022,20 @@ function rovas_project_reward_notify_purchase($rewarded_project, $amount_paid_mi
 	
 	$response = drupal_http_request($endpoint, $options);
 
+  _rovas_project_reward_record_outbound_webhook(array(
+    'source_module' => 'rovas_project_reward',
+    'payment_type' => !empty($sessary['paytype']) ? (string) $sessary['paytype'] : 'card_or_express',
+    'event_type' => 'payment-completed',
+    'order_id' => !empty($sessary['commerce_order_id']) ? (int) $sessary['commerce_order_id'] : NULL,
+    'endpoint' => $endpoint,
+    'request_headers' => isset($options['headers']) ? $options['headers'] : array(),
+    'request_payload' => $payload,
+    'http_code' => isset($response->code) ? (int) $response->code : NULL,
+    'response_error' => isset($response->error) ? $response->error : '',
+    'response_body' => isset($response->data) ? $response->data : '',
+    'status' => (isset($response->code) && (int) $response->code >= 200 && (int) $response->code < 300) ? 'delivered' : 'failed',
+  ));
+
 watchdog('rovas_project_reward', 'response <pre>' . print_r($response,1) . '</pre>');
 
 //	if (FALSE) {
@@ -4215,6 +4229,15 @@ function _rovas_project_reward_log_bank_webhook($direction, $path_or_url, $paylo
 }
 
 /**
+ * Persist outbound webhook attempt when logging module is enabled.
+ */
+function _rovas_project_reward_record_outbound_webhook($record) {
+  if (module_exists('rovas_outbound_webhook_log') && function_exists('rovas_outbound_webhook_log_record')) {
+    rovas_outbound_webhook_log_record($record);
+  }
+}
+
+/**
  * Admin table listing intents requiring manual review.
  */
 function rovas_project_reward_bank_manual_review_page() {
@@ -5102,6 +5125,20 @@ function rovas_project_reward_notify_bank_purchase_confirmed($order) {
 
   $response = drupal_http_request($endpoint, $options);
 
+  _rovas_project_reward_record_outbound_webhook(array(
+    'source_module' => 'rovas_project_reward',
+    'payment_type' => 'bank',
+    'event_type' => 'payment-completed',
+    'order_id' => (int) $order->order_id,
+    'endpoint' => $endpoint,
+    'request_headers' => isset($options['headers']) ? $options['headers'] : array(),
+    'request_payload' => $payload_bank,
+    'http_code' => isset($response->code) ? (int) $response->code : NULL,
+    'response_error' => isset($response->error) ? $response->error : '',
+    'response_body' => isset($response->data) ? $response->data : '',
+    'status' => (isset($response->code) && (int) $response->code >= 200 && (int) $response->code < 300) ? 'delivered' : 'failed',
+  ));
+
   // Mark as notified before saving, so a concurrent call cannot also send.
   $order->data['rovas_bank_purchase_notified'] = REQUEST_TIME;
   commerce_order_save($order);
@@ -5389,6 +5426,22 @@ function rovas_project_reward_process_callback_delivery_queue($limit = 20) {
       'data' => drupal_json_encode($payload_arr),
       'headers' => $headers + array('Content-Type' => 'application/json'),
       'timeout' => 8,
+    ));
+
+    _rovas_project_reward_record_outbound_webhook(array(
+      'source_module' => 'rovas_project_reward',
+      'payment_type' => 'bank',
+      'event_type' => !empty($row->event_type) ? $row->event_type : 'delayed',
+      'order_id' => isset($row->order_id) ? (int) $row->order_id : NULL,
+      'delivery_id' => !empty($row->delivery_id) ? $row->delivery_id : '',
+      'attempt' => isset($row->attempts) ? ((int) $row->attempts + 1) : 1,
+      'endpoint' => $row->endpoint,
+      'request_headers' => $headers + array('Content-Type' => 'application/json'),
+      'request_payload' => $payload_arr,
+      'http_code' => isset($response->code) ? (int) $response->code : NULL,
+      'response_error' => isset($response->error) ? $response->error : '',
+      'response_body' => isset($response->data) ? $response->data : '',
+      'status' => (isset($response->code) && (int) $response->code >= 200 && (int) $response->code < 300) ? 'delivered' : 'failed',
     ));
 
     $code = isset($response->code) ? (int) $response->code : 0;

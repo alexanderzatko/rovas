@@ -1,0 +1,109 @@
+<?php
+
+/**
+ * @file
+ * Install, update and uninstall functions for outbound webhook logging.
+ */
+
+/**
+ * Implements hook_schema().
+ */
+function rovas_outbound_webhook_log_schema() {
+  $schema = array();
+
+  $schema['rovas_outbound_webhook_log'] = array(
+    'description' => 'Outbound 3rd-party webhook delivery log.',
+    'fields' => array(
+      'id' => array(
+        'type' => 'serial',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+      ),
+      'created' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+      ),
+      'source_module' => array(
+        'type' => 'varchar',
+        'length' => 64,
+        'not null' => TRUE,
+        'default' => '',
+      ),
+      'payment_type' => array(
+        'type' => 'varchar',
+        'length' => 32,
+        'not null' => TRUE,
+        'default' => '',
+      ),
+      'event_type' => array(
+        'type' => 'varchar',
+        'length' => 64,
+        'not null' => TRUE,
+        'default' => '',
+      ),
+      'order_id' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => FALSE,
+      ),
+      'delivery_id' => array(
+        'type' => 'varchar',
+        'length' => 64,
+        'not null' => FALSE,
+      ),
+      'attempt' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 1,
+      ),
+      'endpoint' => array(
+        'type' => 'text',
+        'size' => 'big',
+        'not null' => TRUE,
+      ),
+      'request_headers' => array(
+        'type' => 'text',
+        'size' => 'big',
+        'not null' => FALSE,
+      ),
+      'request_payload' => array(
+        'type' => 'text',
+        'size' => 'big',
+        'not null' => FALSE,
+      ),
+      'http_code' => array(
+        'type' => 'int',
+        'not null' => FALSE,
+      ),
+      'response_error' => array(
+        'type' => 'text',
+        'size' => 'big',
+        'not null' => FALSE,
+      ),
+      'response_body' => array(
+        'type' => 'text',
+        'size' => 'big',
+        'not null' => FALSE,
+      ),
+      'status' => array(
+        'type' => 'varchar',
+        'length' => 20,
+        'not null' => TRUE,
+        'default' => 'unknown',
+      ),
+    ),
+    'primary key' => array('id'),
+    'indexes' => array(
+      'created' => array('created'),
+      'payment_type' => array('payment_type'),
+      'event_type' => array('event_type'),
+      'status' => array('status'),
+      'order_id' => array('order_id'),
+      'delivery_id' => array('delivery_id'),
+    ),
+  );
+
+  return $schema;
+}

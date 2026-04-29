@@ -1,0 +1,6 @@
+name = Rovas Outbound Webhook Log
+description = Logs outbound 3rd-party webhook deliveries with request/response details.
+core = 7.x
+package = Rovas
+version = 7.x-1.0
+dependencies[] = commerce

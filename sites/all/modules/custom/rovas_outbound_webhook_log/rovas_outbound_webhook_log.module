@@ -1,0 +1,173 @@
+<?php
+
+/**
+ * @file
+ * Outbound 3rd-party webhook logging and admin inspection pages.
+ */
+
+/**
+ * Implements hook_menu().
+ */
+function rovas_outbound_webhook_log_menu() {
+  $items = array();
+
+  $items['admin/commerce/orders/rewpro-webhooks'] = array(
+    'title' => 'Rewpro outbound webhooks',
+    'description' => 'Inspect outbound 3rd-party webhook deliveries.',
+    'page callback' => 'rovas_outbound_webhook_log_admin_page',
+    'access callback' => 'user_access',
+    'access arguments' => array('access administration pages'),
+    'type' => MENU_NORMAL_ITEM,
+  );
+
+  $items['admin/commerce/orders/rewpro-webhooks/%'] = array(
+    'title' => 'Webhook delivery details',
+    'page callback' => 'rovas_outbound_webhook_log_admin_detail_page',
+    'page arguments' => array(4),
+    'access callback' => 'user_access',
+    'access arguments' => array('access administration pages'),
+    'type' => MENU_CALLBACK,
+  );
+
+  return $items;
+}
+
+/**
+ * Stores one outbound webhook delivery attempt.
+ *
+ * @param array $record
+ *   Log data.
+ *
+ * @return int|false
+ *   Inserted row id or FALSE.
+ */
+function rovas_outbound_webhook_log_record(array $record) {
+  $row = array(
+    'created' => REQUEST_TIME,
+    'source_module' => isset($record['source_module']) ? substr((string) $record['source_module'], 0, 64) : '',
+    'payment_type' => isset($record['payment_type']) ? substr((string) $record['payment_type'], 0, 32) : '',
+    'event_type' => isset($record['event_type']) ? substr((string) $record['event_type'], 0, 64) : '',
+    'order_id' => isset($record['order_id']) && is_numeric($record['order_id']) ? (int) $record['order_id'] : NULL,
+    'delivery_id' => !empty($record['delivery_id']) ? substr((string) $record['delivery_id'], 0, 64) : NULL,
+    'attempt' => !empty($record['attempt']) && is_numeric($record['attempt']) ? max(1, (int) $record['attempt']) : 1,
+    'endpoint' => rovas_outbound_webhook_log_normalize_text(isset($record['endpoint']) ? $record['endpoint'] : '', 65535),
+    'request_headers' => rovas_outbound_webhook_log_normalize_text(isset($record['request_headers']) ? $record['request_headers'] : '', 65535),
+    'request_payload' => rovas_outbound_webhook_log_normalize_text(isset($record['request_payload']) ? $record['request_payload'] : '', 65535),
+    'http_code' => isset($record['http_code']) && is_numeric($record['http_code']) ? (int) $record['http_code'] : NULL,
+    'response_error' => rovas_outbound_webhook_log_normalize_text(isset($record['response_error']) ? $record['response_error'] : '', 65535),
+    'response_body' => rovas_outbound_webhook_log_normalize_text(isset($record['response_body']) ? $record['response_body'] : '', 65535),
+    'status' => isset($record['status']) ? substr((string) $record['status'], 0, 20) : 'unknown',
+  );
+
+  try {
+    return db_insert('rovas_outbound_webhook_log')
+      ->fields($row)
+      ->execute();
+  }
+  catch (Exception $e) {
+    watchdog('rovas_outbound_webhook_log', 'Failed to insert outbound webhook log row: @err', array('@err' => $e->getMessage()), WATCHDOG_ERROR);
+    return FALSE;
+  }
+}
+
+/**
+ * Normalizes scalar/array/object values to bounded text.
+ */
+function rovas_outbound_webhook_log_normalize_text($value, $max_len = 65535) {
+  if (is_array($value) || is_object($value)) {
+    $value = drupal_json_encode($value);
+    if ($value === FALSE) {
+      $value = '(json_encode failed)';
+    }
+  }
+  else {
+    $value = (string) $value;
+  }
+
+  if (drupal_strlen($value) > $max_len) {
+    $value = drupal_substr($value, 0, max(0, $max_len - 13)) . '...[truncated]';
+  }
+  return $value;
+}
+
+/**
+ * Admin listing page for outbound webhook logs.
+ */
+function rovas_outbound_webhook_log_admin_page() {
+  $header = array(
+    t('Time'),
+    t('Payment'),
+    t('Event'),
+    t('Order'),
+    t('HTTP'),
+    t('Status'),
+    t('Endpoint'),
+    t('Ops'),
+  );
+
+  $query = db_select('rovas_outbound_webhook_log', 'l')
+    ->fields('l')
+    ->orderBy('id', 'DESC')
+    ->extend('PagerDefault')
+    ->limit(100);
+  $rows_result = $query->execute();
+
+  $rows = array();
+  foreach ($rows_result as $row) {
+    $rows[] = array(
+      format_date((int) $row->created, 'short'),
+      check_plain($row->payment_type),
+      check_plain($row->event_type),
+      isset($row->order_id) ? (int) $row->order_id : '-',
+      isset($row->http_code) ? (int) $row->http_code : '-',
+      check_plain($row->status),
+      check_plain(drupal_substr((string) $row->endpoint, 0, 110)),
+      l(t('view'), 'admin/commerce/orders/rewpro-webhooks/' . (int) $row->id),
+    );
+  }
+
+  if (empty($rows)) {
+    return t('No outbound webhook deliveries logged yet.');
+  }
+
+  $build = '';
+  $build .= theme('table', array('header' => $header, 'rows' => $rows, 'empty' => t('No rows found.')));
+  $build .= theme('pager');
+  return $build;
+}
+
+/**
+ * Admin details page for one outbound webhook row.
+ */
+function rovas_outbound_webhook_log_admin_detail_page($id) {
+  $row = db_select('rovas_outbound_webhook_log', 'l')
+    ->fields('l')
+    ->condition('id', (int) $id)
+    ->range(0, 1)
+    ->execute()
+    ->fetchObject();
+
+  if (!$row) {
+    return drupal_not_found();
+  }
+
+  $items = array();
+  $items[] = '<strong>' . t('Logged at') . ':</strong> ' . check_plain(format_date((int) $row->created, 'custom', 'Y-m-d H:i:s'));
+  $items[] = '<strong>' . t('Source module') . ':</strong> ' . check_plain($row->source_module);
+  $items[] = '<strong>' . t('Payment type') . ':</strong> ' . check_plain($row->payment_type);
+  $items[] = '<strong>' . t('Event type') . ':</strong> ' . check_plain($row->event_type);
+  $items[] = '<strong>' . t('Order id') . ':</strong> ' . (isset($row->order_id) ? (int) $row->order_id : '-');
+  $items[] = '<strong>' . t('Delivery id') . ':</strong> ' . check_plain((string) $row->delivery_id);
+  $items[] = '<strong>' . t('Attempt') . ':</strong> ' . (int) $row->attempt;
+  $items[] = '<strong>' . t('HTTP code') . ':</strong> ' . (isset($row->http_code) ? (int) $row->http_code : '-');
+  $items[] = '<strong>' . t('Status') . ':</strong> ' . check_plain($row->status);
+  $items[] = '<strong>' . t('Endpoint') . ':</strong> ' . check_plain($row->endpoint);
+
+  $output = theme('item_list', array('items' => $items));
+  $output .= '<h3>' . t('Request headers') . '</h3><pre>' . check_plain((string) $row->request_headers) . '</pre>';
+  $output .= '<h3>' . t('Request payload') . '</h3><pre>' . check_plain((string) $row->request_payload) . '</pre>';
+  $output .= '<h3>' . t('Response error') . '</h3><pre>' . check_plain((string) $row->response_error) . '</pre>';
+  $output .= '<h3>' . t('Response body') . '</h3><pre>' . check_plain((string) $row->response_body) . '</pre>';
+
+  return $output;
+}
