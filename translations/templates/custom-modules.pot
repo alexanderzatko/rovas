@@ -1,0 +1,3801 @@
+# $Id$
+#
+# LANGUAGE translation of Drupal (general)
+# Copyright YEAR NAME <EMAIL@ADDRESS>
+# Generated from files:
+#  sites/all/modules/custom/rovas_account_menu/rovas_account_menu.module: n/a
+#  sites/all/modules/custom/rovas_account_menu/rovas_account_menu.info: n/a
+#  sites/all/modules/custom/rovas_api_endpoints/rovas_api_endpoints.info: n/a
+#  sites/all/modules/custom/rovas_base/rovas_base.module: n/a
+#  sites/all/modules/custom/rovas_base/rovas_base.info: n/a
+#  sites/all/modules/custom/rovas_cart/rovas_cart.info: n/a
+#  sites/all/modules/custom/rovas_commerce_order/rovas_commerce_order.info: n/a
+#  sites/all/modules/custom/rovas_custom_rules_actions/rovas_custom_rules_actions.info: n/a
+#  sites/all/modules/custom/rovas_delete_confirm/rovas_delete_confirm.info: n/a
+#  sites/all/modules/custom/rovas_fio_reconcile/rovas_fio_reconcile.module: n/a
+#  sites/all/modules/custom/rovas_fio_reconcile/rovas_fio_reconcile.info: n/a
+#  sites/all/modules/custom/rovas_forex/rovas_forex.module: n/a
+#  sites/all/modules/custom/rovas_forex/rovas_forex.info: n/a
+#  sites/all/modules/custom/rovas_ha/rovas_ha.info: n/a
+#  sites/all/modules/custom/rovas_ma_edit/rovas_ma_edit.info: n/a
+#  sites/all/modules/custom/rovas_meritscope/rovas_meritscope.info: n/a
+#  sites/all/modules/custom/rovas_money_transfer/rovas_money_transfer.info: n/a
+#  sites/all/modules/custom/rovas_nocat_rank/rovas_nocat_rank.info: n/a
+#  sites/all/modules/custom/rovas_ol_zoom_source_switcher/rovas_ol_zoom_source_switcher.info: n/a
+#  sites/all/modules/custom/rovas_orders_chart/rovas_orders_chart.info: n/a
+#  sites/all/modules/custom/rovas_outbound_webhook_log/rovas_outbound_webhook_log.info: n/a
+#  sites/all/modules/custom/rovas_priv_message/rovas_priv_message.info: n/a
+#  sites/all/modules/custom/rovas_prod_revisions/rovas_prod_revisions.info: n/a
+#  sites/all/modules/custom/rovas_project_edit/rovas_project_edit.info: n/a
+#  sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module: n/a
+#  sites/all/modules/custom/rovas_project_reward/rovas_project_reward.info: n/a
+#  sites/all/modules/custom/rovas_purchase_shares/rovas_purchase_shares.info: n/a
+#  sites/all/modules/custom/rovas_repmerger/rovas_repmerger.module: n/a
+#  sites/all/modules/custom/rovas_repmerger/rovas_repmerger.info: n/a
+#  sites/all/modules/custom/rovas_report_actions/rovas_report_actions.info: n/a
+#  sites/all/modules/custom/rovas_report_form/rovas_report_form.info: n/a
+#  sites/all/modules/custom/rovas_reports_exposed_filters/rovas_reports_exposed_filters.info: n/a
+#  sites/all/modules/custom/rovas_site_rules/rovas_site_rules.info: n/a
+#  sites/all/modules/custom/rovas_stripe_express_checkout/rovas_stripe_express_checkout.info: n/a
+#  sites/all/modules/custom/rovas_stripe_webhooks/rovas_stripe_webhooks.info: n/a
+#  sites/all/modules/custom/rovas_supress_messages/rovas_supress_messages.info: n/a
+#  sites/all/modules/custom/rovas_user/rovas_user.info: n/a
+#  sites/all/modules/custom/rovas_user_apikeys/rovas_user_apikeys.info: n/a
+#  sites/all/modules/custom/rovas_verify/rovas_verify.info: n/a
+#  sites/all/modules/custom/rovas_wallet_fullness/rovas_wallet_fullness.info: n/a
+#  sites/all/modules/custom/rovas_api_endpoints/rovas_api_endpoints.module: n/a
+#  sites/all/modules/custom/rovas_cart/rovas_cart.module: n/a
+#  sites/all/modules/custom/rovas_custom_rules_actions/rovas_custom_rules_actions.module: n/a
+#  sites/all/modules/custom/rovas_outbound_webhook_log/rovas_outbound_webhook_log.module: n/a
+#  sites/all/modules/custom/rovas_delete_confirm/rovas_delete_confirm.module: n/a
+#  sites/all/modules/custom/rovas_user/rovas_user.module: n/a
+#  sites/all/modules/custom/rovas_verify/rovas_verify.module: n/a
+#  sites/all/modules/custom/rovas_purchase_shares/rovas_purchase_shares.module: n/a
+#  sites/all/modules/custom/rovas_ha/plugins/icon_pack/hybridauth_16/hybridauth_16.inc: n/a
+#  sites/all/modules/custom/rovas_ha/plugins/icon_pack/hybridauth_24/hybridauth_24.inc: n/a
+#  sites/all/modules/custom/rovas_ha/plugins/icon_pack/hybridauth_32/hybridauth_32.inc: n/a
+#  sites/all/modules/custom/rovas_ha/plugins/icon_pack/hybridauth_48/hybridauth_48.inc: n/a
+#  sites/all/modules/custom/rovas_ha/plugins/provider/Nabezky/Nabezky.inc: n/a
+#  sites/all/modules/custom/rovas_ma_edit/rovas_ma_edit.module: n/a
+#  sites/all/modules/custom/rovas_meritscope/rovas_meritscope.module: n/a
+#  sites/all/modules/custom/rovas_money_transfer/rovas_money_transfer.module: n/a
+#  sites/all/modules/custom/rovas_nocat_rank/rovas_nocat_rank.module: n/a
+#  sites/all/modules/custom/rovas_purchase_shares/rovas_purchase_shares.field_instance.inc: n/a
+#  sites/all/modules/custom/rovas_purchase_shares/rovas_purchase_shares.views_default.inc: n/a
+#  sites/all/modules/custom/rovas_orders_chart/rovas_orders_chart.module: n/a
+#  sites/all/modules/custom/rovas_stripe_webhooks/rovas_stripe_webhooks.admin.inc: n/a
+#  sites/all/modules/custom/rovas_project_edit/rovas_project_edit.module: n/a
+#  sites/all/modules/custom/rovas_report_form/rovas_report_form.module: n/a
+#  sites/all/modules/custom/rovas_project_reward/rovas_project_reward.field_instance.inc: n/a
+#  sites/all/modules/custom/rovas_report_actions/rovas_report_actions.module: n/a
+#  sites/all/modules/custom/rovas_project_reward/templates/commerce-bank-transfer-notification.tpl.php: n/a
+#  sites/all/modules/custom/rovas_purchase_shares/rovas_purchase_shares.field_group.inc: n/a
+#  sites/all/modules/custom/rovas_purchase_shares/rovas_purchase_shares.inc: n/a
+#  sites/all/modules/custom/rovas_stripe_express_checkout/js/express_checkout.js: n/a
+#  sites/all/modules/custom/rovas_reports_exposed_filters/rovas_reports_exposed_filters.module: n/a
+#  sites/all/modules/custom/rovas_site_rules/rovas_site_rules.migration.inc: n/a
+#  sites/all/modules/custom/rovas_stripe_express_checkout/rovas_stripe_express_checkout.module: n/a
+#  sites/all/modules/custom/rovas_stripe_express_checkout/includes/init.inc: n/a
+#  sites/all/modules/custom/rovas_stripe_express_checkout/includes/init_buymerits.inc: n/a
+#  sites/all/modules/custom/rovas_stripe_express_checkout/includes/init_buyshares.inc: n/a
+#  sites/all/modules/custom/rovas_stripe_webhooks/rovas_stripe_webhooks.drush.inc: n/a
+#  sites/all/modules/custom/rovas_stripe_webhooks/rovas_stripe_webhooks.module: n/a
+#  sites/all/modules/custom/rovas_stripe_webhooks/includes/processor.inc: n/a
+#  sites/all/modules/custom/rovas_stripe_webhooks/rovas_stripe_webhooks.install: n/a
+#  sites/all/modules/custom/rovas_supress_messages/rovas_supress_messages.module: n/a
+#  sites/all/modules/custom/rovas_user_apikeys/rovas_user_apikeys.module: n/a
+#  sites/all/modules/custom/rovas_wallet_fullness/rovas_wallet_fullness.module: n/a
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: PROJECT VERSION\n"
+"POT-Creation-Date: 2026-04-29 13:17+0200\n"
+"PO-Revision-Date: YYYY-mm-DD HH:MM+ZZZZ\n"
+"Last-Translator: NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <EMAIL@ADDRESS>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=INTEGER; plural=EXPRESSION;\n"
+
+#: sites/all/modules/custom/rovas_account_menu/rovas_account_menu.module:20
+msgid "My account"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_account_menu/rovas_account_menu.info:0
+msgid "Custom My Account menu item"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_account_menu/rovas_account_menu.info:0
+msgid "Adds user image and submenu listing account actions"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_account_menu/rovas_account_menu.info:0 sites/all/modules/custom/rovas_api_endpoints/rovas_api_endpoints.info:0 sites/all/modules/custom/rovas_base/rovas_base.module:12 sites/all/modules/custom/rovas_base/rovas_base.info:0 sites/all/modules/custom/rovas_cart/rovas_cart.info:0 sites/all/modules/custom/rovas_commerce_order/rovas_commerce_order.info:0 sites/all/modules/custom/rovas_custom_rules_actions/rovas_custom_rules_actions.info:0 sites/all/modules/custom/rovas_delete_confirm/rovas_delete_confirm.info:0 sites/all/modules/custom/rovas_fio_reconcile/rovas_fio_reconcile.module:81 sites/all/modules/custom/rovas_fio_reconcile/rovas_fio_reconcile.info:0 sites/all/modules/custom/rovas_forex/rovas_forex.module:1583;1626;1683 sites/all/modules/custom/rovas_forex/rovas_forex.info:0 sites/all/modules/custom/rovas_ha/rovas_ha.info:0 sites/all/modules/custom/rovas_ma_edit/rovas_ma_edit.info:0 sites/all/modules/custom/rovas_meritscope/rovas_meritscope.info:0 sites/all/modules/custom/rovas_money_transfer/rovas_money_transfer.info:0 sites/all/modules/custom/rovas_nocat_rank/rovas_nocat_rank.info:0 sites/all/modules/custom/rovas_ol_zoom_source_switcher/rovas_ol_zoom_source_switcher.info:0 sites/all/modules/custom/rovas_orders_chart/rovas_orders_chart.info:0 sites/all/modules/custom/rovas_outbound_webhook_log/rovas_outbound_webhook_log.info:0 sites/all/modules/custom/rovas_priv_message/rovas_priv_message.info:0 sites/all/modules/custom/rovas_prod_revisions/rovas_prod_revisions.info:0 sites/all/modules/custom/rovas_project_edit/rovas_project_edit.info:0 sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:3585;3619 sites/all/modules/custom/rovas_project_reward/rovas_project_reward.info:0 sites/all/modules/custom/rovas_purchase_shares/rovas_purchase_shares.info:0 sites/all/modules/custom/rovas_repmerger/rovas_repmerger.module:105 sites/all/modules/custom/rovas_repmerger/rovas_repmerger.info:0 sites/all/modules/custom/rovas_report_actions/rovas_report_actions.info:0 sites/all/modules/custom/rovas_report_form/rovas_report_form.info:0 sites/all/modules/custom/rovas_reports_exposed_filters/rovas_reports_exposed_filters.info:0 sites/all/modules/custom/rovas_site_rules/rovas_site_rules.info:0 sites/all/modules/custom/rovas_stripe_express_checkout/rovas_stripe_express_checkout.info:0 sites/all/modules/custom/rovas_stripe_webhooks/rovas_stripe_webhooks.info:0 sites/all/modules/custom/rovas_supress_messages/rovas_supress_messages.info:0 sites/all/modules/custom/rovas_user/rovas_user.info:0 sites/all/modules/custom/rovas_user_apikeys/rovas_user_apikeys.info:0 sites/all/modules/custom/rovas_verify/rovas_verify.info:0 sites/all/modules/custom/rovas_wallet_fullness/rovas_wallet_fullness.info:0
+msgid "Rovas"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_api_endpoints/rovas_api_endpoints.module:83
+msgid "Provider listing not available"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_api_endpoints/rovas_api_endpoints.module:114
+msgid "User not authenticated"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_api_endpoints/rovas_api_endpoints.module:119
+msgid "Verification system not available"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_api_endpoints/rovas_api_endpoints.module:148
+msgid "Unable to retrieve verifications"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_api_endpoints/rovas_api_endpoints.module:198
+msgid "Request body must be a JSON object."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_api_endpoints/rovas_api_endpoints.module:204
+msgid "Missing required field: @field."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_api_endpoints/rovas_api_endpoints.module:209
+msgid "Server configuration error."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_api_endpoints/rovas_api_endpoints.module:214
+msgid "user_country must be a two-letter ISO 3166-1 alpha-2 code using uppercase ASCII letters only (e.g. SK)."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_api_endpoints/rovas_api_endpoints.module:218
+msgid "Unknown or unavailable country code."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_api_endpoints/rovas_api_endpoints.module:224
+msgid "Invalid email address."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_api_endpoints/rovas_api_endpoints.module:228
+msgid "user_id must be an integer."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_api_endpoints/rovas_api_endpoints.module:232
+msgid "user_id must be non-negative."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_api_endpoints/rovas_api_endpoints.module:236
+msgid "user_id is too large for provider storage."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_api_endpoints/rovas_api_endpoints.module:241
+msgid "server_url must be a valid absolute URL (http or https)."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_api_endpoints/rovas_api_endpoints.module:251
+msgid "Invalid HybridAuth provider for account linking."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_api_endpoints/rovas_api_endpoints.module:325
+msgid "Could not create user account."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_api_endpoints/rovas_api_endpoints.module:359
+msgid "Unable to complete partner user registration."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_api_endpoints/rovas_api_endpoints.module:147;250;358
+msgid "rovas_api_endpoints"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_api_endpoints/rovas_api_endpoints.module:147
+msgid "Error retrieving verifications: @message"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_api_endpoints/rovas_api_endpoints.module:250
+msgid "rovas_partner_user_create: HybridAuth provider @p is not allowed."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_api_endpoints/rovas_api_endpoints.module:358
+msgid "rovas_partner_user_create: @msg"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_api_endpoints/rovas_api_endpoints.info:0
+msgid "Rovas API Endpoints"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_api_endpoints/rovas_api_endpoints.info:0
+msgid "Custom Services endpoints for Rovas application verification system"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_base/rovas_base.module:11
+msgid "Set node created and changed time to now"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_base/rovas_base.module:16 sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:3623 sites/all/modules/custom/rovas_repmerger/rovas_repmerger.module:109
+msgid "Node"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_base/rovas_base.module:312
+msgid "since @years"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_base/rovas_base.module:317
+msgid "@merits ME"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_base/rovas_base.module:336
+msgctxt "merit badge"
+msgid "Merit score"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_base/rovas_base.module:342
+msgid "Time equivalent"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_base/rovas_base.module:354
+msgctxt "merit badge"
+msgid "of"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_base/rovas_base.module:408
+msgid "Rewarded with <strong>@merits ME</strong>"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_base/rovas_base.module:470
+msgid "1 hour"
+msgid_plural "@count hours"
+msgstr[0] ""
+msgstr[1] ""
+
+#: sites/all/modules/custom/rovas_base/rovas_base.module:471
+msgid "1 day"
+msgid_plural "@count days"
+msgstr[0] ""
+msgstr[1] ""
+
+#: sites/all/modules/custom/rovas_base/rovas_base.module:472
+msgid "1 year"
+msgid_plural "@count years"
+msgstr[0] ""
+msgstr[1] ""
+
+#: sites/all/modules/custom/rovas_base/rovas_base.info:0
+msgid "Rovas common functions"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_base/rovas_base.info:0
+msgid "Generic functions common to all Rovas functionality"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_cart/rovas_cart.module:8
+msgid "Please make sure there is only one product in the cart."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_cart/rovas_cart.info:0
+msgid "Rovas shopping cart form"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_cart/rovas_cart.info:0
+msgid "Does not allow submitting cart with item count > 1"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_commerce_order/rovas_commerce_order.info:0
+msgid "Add template for the commerce orders page"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_commerce_order/rovas_commerce_order.info:0
+msgid "Allows theming the Order page accessible in the user profile"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_custom_rules_actions/rovas_custom_rules_actions.module:8
+msgid "Filter payment methods based on order preference"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_custom_rules_actions/rovas_custom_rules_actions.module:12 sites/all/modules/custom/rovas_outbound_webhook_log/rovas_outbound_webhook_log.module:102 sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:4262
+msgid "Order"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_custom_rules_actions/rovas_custom_rules_actions.module:13
+msgid "The order to filter payment methods for."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_custom_rules_actions/rovas_custom_rules_actions.module:16
+msgid "Commerce Payment"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_custom_rules_actions/rovas_custom_rules_actions.info:0
+msgid "Rovas Custom Rules Actions"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_custom_rules_actions/rovas_custom_rules_actions.info:0
+msgid "Provides custom rules actions"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_delete_confirm/rovas_delete_confirm.module:14;39;94
+msgid "Are you sure you want to delete"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_delete_confirm/rovas_delete_confirm.module:14
+msgid "project"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_delete_confirm/rovas_delete_confirm.module:15;40;70;95 sites/all/modules/custom/rovas_user/rovas_user.module:28
+msgid "This action cannot be undone."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_delete_confirm/rovas_delete_confirm.module:20;45;100
+msgid "Delete"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_delete_confirm/rovas_delete_confirm.module:25;105 sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:2149 sites/all/modules/custom/rovas_verify/rovas_verify.module:589;636
+msgid "Cancel"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_forex/rovas_forex.module:930
+msgctxt "Forex"
+msgid "Cancel"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_delete_confirm/rovas_delete_confirm.module:32
+msgid "Action not allowed"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_delete_confirm/rovas_delete_confirm.module:33
+msgid "Sorry, you can not delete this project. The likely causes are: The project was sold or expired, or workers other than you have worker on it."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_delete_confirm/rovas_delete_confirm.module:73
+msgid "Canceling Dispute"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_delete_confirm/rovas_delete_confirm.module:74
+msgid "This dispute has been joined by users other than the complainant and the accused, therefore can be only canceled and not deleted. The only difference between canceled and deteted disputes is that the former remain visible in the list. If you would like to permanently delete the dispute instead, please first ask all supporters and defenders to remove themselves from the dispute and then delete it again."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_delete_confirm/rovas_delete_confirm.module:85
+msgid "Cancel Dispute"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_delete_confirm/rovas_delete_confirm.info:0
+msgid "Rovas Delete Confirm"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_delete_confirm/rovas_delete_confirm.info:0
+msgid "Modifies the Delete confirmation page to suit Rovas needs"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_fio_reconcile/rovas_fio_reconcile.module:651
+msgid "Fio reconcile finished: @p processed, @s skipped (already seen), @v skipped (no order reference)."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_fio_reconcile/rovas_fio_reconcile.module:684
+msgid "Fio poll finished. Processed: @n."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_fio_reconcile/rovas_fio_reconcile.module:700
+msgid "Fio API token"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_fio_reconcile/rovas_fio_reconcile.module:702
+msgid "Token from Fio Internetbanking (API / e-banking). Stored in the database."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_fio_reconcile/rovas_fio_reconcile.module:708
+msgid "API base URL"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_fio_reconcile/rovas_fio_reconcile.module:710
+msgid "Per Fio docs: https://fioapi.fio.cz/v1/rest (legacy www.fio.cz/ib_api/rest returns HTML). Host-only values get https:// on save."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_fio_reconcile/rovas_fio_reconcile.module:716
+msgid "Fetch mode"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_fio_reconcile/rovas_fio_reconcile.module:718
+msgid "Date range (recommended): one request per run, last N days through today"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_fio_reconcile/rovas_fio_reconcile.module:719
+msgid "Incremental: /last/ since Fio marker (then set-last-id; uses two HTTP calls ≥30s apart)"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_fio_reconcile/rovas_fio_reconcile.module:726
+msgid "Period window (days)"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_fio_reconcile/rovas_fio_reconcile.module:729
+msgid "Used when fetch mode is date range. Fio allows limited history; keep reasonably small."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_fio_reconcile/rovas_fio_reconcile.module:735
+msgid "Minimum seconds between Fio HTTP calls"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_fio_reconcile/rovas_fio_reconcile.module:738
+msgid "Fio enforces about 30 seconds between requests per token."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_fio_reconcile/rovas_fio_reconcile.module:744
+msgid "Delay before set-last-id (seconds)"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_fio_reconcile/rovas_fio_reconcile.module:747
+msgid "Only used in incremental (/last/) mode, between download and set-last-id."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_fio_reconcile/rovas_fio_reconcile.module:753
+msgid "Run Fio reconcile on cron"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_fio_reconcile/rovas_fio_reconcile.module:762
+msgid "Last run"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_fio_reconcile/rovas_fio_reconcile.module:763
+msgid "Never"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_fio_reconcile/rovas_fio_reconcile.module:764
+msgid "Run reconcile once (without saving this form)"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_fio_reconcile/rovas_fio_reconcile.module:765
+msgid "Simulate bank transaction (testing)"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_fio_reconcile/rovas_fio_reconcile.module:771
+msgid "Save configuration"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_fio_reconcile/rovas_fio_reconcile.module:776
+msgid "Save and run reconcile now"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_fio_reconcile/rovas_fio_reconcile.module:795
+msgid "Configuration saved."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_fio_reconcile/rovas_fio_reconcile.module:815
+msgid "Order ID"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_fio_reconcile/rovas_fio_reconcile.module:818
+msgid "Commerce order id to confirm as paid (VS mapping)."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_fio_reconcile/rovas_fio_reconcile.module:822
+msgid "Amount (EUR)"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_fio_reconcile/rovas_fio_reconcile.module:825
+msgid "Decimal amount to confirm (e.g. 12.00). If it differs from expected, order may go to manual review."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_fio_reconcile/rovas_fio_reconcile.module:829
+msgid "Provider payment id (optional)"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_fio_reconcile/rovas_fio_reconcile.module:832
+msgid "Optional id stored on the intent/transaction. If empty, a mock id is generated."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_fio_reconcile/rovas_fio_reconcile.module:836
+msgid "Notes (optional)"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_fio_reconcile/rovas_fio_reconcile.module:839
+msgid "Stored in meta payload for debugging."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_fio_reconcile/rovas_fio_reconcile.module:845
+msgid "Simulate confirmation"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_fio_reconcile/rovas_fio_reconcile.module:864
+msgid "Please enter a valid order id and amount."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_fio_reconcile/rovas_fio_reconcile.module:868
+msgid "Missing rovas_project_reward: cannot simulate reconciliation."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_fio_reconcile/rovas_fio_reconcile.module:904
+msgid "Simulation executed for Order #@id."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_fio_reconcile/rovas_fio_reconcile.module:169;177;186;202;215;235;249;319;357;891
+msgid "rovas_fio_reconcile"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_fio_reconcile/rovas_fio_reconcile.module:169
+msgid "Reconcile skipped: rovas_project_reward not available."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_fio_reconcile/rovas_fio_reconcile.module:177
+msgid "Reconcile aborted (@source): Fio API token is not configured."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_fio_reconcile/rovas_fio_reconcile.module:186
+msgid "Reconcile skipped (@source): lock rovas_fio_reconcile already held (concurrent run)."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_fio_reconcile/rovas_fio_reconcile.module:202
+msgid "Reconcile skipped (@source): Fio rate limit (@wait s until next allowed HTTP call; min interval @rate s)."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_fio_reconcile/rovas_fio_reconcile.module:215
+msgid "Reconcile failed (@source): could not build Fio request URL (check base URL and fetch mode)."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_fio_reconcile/rovas_fio_reconcile.module:235
+msgid "Fio HTTP failed (@source): @err (code @code)."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_fio_reconcile/rovas_fio_reconcile.module:249
+msgid "Reconcile failed (@source): response is not valid JSON (HTTP @code, first 200 chars: @snippet)."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_fio_reconcile/rovas_fio_reconcile.module:319
+msgid "Fio set-last-id failed after last/ fetch: @err (@code)."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_fio_reconcile/rovas_fio_reconcile.module:357
+msgid "Reconcile exception (@source): @m"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_fio_reconcile/rovas_fio_reconcile.module:891
+msgid "Simulating bank confirmation: order @oid, amount @amt, pid @pid (user @uid)."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_fio_reconcile/rovas_fio_reconcile.module:82
+msgid "Rovas module settings."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_fio_reconcile/rovas_fio_reconcile.module:92
+msgid "Fio bank reconcile"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_fio_reconcile/rovas_fio_reconcile.module:93
+msgid "Configure Fio API token and polling for bank transfer reconciliation."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_fio_reconcile/rovas_fio_reconcile.module:101
+msgid "Run Fio reconcile now"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_fio_reconcile/rovas_fio_reconcile.module:108
+msgid "Simulate bank transaction"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_fio_reconcile/rovas_fio_reconcile.module:109
+msgid "Simulate a bank transfer confirmation for testing (no HTTP)."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_fio_reconcile/rovas_fio_reconcile.module:118
+msgid "Poll Fio bank transactions"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_fio_reconcile/rovas_fio_reconcile.info:0
+msgid "Rovas Fio bank reconcile"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_fio_reconcile/rovas_fio_reconcile.info:0
+msgid "Cron-driven Fio Internetbanking API fetch and Commerce bank-transfer reconciliation (VS = order ID)."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_forex/rovas_forex.module:10
+msgid "Forex"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_forex/rovas_forex.module:11
+msgid "Exchange Chrons for national currency and vice versa"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_forex/rovas_forex.module:20
+msgid "Forex administration"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_forex/rovas_forex.module:21
+msgid "Administer Forex"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_forex/rovas_forex.module:408
+msgid "default"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_forex/rovas_forex.module:416
+msgid "from the \"@projname\" project"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_forex/rovas_forex.module:467
+msgid "Project @pname balance"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_forex/rovas_forex.module:470
+msgid "Account balance"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_forex/rovas_forex.module:478;825 sites/all/modules/custom/rovas_purchase_shares/rovas_purchase_shares.module:85;208;272;1072
+msgid "CH"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_forex/rovas_forex.module:494
+msgid "Buy Euros"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_forex/rovas_forex.module:507
+msgid "Rate"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_forex/rovas_forex.module:511
+msgid "Choose the exchange rate you wish to use for the purchase"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_forex/rovas_forex.module:586
+msgctxt "Forex"
+msgid "Refresh"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_forex/rovas_forex.module:588
+msgid "Another person is ahead of you in the queue to exchange money at this moment."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_forex/rovas_forex.module:589
+msgid "You can proceed in @minutes minutes, @seconds seconds or sooner, by clicking the Refresh button."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_forex/rovas_forex.module:593
+msgctxt "Forex"
+msgid "Preview order"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_forex/rovas_forex.module:602
+msgid "Your account balance of @chrons CH is insufficient to proceed with this order."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_forex/rovas_forex.module:606
+msgid "To proceed with the order, the Euro amount must be at least @euro €"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_forex/rovas_forex.module:611
+msgid "To proceed with the order, you must have a bank, telephone number, or paypal account information entered in your <a href=\"@usrprofile\">user profile</a>"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_forex/rovas_forex.module:644
+msgid "Buying Merits"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_forex/rovas_forex.module:645
+msgid "Your Merit balance reflects the economic value you have contributed to society, and buying here is the most favourable way to obtain Merits with your money. When you exchange Chrons or euros for Merits, you strengthen the Chron exchange rate and, with it, the hourly compensation that workers in Rovas can receive for their reported hours. This mechanism directs your money effectively to people on the lowest incomes."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_forex/rovas_forex.module:655 sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:609
+msgid "Buy Merits"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_forex/rovas_forex.module:826
+msgid "EUR"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_forex/rovas_forex.module:827
+msgid "The effective hourly wage for this conversion is"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_forex/rovas_forex.module:827
+msgid "Eur/hour"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_forex/rovas_forex.module:828
+msgctxt "Forex"
+msgid "Submit order"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:2776;2777;2779;2783
+msgid "Submit order"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_forex/rovas_forex.module:891
+msgid "Order summary"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_forex/rovas_forex.module:894
+msgid "To pay:"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_forex/rovas_forex.module:897
+msgid "To receive:"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_forex/rovas_forex.module:918
+msgid "You have five guaranteed minutes (until @time) to complete this order."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_forex/rovas_forex.module:1064
+msgid "Your order was not completed within the allowed time."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_forex/rovas_forex.module:1064
+msgid "Please try again with a new order"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_forex/rovas_forex.module:1156
+msgid "Purchase of Merits for Chrons"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_forex/rovas_forex.module:1190
+msgid "Order canceled"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_forex/rovas_forex.module:1453
+msgid "A fee received from forex conversion when a user bought Chrons."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_forex/rovas_forex.module:1582
+msgid "Forex calculation"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_forex/rovas_forex.module:1587;1637
+msgid "Input amount"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_forex/rovas_forex.module:1588
+msgid "The input amount for the forex calculation."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_forex/rovas_forex.module:1592
+msgid "Input basket"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_forex/rovas_forex.module:1593
+msgid "The input currency basket for the forex calculation."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_forex/rovas_forex.module:1597
+msgid "Output basket"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_forex/rovas_forex.module:1598
+msgid "The output currency basket for the forex calculation."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_forex/rovas_forex.module:1602
+msgid "Fee percentage"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_forex/rovas_forex.module:1603
+msgid "The fee percentage (as decimal, e.g., 0.01 for 1%)."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_forex/rovas_forex.module:1607
+msgid "Fixed fee"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_forex/rovas_forex.module:1608
+msgid "The fixed fee amount."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_forex/rovas_forex.module:1616
+msgid "Calculated output"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_forex/rovas_forex.module:1620
+msgid "Total fee"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_forex/rovas_forex.module:1625
+msgid "Calculate forex transaction parameters"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_forex/rovas_forex.module:1630
+msgid "Transaction type"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_forex/rovas_forex.module:1631
+msgid "Transaction type: \"chr_to_eur\" or \"eur_to_chr\"."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_forex/rovas_forex.module:1638
+msgid "The input amount for the transaction."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_forex/rovas_forex.module:1642;1692
+msgid "Payment processor fee"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_forex/rovas_forex.module:1643;1693
+msgid "Payment processor fee. Leave empty to use default fees."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_forex/rovas_forex.module:1648;1698
+msgid "Charge fees"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_forex/rovas_forex.module:1649;1699
+msgid "Whether to charge fees for this transaction."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_forex/rovas_forex.module:1657
+msgid "EUR basket amount"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_forex/rovas_forex.module:1661
+msgid "CHR basket amount"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_forex/rovas_forex.module:1665
+msgid "Variable fee percentage"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_forex/rovas_forex.module:1669
+msgid "Output amount"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_forex/rovas_forex.module:1673
+msgid "Fixed fee amount"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_forex/rovas_forex.module:1677
+msgid "Using temporary baskets"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_forex/rovas_forex.module:1682
+msgid "Calculate merits purchase parameters"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_forex/rovas_forex.module:1687
+msgid "Buy amount (EUR)"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_forex/rovas_forex.module:1688
+msgid "The amount in EUR to convert to CHR."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_forex/rovas_forex.module:1705 sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:1126
+msgid "Merits purchased"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_forex/rovas_forex.module:1706
+msgid "Unit price (CHR per EUR)"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_forex/rovas_forex.module:1717
+msgid "EUR to CHR"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_forex/rovas_forex.module:1718
+msgid "CHR to EUR"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_forex/rovas_forex.info:0
+msgid "Rovas forex functionality"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_forex/rovas_forex.info:0
+msgid "Adds functionality to Rovas to exchange Chrons for other currencies and vice versa"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_ha/rovas_ha.info:0
+msgid "Hybridauth - Drupal OAuth server connector"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_ha/rovas_ha.info:0
+msgid "Implements enhancements making authentication to Drupal OAuth server possible"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_ha/plugins/icon_pack/hybridauth_16/hybridauth_16.inc:11 sites/all/modules/custom/rovas_ha/plugins/icon_pack/hybridauth_24/hybridauth_24.inc:11 sites/all/modules/custom/rovas_ha/plugins/icon_pack/hybridauth_32/hybridauth_32.inc:11 sites/all/modules/custom/rovas_ha/plugins/icon_pack/hybridauth_48/hybridauth_48.inc:11
+msgid "HybridAuth"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_ha/plugins/provider/Nabezky/Nabezky.inc:29
+msgid "Client ID"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_ha/plugins/provider/Nabezky/Nabezky.inc:30
+msgid "Client Secret"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_ha/plugins/provider/Nabezky/Nabezky.inc:34
+msgid "OAuth2 Server"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_ha/plugins/provider/Nabezky/Nabezky.inc:41
+msgid "Development settings"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_ha/plugins/provider/Nabezky/Nabezky.inc:47
+msgid "Skip SSL"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_ha/plugins/provider/Nabezky/Nabezky.inc:48
+msgid "Skip checking the SSL certificates."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_ha/plugins/provider/Nabezky/Nabezky.inc:53
+msgid "HTTP Proxy"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_ha/plugins/provider/Nabezky/Nabezky.inc:54
+msgid "HTTP proxy (like http://mitmproxy.org/) can be very useful for debug."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_ma_edit/rovas_ma_edit.module:44
+msgid "Adding this project as a shareholder would results in the <strong>@dupe</strong> - a child project of the project you are adding - to be the same, as the <strong>@project</strong> project, or one of its parents. Consequently a loop in the \"project dependency chain\" would be created, which is not allowed."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_ma_edit/rovas_ma_edit.module:57
+msgid "The <strong>Merit Allocation</strong> field must be a number between 0 and 100 if the <strong>Set share by time</strong> checkbox is unchecked"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_ma_edit/rovas_ma_edit.info:0
+msgid "Merit allocation edit form"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_ma_edit/rovas_ma_edit.info:0
+msgid "Business logic for the MA edit form"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_meritscope/rovas_meritscope.module:956;960;964
+msgid "part"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_meritscope/rovas_meritscope.module:1252;1257
+msgctxt "merit index"
+msgid "ME"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:1126
+msgid "ME"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_meritscope/rovas_meritscope.module:1254
+msgid "Estimated rate"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_meritscope/rovas_meritscope.module:1254
+msgid "Default rate"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_meritscope/rovas_meritscope.module:1254
+msgid "€/hour"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_meritscope/rovas_meritscope.info:0
+msgid "The Meritscope module"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_meritscope/rovas_meritscope.info:0
+msgid "All functions necessary to render Meritscope"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_money_transfer/rovas_money_transfer.module:9;15
+msgid "Chrons in your account: "
+msgstr ""
+
+#: sites/all/modules/custom/rovas_money_transfer/rovas_money_transfer.module:9
+msgid "To send money, select the recipient and the amount. Optionally add a note about the transfer."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_money_transfer/rovas_money_transfer.module:15
+msgid "There is not enough money in your account to make a transfer."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_money_transfer/rovas_money_transfer.module:23 sites/all/modules/custom/rovas_verify/rovas_verify.module:609
+msgid "Send"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_money_transfer/rovas_money_transfer.module:32
+msgid "Please enter a valid user name"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_money_transfer/rovas_money_transfer.module:39
+msgid "Please enter a value lower than the number of Chrons you have."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_money_transfer/rovas_money_transfer.info:0
+msgid "Rovas Money Transfer Form"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_money_transfer/rovas_money_transfer.info:0
+msgid "Modifies the New Money Transfer form"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_nocat_rank/rovas_nocat_rank.module:11
+msgid "Top 10 workers in category"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_nocat_rank/rovas_nocat_rank.module:26 sites/all/modules/custom/rovas_purchase_shares/rovas_purchase_shares.field_instance.inc:852
+msgid "Category"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_nocat_rank/rovas_nocat_rank.module:30
+msgid "Unspecified activity"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_nocat_rank/rovas_nocat_rank.module:35
+msgid "Position"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_nocat_rank/rovas_nocat_rank.module:35 sites/all/modules/custom/rovas_purchase_shares/rovas_purchase_shares.views_default.inc:523
+msgid "Worker"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_nocat_rank/rovas_nocat_rank.module:35 sites/all/modules/custom/rovas_purchase_shares/rovas_purchase_shares.views_default.inc:528 sites/all/modules/custom/rovas_verify/rovas_verify.module:431
+msgid "Merits"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_nocat_rank/rovas_nocat_rank.info:0
+msgid "Rank page for the unspecific category"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_nocat_rank/rovas_nocat_rank.info:0
+msgid "Generates the rank page for the unspecific category"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_ol_zoom_source_switcher/rovas_ol_zoom_source_switcher.info:0
+msgid "OpenLayers Zoom Source Switcher"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_ol_zoom_source_switcher/rovas_ol_zoom_source_switcher.info:0
+msgid "Switches OpenLayers 3 tile sources based on zoom level."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_orders_chart/rovas_orders_chart.module:78
+msgid "The recipient ID was not supplied."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_orders_chart/rovas_orders_chart.module:231
+msgid "No data available for the selected recipient and date range."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_orders_chart/rovas_orders_chart.module:236
+msgid "Denný súčet objednávok"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_orders_chart/rovas_orders_chart.module:237
+msgid "Týždenný súčet objednávok"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_orders_chart/rovas_orders_chart.module:238
+msgid "Mesačný súčet objednávok"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_orders_chart/rovas_orders_chart.module:239
+msgid "Ročný súčet objednávok"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_orders_chart/rovas_orders_chart.module:249;400
+msgid "Obdobie"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_orders_chart/rovas_orders_chart.module:254;272;342
+msgid "Suma (€)"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_orders_chart/rovas_orders_chart.module:322
+msgid "Tabuľka denných súm objednávok"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_orders_chart/rovas_orders_chart.module:323
+msgid "Tabuľka týždenných súm objednávok"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_orders_chart/rovas_orders_chart.module:324
+msgid "Tabuľka mesačných súm objednávok"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_orders_chart/rovas_orders_chart.module:325
+msgid "Tabuľka ročných súm objednávok"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_orders_chart/rovas_orders_chart.module:329
+msgid "Dátum"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_orders_chart/rovas_orders_chart.module:330
+msgid "Týždeň"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_orders_chart/rovas_orders_chart.module:331
+msgid "Mesiac"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_orders_chart/rovas_orders_chart.module:332
+msgid "Rok"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_orders_chart/rovas_orders_chart.module:357
+msgid "Režim filtrovania"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_orders_chart/rovas_orders_chart.module:359
+msgid "Rýchly výber"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_orders_chart/rovas_orders_chart.module:360
+msgid "Vlastný výber dátumov"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_orders_chart/rovas_orders_chart.module:378
+msgid "Zobraziť podľa"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_orders_chart/rovas_orders_chart.module:380
+msgid "Dní"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_orders_chart/rovas_orders_chart.module:381
+msgid "Týždňov"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_orders_chart/rovas_orders_chart.module:382
+msgid "Mesiacov"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_orders_chart/rovas_orders_chart.module:383
+msgid "Rokov"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_orders_chart/rovas_orders_chart.module:402
+msgid "Posledný týždeň"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_orders_chart/rovas_orders_chart.module:403
+msgid "Posledný mesiac"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_orders_chart/rovas_orders_chart.module:404
+msgid "Posledný štvrťrok"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_orders_chart/rovas_orders_chart.module:405
+msgid "Posledný rok"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_orders_chart/rovas_orders_chart.module:412
+msgid "Od dátumu"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_orders_chart/rovas_orders_chart.module:419
+msgid "Do dátumu"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_orders_chart/rovas_orders_chart.module:432
+msgid "Zobraziť"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_orders_chart/rovas_orders_chart.module:490
+msgid "Invalid date selected."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_orders_chart/rovas_orders_chart.module:9
+msgid "Orders Chart"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_orders_chart/rovas_orders_chart.info:0
+msgid "Rovas Orders Chart"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_orders_chart/rovas_orders_chart.info:0
+msgid "Custom chart showing daily order totals using the Charts module."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_outbound_webhook_log/rovas_outbound_webhook_log.module:99 sites/all/modules/custom/rovas_purchase_shares/rovas_purchase_shares.views_default.inc:527;995
+msgid "Time"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_outbound_webhook_log/rovas_outbound_webhook_log.module:100
+msgid "Payment"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_outbound_webhook_log/rovas_outbound_webhook_log.module:101
+msgid "Event"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_outbound_webhook_log/rovas_outbound_webhook_log.module:103
+msgid "HTTP"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_outbound_webhook_log/rovas_outbound_webhook_log.module:104;164 sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:4263 sites/all/modules/custom/rovas_stripe_webhooks/rovas_stripe_webhooks.admin.inc:160
+msgid "Status"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_outbound_webhook_log/rovas_outbound_webhook_log.module:105;165
+msgid "Endpoint"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_outbound_webhook_log/rovas_outbound_webhook_log.module:106
+msgid "Ops"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_outbound_webhook_log/rovas_outbound_webhook_log.module:126
+msgid "view"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_outbound_webhook_log/rovas_outbound_webhook_log.module:131
+msgid "No outbound webhook deliveries logged yet."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_outbound_webhook_log/rovas_outbound_webhook_log.module:135
+msgid "No rows found."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_outbound_webhook_log/rovas_outbound_webhook_log.module:156
+msgid "Logged at"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_outbound_webhook_log/rovas_outbound_webhook_log.module:157
+msgid "Source module"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_outbound_webhook_log/rovas_outbound_webhook_log.module:158
+msgid "Payment type"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_outbound_webhook_log/rovas_outbound_webhook_log.module:159
+msgid "Event type"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_outbound_webhook_log/rovas_outbound_webhook_log.module:160
+msgid "Order id"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_outbound_webhook_log/rovas_outbound_webhook_log.module:161
+msgid "Delivery id"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_outbound_webhook_log/rovas_outbound_webhook_log.module:162
+msgid "Attempt"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_outbound_webhook_log/rovas_outbound_webhook_log.module:163
+msgid "HTTP code"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_outbound_webhook_log/rovas_outbound_webhook_log.module:168
+msgid "Request headers"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_outbound_webhook_log/rovas_outbound_webhook_log.module:169
+msgid "Request payload"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_outbound_webhook_log/rovas_outbound_webhook_log.module:170
+msgid "Response error"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_outbound_webhook_log/rovas_outbound_webhook_log.module:171
+msgid "Response body"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_outbound_webhook_log/rovas_outbound_webhook_log.module:69
+msgid "rovas_outbound_webhook_log"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_outbound_webhook_log/rovas_outbound_webhook_log.module:69
+msgid "Failed to insert outbound webhook log row: @err"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_outbound_webhook_log/rovas_outbound_webhook_log.module:15
+msgid "Rewpro outbound webhooks"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_outbound_webhook_log/rovas_outbound_webhook_log.module:16
+msgid "Inspect outbound 3rd-party webhook deliveries."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_outbound_webhook_log/rovas_outbound_webhook_log.module:25
+msgid "Webhook delivery details"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_outbound_webhook_log/rovas_outbound_webhook_log.info:0
+msgid "Rovas Outbound Webhook Log"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_outbound_webhook_log/rovas_outbound_webhook_log.info:0
+msgid "Logs outbound 3rd-party webhook deliveries with request/response details."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_priv_message/rovas_priv_message.info:0
+msgid "Rovas private message form"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_priv_message/rovas_priv_message.info:0
+msgid "Implements modifications on the Private message form"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_prod_revisions/rovas_prod_revisions.info:0
+msgid "Disable Commerce product revisions"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_prod_revisions/rovas_prod_revisions.info:0
+msgid "Disables revisions that are made whenever a product is saved"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_edit/rovas_project_edit.module:204
+msgid "@euro €/hour"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_edit/rovas_project_edit.module:221
+msgid "Smallest share"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_edit/rovas_project_edit.module:224
+msgid "Enter the <strong>smallest time share</strong> that can be purchased. Leave blank for no minimum."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_edit/rovas_project_edit.module:235 sites/all/modules/custom/rovas_report_form/rovas_report_form.module:145
+msgid "Hours"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_edit/rovas_project_edit.module:241 sites/all/modules/custom/rovas_report_form/rovas_report_form.module:154
+msgid "Minutes"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_edit/rovas_project_edit.module:289
+msgid "Project ownership"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_edit/rovas_project_edit.module:298
+msgid "Change the project owner"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_edit/rovas_project_edit.module:299
+msgid "Check if you want to transfer this project to a new owner"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_edit/rovas_project_edit.module:304
+msgid "Select a new project owner"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_edit/rovas_project_edit.module:311
+msgid "Select the user you want to transfer ownership of this project to. If you do not see the desired user you have to make them a shareholder in this project first."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_edit/rovas_project_edit.module:456
+msgid "The project owner was successfully changed"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_edit/rovas_project_edit.module:647
+msgid "Only the project owner can change ownership or add privileged users."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_edit/rovas_project_edit.module:491;527;679
+msgid "rovas_project_edit"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_edit/rovas_project_edit.module:491
+msgid "Error checking privileged users: @error"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_edit/rovas_project_edit.module:527
+msgid "Error checking field access: @error"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_edit/rovas_project_edit.module:679
+msgid "Prevented ownership change attempt by privileged user %uid"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_edit/rovas_project_edit.info:0
+msgid "Rovas Project Edit"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_edit/rovas_project_edit.info:0
+msgid "Modifies the Project content type edit form"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.field_instance.inc:230
+msgid "Payer type"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.field_instance.inc:231
+msgid "Payment recipient"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.field_instance.inc:232
+msgid "paytype can have values \"project\" or \"user,\" depending on the type of payment that is being done"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.field_instance.inc:233
+msgid "the ID of the user or project that is receiving the payment"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:9
+msgid "Purchase Details"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:10
+msgid "Reward a project"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:115
+msgctxt "reward project"
+msgid "Chrons"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:880
+msgctxt "reward project currency unit"
+msgid "Chrons"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_purchase_shares/rovas_purchase_shares.module:257
+msgid "Chrons"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:117
+msgid "chrons"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:149
+msgid "Please log in to purchase time shares."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:154
+msgid "You do not have permission to purchase time shares."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:161
+msgid "Please log in to buy Merits."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:242
+msgid "Access denied: Invalid signature"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:257
+msgid "Access denied: Invalid price_eur (must be at least 1 euro cent)."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:262
+msgid "Access denied: Invalid price_eur (must be euro cents as a positive integer)."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:274
+msgid "Access denied: Invalid price_chr (must be at least 1 chron cent)."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:279
+msgid "Access denied: Invalid price_chr (must be chron cents as a positive integer)."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:438
+msgid "How to pay with own time?"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:441
+msgid "<strong>Chron</strong> is the currency of the economic system NEO. It is granted for work on any volunteer, crowdsourced or FOSS project that already exist, or a new one you conceive yourself."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:443
+msgid "Work on the <strong>Openstreetmap</strong>, <strong>Wikipedia</strong>, any <strong>FOSS project</strong> and a number of others, all qualify for the chron reward."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:445
+msgid "Read the <strong><a href=\"@rulesurl\" target=\"_blank\">NEO rules <span class=\"glyphicon glyphicon-new-window\"></span></a></strong> to find out more."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:455
+msgid "Register to earn Chrons"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:464;566;634 sites/all/modules/custom/rovas_purchase_shares/rovas_purchase_shares.field_instance.inc:861 sites/all/modules/custom/rovas_purchase_shares/rovas_purchase_shares.module:105 sites/all/modules/custom/rovas_report_actions/rovas_report_actions.module:62
+msgid "Project"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:471
+msgid "Your request can not be processed, because this project does not have a price."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:477
+msgid "To get <strong>@prodname</strong>, you need to <strong>pay @euro euro</strong>, or more."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:479
+msgid "You can pay also with @chrons Chrons, which can be earned for volunteer work (see below)."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:481;690
+msgid "Product details"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:493
+msgid "Thank you for rewarding this project."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:495
+msgid " You can pay with Euros, or with Chrons, that can be earned for volunteer work (see below)."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:500;706
+msgid "Please note: this project offers premium features to users who pay @fee or more chrons or @eurofee or more euros."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:502;708
+msgid "To claim these benefits, you have to initiate the order from the project web site: <a href=\"@url\" target=\"_blank\">@url</a>"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:515;744
+msgid "Work report"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:523;754
+msgid "Report author"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:526
+msgid "You can pay with Euros to reward this work report."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:529
+msgid "To pay with Chrons instead, <a href=\"@login\">log in</a>, or <a href=\"@register\">register</a>."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:545
+msgid "Rewarded user"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:547
+msgid "ID"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:558
+msgid "You have"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:568
+msgid "Use your Chrons or Euros to buy time shares for this project."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:569
+msgid "One timeshare earns the same Merits as one hour of time worked in the project."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:587 sites/all/modules/custom/rovas_purchase_shares/rovas_purchase_shares.module:152
+msgid "Project data"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:604;627
+msgid "Clicking Confirm will complete your Chron payment."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:610
+msgid "Use your Chrons or Euros to add Merits to your account"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:664;722
+msgid "The Chron balance in your account is lower than the requested price.<br>You can continue with payment in euros"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:669;727
+msgid "Learn how to earn Chrons"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:676;735
+msgid "Clicking the button below will complete your payment"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:682
+msgid "To get <strong>@prodname</strong>, you need to <strong>pay at least @payment_amount @unit</strong> (@altpayment @altunit), or more."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:697;702
+msgid "The project does not have a firm price. You can pay any amount of your choosing."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:759
+msgid "You can not reward your own work"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:792;1414;1476
+msgid "This project is not set up to allow buying shares."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:795
+msgid "Merits purchase is only available for your own account."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:798
+msgid "The recipient, or the type of recipient are missing. The payment can not be executed."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:811;821
+msgid "Payment amount"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:822
+msgid "Enter the payment amount"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:878
+msgid "Pay with"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:880
+msgctxt "reward project"
+msgid "Euros"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_purchase_shares/rovas_purchase_shares.module:258
+msgid "Euros"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:881
+msgid "Choose the way you want to pay"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:921
+msgid "E-mail address"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:923
+msgid "We will send order confirmation to this email"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:1024
+msgid "Purchased time"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:1193;1196
+msgid "Pay by card"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:1202
+msgid "Confirm"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:1230
+msgid "Pay with bank transfer"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:1267
+msgid "Pay faster with:"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:1271
+msgid "Loading payment options..."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:1281
+msgid "or"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:1363
+msgid "Please enter amount greater than 0"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:1366
+msgid "The price for this product is"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:1368
+msgid "However, you are sending only"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:1373
+msgid "You must be logged in to make payments with Chrons."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:1384
+msgid "You are trying to pay @paid_amt @unit, but you have only @chrons @unit in your account!"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:1391
+msgid "One, or all of the recipient, euro amount, or the type of recipient are missing. The payment cannot be executed."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:1396
+msgid "The amount paid cannot be processed. Please split your payment into multiple smaller amounts."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:1403
+msgid "Please enter a valid email address."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:1409
+msgid "Buyshares is unavailable."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:1418
+msgid "Please enter value equal to, or greater than @v."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:1424
+msgid "Invalid Merits purchase request."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:1430
+msgid "The amount must be at least @amount € to receive Merits."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:1435
+msgid "This amount is too small to buy Merits. Enter a larger amount in Euros."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:1440
+msgid "Please enter at least 1 Chron."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:1483
+msgid "The amount paid cannot be processed. Please split your payment into smaller amounts or adjust the values."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:1489;1536
+msgid "Merits purchase is temporarily unavailable."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:1494
+msgid "The amount paid cannot be processed. Please try a larger euro amount or adjust the values."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:1541
+msgid "Conversion of @chrons Chrons to @merits Merits was completed."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:1557
+msgid "Buyshares processing is unavailable."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:1597
+msgid "Reward for the <a href=\"@projurl\">@repname</a> work report"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:1603
+msgid "The reward was successfully processed"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:1611
+msgid "Subscription, or payment for the <a href=\"@projurl\">@projname</a> project"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:1616
+msgid "The purchase will be completed in a couple of minutes. You might want to refresh this page after a while"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:1979;5641;17
+msgid "Rewpro bank payment review"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:1980
+msgid "If this is an overpayment, reconcile it on !link."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:2057
+msgid "Please fill-in your billing information"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:2072
+msgid "Contact information"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:2125
+msgid "Credit cards, or PayPal"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:2196
+msgid "Bank details will be shown on the next screen after you submit your order. They will also be sent to you by email."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:2227
+msgid "Please select a payment method."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:2271
+msgid "Your order number is @number. You can <a href=\"!url\">view your order</a> on your account page when logged in."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:2293
+msgid "Return to @domain"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:2294
+msgid "Return to the site you came from"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:2711
+msgid "Project not found for the supplied project ID"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:2717
+msgid "Rewarding project"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:2723
+msgid "You are sending a reward of <strong>@eur €</strong> to project <a href=\"@url\">@projname</a>."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:2735
+msgid "Rewarding work report"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:2741
+msgid "You are sending a reward of <strong>@eur €</strong> to work report <a href=\"@url\">@repname</a>."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:2743
+msgid "The amount being paid was adjusted, to acommodate requirements of our payment processor."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:2747
+msgid "Work report not found for the supplied ID"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:2751
+msgid "Sending money to user"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:2756
+msgid "You are sending @eur € (@chr Chrons) to <strong>@usrname</strong>"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:2759
+msgid "User not found for the supplied user ID"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:2764
+msgid "Recipient must be specified when sending money"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:2778
+msgid "Continue to next step"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:2981
+msgid "Your payment was processed successfully. Thank you for your support."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:3049
+msgid "<p>Thank you for the payment.</p><p><strong>Due to a temporary problem, the premium features at @project could not be immediately activated.</strong></p><p>We will remedy the problem, and notify you as soon as possible.</p>"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:3584
+msgid "Stripe fees have been processed"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:3589
+msgid "Commerce Order"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:3593
+msgid "Payment Intent ID"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:3597
+msgid "Fee Amount"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:3601
+msgid "Currency Code"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:3605
+msgid "Net Amount (after fees)"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:3618
+msgid "Update project merits"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:3628
+msgid "Merits to add"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:3634
+msgid "New merit value"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:3872
+msgid "Order @id"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:4129
+msgid "Please complete your order by transferring the amount to the bank account below."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:4131
+msgid "Beneficiary"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:4134
+msgid "Amount"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:4135
+msgid "Reference (VS)"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:4141
+msgid "SEPA QR code"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:4143
+msgid "Your order remains pending until payment is confirmed by bank settlement."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:4192
+msgid "Variable symbol: @vs"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:4264
+msgid "Reference"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:4265
+msgid "Requested"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:4266
+msgid "Received"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:4267
+msgid "Updated"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:4268 sites/all/modules/custom/rovas_purchase_shares/rovas_purchase_shares.views_default.inc:530
+msgid "Action"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:4324
+msgid "Accept overpayment"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:4348
+msgid "No bank intents waiting for manual review."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:4391
+msgid "No bank intent found for Order #@id."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:4411
+msgid "This order is not eligible for overpayment acceptance anymore."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:4418
+msgid "Could not load Order #@id."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:4422
+msgid "Order #@id is already marked as paid."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:4459
+msgid "Confirmed by admin overpayment acceptance: @date"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:4469
+msgid "Overpayment accepted for Order #@id."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:4575
+msgid "Bank settlement amount accepted: order total changed from @from to @to @cur (@reason)."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:4781
+msgid "Confirmed by FIO: @date"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:5250
+msgid "Failed/rejected: @date"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:5644
+msgid "Overpayment received for Order #@id."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:5645
+msgid "Requested amount: <strong>@expected</strong>"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:5646
+msgid "Actually paid: <strong>@actual</strong>"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:5649
+msgid "Reconcile here: !review"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:5754;5885
+msgid "Rovas: Overpayment received – Order #@id"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:5875
+msgid "Rovas: Payment confirmed – Order #@id"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:5882
+msgid "Rovas: Incomplete payment received – Order #@id"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:5890
+msgid "Rovas: Payment could not be processed – Order #@id"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:5894
+msgid "Rovas: Payment window expired – Order #@id"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:5898
+msgid "Rovas: Order #@id notification"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:5949
+msgid "We have received and confirmed your bank transfer of <strong>€@amount</strong> for Order #@id placed on @date."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:5954
+msgid "Your order is now complete and your payment was sent to <strong>@recipient</strong>."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:5959
+msgid "Your order is now complete."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:5971
+msgid "You can now access the product or service <strong>@product</strong> you purchased at !site_link."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:5976
+msgid "You can now return to !site_link to access your purchase."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:5982
+msgid "Thank you for your support."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:5995
+msgid "We received a bank transfer of <strong>€@actual</strong> for Order #@id, but the expected amount was <strong>€@expected</strong> (difference: <strong>€@diff</strong>)."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:5998
+msgid "Your order is currently on hold pending manual review. To resolve this, please transfer the outstanding <strong>€@diff</strong> using the same payment reference, or contact us for assistance."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:6003
+msgid "We received a bank transfer of <strong>€@actual</strong> for Order #@id, but the expected amount was only <strong>€@expected</strong> (overpayment: <strong>€@diff</strong>)."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:6006
+msgid "Your order is on hold pending manual review. Please contact us to arrange return of the overpaid amount."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:6012
+msgid "Unfortunately, your bank transfer payment for Order #@id has been rejected or could not be processed by your bank."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:6015
+msgid "If you believe this is an error, please contact your bank or reach out to us quoting your order number."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:6020
+msgid "The payment window for Order #@id has expired. We have not received a matching bank transfer for this order."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:6023
+msgid "If you still wish to complete your purchase, please place a new order or contact us."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:1672;1682;2575;2590;2606;2638
+msgid "rpr"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:1672
+msgid "Nepodarilo sa získať alebo vytvoriť billing profil."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:1682
+msgid "Chyba pri pripájaní billing profilu k objednávke: @msg"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:1875;1914;1920
+msgid "rpr_commerce"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:1875
+msgid "Missing required billing field: @field"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:1914
+msgid "Created customer profile @profile_id for order @order_id"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:1920
+msgid "Error creating customer profile: @error"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:2575
+msgid "No PI on order data; aborting"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:2590
+msgid "Stripe library not loaded"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:2606
+msgid "Finalize payment result: @ok for PI @pi (status=@st)"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:2638
+msgid "Fee processing function not found after module_load_include — processor.inc may be missing."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:2897;3250;3357;3369;3373;3397;3466;3649;3666;3939;4583;4614;4676;4686;4692;4735;4797;4805;4876;4880;4893;4914;4967;5006;5147;5257;5790;5825;5903;5907
+msgid "rovas_project_reward"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:2897
+msgid "Deleting abandoned order @order_id for redirect to startup page"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:3250
+msgid "Created forex node for express order @order_id (forex_nid: @nid)."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:3357
+msgid "fee_proc: order @oid — lock held by another process; waiting up to 15s."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:3369
+msgid "fee_proc: order @oid — concurrent process completed successfully; skipping duplicate."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:3373
+msgid "fee_proc: order @oid — lock released but order not yet processed; aborting to prevent double-processing."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:3397
+msgid "Forex node not found for order @order_id (payment intent @pi). Single query, no retry."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:3466
+msgid "rules_process_recipient_order_core component not found in database (order @oid)."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:3649
+msgid "Invalid node passed to project_merit_updater"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:3666
+msgid "Error updating project merits: @error"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:3939
+msgid "Created bank intent @intent for order @order."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:4225
+msgid "rovas_bank_webhook"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:4225
+msgid "@dir @target @payload"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:4583
+msgid "bank_settlement_adjusted: order @oid total changed from @from to @to @cur (@reason)."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:4614
+msgid "sync_bank_intent_paid: missing order @order."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:4676
+msgid "Bank settlement references missing order @order."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:4686
+msgid "No bank intent found for order @order."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:4692
+msgid "Bank reconcile: order @oid already had SEPA paid; running time-share finalize recovery if applicable."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:4735
+msgid "Amount mismatch for order @order. Expected @exp, got @got."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:4797
+msgid "Bank reconcile: invoking time-share finalize helper after payment save for order @oid."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:4805
+msgid "Bank order @order marked as paid."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:4876
+msgid "bank_order_reward: order @oid — concurrent process finished; skipping."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:4880
+msgid "bank_order_reward: order @oid — could not acquire lock; aborting to prevent double-processing."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:4893
+msgid "bank_order_reward: forex node not found for order @oid."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:4914
+msgid "bank_order_reward: non-positive order total for order @oid; skipping reward."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:4967
+msgid "bank_order_reward: rules_process_recipient_order_core not found/active for order @oid."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:5006
+msgid "bank_order_reward: reward distributed for order @oid (merit @merit_eur EUR → @merit_chr CHR, net_after_merit @nae EUR, multiplier @mult)."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:5147
+msgid "Bank purchase confirmed: notified 3rd party for order @oid (HTTP @code)."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:5257
+msgid "Bank order @order marked as @status."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:5790
+msgid "Skipped duplicate @key notification for order @oid (already sent)."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:5825
+msgid "Could not resolve recipient name for order @oid: @err"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:5903
+msgid "Failed to send @key notification for order @oid to @mail."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:5907
+msgid "Sent @key notification for order @oid to @mail."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.info:0
+msgid "Reward project"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.info:0
+msgid "Provides a page making rewarding a project possible"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_reward/templates/commerce-bank-transfer-notification.tpl.php:25
+msgid "Rovas order number"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_reward/templates/commerce-bank-transfer-notification.tpl.php:55
+msgid "<strong><a href=\"@front\" target=\"_blank\">Rovas</a></strong> – enabling participation in the <a href=\"https://neofund.sk/\">NEO economy</a>"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_reward/templates/commerce-bank-transfer-notification.tpl.php:59
+msgid "Service provided by <a href=\"@link\"><strong>NeoFund s.r.o.</strong></a>"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_reward/templates/commerce-bank-transfer-notification.tpl.php:64
+msgid "Contact us"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_purchase_shares/rovas_purchase_shares.field_group.inc:46
+msgid "Purchasing shares"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_purchase_shares/rovas_purchase_shares.field_instance.inc:851
+msgid "Body"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_purchase_shares/rovas_purchase_shares.field_instance.inc:853
+msgid "Chrons paid"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_purchase_shares/rovas_purchase_shares.field_instance.inc:854 sites/all/modules/custom/rovas_purchase_shares/rovas_purchase_shares.views_default.inc:994
+msgid "Date"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_purchase_shares/rovas_purchase_shares.field_instance.inc:855
+msgid "Hours purchased"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_purchase_shares/rovas_purchase_shares.field_instance.inc:856
+msgid "Max Merits"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_purchase_shares/rovas_purchase_shares.field_instance.inc:857
+msgid "Max Time"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_purchase_shares/rovas_purchase_shares.field_instance.inc:858
+msgid "Merit Allocation"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_purchase_shares/rovas_purchase_shares.field_instance.inc:859
+msgid "Merits Earned"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_purchase_shares/rovas_purchase_shares.field_instance.inc:860
+msgid "Note"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_purchase_shares/rovas_purchase_shares.field_instance.inc:862
+msgid "Project to which this timeshare belongs"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_purchase_shares/rovas_purchase_shares.field_instance.inc:863
+msgid "Purchase proof"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_purchase_shares/rovas_purchase_shares.field_instance.inc:864
+msgid "The purchase receipt proving this time share was purchased"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_purchase_shares/rovas_purchase_shares.field_instance.inc:865
+msgid "Timeshares Purchased"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_purchase_shares/rovas_purchase_shares.field_instance.inc:866
+msgid "Type any part of a worker name. Then select the desired one from the drop-down."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_purchase_shares/rovas_purchase_shares.field_instance.inc:867
+msgid "Unused in this content type. Exists only to simplify the purchase processing logic in the rules_process_purchase_core rule"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_purchase_shares/rovas_purchase_shares.field_instance.inc:868
+msgid "Worker Name"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_purchase_shares/rovas_purchase_shares.field_instance.inc:869
+msgid "Enter the number of Chrons the buyer will have to pay to receive one hour share. The number in parentheses shows the cost in euros, using the current exchange rate."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_purchase_shares/rovas_purchase_shares.field_instance.inc:870
+msgid "Time share cost"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_purchase_shares/rovas_purchase_shares.inc:21
+msgid "Time share"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_purchase_shares/rovas_purchase_shares.inc:25;33 sites/all/modules/custom/rovas_purchase_shares/rovas_purchase_shares.views_default.inc:521
+msgid "Title"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_purchase_shares/rovas_purchase_shares.inc:29
+msgid "Time shareholder Merit Allocation"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_purchase_shares/rovas_purchase_shares.views_default.inc:501;654;965
+msgid "Master"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_purchase_shares/rovas_purchase_shares.views_default.inc:502
+msgid "Product Makers"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_purchase_shares/rovas_purchase_shares.views_default.inc:503;655;967
+msgid "more"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_purchase_shares/rovas_purchase_shares.views_default.inc:504;656;968
+msgid "Apply"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_purchase_shares/rovas_purchase_shares.views_default.inc:505;657;969
+msgid "Reset"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_purchase_shares/rovas_purchase_shares.views_default.inc:506;658;970
+msgid "Sort by"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_purchase_shares/rovas_purchase_shares.views_default.inc:507;659;971
+msgid "Asc"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_purchase_shares/rovas_purchase_shares.views_default.inc:508;660;972
+msgid "Desc"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_purchase_shares/rovas_purchase_shares.views_default.inc:509
+msgid "Items per page"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_purchase_shares/rovas_purchase_shares.views_default.inc:510
+msgid "- All -"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_purchase_shares/rovas_purchase_shares.views_default.inc:511
+msgid "Offset"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_purchase_shares/rovas_purchase_shares.views_default.inc:512
+msgid "« first"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_purchase_shares/rovas_purchase_shares.views_default.inc:513
+msgid "‹ previous"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_purchase_shares/rovas_purchase_shares.views_default.inc:514
+msgid "next ›"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_purchase_shares/rovas_purchase_shares.views_default.inc:515
+msgid "last »"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_purchase_shares/rovas_purchase_shares.views_default.inc:516
+msgid "add worker button"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_purchase_shares/rovas_purchase_shares.views_default.inc:517
+msgid "Content entity referenced from field_project"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_purchase_shares/rovas_purchase_shares.views_default.inc:518
+msgid "User entity referenced from field_coworker"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_purchase_shares/rovas_purchase_shares.views_default.inc:519
+msgid "Content entity referenced from field_shareholder_project"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_purchase_shares/rovas_purchase_shares.views_default.inc:520
+msgid "Project Nid"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_purchase_shares/rovas_purchase_shares.views_default.inc:522 sites/all/modules/custom/rovas_verify/rovas_verify.module:404
+msgid "Name"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_purchase_shares/rovas_purchase_shares.views_default.inc:524
+msgid "[field_full_name] ([name])"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_purchase_shares/rovas_purchase_shares.views_default.inc:525
+msgid "Shareholder"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_purchase_shares/rovas_purchase_shares.views_default.inc:526
+msgid "Share"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_purchase_shares/rovas_purchase_shares.views_default.inc:529
+msgid "[field_merits_earned][field_merit_reward]"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_purchase_shares/rovas_purchase_shares.views_default.inc:531;663;989
+msgid "All"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_purchase_shares/rovas_purchase_shares.views_default.inc:661
+msgid "Content"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_purchase_shares/rovas_purchase_shares.views_default.inc:662
+msgid "- Choose an operation -"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_purchase_shares/rovas_purchase_shares.views_default.inc:664;991
+msgid "Block"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_purchase_shares/rovas_purchase_shares.views_default.inc:966
+msgid "Project statistics"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_purchase_shares/rovas_purchase_shares.views_default.inc:973
+msgid "Project <strong><?php \n\n\t$nid = '!1';\n\t$node = node_load($nid);\n\n\t$path = drupal_get_path_alias('node/' . $nid);\n\n\techo '<a href=\"/';\n\techo $path;\n\techo '\">';\n\techo $node->title;\n\techo '</a>';\n\t?></strong>"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_purchase_shares/rovas_purchase_shares.views_default.inc:986
+msgid "date"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_purchase_shares/rovas_purchase_shares.views_default.inc:987
+msgid "1"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_purchase_shares/rovas_purchase_shares.views_default.inc:988
+msgid "Amount "
+msgstr ""
+
+#: sites/all/modules/custom/rovas_purchase_shares/rovas_purchase_shares.views_default.inc:990
+msgid "Page"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_purchase_shares/rovas_purchase_shares.views_default.inc:992
+msgid "Chart add-on"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_purchase_shares/rovas_purchase_shares.views_default.inc:993
+msgid "Raw field"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_purchase_shares/rovas_purchase_shares.module:18
+msgid "Project investing"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_purchase_shares/rovas_purchase_shares.module:19
+msgid "Redirect to unified purchase flow."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_purchase_shares/rovas_purchase_shares.module:77;91
+msgid "Next"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_purchase_shares/rovas_purchase_shares.module:78;216;1074 sites/all/modules/custom/rovas_stripe_express_checkout/js/express_checkout.js:0
+msgid "€"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_purchase_shares/rovas_purchase_shares.module:84
+msgid "Buy"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_purchase_shares/rovas_purchase_shares.module:110
+msgid "Use your Chrons or Euros to buy timeshares for this project."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_purchase_shares/rovas_purchase_shares.module:112
+msgid "One timeshare will earn the same amount of Merits as one hour of time, worked in the project."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_purchase_shares/rovas_purchase_shares.module:163;1080
+msgid "Labor time and Merit reward history"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_purchase_shares/rovas_purchase_shares.module:175;1065
+msgid "Current yield"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_purchase_shares/rovas_purchase_shares.module:183;1067
+msgid "ME/100 CH /1 hour"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_purchase_shares/rovas_purchase_shares.module:187;1068
+msgid "The number of Merits one (hour) timeshare receives when the project is rewarded  with 100 Chrons"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_purchase_shares/rovas_purchase_shares.module:200;1071
+msgid "Timeshare cost"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_purchase_shares/rovas_purchase_shares.module:221;1076
+msgid "The cost of one hour share"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_purchase_shares/rovas_purchase_shares.module:248
+msgid "Buy time share"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_purchase_shares/rovas_purchase_shares.module:254
+msgid "Select payment type"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_purchase_shares/rovas_purchase_shares.module:268
+msgid "Chron balance"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_purchase_shares/rovas_purchase_shares.module:314;1011;1032;1129 sites/all/modules/custom/rovas_verify/rovas_verify.module:177
+msgid "hrs"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_purchase_shares/rovas_purchase_shares.module:316;1013;1034;1131 sites/all/modules/custom/rovas_verify/rovas_verify.module:179
+msgid "min"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_purchase_shares/rovas_purchase_shares.module:329;1024
+msgid "Estimated yield is <strong>@aplyield Merits</strong> for 100 Chrons of reward"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_purchase_shares/rovas_purchase_shares.module:338;362
+msgid "Clicking the button finalizes the transaction"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_purchase_shares/rovas_purchase_shares.module:341;365
+msgid "Continue to Payment Information"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_purchase_shares/rovas_purchase_shares.module:346;1108
+msgid "Please enter value equal to, or greater than @chr Chrons"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_purchase_shares/rovas_purchase_shares.module:349;1111
+msgid "Please enter value equal to, or greater than @eur Euros"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_purchase_shares/rovas_purchase_shares.module:355;1118
+msgid "Please enter value lower than your account balance of @chr Chrons"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_purchase_shares/rovas_purchase_shares.module:396
+msgid "Please note, that the yield amount as shown on this page is not guaranteed. Its value depends on many variables and can both - decrease and increase in the future."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_purchase_shares/rovas_purchase_shares.module:404
+msgid "This project is not set up to allow buying shares"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_purchase_shares/rovas_purchase_shares.module:528
+msgid "The amount you entered (@orig €) was adjusted to @adj € to accommodate accounting constraints."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_purchase_shares/rovas_purchase_shares.module:1044;1146
+msgid "Purchased @hrs time share"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_purchase_shares/rovas_purchase_shares.module:1050;1155
+msgid "Your purchase of @shr time share for @chr Chrons was scheduled for processing."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_purchase_shares/rovas_purchase_shares.module:1101
+msgid "Please enter value greater than 0"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_purchase_shares/rovas_purchase_shares.module:1164
+msgid "The amount paid can not be processed. Please split your payment into multiple smaller amounts."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_purchase_shares/rovas_purchase_shares.module:432;654;664;791;810;831;839;844;860;879;904;912;960
+msgid "rovas_purchase_shares"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_purchase_shares/rovas_purchase_shares.module:432
+msgid "rovas_purchase_shares_stripe_convertor: invalid total_reward=@reward units=@units"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_purchase_shares/rovas_purchase_shares.module:654
+msgid "time-share product missing"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_purchase_shares/rovas_purchase_shares.module:664
+msgid "Invalid line item for EUR buyshares order: qty=@q unit=@u"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_purchase_shares/rovas_purchase_shares.module:791
+msgid "Bank time-share finalize: no forex_transaction node linked to order @oid; payment_status left unchanged."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_purchase_shares/rovas_purchase_shares.module:810
+msgid "Bank time-share finalize: forex_transaction @nid for order @oid marked paid (field_payment_status=1)."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_purchase_shares/rovas_purchase_shares.module:831
+msgid "Bank time-share finalize skipped for order @oid: Rules module not enabled."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_purchase_shares/rovas_purchase_shares.module:839
+msgid "Bank time-share finalize skipped: could not load order @oid."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_purchase_shares/rovas_purchase_shares.module:844
+msgid "Bank time-share finalize skipped for order @oid: already completed at @ts."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_purchase_shares/rovas_purchase_shares.module:860
+msgid "Restored payment_method on order @oid from rpr_paytype for bank time-share finalize (@method)."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_purchase_shares/rovas_purchase_shares.module:879
+msgid "Bank time-share finalize skipped for order @oid: no time-share SKU on order line items (commerce_line_items field rows=@n, legacy commerce_line_items property empty=@e)."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_purchase_shares/rovas_purchase_shares.module:904
+msgid "Bank time-share finalize aborted for order @oid: missing field_payment_recipient."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_purchase_shares/rovas_purchase_shares.module:912
+msgid "Bank time-share finalize aborted for order @oid: non-positive order total (@amt)."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_purchase_shares/rovas_purchase_shares.module:960
+msgid "Bank time-share finalize completed for order @oid (recipient @rid, @eur EUR, CHR output @chr)."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_purchase_shares/rovas_purchase_shares.info:0
+msgid "Purchase shares"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_purchase_shares/rovas_purchase_shares.info:0
+msgid "Delivers functionality allowing users to purchase shares in projects"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_repmerger/rovas_repmerger.module:60
+msgid "This work report is the result of multiple working sessions merged together."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_repmerger/rovas_repmerger.module:62
+msgid "To learn how to verify the report, read the instructions shown on the project page"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_repmerger/rovas_repmerger.module:66
+msgid "The individual work sessions this report consists off were created by the <a href=\"https://github.com/dp7x/rovas-id-timetracker\">Rovas connector Chrome extension for ID</a>"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_repmerger/rovas_repmerger.module:68
+msgid "The individual work sessions this report consists off were created by the <a href=\"https://wiki.openstreetmap.org/wiki/JOSM/Plugins/RovasConnector\">Rovas connector plugin for JOSM</a>"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_repmerger/rovas_repmerger.module:104
+msgid "Merge a new OSM URL into the existing list"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_repmerger/rovas_repmerger.module:114
+msgid "New URL to add"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_repmerger/rovas_repmerger.module:118
+msgid "Name of the merger function"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_repmerger/rovas_repmerger.module:124
+msgid "Updated URL list"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_repmerger/rovas_repmerger.info:0
+msgid "Rovas work report Merger"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_repmerger/rovas_repmerger.info:0
+msgid "Provides functions for merging work reports sent in a single day by a particular user of a certain category"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_report_actions/rovas_report_actions.module:10
+msgid "Transfer work report"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_report_actions/rovas_report_actions.module:11
+msgid "Transfer a work report to a different project"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_report_actions/rovas_report_actions.module:35
+msgid "Transfer the work report <strong>@repname</strong> to a new project"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_report_actions/rovas_report_actions.module:64
+msgid "Select the target project"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_report_actions/rovas_report_actions.module:79
+msgid "Submit"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_report_actions/rovas_report_actions.info:0
+msgid "Work report actions"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_report_actions/rovas_report_actions.info:0
+msgid "Perform various actions with work report like transfer them to different projects"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_report_form/rovas_report_form.module:77
+msgid "Show the map"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_report_form/rovas_report_form.module:134
+msgid "Enter the time spent performing the reported activity"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_report_form/rovas_report_form.module:135
+msgid "Time worked"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_report_form/rovas_report_form.module:202
+msgid "Only work performed after you registered (@regdate) can be rewarded."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_report_form/rovas_report_form.module:225
+msgid "The Time worked must be greater than 0"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_report_form/rovas_report_form.module:232
+msgid "The Web address field must contain a valid address"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_report_form/rovas_report_form.module:240
+msgid "Use the tools in the map to mark the place of the reported work"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_report_form/rovas_report_form.module:248
+msgid "The <strong>Country</strong> field must have a value"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_report_form/rovas_report_form.module:255
+msgid "The <strong>Address 1</strong> field must have a value"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_report_form/rovas_report_form.module:262
+msgid "The <strong>City</strong> field must have a value"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_report_form/rovas_report_form.module:269
+msgid "The <strong>Postal code</strong> field must have a value"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_report_form/rovas_report_form.module:277
+msgid "Upload some photos of your work into the Photos field"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_report_form/rovas_report_form.module:285
+msgid "Slect appropriate work report in the Rovas report field"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_report_form/rovas_report_form.info:0
+msgid "Work report form adjustments"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_report_form/rovas_report_form.info:0
+msgid "Customizations to the work report form"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_reports_exposed_filters/rovas_reports_exposed_filters.module:84
+msgid "Unspecified"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_reports_exposed_filters/rovas_reports_exposed_filters.info:0
+msgid "Rovas Reports Exposed Filters"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_reports_exposed_filters/rovas_reports_exposed_filters.info:0
+msgid "Shows only the actualy used tags in the categories list"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_site_rules/rovas_site_rules.migration.inc:93
+msgid "Migrating rovas_site_rules"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_site_rules/rovas_site_rules.migration.inc:159
+msgid "Deleted: @name"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_site_rules/rovas_site_rules.migration.inc:178
+msgid "Rules rebuilt from code (Default status)."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_site_rules/rovas_site_rules.migration.inc:190
+msgid "Migration complete. Deleted @deleted rules; re-imported from code."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_site_rules/rovas_site_rules.migration.inc:195
+msgid "Migration finished with errors."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_site_rules/rovas_site_rules.migration.inc:125
+msgid "Migration (CLI): @json JSON rule files in list; @deleted matching DB row(s) removed; rebuild completed. If no rows were removed, those rules were already missing from the database (or names did not match). If the Rules UI is still missing rules, check Reports for \"Skipped invalid rule\" (rovas_site_rules). On Rovas servers use drush74 (not drush) so CLI matches the site you see in the browser."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_site_rules/rovas_site_rules.info:0
+msgid "Rovas Site Rules"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_site_rules/rovas_site_rules.info:0
+msgid "Site-wide Rules configurations for Rovas, stored as portable JSON in rules/ subdirectory."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_stripe_express_checkout/rovas_stripe_express_checkout.module:105;153
+msgid "Your payment was not completed. You have not been charged. You can try again from the purchase page."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_stripe_express_checkout/rovas_stripe_express_checkout.module:120
+msgid "Thank you! Your payment for Merits was received."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_stripe_express_checkout/rovas_stripe_express_checkout.module:122;171
+msgid "Your order number is @number."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_stripe_express_checkout/rovas_stripe_express_checkout.module:126
+msgid "You can !order_link or !forex_link."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_stripe_express_checkout/rovas_stripe_express_checkout.module:127;176
+msgid "view your order"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_stripe_express_checkout/rovas_stripe_express_checkout.module:128
+msgid "return to Forex"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_stripe_express_checkout/rovas_stripe_express_checkout.module:132
+msgid "You can !forex_link."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_stripe_express_checkout/rovas_stripe_express_checkout.module:133
+msgid "continue to Forex"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_stripe_express_checkout/rovas_stripe_express_checkout.module:169
+msgid "Thank you! Your payment for time shares was received."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_stripe_express_checkout/rovas_stripe_express_checkout.module:175
+msgid "You can !order_link or !project_link."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_stripe_express_checkout/rovas_stripe_express_checkout.module:177
+msgid "return to the project"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_stripe_express_checkout/rovas_stripe_express_checkout.module:181
+msgid "You can !project_link."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_stripe_express_checkout/rovas_stripe_express_checkout.module:182
+msgid "continue to the project"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_stripe_express_checkout/rovas_stripe_express_checkout.module:199;202;207
+msgid "rovas_stripe"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_stripe_express_checkout/rovas_stripe_express_checkout.module:199
+msgid "Project @nid not found for PI: @pi_id"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_stripe_express_checkout/rovas_stripe_express_checkout.module:202
+msgid "No project_id found in PaymentIntent metadata for PI: @pi_id"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_stripe_express_checkout/rovas_stripe_express_checkout.module:207
+msgid "Error retrieving PaymentIntent: @error"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_stripe_express_checkout/rovas_stripe_express_checkout.info:0
+msgid "Rovas Stripe Express Checkout"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_stripe_express_checkout/rovas_stripe_express_checkout.info:0
+msgid "Adds Stripe Express Checkout (Apple Pay, Google Pay) to cart."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_stripe_express_checkout/includes/init.inc:15;20;80
+msgid "xpress checkout init"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_stripe_express_checkout/includes/init.inc:15
+msgid "3rd party session expired."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_stripe_express_checkout/includes/init.inc:20
+msgid "Stripe secret key not found."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_stripe_express_checkout/includes/init.inc:80
+msgid "PaymentIntent creation failed: @error"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_stripe_express_checkout/includes/init_buymerits.inc:23;55;87 sites/all/modules/custom/rovas_stripe_express_checkout/includes/init_buyshares.inc:23;65;74;110
+msgid "rovas_stripe_express"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_stripe_express_checkout/includes/init_buymerits.inc:23
+msgid "buymerits init: invalid token for uid @u"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_stripe_express_checkout/includes/init_buymerits.inc:55
+msgid "buymerits init: invalid order total order=@o"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_stripe_express_checkout/includes/init_buymerits.inc:87
+msgid "buymerits PaymentIntent failed: @m"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_stripe_express_checkout/includes/init_buyshares.inc:23
+msgid "buyshares init: invalid token for uid @u"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_stripe_express_checkout/includes/init_buyshares.inc:65
+msgid "buyshares init: invalid order total order=@o"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_stripe_express_checkout/includes/init_buyshares.inc:74
+msgid "buyshares init: order total mismatch order=@o order_total=@e line_from_typed=@l paid_eur=@p"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_stripe_express_checkout/includes/init_buyshares.inc:110
+msgid "buyshares PaymentIntent failed: @m"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_stripe_express_checkout/js/express_checkout.js:0
+msgid "CHR"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_stripe_express_checkout/js/express_checkout.js:0
+msgid "Enter a valid amount (up to two decimal places)."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_stripe_express_checkout/js/express_checkout.js:0
+msgid "The amount must be a whole number (no decimals)."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_stripe_express_checkout/js/express_checkout.js:0
+msgid "The amount must be at least @amount @currency."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_stripe_webhooks/rovas_stripe_webhooks.admin.inc:14;246
+msgid "Webhook Information"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_stripe_webhooks/rovas_stripe_webhooks.admin.inc:21
+msgid "Webhook URL"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_stripe_webhooks/rovas_stripe_webhooks.admin.inc:23
+msgid "Use this URL when configuring your webhook in the Stripe Dashboard."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_stripe_webhooks/rovas_stripe_webhooks.admin.inc:28
+msgid "Stripe API Keys"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_stripe_webhooks/rovas_stripe_webhooks.admin.inc:30
+msgid "These keys are used by Express Checkout, webhook processing, and Commerce Stripe. Use the same values as in the <a href=\"@commerce-stripe\">Commerce Stripe payment method</a> configuration."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_stripe_webhooks/rovas_stripe_webhooks.admin.inc:35
+msgid "Stripe secret key"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_stripe_webhooks/rovas_stripe_webhooks.admin.inc:37
+msgid "Your Stripe secret key (starts with sk_)."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_stripe_webhooks/rovas_stripe_webhooks.admin.inc:45
+msgid "Stripe publishable key"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_stripe_webhooks/rovas_stripe_webhooks.admin.inc:47
+msgid "Your Stripe publishable key (starts with pk_)."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_stripe_webhooks/rovas_stripe_webhooks.admin.inc:55
+msgid "Webhook Settings"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_stripe_webhooks/rovas_stripe_webhooks.admin.inc:61;158
+msgid "Webhook ID"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_stripe_webhooks/rovas_stripe_webhooks.admin.inc:63
+msgid "The webhook ID from your Stripe Dashboard (optional, for reference only)."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_stripe_webhooks/rovas_stripe_webhooks.admin.inc:69
+msgid "Webhook endpoint secret"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_stripe_webhooks/rovas_stripe_webhooks.admin.inc:71
+msgid "Signing secret (whsec_...) for the webhook that sends events to the URL above. In Stripe Dashboard go to Developers → Webhooks, open the endpoint whose URL exactly matches this site (e.g. https://dev.rovas.app/stripe/webhook), click \"Reveal\" under Signing secret and paste it here. If you use Stripe CLI (stripe listen --forward-to ...), use the secret printed by the CLI, not the Dashboard secret. Wrong or mismatched secret causes \"No signatures found matching the expected signature\"."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_stripe_webhooks/rovas_stripe_webhooks.admin.inc:78
+msgid "Debug webhook signature verification"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_stripe_webhooks/rovas_stripe_webhooks.admin.inc:80
+msgid "When enabled, logs extra detail on webhook requests and signature failures (e.g. timestamp skew or HMAC mismatch). Disable in production."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_stripe_webhooks/rovas_stripe_webhooks.admin.inc:85
+msgid "Webhook Statistics"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_stripe_webhooks/rovas_stripe_webhooks.admin.inc:99
+msgid "Total webhooks received: @count"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_stripe_webhooks/rovas_stripe_webhooks.admin.inc:100
+msgid "Processed webhooks: @count"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_stripe_webhooks/rovas_stripe_webhooks.admin.inc:101
+msgid "Pending webhooks: @count"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_stripe_webhooks/rovas_stripe_webhooks.admin.inc:118
+msgid "@type - @time"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_stripe_webhooks/rovas_stripe_webhooks.admin.inc:126
+msgid "Recent Webhooks (last 5)"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_stripe_webhooks/rovas_stripe_webhooks.admin.inc:144
+msgid "Webhook ID should start with \"we_\" and contain only alphanumeric characters."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_stripe_webhooks/rovas_stripe_webhooks.admin.inc:149
+msgid "Webhook endpoint secret should start with \"whsec_\" and contain only alphanumeric characters."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_stripe_webhooks/rovas_stripe_webhooks.admin.inc:159
+msgid "Event Type"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_stripe_webhooks/rovas_stripe_webhooks.admin.inc:161
+msgid "Created"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_stripe_webhooks/rovas_stripe_webhooks.admin.inc:162
+msgid "Actions"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_stripe_webhooks/rovas_stripe_webhooks.admin.inc:176;253
+msgid "Processed"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_stripe_webhooks/rovas_stripe_webhooks.admin.inc:176;253
+msgid "Pending"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_stripe_webhooks/rovas_stripe_webhooks.admin.inc:180
+msgid "View"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_stripe_webhooks/rovas_stripe_webhooks.admin.inc:198
+msgid "No webhooks have been received yet."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_stripe_webhooks/rovas_stripe_webhooks.admin.inc:251
+msgid "Webhook ID: @id"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_stripe_webhooks/rovas_stripe_webhooks.admin.inc:252
+msgid "Event Type: @type"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_stripe_webhooks/rovas_stripe_webhooks.admin.inc:253
+msgid "Status: @status"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_stripe_webhooks/rovas_stripe_webhooks.admin.inc:254
+msgid "Received: @date"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_stripe_webhooks/rovas_stripe_webhooks.admin.inc:258
+msgid "Stripe Created: @date"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_stripe_webhooks/rovas_stripe_webhooks.admin.inc:267
+msgid "Webhook Data"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_stripe_webhooks/rovas_stripe_webhooks.drush.inc:97
+msgid "Order completed via drush rovas-complete-order (recovery from stuck webhook)."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_stripe_webhooks/rovas_stripe_webhooks.drush.inc:14
+msgid "Complete a stuck Stripe order by re-running the full workflow: payment transaction, paid_in_full Rules, checkout complete, and fee processing. Use for orders that failed mid-webhook (e.g. due to PHP deprecation)."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_stripe_webhooks/rovas_stripe_webhooks.drush.inc:16
+msgid "The commerce order ID to complete (e.g. 2508)."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_stripe_webhooks/rovas_stripe_webhooks.drush.inc:31
+msgid "Provide a valid order ID, e.g. drush rovas-complete-order 2508"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_stripe_webhooks/rovas_stripe_webhooks.drush.inc:37
+msgid "Order @id not found."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_stripe_webhooks/rovas_stripe_webhooks.drush.inc:40
+msgid "Loading order @id (status: @status)..."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_stripe_webhooks/rovas_stripe_webhooks.drush.inc:64
+msgid "Order @id has no Stripe payment intent. Cannot complete."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_stripe_webhooks/rovas_stripe_webhooks.drush.inc:74
+msgid "Transaction: @status"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_stripe_webhooks/rovas_stripe_webhooks.drush.inc:76
+msgid "Could not ensure payment transaction for order @id."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_stripe_webhooks/rovas_stripe_webhooks.drush.inc:94
+msgid "Firing commerce_payment_order_paid_in_full (Rules: forex node, invoice, etc.)..."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_stripe_webhooks/rovas_stripe_webhooks.drush.inc:105
+msgid "Order balance not zero (@amt), skipping paid_in_full."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_stripe_webhooks/rovas_stripe_webhooks.drush.inc:109
+msgid "No successful transaction found, skipping paid_in_full."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_stripe_webhooks/rovas_stripe_webhooks.drush.inc:113
+msgid "paid_in_full already invoked."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_stripe_webhooks/rovas_stripe_webhooks.drush.inc:117
+msgid "Firing commerce_checkout_complete..."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_stripe_webhooks/rovas_stripe_webhooks.drush.inc:127
+msgid "Running fee processing and recipient core..."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_stripe_webhooks/rovas_stripe_webhooks.drush.inc:134
+msgid "Order still in checkout; forcing status to completed."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_stripe_webhooks/rovas_stripe_webhooks.drush.inc:139
+msgid "Done. Order @id status: @status"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_stripe_webhooks/rovas_stripe_webhooks.module:62
+msgid "Administer Rovas Stripe Webhooks"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_stripe_webhooks/rovas_stripe_webhooks.module:63
+msgid "Configure Stripe webhook settings and view webhook data"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_stripe_webhooks/rovas_stripe_webhooks.module:411
+msgid "The Rovas Stripe Webhooks module provides a webhook endpoint for receiving and storing Stripe webhook events. Configure your webhook settings and view received webhooks through the administration interface."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_stripe_webhooks/rovas_stripe_webhooks.module:415
+msgid "Configure your Stripe webhook settings below. Your webhook URL is: <strong>@url</strong>"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_stripe_webhooks/rovas_stripe_webhooks.module:73;100;105;110;121;131;139;172;190;385 sites/all/modules/custom/rovas_stripe_webhooks/includes/processor.inc:55;59;64;76;127;138;142;147;156;206;262;290;340;419;439;448;508;512
+msgid "rovas_stripe_webhooks"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_stripe_webhooks/rovas_stripe_webhooks.module:73
+msgid "Webhook endpoint accessed"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_stripe_webhooks/rovas_stripe_webhooks.module:100
+msgid "Webhook request: payload length=@len, sig_header length=@siglen"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_stripe_webhooks/rovas_stripe_webhooks.module:105
+msgid "Sig header: @sig"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_stripe_webhooks/rovas_stripe_webhooks.module:110
+msgid "Invalid webhook: request body was empty. Stripe signs the raw body; if something else reads the request first, body is empty and verification fails."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_stripe_webhooks/rovas_stripe_webhooks.module:121
+msgid "Invalid webhook signature. @reason Endpoint secret must match the webhook in Stripe Dashboard (or Stripe CLI) for this URL."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_stripe_webhooks/rovas_stripe_webhooks.module:131
+msgid "Invalid JSON payload: @error"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_stripe_webhooks/rovas_stripe_webhooks.module:139
+msgid "Missing required fields in webhook payload"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_stripe_webhooks/rovas_stripe_webhooks.module:172
+msgid "Webhook @id (@type) stored successfully"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_stripe_webhooks/rovas_stripe_webhooks.module:190
+msgid "Error storing webhook: @error"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_stripe_webhooks/rovas_stripe_webhooks.module:385
+msgid "Webhook processing failed: @err"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_stripe_webhooks/rovas_stripe_webhooks.module:16
+msgid "Stripe Webhook Endpoint"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_stripe_webhooks/rovas_stripe_webhooks.module:24 sites/all/modules/custom/rovas_stripe_webhooks/rovas_stripe_webhooks.info:0
+msgid "Rovas Stripe Webhooks"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_stripe_webhooks/rovas_stripe_webhooks.module:25
+msgid "Configure Stripe webhook settings"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_stripe_webhooks/rovas_stripe_webhooks.module:35
+msgid "View Webhooks"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_stripe_webhooks/rovas_stripe_webhooks.module:36
+msgid "View received Stripe webhooks"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_stripe_webhooks/rovas_stripe_webhooks.module:45
+msgid "View Webhook"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_stripe_webhooks/rovas_stripe_webhooks.install:80
+msgid "Rovas Stripe Webhooks module has been installed. Please configure the webhook settings at admin/config/services/rovas-stripe-webhooks."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_stripe_webhooks/rovas_stripe_webhooks.install:91
+msgid "Rovas Stripe Webhooks module has been uninstalled and all configuration removed."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_stripe_webhooks/rovas_stripe_webhooks.info:0
+msgid "Process and store Stripe webhook events"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_stripe_webhooks/includes/processor.inc:55
+msgid "buyshares express: order @oid not found for PI @pi"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_stripe_webhooks/includes/processor.inc:59
+msgid "buyshares express: uid mismatch for order @oid"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_stripe_webhooks/includes/processor.inc:64
+msgid "buyshares express: amount mismatch order=@o exp=@e got=@g"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_stripe_webhooks/includes/processor.inc:76
+msgid "buyshares express: order @oid has no time-share line"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_stripe_webhooks/includes/processor.inc:127
+msgid "buyshares express: failed transaction for order @order_id"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_stripe_webhooks/includes/processor.inc:138
+msgid "buymerits express: order @oid not found for PI @pi"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_stripe_webhooks/includes/processor.inc:142
+msgid "buymerits express: uid mismatch for order @oid"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_stripe_webhooks/includes/processor.inc:147
+msgid "buymerits express: amount mismatch order=@o exp=@e got=@g"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_stripe_webhooks/includes/processor.inc:156
+msgid "buymerits express: order @oid has no merits line"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_stripe_webhooks/includes/processor.inc:206
+msgid "buymerits express: failed transaction for order @order_id"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_stripe_webhooks/includes/processor.inc:262
+msgid "Failed to create payment transaction for order @order_id"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_stripe_webhooks/includes/processor.inc:290
+msgid "Restored paid_in_full_invoked flag for order @order_id (was wiped by concurrent stale save)."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_stripe_webhooks/includes/processor.inc:340
+msgid "No existing order found for payment intent @pi from regular card payment."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_stripe_webhooks/includes/processor.inc:419
+msgid "add_balance_fees: intent has no id"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_stripe_webhooks/includes/processor.inc:439
+msgid "Could not retrieve latest_charge @lc for PI @pi: @err"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_stripe_webhooks/includes/processor.inc:448
+msgid "Charge or balance_transaction missing for PI @pi (charges count: @cnt, latest_charge: @lc)"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_stripe_webhooks/includes/processor.inc:508
+msgid "_rovas_process_stripe_fees_for_order not found — rovas_project_reward module may be missing."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_stripe_webhooks/includes/processor.inc:512
+msgid "Failed to add balance fees for PI @pi (order @order): @err"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_supress_messages/rovas_supress_messages.module:47
+msgid "The post could not be saved."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_supress_messages/rovas_supress_messages.info:0
+msgid "Rovas Supress system messages"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_supress_messages/rovas_supress_messages.info:0
+msgid "Removes messages generated bu Drupal"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_user/rovas_user.module:6
+msgid "Upload your photograph (optional)"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_user/rovas_user.module:19
+msgid "You can't suspend verifications, because you have @verifcount unfulfilled verification obligations. <br/>\n\t\t\tYou might have to wait for Rovas to turn these obligations to work report verification requests. Only after verifying those requests you will be able to suspend verifications."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_user/rovas_user.module:24
+msgid "Your account will be removed and all account information deleted."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_user/rovas_user.module:26
+msgid "All of your content (projects, work reports, verifications,...) will be assigned to the <em class=\"placeholder\">Anonymous</em> user."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_user/rovas_user.module:32
+msgid "Back to account"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_user/rovas_user.info:0
+msgid "Rovas User profile form"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_user/rovas_user.info:0
+msgid "Implements modifications on the User Profile form"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_user_apikeys/rovas_user_apikeys.module:12
+msgid "Click below to reveal your authentication keys for the <a href=\"@apiurl\" target=\"_blank\">Rovas API</a>"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_user_apikeys/rovas_user_apikeys.module:15
+msgid "Please keep this information confidential, similar to your passwords"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_user_apikeys/rovas_user_apikeys.module:24
+msgid "API key"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_user_apikeys/rovas_user_apikeys.module:25
+msgid "Token"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_user_apikeys/rovas_user_apikeys.module:27
+msgid "API credentials"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_user_apikeys/rovas_user_apikeys.module:46
+msgid "Rovas API"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_user_apikeys/rovas_user_apikeys.info:0
+msgid "Rovas user profile services API credentials pane"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_user_apikeys/rovas_user_apikeys.info:0
+msgid "Modifications of the user profile services API credentials pane"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_verify/rovas_verify.module:8
+msgid "Report verification administration"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_verify/rovas_verify.module:9
+msgid "Set report verification periods"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_verify/rovas_verify.module:17
+msgid "Verify report"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_verify/rovas_verify.module:18
+msgid "Provides a widget for verifying reports"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_verify/rovas_verify.module:155
+msgid "not provided"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_verify/rovas_verify.module:172
+msgid "none yet"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_verify/rovas_verify.module:263
+msgid "Report name"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_verify/rovas_verify.module:272
+msgid "Date filed"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_verify/rovas_verify.module:281
+msgid "Labor time"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_verify/rovas_verify.module:290
+msgid "Merits received"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_verify/rovas_verify.module:300
+msgid "Coworkers"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_verify/rovas_verify.module:309
+msgid "Proofs provided"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_verify/rovas_verify.module:317
+msgid "Description"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_verify/rovas_verify.module:328
+msgid "Web address"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_verify/rovas_verify.module:339
+msgid "Photos"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_verify/rovas_verify.module:350
+msgid "Address"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_verify/rovas_verify.module:361
+msgid "Location"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_verify/rovas_verify.module:377
+msgid "What to check when verifying"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_verify/rovas_verify.module:381
+msgid "the author provided <strong>sufficient evidence</strong> for actually performing the work"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_verify/rovas_verify.module:384
+msgid "the reported <strong>labor time is realistic</strong>"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_verify/rovas_verify.module:387
+msgid "the product of the work is either <strong>free, or can be (or was already) purchased with Chrons</strong>"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_verify/rovas_verify.module:390
+msgid "<strong>do not judge usefulness</strong> of the performed work."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_verify/rovas_verify.module:395
+msgid "If you approve the report and its validity is later challenged in a dispute, you might be penalized alongside the work report author if you loose in the dispute. See the <a href=\"/rules\">neo rules</a> for more information."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_verify/rovas_verify.module:413
+msgid "Full Name"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_verify/rovas_verify.module:422
+msgid "Registered"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_verify/rovas_verify.module:439
+msgid "Compliance score"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_verify/rovas_verify.module:440
+msgid "Compl. score"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_verify/rovas_verify.module:448;449
+msgid "Average effort"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_verify/rovas_verify.module:452
+msgid "hours/day"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_verify/rovas_verify.module:464
+msgid "Instructions"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_verify/rovas_verify.module:479
+msgid "Report Information"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_verify/rovas_verify.module:494
+msgid "Author information"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_verify/rovas_verify.module:519
+msgid "will not verify"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_verify/rovas_verify.module:525
+msgid "Thank you for letting us know that you do not want to verify this report"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_verify/rovas_verify.module:527
+msgid "If you can, please mention the reason for your decision below."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_verify/rovas_verify.module:534
+msgid "Your verification of this report is voluntary and can be declined without penalties"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_verify/rovas_verify.module:536
+msgid "If you choose not to verify, please consider describing the reason for your decision below."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_verify/rovas_verify.module:561;562
+msgid "Optional note for the decision"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_verify/rovas_verify.module:574;575
+msgid "Please provide an explanation of your decision"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_verify/rovas_verify.module:595
+msgid "Save"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_verify/rovas_verify.module:629
+msgid "Only Rovas-selected users can verify reports"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_verify/rovas_verify.module:679
+msgid "Your work report verification status"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_verify/rovas_verify.module:684
+msgid "Hello @user,"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_verify/rovas_verify.module:687
+msgid "Recently we asked user <a href=\"@usrlink\">@user</a> to verify your report <a href=\"@replink\">@repname</a>."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_verify/rovas_verify.module:690
+msgid "The report requires expertise that @user does not have, and <strong>can therefore refuse to perform the verification, which they did.</strong>"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_verify/rovas_verify.module:693
+msgid "@user left the following commentary when asked to verify the report:"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_verify/rovas_verify.module:697
+msgid "If you need, you might still be able to <a href=\"@editlink\">edit the work report</a>. In any case, we will try to find another verifier for your report."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_verify/rovas_verify.module:700
+msgid "Thank you for your patience."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_verify/rovas_verify.info:0
+msgid "Rovas Verify work report actions"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_verify/rovas_verify.info:0
+msgid "Mods of the verification form and verifier-finding algorithm"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_wallet_fullness/rovas_wallet_fullness.module:13 sites/all/modules/custom/rovas_wallet_fullness/rovas_wallet_fullness.info:0
+msgid "Wallet Fullness Gauge"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_wallet_fullness/rovas_wallet_fullness.module:32
+msgid "Allocated: €@amount"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_wallet_fullness/rovas_wallet_fullness.module:33
+msgid "Fixed allocation: €@amount"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_wallet_fullness/rovas_wallet_fullness.module:34
+msgid "Variable allocation: €@amount"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_wallet_fullness/rovas_wallet_fullness.module:35
+msgid "Total income: €@amount"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_wallet_fullness/rovas_wallet_fullness.module:51
+msgid "- None -"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_wallet_fullness/rovas_wallet_fullness.module:61
+msgid "Threshold Field"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_wallet_fullness/rovas_wallet_fullness.module:64
+msgid "Select the field that contains the threshold value."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_wallet_fullness/rovas_wallet_fullness.module:70
+msgid "Gauge Height Field"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_wallet_fullness/rovas_wallet_fullness.module:73
+msgid "Select the field that determines the base value for gauge scaling (e.g., field_running_total)."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_wallet_fullness/rovas_wallet_fullness.module:79
+msgid "Allocation Percentage Field"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_wallet_fullness/rovas_wallet_fullness.module:82
+msgid "Select the field that contains the allocation percentage (e.g., \"20\" for 20%). If not set, assumes 100%."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_wallet_fullness/rovas_wallet_fullness.module:88
+msgid "Display numeric values on gauge"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_wallet_fullness/rovas_wallet_fullness.module:90
+msgid "Enable to show actual values on the gauge."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_wallet_fullness/rovas_wallet_fullness.module:95
+msgid "Color Scheme"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_wallet_fullness/rovas_wallet_fullness.module:97;141
+msgid "Default (Blue)"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_wallet_fullness/rovas_wallet_fullness.module:98;142
+msgid "Green"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_wallet_fullness/rovas_wallet_fullness.module:99;143
+msgid "Red-Yellow-Green"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_wallet_fullness/rovas_wallet_fullness.module:102
+msgid "Choose a color scheme for the gauge."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_wallet_fullness/rovas_wallet_fullness.module:118
+msgid "Threshold field: @field"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_wallet_fullness/rovas_wallet_fullness.module:121
+msgid "No threshold field selected"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_wallet_fullness/rovas_wallet_fullness.module:125
+msgid "Gauge height field: @field"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_wallet_fullness/rovas_wallet_fullness.module:128
+msgid "No gauge height field selected"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_wallet_fullness/rovas_wallet_fullness.module:132
+msgid "Allocation percentage field: @field"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_wallet_fullness/rovas_wallet_fullness.module:135
+msgid "Allocation percentage: 100% (default)"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_wallet_fullness/rovas_wallet_fullness.module:138
+msgid "Show values on gauge: Yes"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_wallet_fullness/rovas_wallet_fullness.module:138
+msgid "Show values on gauge: No"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_wallet_fullness/rovas_wallet_fullness.module:145
+msgid "Color scheme: @scheme"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_wallet_fullness/rovas_wallet_fullness.module:342
+msgid "Allocated: @amount €"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_wallet_fullness/rovas_wallet_fullness.module:345
+msgid "Fixed allocation: @amount €"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_wallet_fullness/rovas_wallet_fullness.module:350
+msgid "Variable allocation: @amount €"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_wallet_fullness/rovas_wallet_fullness.module:357
+msgid "Total income: @amount €"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_wallet_fullness/rovas_wallet_fullness.info:0
+msgid "Provides a visual gauge formatter for displaying wallet fullness levels."
+msgstr ""
+

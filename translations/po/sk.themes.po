@@ -1,0 +1,57 @@
+msgid ""
+msgstr ""
+"Project-Id-Version: rovas themes\n"
+"POT-Creation-Date: 2026-04-29 16:54+0000\n"
+"PO-Revision-Date: 2026-04-29 16:54+0000\n"
+"Language: sk\n"
+"X-Generator: export-theme-po.php\n"
+"X-Drupal-Language: Slovak\n"
+
+#: sites/all/themes/bootstrap/js/bootstrap.admin.js
+msgid "@size Buttons"
+msgstr ""
+
+#: sites/all/themes/bootstrap/js/bootstrap.admin.js
+msgid "@shape Images"
+msgstr ""
+
+#: sites/all/themes/bootstrap/js/bootstrap.admin.js
+msgid "Responsive Images"
+msgstr ""
+
+#: sites/all/themes/bootstrap/js/bootstrap.admin.js
+msgid "Responsive Tables"
+msgstr ""
+
+#: sites/all/themes/bootstrap/js/bootstrap.admin.js
+msgid "Breadcrumbs"
+msgstr ""
+
+#: sites/all/themes/bootstrap/js/bootstrap.admin.js
+msgid "Inverse"
+msgstr ""
+
+#: sites/all/themes/bootstrap/js/bootstrap.admin.js
+msgid "Anchors"
+msgstr ""
+
+#: sites/all/themes/bootstrap/js/bootstrap.admin.js
+msgid "Popovers"
+msgstr ""
+
+#: sites/all/themes/bootstrap/js/bootstrap.admin.js
+msgid "Tooltips"
+msgstr ""
+
+#: sites/all/themes/bootstrap/js/bootstrap.admin.js
+msgid "CDN provider: %provider"
+msgstr ""
+
+#: sites/all/themes/bootstrap/js/bootstrap.admin.js
+msgid "Preview of the Bootstrap theme"
+msgstr ""
+
+#: sites/all/themes/bootstrap/js/bootstrap.admin.js
+msgid "Preview of the @title Bootswatch theme"
+msgstr ""
+
