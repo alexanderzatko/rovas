@@ -13,14 +13,23 @@ if (php_sapi_name() !== 'cli') {
   exit(1);
 }
 
-if (empty($args[0])) {
+// Drush's `scr` can pass the script filename as the first element of $args.
+// When that happens, the language code is the next element.
+$effective_args = $args;
+if (!empty($effective_args[0]) && is_string($effective_args[0])) {
+  if (preg_match('/export-locale-po\.php$/', $effective_args[0])) {
+    array_shift($effective_args);
+  }
+}
+
+if (empty($effective_args[0])) {
   fwrite(STDERR, "Usage: drush scr scripts/export-locale-po.php <langcode> [textgroup] [output-path]\n");
   exit(1);
 }
 
-$langcode = $args[0];
-$textgroup = !empty($args[1]) ? $args[1] : 'default';
-$output_path = !empty($args[2]) ? $args[2] : ('translations/po/' . $langcode . '.' . $textgroup . '.po');
+$langcode = $effective_args[0];
+$textgroup = !empty($effective_args[1]) ? $effective_args[1] : 'default';
+$output_path = !empty($effective_args[2]) ? $effective_args[2] : ('translations/po/' . $langcode . '.' . $textgroup . '.po');
 
 module_load_include('inc', 'locale', 'locale.admin');
 
