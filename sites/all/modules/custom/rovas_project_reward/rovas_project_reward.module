@@ -18,7 +18,8 @@ function rovas_project_reward_menu() {
     'page callback' => 'rovas_project_reward_bank_manual_review_page',
     'access callback' => 'user_access',
     'access arguments' => array('access administration pages'),
-    'type' => MENU_NORMAL_ITEM,
+    'type' => MENU_LOCAL_TASK,
+    'weight' => 50,
   );
 
   return $items;

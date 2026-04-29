@@ -17,7 +17,8 @@ function rovas_outbound_webhook_log_menu() {
     'page callback' => 'rovas_outbound_webhook_log_admin_page',
     'access callback' => 'user_access',
     'access arguments' => array('access administration pages'),
-    'type' => MENU_NORMAL_ITEM,
+    'type' => MENU_LOCAL_TASK,
+    'weight' => 55,
   );
 
   $items['admin/commerce/orders/rewpro-webhooks/%'] = array(
