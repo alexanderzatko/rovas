@@ -606,7 +606,7 @@ function rovas_project_reward_form ($form, &$form_state) {
 			}
 			else if ($paytype == 'buymerits') {
 				$text = '<strong>' . t('Buy Merits') . '</strong><br><br>';
-				$text .= t('Use your Chrons or Euros to add Merits to your account. Amounts and fees follow the same rules as on the Forex page.') . '<br>';
+				$text .= t('Use your Chrons or Euros to add Merits to your account') . '<br>';
 
 				$form['prodinfo'] = array(
 					'#type' => 'markup',
