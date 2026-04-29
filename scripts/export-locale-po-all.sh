@@ -5,7 +5,7 @@ set -euo pipefail
 # Export locale DB translations for all enabled languages and selected groups.
 #
 # Usage:
-#   scripts/export-locale-po-all.sh [uri] [groups]
+#   scripts/export-locale-po-all.sh [uri] [groups] [output-dir]
 # Examples:
 #   scripts/export-locale-po-all.sh dev.rovas.app
 #   scripts/export-locale-po-all.sh dev.rovas.app all
@@ -15,6 +15,7 @@ URI="${1:-dev.rovas.app}"
 # Avoid using the variable name "GROUPS" because some shells/environments define it
 # as a special/internal array (it may not behave like a normal string).
 TEXTGROUPS_STRING="${2:-all}"
+OUTPUT_DIR="${3:-translations/po}"
 
 if ! command -v drush74 >/dev/null 2>&1; then
   echo "Error: drush74 not found in PATH." >&2
@@ -35,7 +36,7 @@ if [ -z "${LANGCODES}" ]; then
   exit 0
 fi
 
-mkdir -p translations/po
+mkdir -p "${OUTPUT_DIR}"
 
 GROUP_LIST="${TEXTGROUPS_STRING}"
 if [ "${TEXTGROUPS_STRING}" = "all" ]; then
@@ -48,7 +49,7 @@ fi
 for LANG in ${LANGCODES}; do
   # Shell word-splitting is intentional here: TEXTGROUPS_STRING is a whitespace-separated list.
   for GROUP in ${GROUP_LIST}; do
-    OUT="translations/po/${LANG}.${GROUP}.po"
+    OUT="${OUTPUT_DIR}/${LANG}.${GROUP}.po"
     echo "Exporting ${LANG} / ${GROUP} -> ${OUT}"
     drush74 --uri="${URI}" scr scripts/export-locale-po.php "${LANG}" "${GROUP}" "${OUT}"
   done

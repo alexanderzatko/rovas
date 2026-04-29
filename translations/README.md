@@ -5,6 +5,40 @@ This directory stores versioned translation artifacts:
 - `po/` - importable language files (`*.po`) with `msgstr` translations.
 - `templates/` - extracted templates (`*.pot`) generated from source code.
 
+## Quickstart (easy mode)
+
+From Drupal root (`/var/www/rovdev`):
+
+1. Export everything to files:
+
+```bash
+scripts/i18n-export-all.sh dev.rovas.app
+```
+
+Export directly into another checkout (example staging git checkout):
+
+```bash
+scripts/i18n-export-all.sh dev.rovas.app /var/www/rovas-staging/translations
+```
+
+2. Bootstrap files for a new language (example `cs`):
+
+```bash
+scripts/i18n-new-language.sh dev.rovas.app cs Czech
+```
+
+3. Import all translated files back:
+
+```bash
+scripts/i18n-import-all.sh dev.rovas.app replace yes
+```
+
+Import from a custom PO directory:
+
+```bash
+scripts/i18n-import-all.sh dev.rovas.app replace yes /var/www/rovas-staging/translations/po
+```
+
 ## Prerequisites
 
 - Potx module enabled.
@@ -157,3 +191,16 @@ Arguments:
 2. Regenerate `templates/custom-modules.pot`.
 3. Regenerate/update language `po/<lang>.po`.
 4. Commit `translations/templates/*.pot` and `translations/po/*.po`.
+
+## About contrib modules (Drupal 7)
+
+There is no single D7 contrib module that cleanly does this full
+versioned file workflow (export-all scopes + machine-translation handoff + bulk re-import)
+for locale interface strings and custom/theme file-location scoped strings together.
+
+What helps in D7:
+
+- `potx` - excellent for extracting source templates (`.pot`) from code.
+- `l10n_client` - useful for in-context translation editing, less ideal for versioned file pipelines.
+
+For your requirements, the script-based flow in this folder is the most predictable and CI-friendly.

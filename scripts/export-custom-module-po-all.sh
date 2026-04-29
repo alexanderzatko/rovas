@@ -5,7 +5,7 @@ set -euo pipefail
 # Export custom-module-origin strings for all enabled languages.
 #
 # Usage:
-#   scripts/export-custom-module-po-all.sh [uri] [location-prefix]
+#   scripts/export-custom-module-po-all.sh [uri] [location-prefix] [output-dir]
 #
 # Examples:
 #   scripts/export-custom-module-po-all.sh dev.rovas.app
@@ -13,6 +13,7 @@ set -euo pipefail
 
 URI="${1:-dev.rovas.app}"
 LOCATION_PREFIX="${2:-sites/all/modules/custom/}"
+OUTPUT_DIR="${3:-translations/po}"
 
 if ! command -v drush74 >/dev/null 2>&1; then
   echo "Error: drush74 not found in PATH." >&2
@@ -29,10 +30,10 @@ if [ -z "${LANGCODES}" ]; then
   exit 0
 fi
 
-mkdir -p translations/po
+mkdir -p "${OUTPUT_DIR}"
 
 for LANG in ${LANGCODES}; do
-  OUT="translations/po/${LANG}.custom-modules.po"
+  OUT="${OUTPUT_DIR}/${LANG}.custom-modules.po"
   echo "Exporting ${LANG} -> ${OUT}"
   drush74 --uri="${URI}" scr scripts/export-custom-module-po.php "${LANG}" "${OUT}" "${LOCATION_PREFIX}"
 done

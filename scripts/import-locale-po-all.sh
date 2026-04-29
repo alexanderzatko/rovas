@@ -6,7 +6,7 @@ set -euo pipefail
 #   <langcode>.<group>.po
 #
 # Usage:
-#   scripts/import-locale-po-all.sh [uri] [replace-mode] [clear-cache]
+#   scripts/import-locale-po-all.sh [uri] [replace-mode] [clear-cache] [po-dir]
 # Examples:
 #   scripts/import-locale-po-all.sh dev.rovas.app replace yes
 #   scripts/import-locale-po-all.sh dev.rovas.app keep no
@@ -14,23 +14,24 @@ set -euo pipefail
 URI="${1:-dev.rovas.app}"
 MODE="${2:-replace}"   # replace|keep
 CLEAR_CACHE="${3:-yes}" # yes|no
+PO_DIR="${4:-translations/po}"
 
 if ! command -v drush74 >/dev/null 2>&1; then
   echo "Error: drush74 not found in PATH." >&2
   exit 1
 fi
 
-if [ ! -d "translations/po" ]; then
-  echo "Error: translations/po directory not found."
+if [ ! -d "${PO_DIR}" ]; then
+  echo "Error: ${PO_DIR} directory not found."
   exit 1
 fi
 
 shopt -s nullglob
-FILES=(translations/po/*.po)
+FILES=("${PO_DIR}"/*.po)
 shopt -u nullglob
 
 if [ ${#FILES[@]} -eq 0 ]; then
-  echo "No .po files found in translations/po."
+  echo "No .po files found in ${PO_DIR}."
   exit 0
 fi
 
