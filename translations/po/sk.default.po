@@ -49209,7 +49209,7 @@ msgstr "Zablokovať používateľa"
 
 #: /verify-confirm?verf_email=sano%40strings.net
 msgid "Rovas user validation request"
-msgstr "Rovas: žiadosť o overenie používateľa"
+msgstr "Rováš: žiadosť o overenie používateľa"
 
 #: /verify-confirm?verf_email=sano%40strings.net
 msgid "Country ID"
@@ -49225,7 +49225,7 @@ msgid ""
 "application. Please use the link below to review profile of the user and "
 "confirm only if you know him/her personally."
 msgstr ""
-"vás žiada aby ste overili jeho totožnosť v aplikácii Rovas. Overenie môžte "
+"vás žiada aby ste overili jeho totožnosť v aplikácii Rováš. Overenie môžte "
 "vykonať kliknutím na link uvedený nižšie. Prosíme overujte len používateľov "
 "ktorých osobne poznáte."
 
@@ -49311,13 +49311,13 @@ msgstr "Neodobrené !points"
 
 #: /node/7/3/8650512
 msgid "Rovas account was verified"
-msgstr "Účet v aplikácii Rovas overený"
+msgstr "Účet v aplikácii Rováš overený"
 
 #: /node/7/3/6318678
 msgid "verified your account. You can start using Rovas now."
 msgstr ""
 "overil váš účet. Od teraz môžte začať využívať všetky funkcie aplikácie "
-"Rovas."
+"Rováš."
 
 #: /admin/structure/views/view/projects
 msgid "projects"
@@ -50678,7 +50678,7 @@ msgstr ""
 "Dá sa očakávať, že z času na čas niekto poruší pravidlá, ktorými sa riadi "
 "NEO ekonomika. Napríklad niekto vytvorí pracovný výkaz o práci ktorá nebola "
 "vykonaná, alebo výsledok tej práce nie je a nikdy nebolo možné kúpiť cez "
-"aplikáciu Rovas. V takýchto prípadoch môže ktokoľvek začať formálny proces -"
+"aplikáciu Rováš. V takýchto prípadoch môže ktokoľvek začať formálny proces -"
 " <strong>spor</strong> - ktorý slúži na penalizáciu obvineného a nápravu "
 "škôd."
 
@@ -51072,7 +51072,7 @@ msgstr "Vyplňte dodatočné informácie potrebné na registráciu."
 msgid "You are trying to login with email address of another user."
 msgstr ""
 "Účet na sociálnej sieti ktorú ste zvolili má email adresu, pre ktorú už "
-"existuje v aplikácii Rovas účet."
+"existuje v aplikácii Rováš účet."
 
 #: /hybridauth/window/OpenStreetMap?destination=node/672&destination_error=node/672
 msgid "Closing..."
@@ -51175,8 +51175,8 @@ msgstr ""
 "obsahu dobrovoľne. Len ak obvinený toto odmietne urobiť pokračujte s ďalšími"
 " krokmi.</li> <li>Vytvorte nový spor. Formulár sporu obsahuje meno "
 "obvineného, predmet sporu (pracovný výkaz alebo projekt) a opis námietky "
-"voči predmetu sporu.</li> <li>Po odoslaní obsahu formulára Rovas pozmení u "
-"obvineného jeho privilégiá týkajúce sa používania aplikácie Rovas a pošle mu"
+"voči predmetu sporu.</li> <li>Po odoslaní obsahu formulára Rováš pozmení u "
+"obvineného jeho privilégiá týkajúce sa používania aplikácie Rováš a pošle mu"
 " oznam o tom, že sa stal obvineným v spore. Počas trvania sporu obvinený "
 "nebude môcť vkladať vlastné projekty, zaznamenávať nové spory a bude mať aj "
 "iné obmedzenia pri používaní aplikácie.</li> <li>Žalobca aj obvinení si "
@@ -51189,14 +51189,14 @@ msgstr ""
 "penále,</li> <li>Ak obvinený odstráni predmet sporu po 24 hodinách, ale pred"
 " ukončením (36 hodín), spor bude tiež uzavretý ale Merit skóre obvineného "
 "bude nastavené na 0,</li> <li>Ak obvinený neodstráni problém počas celého "
-"trvania sporu, na jeho konci Rovas určí víťaza a vypočíta penále. Ak skupina"
-" obvineného má menej Meritov ako skupina žalobcov, obvinený prehrá a Rovas "
-"vypočíta penále nasledovným spôsobom: Rovas najprv vypočíta priemernú "
+"trvania sporu, na jeho konci Rováš určí víťaza a vypočíta penále. Ak skupina"
+" obvineného má menej Meritov ako skupina žalobcov, obvinený prehrá a Rováš "
+"vypočíta penále nasledovným spôsobom: Rováš najprv vypočíta priemernú "
 "hodnotu Meritového skóre účastníkov ekonomiky a vydelí ju dvoma - toto číslo"
 " tvorí základ penále. Toto číslo je potom vynásobené Mw a vydelené Md, kde "
 "Mw je Merit skóre víťazov a Md je rozdiel skóre oboch skupín. Negatívna "
 "hodnota výsledku nahradí Merit skóre obvineného. Predmet sporu je tiež "
-"odstránený a s ním aj Chrony ktoré Rovas obvinenému pridelil za predmet "
+"odstránený a s ním aj Chrony ktoré Rováš obvinenému pridelil za predmet "
 "sporu. Používatelia ktorí majú negetívne Merit skóre majú nižšie postavenie "
 "v NEO ekonomike, čo sa prejaví napríklad v tom, že nemôžu vytvárať, ani "
 "pracovať na vlastných alebo verejných projektoch,</li> <li>Ak spor vyhrá "
@@ -51700,7 +51700,7 @@ msgstr "zasielať v textovom formáte"
 
 #: /node/2452
 msgid "Please enter the estimated time you spent registering in Rovas."
-msgstr "Zadajte odhadnutý čas, ktorý ste strávili registráciou v Rovasi."
+msgstr "Zadajte odhadnutý čas, ktorý ste strávili registráciou v Rováši."
 
 #: /user/1444/edit
 msgid "Email settings"
@@ -51796,7 +51796,7 @@ msgstr ""
 msgid ""
 "the work was performed <strong>after the user registered</strong> in Rovas."
 msgstr ""
-"práca bola vykonaná <strong>po zaregistrovaní používateľa</strong> v Rovasi."
+"práca bola vykonaná <strong>po zaregistrovaní používateľa</strong> v Rováši."
 
 #: /node/add/verification?wrnid=16782
 msgid "<strong>Do not judge usefulness</strong> of the performed work."
@@ -51840,7 +51840,7 @@ msgstr "Web adresa"
 msgid ""
 "the work was performed <strong>after the user registered</strong> in Rovas"
 msgstr ""
-"práca bola vykonaná <strong>po zaregistrovaní používateľa</strong> v Rovasi"
+"práca bola vykonaná <strong>po zaregistrovaní používateľa</strong> v Rováši"
 
 #: /node/add/verification?wrnid=16782
 msgid "<strong>do not judge usefulness</strong> of the performed work."
@@ -51848,7 +51848,7 @@ msgstr "<strong>neposudzujte užitočnosť </strong> vykonanej práce."
 
 #: /node/add/verification?wrnid=16782
 msgid "Only Rovas-selected users can verify reports"
-msgstr "Len Rovasom vybraní používatelia môžu overovať výkazy"
+msgstr "Len Rovášom vybraní používatelia môžu overovať výkazy"
 
 #: /node/add/work-report/16013
 msgid "Filter terms"
@@ -51960,7 +51960,7 @@ msgid ""
 " registering in Rovas."
 msgstr ""
 "Do poľa <strong>Odpracovaný čas</strong> zadajte odhadnutý čas, ktorý ste "
-"strávili registráciou v Rovasi"
+"strávili registráciou v Rováši"
 
 #: /node/2452
 msgid "See in @domain"
@@ -51968,7 +51968,7 @@ msgstr "Zobraziť v @domain"
 
 #: /node/2452
 msgid "Verify in Rovas"
-msgstr "Overiť v Rovasi"
+msgstr "Overiť v Rováši"
 
 #: /devel/php
 msgid "deadline"
@@ -52023,7 +52023,7 @@ msgstr "Ďalšie informácie nájdete v <a href=\"@rules\"> pravidlách NEO </a>
 
 #: /node/add/work-report/1994
 msgid "Slect appropriate work report in the Rovas report field"
-msgstr "Vyberte výkaz v poli \"Výkaz v Rovasi\""
+msgstr "Vyberte výkaz v poli \"Výkaz v Rováši\""
 
 #: /node/31341
 msgid "Mentions"
@@ -52270,7 +52270,7 @@ msgstr "Zmazať nakreslené objekty"
 
 #: /user
 msgid "Services API keys"
-msgstr "Rovas API"
+msgstr "Rováš API"
 
 #: /user/289/services-apikeys
 msgid "API keys age"
@@ -52289,15 +52289,15 @@ msgstr ""
 #: /user/289/services-apikeys
 msgid "Click below to reveal the API credentials."
 msgstr ""
-"Kliknutím na \"API kľúče\" nižšie zobrazíte prihlasovacie údaje do Rovas API"
+"Kliknutím na \"API kľúče\" nižšie zobrazíte prihlasovacie údaje do Rováš API"
 
 #: /user/289/services-apikeys
 msgid ""
 "Use them to connect to Rovas, using the <a href=\"@apiurl\" "
 "target=\"_blank\">Rovas API</a>"
 msgstr ""
-"Použite ich na pripojenie do Rovasa použitím <a href=\"@apiurl\" "
-"target=\"_blank\">Rovas API</a>"
+"Použite ich na pripojenie do Rováša použitím <a href=\"@apiurl\" "
+"target=\"_blank\">Rováš API</a>"
 
 #: /user/289/services-apikeys
 msgid "Please keep this information confidential, similar to your passwords"
@@ -52313,12 +52313,12 @@ msgid ""
 "target=\"_blank\">Rovas API</a>"
 msgstr ""
 "Kliknutím na \"API kľúče\" nižšie zobrazíte prihlasovacie údaje do <a "
-"href=\"@apiurl\" target=\"_blank\">Rovas API</a>"
+"href=\"@apiurl\" target=\"_blank\">Rováš API</a>"
 
 #: /node/add/work-report/32289
 msgid "Only work performed after you registered (@regdate) can be rewarded."
 msgstr ""
-"Len práca vykonaná po vašej registrácii v Rovasi (@regdate) môže byť "
+"Len práca vykonaná po vašej registrácii v Rováši (@regdate) môže byť "
 "odmenená."
 
 #: /user/289/chrons
@@ -52421,7 +52421,7 @@ msgid ""
 msgstr ""
 "Tento výkaz bol vytvorený z dát zaslaných <a "
 "href=\"https://wiki.openstreetmap.org/wiki/JOSM/Plugins/RovasConnector\"> "
-"doplnkom Rovas connector pre JOSM </a>"
+"doplnkom Rováš connector pre JOSM </a>"
 
 #: /checkout/195
 msgid "Please fill-in your billing information"
@@ -52770,7 +52770,7 @@ msgstr "!previous_link Správy @from - @to z @total !newer_link"
 
 #: /node/46616
 msgid "Registered in @years"
-msgstr "V Rovasi od r. @years"
+msgstr "V Rováši od r. @years"
 
 #: /node/46616
 msgid "Merit rank"
@@ -52851,7 +52851,7 @@ msgstr "Merit skóre"
 
 #: /admin/structure/views/view/merit_history/edit/page_1?destination=user/2271/merits
 msgid "Rovas - penaty for breaking rules"
-msgstr "Rovas - pokuta za porušenie pravidiel"
+msgstr "Rováš - pokuta za porušenie pravidiel"
 
 #: /
 msgid "Value created since @startdate"
@@ -52904,7 +52904,7 @@ msgid ""
 "You too can help improve the exchange rate. Ask users of the Rovas projects "
 "you are working on, to reward them."
 msgstr ""
-"Aj vy môžete pomôcť zlepšiť výmenný kurz. Požiadajte používateľov Rovas "
+"Aj vy môžete pomôcť zlepšiť výmenný kurz. Požiadajte používateľov Rováš "
 "projektov, na ktorých pracujete, aby ich odmenili."
 
 #: /user/2263
@@ -52941,7 +52941,7 @@ msgid ""
 msgstr ""
 "Odmeňovať pracovné výkazy je možné len chronmi. Pokračovať môžte <a "
 "href=\"@login\">prihlásením sa</a>, alebo <a href=\"@register\">vytvorením "
-"účtu v Rovasi</a>"
+"účtu v Rováši</a>"
 
 #: /rewpro?paytype=wreport&recipient=174570
 msgid "Reward for the <a href=\"@projurl\">@repname</a> work report"
@@ -53732,7 +53732,7 @@ msgid ""
 "Chrome extension for ID</a>"
 msgstr ""
 "Tento výkaz bol vytvorený z dát zaslaných <a "
-"href=\"https://github.com/dp7x/rovas-id-timetracker\"> Chrome doplnkom Rovas"
+"href=\"https://github.com/dp7x/rovas-id-timetracker\"> Chrome doplnkom Rováš"
 " connector pre ID</a>"
 
 #: /freemap-web
