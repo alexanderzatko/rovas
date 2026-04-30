@@ -1,0 +1,14 @@
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: rovas custom modules\n"
+"POT-Creation-Date: 2026-04-29 16:54+0000\n"
+"PO-Revision-Date: 2026-04-29 16:54+0000\n"
+"Language-Team: Czech\n"
+"Language: cs\n"
+"X-Drupal-Language: Czech\n"
+"X-Generator: export-custom-module-po.php\n"
+
+#: sites/all/modules/custom/rovas_stripe_express_checkout/js/express_checkout.js
+msgid "Enter a valid amount (up to two decimal places)."
+msgstr ""

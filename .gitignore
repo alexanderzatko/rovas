@@ -12,3 +12,6 @@ sites/*/settings.local.php
 
 # Vendor bins (optional)
 sites/all/vendor/bin/
+
+# Translation helper progress artifacts
+translations/po/*.progress.json
