@@ -35848,7 +35848,7 @@ msgid "Russian"
 msgstr "Ruština"
 
 msgid "Slovak"
-msgstr "Čeština"
+msgstr "Slovenština"
 
 msgid "Swedish"
 msgstr "Švédština"
