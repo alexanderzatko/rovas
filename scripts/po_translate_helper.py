@@ -27,7 +27,7 @@ import re
 import sys
 import time
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Set, Tuple
 
 try:
     import polib
@@ -54,6 +54,14 @@ TOKEN_RE = re.compile(
     r"(\[[^\]\n]+\]|%\w|@[A-Za-z_][\w-]*|!\w|<[^>]+>|\{[^{}\n]+\})"
 )
 SLOVAK_HINT_RE = re.compile(r"[ďťľôäĺŕ]|skúste|prihlás|zrušiť|uložiť", re.IGNORECASE)
+TAG_RE = re.compile(r"</?([a-zA-Z0-9]+)(?:\s[^>]*)?>")
+ALLOWED_DEFAULT_TAGS: Set[str] = {
+    "a", "abbr", "acronym", "address", "b", "bdo", "big", "blockquote", "br",
+    "caption", "cite", "code", "col", "colgroup", "dd", "del", "dfn", "dl", "dt",
+    "em", "h1", "h2", "h3", "h4", "h5", "h6", "hr", "i", "ins", "kbd", "li", "ol",
+    "p", "pre", "q", "samp", "small", "span", "strong", "sub", "sup", "table",
+    "tbody", "td", "tfoot", "th", "thead", "tr", "tt", "ul", "var",
+}
 
 
 def parse_args() -> argparse.Namespace:
@@ -67,13 +75,14 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--to-lang", default="cs", help="Target language code.")
     parser.add_argument(
         "--mode",
-        choices=["source-msgstr", "empty-only", "suspicious-only", "force-all"],
+        choices=["source-msgstr", "empty-only", "suspicious-only", "force-all", "sanitize-default-html"],
         default="source-msgstr",
         help=(
             "source-msgstr: translate from source-po msgstr when available; "
             "empty-only: fill only empty target msgstr from msgid; "
             "suspicious-only: retranslate only target msgstr that look Slovak; "
-            "force-all: translate all non-empty target msgstr."
+            "force-all: translate all non-empty target msgstr; "
+            "sanitize-default-html: do not translate, only make msgstr markup safe for default textgroup import."
         ),
     )
     parser.add_argument("--save-every", type=int, default=200, help="Save after N processed entries.")
@@ -151,8 +160,50 @@ def should_process_entry(mode: str, current_msgstr: str) -> bool:
         return clean != "" and bool(SLOVAK_HINT_RE.search(clean))
     if mode == "force-all":
         return clean != ""
+    if mode == "sanitize-default-html":
+        return clean != ""
     # source-msgstr
     return True
+
+
+def sanitize_default_html(msgid: str, msgstr: str) -> str:
+    """
+    Make translation markup safer for Drupal default textgroup import.
+    - remove img/script/style/iframe tags
+    - convert div wrappers to span
+    - keep only tags allowed by locale_string_is_safe() list
+    - if msgid has no tags, strip all tags from msgstr
+    """
+    out = msgstr
+
+    # Remove known problematic tags first.
+    out = re.sub(r"<\s*(img|script|style|iframe)\b[^>]*?/?>", "", out, flags=re.IGNORECASE)
+
+    # Normalize common layout wrapper to inline-safe span.
+    out = re.sub(r"<\s*div\b[^>]*>", "<span>", out, flags=re.IGNORECASE)
+    out = re.sub(r"<\s*/\s*div\s*>", "</span>", out, flags=re.IGNORECASE)
+
+    msgid_tags = {m.group(1).lower() for m in TAG_RE.finditer(msgid)}
+    if not msgid_tags:
+        # If source string is plain text, force plain text in translation too.
+        out = re.sub(r"</?[^>]+>", "", out)
+        return out.strip()
+
+    def _tag_filter(match: re.Match[str]) -> str:
+        full = match.group(0)
+        tag = match.group(1).lower()
+        if tag not in ALLOWED_DEFAULT_TAGS:
+            return ""
+        # Keep only tags that also appear in source (except harmless <br>).
+        if tag != "br" and tag not in msgid_tags:
+            return ""
+        return full
+
+    out = TAG_RE.sub(_tag_filter, out)
+    # Collapse whitespace around removed tags.
+    out = re.sub(r"[ \t]{2,}", " ", out)
+    out = re.sub(r"\n{3,}", "\n\n", out)
+    return out.strip()
 
 
 def maybe_translate_value(
@@ -204,6 +255,8 @@ def main() -> int:
                 source_text_singular = source_entry.msgstr
         elif args.mode == "empty-only":
             source_text_singular = entry.msgid or ""
+        elif args.mode == "sanitize-default-html":
+            source_text_singular = entry.msgstr
         else:
             source_text_singular = entry.msgstr
 
@@ -212,14 +265,17 @@ def main() -> int:
         else:
             if should_process_entry(args.mode, entry.msgstr):
                 try:
-                    new_value = maybe_translate_value(
-                        source_text_singular,
-                        args.from_lang,
-                        args.to_lang,
-                        args.request_timeout,
-                        args.max_retries,
-                        cache,
-                    )
+                    if args.mode == "sanitize-default-html":
+                        new_value = sanitize_default_html(entry.msgid or "", source_text_singular)
+                    else:
+                        new_value = maybe_translate_value(
+                            source_text_singular,
+                            args.from_lang,
+                            args.to_lang,
+                            args.request_timeout,
+                            args.max_retries,
+                            cache,
+                        )
                     if new_value and new_value != entry.msgstr:
                         entry.msgstr = new_value
                         changed_values += 1
@@ -239,6 +295,8 @@ def main() -> int:
                         source_plural = source_entry.msgstr_plural.get(plural_key, "")
                 elif args.mode == "empty-only":
                     source_plural = entry.msgid_plural or entry.msgid or ""
+                elif args.mode == "sanitize-default-html":
+                    source_plural = plural_val
                 else:
                     source_plural = plural_val
 
@@ -249,14 +307,17 @@ def main() -> int:
                     continue
 
                 try:
-                    new_plural = maybe_translate_value(
-                        source_plural,
-                        args.from_lang,
-                        args.to_lang,
-                        args.request_timeout,
-                        args.max_retries,
-                        cache,
-                    )
+                    if args.mode == "sanitize-default-html":
+                        new_plural = sanitize_default_html(entry.msgid_plural or entry.msgid or "", source_plural)
+                    else:
+                        new_plural = maybe_translate_value(
+                            source_plural,
+                            args.from_lang,
+                            args.to_lang,
+                            args.request_timeout,
+                            args.max_retries,
+                            cache,
+                        )
                     if new_plural and new_plural != plural_val:
                         entry.msgstr_plural[plural_key] = new_plural
                         changed_values += 1
