@@ -1,0 +1,69 @@
+<?php
+
+/**
+ * Implements hook_schema().
+ */
+function rovas_base_schema() {
+  $schema['rovas_translation_freshness'] = array(
+    'description' => 'Stores source hashes used for generated node translations.',
+    'fields' => array(
+      'nid' => array(
+        'description' => 'Node ID.',
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+      ),
+      'target_lang' => array(
+        'description' => 'Target translation language code.',
+        'type' => 'varchar',
+        'length' => 12,
+        'not null' => TRUE,
+        'default' => '',
+      ),
+      'field_name' => array(
+        'description' => 'Translated field machine name.',
+        'type' => 'varchar',
+        'length' => 32,
+        'not null' => TRUE,
+        'default' => '',
+      ),
+      'source_lang' => array(
+        'description' => 'Source language used for this translation snapshot.',
+        'type' => 'varchar',
+        'length' => 12,
+        'not null' => TRUE,
+        'default' => '',
+      ),
+      'source_hash' => array(
+        'description' => 'Hash of canonical source text (SHA-256).',
+        'type' => 'varchar',
+        'length' => 64,
+        'not null' => TRUE,
+        'default' => '',
+      ),
+      'changed' => array(
+        'description' => 'Unix timestamp of the latest hash update.',
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+    ),
+    'primary key' => array('nid', 'target_lang', 'field_name'),
+    'indexes' => array(
+      'nid_lang' => array('nid', 'target_lang'),
+    ),
+  );
+
+  return $schema;
+}
+
+/**
+ * Create translation freshness table for existing installs.
+ */
+function rovas_base_update_7001() {
+  if (!db_table_exists('rovas_translation_freshness')) {
+    $schema = drupal_get_schema_unprocessed('rovas_base', 'rovas_translation_freshness');
+    db_create_table('rovas_translation_freshness', $schema);
+  }
+}

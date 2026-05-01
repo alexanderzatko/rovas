@@ -672,3 +672,218 @@ function _rovas_base_map_lang_code($lang_code) {
   }
   return rovas_base_normalize_to_enabled_language($lang_code);
 }
+
+/**
+ * Returns the canonical source text for a translatable field.
+ *
+ * Source fallback order is: sk > en > und (LANGUAGE_NONE).
+ *
+ * @param object $node
+ *   Node object.
+ * @param string $field_name
+ *   Field machine name (e.g. body, title_field).
+ * @param string|null $source_lang
+ *   Optional reference output. Receives sk|en|und when found, or ''.
+ *
+ * @return string
+ *   Source text or empty string.
+ */
+function rovas_base_translation_pick_source_text($node, $field_name, &$source_lang = NULL) {
+  $source_lang = '';
+  if (empty($node) || !is_object($node) || empty($field_name)) {
+    return '';
+  }
+
+  $order = array('sk', 'en', 'und');
+  foreach ($order as $lang_code) {
+    $key = ($lang_code === 'und') ? LANGUAGE_NONE : $lang_code;
+    if (!empty($node->{$field_name}[$key][0]['value'])) {
+      $source_lang = $lang_code;
+      return (string) $node->{$field_name}[$key][0]['value'];
+    }
+  }
+
+  return '';
+}
+
+/**
+ * Computes a stable hash for translation source text.
+ *
+ * @param string $text
+ *   Raw source text.
+ *
+ * @return string
+ *   SHA-256 hex hash.
+ */
+function rovas_base_translation_hash_text($text) {
+  return hash('sha256', (string) $text);
+}
+
+/**
+ * Loads stored source hash metadata for one translation field.
+ *
+ * @param int $nid
+ *   Node ID.
+ * @param string $target_lang
+ *   Target language code.
+ * @param string $field_name
+ *   Field machine name.
+ *
+ * @return object|false
+ *   DB row object or FALSE if missing.
+ */
+function rovas_base_translation_hash_get($nid, $target_lang, $field_name) {
+  $nid = (int) $nid;
+  $target_lang = drupal_substr(drupal_strtolower(trim((string) $target_lang)), 0, 12);
+  $field_name = trim((string) $field_name);
+  if ($nid <= 0 || $target_lang === '' || $field_name === '') {
+    return FALSE;
+  }
+
+  return db_select('rovas_translation_freshness', 'rtf')
+    ->fields('rtf')
+    ->condition('nid', $nid)
+    ->condition('target_lang', $target_lang)
+    ->condition('field_name', $field_name)
+    ->execute()
+    ->fetchObject();
+}
+
+/**
+ * Stores source hash metadata for one translation field.
+ *
+ * @param int $nid
+ *   Node ID.
+ * @param string $target_lang
+ *   Target language code.
+ * @param string $field_name
+ *   Field machine name.
+ * @param string $source_lang
+ *   Source language code used (sk|en|und).
+ * @param string $source_hash
+ *   Hash of canonical source text.
+ */
+function rovas_base_translation_hash_set($nid, $target_lang, $field_name, $source_lang, $source_hash) {
+  $nid = (int) $nid;
+  $target_lang = drupal_substr(drupal_strtolower(trim((string) $target_lang)), 0, 12);
+  $field_name = trim((string) $field_name);
+  $source_lang = drupal_substr(drupal_strtolower(trim((string) $source_lang)), 0, 12);
+  $source_hash = trim((string) $source_hash);
+  if ($nid <= 0 || $target_lang === '' || $field_name === '' || $source_hash === '') {
+    return;
+  }
+
+  db_merge('rovas_translation_freshness')
+    ->key(array(
+      'nid' => $nid,
+      'target_lang' => $target_lang,
+      'field_name' => $field_name,
+    ))
+    ->fields(array(
+      'source_lang' => $source_lang,
+      'source_hash' => $source_hash,
+      'changed' => REQUEST_TIME,
+    ))
+    ->execute();
+}
+
+/**
+ * Checks if a translation is stale by comparing stored and current source hash.
+ *
+ * For now this is intentionally scoped to pages to avoid changing behavior of
+ * other bundles that are mostly immutable in current workflows.
+ *
+ * @param object $node
+ *   Node object.
+ * @param string $target_lang
+ *   Target language code.
+ * @param string $field_name
+ *   Field machine name (body|title_field).
+ *
+ * @return bool
+ *   TRUE if stale, FALSE otherwise.
+ */
+function rovas_base_translation_is_stale($node, $target_lang, $field_name) {
+  if (empty($node) || !is_object($node) || empty($node->nid) || empty($node->type)) {
+    return FALSE;
+  }
+  if ($node->type !== 'page') {
+    return FALSE;
+  }
+
+  $target_lang = drupal_strtolower(trim((string) $target_lang));
+  if ($target_lang === '') {
+    return FALSE;
+  }
+  $node_lang = !empty($node->language) ? drupal_strtolower((string) $node->language) : '';
+  if ($target_lang === $node_lang) {
+    return FALSE;
+  }
+
+  $source_lang = '';
+  $source_text = rovas_base_translation_pick_source_text($node, $field_name, $source_lang);
+  if ($source_text === '') {
+    return FALSE;
+  }
+  $current_hash = rovas_base_translation_hash_text($source_text);
+  $stored = rovas_base_translation_hash_get($node->nid, $target_lang, $field_name);
+  if (!$stored || empty($stored->source_hash)) {
+    return FALSE;
+  }
+
+  return $stored->source_hash !== $current_hash;
+}
+
+/**
+ * Persists source hashes used for translated fields.
+ *
+ * @param object $node
+ *   Node object.
+ * @param string $target_lang
+ *   Target language code.
+ * @param array $field_names
+ *   Field names to process.
+ */
+function rovas_base_translation_record_hashes($node, $target_lang, array $field_names = array('title_field', 'body')) {
+  if (empty($node) || !is_object($node) || empty($node->nid)) {
+    return;
+  }
+  $target_lang = drupal_strtolower(trim((string) $target_lang));
+  if ($target_lang === '') {
+    return;
+  }
+
+  foreach ($field_names as $field_name) {
+    $source_lang = '';
+    $source_text = rovas_base_translation_pick_source_text($node, $field_name, $source_lang);
+    if ($source_text === '') {
+      continue;
+    }
+    $hash = rovas_base_translation_hash_text($source_text);
+    rovas_base_translation_hash_set($node->nid, $target_lang, $field_name, $source_lang, $hash);
+  }
+}
+
+/**
+ * Seeds missing hash rows for already translated fields without retranslating.
+ *
+ * @param object $node
+ *   Node object.
+ * @param string $target_lang
+ *   Target language code.
+ */
+function rovas_base_translation_seed_hashes_for_existing_translation($node, $target_lang) {
+  if (empty($node) || !is_object($node) || empty($node->nid) || empty($target_lang)) {
+    return;
+  }
+  if (empty($node->title_field[$target_lang][0]['value']) || empty($node->body[$target_lang][0]['value'])) {
+    return;
+  }
+
+  foreach (array('title_field', 'body') as $field_name) {
+    $stored = rovas_base_translation_hash_get($node->nid, $target_lang, $field_name);
+    if (!$stored || empty($stored->source_hash)) {
+      rovas_base_translation_record_hashes($node, $target_lang, array($field_name));
+    }
+  }
+}
