@@ -124,7 +124,7 @@
                               { "variable_add" : {
                                   "USING" : {
                                     "type" : "text",
-                                    "value" : "\u003C?php\r\n$qry = \u0022SELECT f.body_value AS new_body\r\nFROM {field_data_body} s\r\nLEFT JOIN {field_data_body} f ON s.entity_id = f.entity_id\r\nWHERE s.body_value = :intext\r\nAND s.language = :lang\r\nAND f.language = :outlang\r\nLIMIT 1\u0022;\r\n\r\n$result =  db_query($qry,array(\u0027:intext\u0027 =\u003E $body_check, \u0027:lang\u0027 =\u003E $body_src_lang, \u0027:outlang\u0027 =\u003E $lang));\r\n$resarray = $result-\u003EfetchAll();\r\n\r\necho empty($resarray) ? \u0027\u0027 : $resarray[0]-\u003Enew_body;\r\n?\u003E"
+                                    "value" : "\u003C?php\r\n$qry = \u0022SELECT f.body_value AS new_body\r\nFROM {field_data_body} s\r\nLEFT JOIN {field_data_body} f ON s.entity_id = f.entity_id\r\nWHERE s.body_value = :intext\r\nAND f.language = :outlang\r\nLIMIT 1\u0022;\r\n\r\n$result =  db_query($qry,array(\u0027:intext\u0027 =\u003E $body_check, \u0027:outlang\u0027 =\u003E $lang));\r\n$resarray = $result-\u003EfetchAll();\r\n\r\necho empty($resarray) ? \u0027\u0027 : $resarray[0]-\u003Enew_body;\r\n?\u003E"
                                   },
                                   "PROVIDE" : { "variable_added" : { "cached_body" : "cached body" } }
                                 }
@@ -176,7 +176,7 @@
                       { "variable_add" : {
                           "USING" : {
                             "type" : "text",
-                            "value" : "\u003C?php\r\n$qry = \u0022SELECT f.title_field_value AS new_title\r\nFROM {field_data_title_field} s\r\nLEFT JOIN {field_data_title_field} f ON s.entity_id = f.entity_id\r\nWHERE s.title_field_value = :intext\r\nAND s.language = :lang\r\nAND f.language = :outlang\r\nLIMIT 1\u0022;\r\n\r\n$result =  db_query($qry,array(\u0027:intext\u0027 =\u003E $title, \u0027:lang\u0027 =\u003E $title_src_lang, \u0027:outlang\u0027 =\u003E $lang));\r\n$resarray = $result-\u003EfetchAll();\r\n\r\necho empty($resarray) ? \u0027\u0027 : $resarray[0]-\u003Enew_title;\r\n?\u003E"
+                            "value" : "\u003C?php\r\n$qry = \u0022SELECT f.title_field_value AS new_title\r\nFROM {field_data_title_field} s\r\nLEFT JOIN {field_data_title_field} f ON s.entity_id = f.entity_id\r\nWHERE s.title_field_value = :intext\r\nAND f.language = :outlang\r\nLIMIT 1\u0022;\r\n\r\n$result =  db_query($qry,array(\u0027:intext\u0027 =\u003E $title, \u0027:outlang\u0027 =\u003E $lang));\r\n$resarray = $result-\u003EfetchAll();\r\n\r\necho empty($resarray) ? \u0027\u0027 : $resarray[0]-\u003Enew_title;\r\n?\u003E"
                           },
                           "PROVIDE" : { "variable_added" : { "cached_title" : "cached title" } }
                         }

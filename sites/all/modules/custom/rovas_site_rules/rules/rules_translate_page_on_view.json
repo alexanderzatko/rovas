@@ -1,0 +1,29 @@
+{ "rules_translate_page_on_view" : {
+    "LABEL" : "Translate page on view",
+    "PLUGIN" : "reaction rule",
+    "OWNER" : "rules",
+    "TAGS" : [ "translations" ],
+    "REQUIRES" : [ "rules", "rules_conditional", "php" ],
+    "ON" : { "node_view--page" : { "bundle" : "page" } },
+    "DO" : [
+      { "component_rules_check_enabled_language" : {
+          "USING" : { "input" : [ "site:current-page:language" ] },
+          "PROVIDE" : { "output" : { "lang_enabled" : "language enabled" } }
+        }
+      },
+      { "CONDITIONAL" : [
+          {
+            "IF" : { "data_is" : { "data" : [ "lang-enabled" ], "value" : "1" } },
+            "DO" : [
+              { "component_rules_translate_node" : {
+                  "lang" : [ "site:current-page:language" ],
+                  "node" : [ "node" ]
+                }
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}
