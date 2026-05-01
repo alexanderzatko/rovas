@@ -876,7 +876,9 @@ function rovas_base_translation_seed_hashes_for_existing_translation($node, $tar
   if (empty($node) || !is_object($node) || empty($node->nid) || empty($target_lang)) {
     return;
   }
-  if (empty($node->title_field[$target_lang][0]['value']) || empty($node->body[$target_lang][0]['value'])) {
+  $target_lang = drupal_strtolower(trim((string) $target_lang));
+  $target_key = ($target_lang === 'und') ? LANGUAGE_NONE : $target_lang;
+  if (empty($node->title_field[$target_key][0]['value']) || empty($node->body[$target_key][0]['value'])) {
     return;
   }
 
