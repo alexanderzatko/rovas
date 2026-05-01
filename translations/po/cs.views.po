@@ -9089,12 +9089,12 @@ msgstr ""
 #: views:projects:default:use_more_text
 msgctxt "projects:default:use_more_text"
 msgid "more"
-msgstr "viac"
+msgstr "více"
 
 #: views:projects:default:field:node:changed:label
 msgctxt "projects:default:field:node:changed:label"
 msgid "Date"
-msgstr "Dátum"
+msgstr "Datum"
 
 #: views:projects:default:field:views:php:label
 msgctxt "projects:default:field:views:php:label"
@@ -9104,12 +9104,12 @@ msgstr "Chrony"
 #: views:projects:block:use_more_text
 msgctxt "projects:block:use_more_text"
 msgid "more"
-msgstr "viac"
+msgstr "více"
 
 #: views:projects:block:field:node:changed:label
 msgctxt "projects:block:field:node:changed:label"
 msgid "Date"
-msgstr "Dátum"
+msgstr "Datum"
 
 #: views:projects:block:field:field_data_field_merit_reward:field_merit_reward:label
 msgctxt ""
@@ -9120,74 +9120,74 @@ msgstr "Merity"
 #: views:projects:entityreference_1:use_more_text
 msgctxt "projects:entityreference_1:use_more_text"
 msgid "more"
-msgstr "viac"
+msgstr "více"
 
 #: views:projects:entityreference_3:use_more_text
 msgctxt "projects:entityreference_3:use_more_text"
 msgid "more"
-msgstr "viac"
+msgstr "více"
 
 #: views:project_coworkers:default:use_more_text
 msgctxt "project_coworkers:default:use_more_text"
 msgid "more"
-msgstr "viac"
+msgstr "více"
 
 #: views:users:default:use_more_text
 msgctxt "users:default:use_more_text"
 msgid "more"
-msgstr "viac"
+msgstr "více"
 
 #: views:users:entityreference_1:use_more_text
 msgctxt "users:entityreference_1:use_more_text"
 msgid "more"
-msgstr "viac"
+msgstr "více"
 
 #: views:users:entityreference_2:use_more_text
 msgctxt "users:entityreference_2:use_more_text"
 msgid "more"
-msgstr "viac"
+msgstr "více"
 
 #: views:users:entityreference_2:exposed_form:submit_button
 msgctxt "users:entityreference_2:exposed_form:submit_button"
 msgid "Apply"
-msgstr "Použiť"
+msgstr "Použít"
 
 #: views:employee_projects:default:use_more_text
 msgctxt "employee_projects:default:use_more_text"
 msgid "more"
-msgstr "viac"
+msgstr "více"
 
 #: views:employee_projects:entityreference_1:use_more_text
 msgctxt "employee_projects:entityreference_1:use_more_text"
 msgid "more"
-msgstr "viac"
+msgstr "více"
 
 #: views:work_reports:default:use_more_text
 msgctxt "work_reports:default:use_more_text"
 msgid "more"
-msgstr "viac"
+msgstr "více"
 
 #: views:work_reports:default:field:node:created:label
 msgctxt "work_reports:default:field:node:created:label"
 msgid "Date"
-msgstr "Dátum"
+msgstr "Datum"
 
 #: views:work_reports:default:field:node:title:label
 msgctxt "work_reports:default:field:node:title:label"
 msgid "Activity"
-msgstr "Činnosť"
+msgstr "Činnost"
 
 #: views:work_reports:default:field:field_data_field_classification:field_classification:label
 msgctxt ""
 "work_reports:default:field:field_data_field_classification:field_classification:label"
 msgid "Classification"
-msgstr "Klasifikácia"
+msgstr "Klasifikace"
 
 #: views:work_reports:default:field:field_data_field_hours_worked:field_hours_worked:label
 msgctxt ""
 "work_reports:default:field:field_data_field_hours_worked:field_hours_worked:label"
 msgid "Time"
-msgstr "Hodín"
+msgstr "Hodin"
 
 #: views:work_reports:default:field:field_data_field_merit_reward:field_merit_reward:label
 msgctxt ""
@@ -9198,12 +9198,12 @@ msgstr "Merity"
 #: views:chron_balance:default:use_more_text
 msgctxt "chron_balance:default:use_more_text"
 msgid "more"
-msgstr "viac"
+msgstr "více"
 
 #: views:chron_balance:block:use_more_text
 msgctxt "chron_balance:block:use_more_text"
 msgid "more"
-msgstr "viac"
+msgstr "více"
 
 #: views:purchases:default:title
 msgctxt "purchases:default:title"
@@ -9213,7 +9213,7 @@ msgstr "Nákupy"
 #: views:purchases:default:use_more_text
 msgctxt "purchases:default:use_more_text"
 msgid "more"
-msgstr "viac"
+msgstr "více"
 
 #: views:purchases:default:field:field_data_field_receipt_project:field_receipt_project:label
 msgctxt ""
@@ -9225,12 +9225,12 @@ msgstr "Projekt"
 msgctxt ""
 "purchases:default:field:field_data_field_amount_paid:field_amount_paid:label"
 msgid "Amount Paid"
-msgstr "Zaplatené"
+msgstr "Zaplaceno"
 
 #: views:purchases:block_1:use_more_text
 msgctxt "purchases:block_1:use_more_text"
 msgid "more"
-msgstr "viac"
+msgstr "více"
 
 #: views:purchases:block_1:block_description
 msgctxt "purchases:block_1:block_description"
@@ -9240,23 +9240,23 @@ msgstr "Nákupy"
 #: views:usr_merit_rank:default:use_more_text
 msgctxt "usr_merit_rank:default:use_more_text"
 msgid "more"
-msgstr "viac"
+msgstr "více"
 
 #: views:usr_merit_rank:default:field:field_data_field_full_name:field_full_name:label
 msgctxt ""
 "usr_merit_rank:default:field:field_data_field_full_name:field_full_name:label"
 msgid "Full name"
-msgstr "Celé meno"
+msgstr "Celé jméno"
 
 #: views:usr_merit_rank:block:use_more_text
 msgctxt "usr_merit_rank:block:use_more_text"
 msgid "more"
-msgstr "viac"
+msgstr "více"
 
 #: views:top_10_workers_in_a_category:default:use_more_text
 msgctxt "top_10_workers_in_a_category:default:use_more_text"
 msgid "more"
-msgstr "viac"
+msgstr "více"
 
 #: views:top_10_workers_in_a_category:default:field:field_data_field_merit_reward:field_merit_reward:label
 msgctxt ""
@@ -9267,37 +9267,37 @@ msgstr "Merity"
 #: views:top_10_workers_in_a_category:page:use_more_text
 msgctxt "top_10_workers_in_a_category:page:use_more_text"
 msgid "more"
-msgstr "viac"
+msgstr "více"
 
 #: views:taxonomy_term:default:use_more_text
 msgctxt "taxonomy_term:default:use_more_text"
 msgid "more"
-msgstr "viac"
+msgstr "více"
 
 #: views:taxonomy_term:page:use_more_text
 msgctxt "taxonomy_term:page:use_more_text"
 msgid "more"
-msgstr "viac"
+msgstr "více"
 
 #: views:taxonomy_term:feed:use_more_text
 msgctxt "taxonomy_term:feed:use_more_text"
 msgid "more"
-msgstr "viac"
+msgstr "více"
 
 #: views:disputed_nodes:default:use_more_text
 msgctxt "disputed_nodes:default:use_more_text"
 msgid "more"
-msgstr "viac"
+msgstr "více"
 
 #: views:disputed_nodes:entityreference_1:use_more_text
 msgctxt "disputed_nodes:entityreference_1:use_more_text"
 msgid "more"
-msgstr "viac"
+msgstr "více"
 
 #: views:dispute_parties:default:use_more_text
 msgctxt "dispute_parties:default:use_more_text"
 msgid "more"
-msgstr "viac"
+msgstr "více"
 
 #: views:disputes:default:title
 msgctxt "disputes:default:title"
@@ -9307,7 +9307,7 @@ msgstr "Spory"
 #: views:disputes:default:use_more_text
 msgctxt "disputes:default:use_more_text"
 msgid "more"
-msgstr "viac"
+msgstr "více"
 
 #: views:disputes:default:field:field_data_field_full_name:field_full_name_1:label
 msgctxt ""
@@ -9318,142 +9318,142 @@ msgstr "Žalovaný"
 #: views:disputes:page:use_more_text
 msgctxt "disputes:page:use_more_text"
 msgid "more"
-msgstr "viac"
+msgstr "více"
 
 #: views:disputes:entityreference_1:use_more_text
 msgctxt "disputes:entityreference_1:use_more_text"
 msgid "more"
-msgstr "viac"
+msgstr "více"
 
 #: views:disputes_without_object:default:use_more_text
 msgctxt "disputes_without_object:default:use_more_text"
 msgid "more"
-msgstr "viac"
+msgstr "více"
 
 #: views:other_workers_work_reports:default:use_more_text
 msgctxt "other_workers_work_reports:default:use_more_text"
 msgid "more"
-msgstr "viac"
+msgstr "více"
 
 #: views:users_autocomplete:page:use_more_text
 msgctxt "users_autocomplete:page:use_more_text"
 msgid "more"
-msgstr "viac"
+msgstr "více"
 
 #: views:archive:default:use_more_text
 msgctxt "archive:default:use_more_text"
 msgid "more"
-msgstr "viac"
+msgstr "více"
 
 #: views:archive:page:use_more_text
 msgctxt "archive:page:use_more_text"
 msgid "more"
-msgstr "viac"
+msgstr "více"
 
 #: views:archive:block:use_more_text
 msgctxt "archive:block:use_more_text"
 msgid "more"
-msgstr "viac"
+msgstr "více"
 
 #: views:comments_recent:default:use_more_text
 msgctxt "comments_recent:default:use_more_text"
 msgid "more"
-msgstr "viac"
+msgstr "více"
 
 #: views:comments_recent:page:use_more_text
 msgctxt "comments_recent:page:use_more_text"
 msgid "more"
-msgstr "viac"
+msgstr "více"
 
 #: views:comments_recent:block:use_more_text
 msgctxt "comments_recent:block:use_more_text"
 msgid "more"
-msgstr "viac"
+msgstr "více"
 
 #: views:frontpage:default:use_more_text
 msgctxt "frontpage:default:use_more_text"
 msgid "more"
-msgstr "viac"
+msgstr "více"
 
 #: views:frontpage:page:use_more_text
 msgctxt "frontpage:page:use_more_text"
 msgid "more"
-msgstr "viac"
+msgstr "více"
 
 #: views:frontpage:feed:use_more_text
 msgctxt "frontpage:feed:use_more_text"
 msgid "more"
-msgstr "viac"
+msgstr "více"
 
 #: views:glossary:default:use_more_text
 msgctxt "glossary:default:use_more_text"
 msgid "more"
-msgstr "viac"
+msgstr "více"
 
 #: views:glossary:page:use_more_text
 msgctxt "glossary:page:use_more_text"
 msgid "more"
-msgstr "viac"
+msgstr "více"
 
 #: views:glossary:attachment:use_more_text
 msgctxt "glossary:attachment:use_more_text"
 msgid "more"
-msgstr "viac"
+msgstr "více"
 
 #: views:nodes_autocomplete:page:use_more_text
 msgctxt "nodes_autocomplete:page:use_more_text"
 msgid "more"
-msgstr "viac"
+msgstr "více"
 
 #: views:rules_scheduler:default:use_more_text
 msgctxt "rules_scheduler:default:use_more_text"
 msgid "more"
-msgstr "viac"
+msgstr "více"
 
 #: views:tracker:default:use_more_text
 msgctxt "tracker:default:use_more_text"
 msgid "more"
-msgstr "viac"
+msgstr "více"
 
 #: views:tracker:page:use_more_text
 msgctxt "tracker:page:use_more_text"
 msgid "more"
-msgstr "viac"
+msgstr "více"
 
 #: views:variable:default:use_more_text
 msgctxt "variable:default:use_more_text"
 msgid "more"
-msgstr "viac"
+msgstr "více"
 
 #: views:variable:default:field:variable:title:label
 msgctxt "variable:default:field:variable:title:label"
 msgid "Title"
-msgstr "Názov"
+msgstr "Název"
 
 #: views:variable:page:use_more_text
 msgctxt "variable:page:use_more_text"
 msgid "more"
-msgstr "viac"
+msgstr "více"
 
 #: views:words_autocomplete:page:use_more_text
 msgctxt "words_autocomplete:page:use_more_text"
 msgid "more"
-msgstr "viac"
+msgstr "více"
 
 #: views:projects:projectsxf:use_more_text
 msgctxt "projects:projectsxf:use_more_text"
 msgid "more"
-msgstr "viac"
+msgstr "více"
 
 #: views:expired_projects:default:use_more_text
 msgctxt "expired_projects:default:use_more_text"
 msgid "more"
-msgstr "viac"
+msgstr "více"
 
 #: views:money_transfers:default:use_more_text
 msgctxt "money_transfers:default:use_more_text"
 msgid "more"
-msgstr "more"
+msgstr "moře"
 
 #: views:money_transfers:default:exposed_form:submit_button
 msgctxt "money_transfers:default:exposed_form:submit_button"
@@ -9519,7 +9519,7 @@ msgstr "last »"
 #: views:money_transfers:default:empty:views:area:content
 msgctxt "money_transfers:default:empty:views:area:content"
 msgid "There are no transactions."
-msgstr "Nemáte žiadne transakcie"
+msgstr "Nemáte žádné transakce"
 
 #: views:money_transfers:default:relationship:node:uid:label
 msgctxt "money_transfers:default:relationship:node:uid:label"
@@ -9554,7 +9554,7 @@ msgstr "Buyer"
 msgctxt ""
 "money_transfers:default:field:field_data_field_full_name:field_full_name_2:label"
 msgid "Full name"
-msgstr "Celé meno"
+msgstr "Celé jméno"
 
 #: views:money_transfers:default:field:field_data_field_full_name:field_full_name:label
 msgctxt ""
@@ -9608,7 +9608,7 @@ msgstr "Sender"
 #: views:money_transfers:default:field:views:php_2:label
 msgctxt "money_transfers:default:field:views:php_2:label"
 msgid "Recipient"
-msgstr "Príjemca"
+msgstr "Příjemce"
 
 #: views:money_transfers:default:field:views:php_4:label
 msgctxt "money_transfers:default:field:views:php_4:label"
@@ -9640,7 +9640,7 @@ msgstr "All"
 #: views:money_transfers:page:use_more_text
 msgctxt "money_transfers:page:use_more_text"
 msgid "more"
-msgstr "more"
+msgstr "moře"
 
 #: views:money_transfers:page:exposed_form:submit_button
 msgctxt "money_transfers:page:exposed_form:submit_button"
@@ -9705,37 +9705,37 @@ msgstr "last »"
 #: views:uc_catalog:default:use_more_text
 msgctxt "uc_catalog:default:use_more_text"
 msgid "more"
-msgstr "viac"
+msgstr "více"
 
 #: views:uc_catalog:catalog:use_more_text
 msgctxt "uc_catalog:catalog:use_more_text"
 msgid "more"
-msgstr "viac"
+msgstr "více"
 
 #: views:uc_catalog:catalog_grid:use_more_text
 msgctxt "uc_catalog:catalog_grid:use_more_text"
 msgid "more"
-msgstr "viac"
+msgstr "více"
 
 #: views:uc_orders_user:default:use_more_text
 msgctxt "uc_orders_user:default:use_more_text"
 msgid "more"
-msgstr "viac"
+msgstr "více"
 
 #: views:uc_orders_user:default:field:uc_orders:created:label
 msgctxt "uc_orders_user:default:field:uc_orders:created:label"
 msgid "Date"
-msgstr "Dátum"
+msgstr "Datum"
 
 #: views:uc_orders_user:page:use_more_text
 msgctxt "uc_orders_user:page:use_more_text"
 msgid "more"
-msgstr "viac"
+msgstr "více"
 
 #: views:projects:entityreference_2:use_more_text
 msgctxt "projects:entityreference_2:use_more_text"
 msgid "more"
-msgstr "viac"
+msgstr "více"
 
 #: views:top_10_workers_in_a_category:default:field:views:php_1:label
 msgctxt "top_10_workers_in_a_category:default:field:views:php_1:label"
@@ -9750,7 +9750,7 @@ msgstr "Merit index"
 #: views:users_merit_rank:default:use_more_text
 msgctxt "users_merit_rank:default:use_more_text"
 msgid "more"
-msgstr "viac"
+msgstr "více"
 
 #: views:users_merit_rank:default:exposed_form:submit_button
 msgctxt "users_merit_rank:default:exposed_form:submit_button"
@@ -9816,18 +9816,18 @@ msgstr "»"
 #: views:users_merit_rank:default:field:views:counter:label
 msgctxt "users_merit_rank:default:field:views:counter:label"
 msgid "Position"
-msgstr "Pozícia"
+msgstr "Pozice"
 
 #: views:users_merit_rank:default:field:field_data_field_full_name:field_full_name:label
 msgctxt ""
 "users_merit_rank:default:field:field_data_field_full_name:field_full_name:label"
 msgid "Full name"
-msgstr "Celé meno"
+msgstr "Celé jméno"
 
 #: views:users_merit_rank:default:field:users:name:label
 msgctxt "users_merit_rank:default:field:users:name:label"
 msgid "Worker"
-msgstr "Meno"
+msgstr "Jméno"
 
 #: views:users_merit_rank:default:field:users:name:alter:text
 msgctxt "users_merit_rank:default:field:users:name:alter:text"
@@ -9842,7 +9842,7 @@ msgstr "."
 #: views:users_merit_rank:page:use_more_text
 msgctxt "users_merit_rank:page:use_more_text"
 msgid "more"
-msgstr "viac"
+msgstr "více"
 
 #: views:users_merit_rank:page:exposed_form:submit_button
 msgctxt "users_merit_rank:page:exposed_form:submit_button"
@@ -9907,33 +9907,33 @@ msgstr "»"
 #: views:wr_time_line:default:title
 msgctxt "wr_time_line:default:title"
 msgid "Work reports"
-msgstr "Pracovné výkazy"
+msgstr "Pracovní výkazy"
 
 #: views:wr_time_line:default:use_more_text
 msgctxt "wr_time_line:default:use_more_text"
 msgid "more"
-msgstr "viac"
+msgstr "více"
 
 #: views:wr_time_line:default:filter:users:uid:expose:label
 msgctxt "wr_time_line:default:filter:users:uid:expose:label"
 msgid "Worker Name"
-msgstr "Meno pracovníka"
+msgstr "Jméno pracovníka"
 
 #: views:wr_time_line:default:filter:field_data_field_classification:field_classification_tid_i18n:expose:label
 msgctxt ""
 "wr_time_line:default:filter:field_data_field_classification:field_classification_tid_i18n:expose:label"
 msgid "Classification"
-msgstr "Klasifikácia"
+msgstr "Klasifikace"
 
 #: views:wr_time_line:page_1:use_more_text
 msgctxt "wr_time_line:page_1:use_more_text"
 msgid "more"
-msgstr "viac"
+msgstr "více"
 
 #: views:worker_merit_allocations_for_project:default:use_more_text
 msgctxt "worker_merit_allocations_for_project:default:use_more_text"
 msgid "more"
-msgstr "viac"
+msgstr "více"
 
 #: views:wr_time_line:default:relationship:field_data_field_project:field_project_target_id:label
 msgctxt ""
@@ -9945,18 +9945,18 @@ msgstr "projekt"
 msgctxt ""
 "wr_time_line:default:filter:field_data_field_verification_status:field_verification_status_value_i18n:expose:label"
 msgid "Verification status"
-msgstr "Platnosť výkazu"
+msgstr "Platnost výkazu"
 
 #: views:wr_time_line:page_1:field:node:changed:label
 msgctxt "wr_time_line:page_1:field:node:changed:label"
 msgid "Date"
-msgstr "Dátum"
+msgstr "Datum"
 
 #: views:wr_time_line:page_1:field:field_data_field_verification_status:field_verification_status:label
 msgctxt ""
 "wr_time_line:page_1:field:field_data_field_verification_status:field_verification_status:label"
 msgid "Verification status"
-msgstr "Platnosť výkazu"
+msgstr "Platnost výkazu"
 
 #: views:money_transfers:default:filter:node:type_i18n:expose:label
 msgctxt "money_transfers:default:filter:node:type_i18n:expose:label"
@@ -9976,29 +9976,29 @@ msgstr "Projekt"
 #: views:wr_time_line:page_1:field:node:created:label
 msgctxt "wr_time_line:page_1:field:node:created:label"
 msgid "Date"
-msgstr "Dátum"
+msgstr "Datum"
 
 #: views:wr_time_line:page_1:field:views:php_5:label
 msgctxt "wr_time_line:page_1:field:views:php_5:label"
 msgid "Classification"
-msgstr "Klasifikácia"
+msgstr "Klasifikace"
 
 #: views:wr_time_line:page_1:filter:field_data_field_classification:field_classification_tid_i18n:expose:label
 msgctxt ""
 "wr_time_line:page_1:filter:field_data_field_classification:field_classification_tid_i18n:expose:label"
 msgid "Classification"
-msgstr "Klasifikácia"
+msgstr "Klasifikace"
 
 #: views:wr_time_line:page_1:filter:field_data_field_verification_status:field_verification_status_value_i18n:expose:label
 msgctxt ""
 "wr_time_line:page_1:filter:field_data_field_verification_status:field_verification_status_value_i18n:expose:label"
 msgid "Verification status"
-msgstr "Platnosť výkazu"
+msgstr "Platnost výkazu"
 
 #: views:wr_time_line:page_1:filter:users:uid:expose:label
 msgctxt "wr_time_line:page_1:filter:users:uid:expose:label"
 msgid "Worker Name"
-msgstr "Meno pracovníka"
+msgstr "Jméno pracovníka"
 
 #: views:wr_time_line:page_1:filter:node:title:expose:label
 msgctxt "wr_time_line:page_1:filter:node:title:expose:label"
@@ -10008,22 +10008,22 @@ msgstr "Projekt"
 #: views:unverified_work_reports:default:use_more_text
 msgctxt "unverified_work_reports:default:use_more_text"
 msgid "more"
-msgstr "viac"
+msgstr "více"
 
 #: views:user_emails:default:use_more_text
 msgctxt "user_emails:default:use_more_text"
 msgid "more"
-msgstr "viac"
+msgstr "více"
 
 #: views:user_emails:block:use_more_text
 msgctxt "user_emails:block:use_more_text"
 msgid "more"
-msgstr "viac"
+msgstr "více"
 
 #: views:project_merits_feed:default:use_more_text
 msgctxt "project_merits_feed:default:use_more_text"
 msgid "more"
-msgstr "more"
+msgstr "moře"
 
 #: views:project_merits_feed:default:exposed_form:submit_button
 msgctxt "project_merits_feed:default:exposed_form:submit_button"
@@ -10090,7 +10090,7 @@ msgstr "last »"
 msgctxt ""
 "project_merits_feed:default:relationship:field_data_field_receipt_project:field_receipt_project_target_id:label"
 msgid "project"
-msgstr "project"
+msgstr "projekt"
 
 #: views:project_merits_feed:default:field:node:nid_1:label
 msgctxt "project_merits_feed:default:field:node:nid_1:label"
@@ -10111,7 +10111,7 @@ msgstr "merits"
 #: views:merit_history:default:use_more_text
 msgctxt "merit_history:default:use_more_text"
 msgid "more"
-msgstr "viac"
+msgstr "více"
 
 #: views:merit_history:default:exposed_form:submit_button
 msgctxt "merit_history:default:exposed_form:submit_button"
@@ -10142,7 +10142,7 @@ msgstr "Desc"
 msgctxt ""
 "merit_history:default:bef:general:text_input_required:text_input_required:value"
 msgid "Select any filter and click on Apply to see results"
-msgstr "Select any filter and click on Apply to see results"
+msgstr "Vyberte filtr a klepněte na tlačítko Apply to see results"
 
 #: views:merit_history:default:bef:general:secondary_label
 msgctxt "merit_history:default:bef:general:secondary_label"
@@ -10210,24 +10210,24 @@ msgstr "Projekt"
 #: views:merit_history:default:field:field_data_field_buyer:field_buyer:label
 msgctxt "merit_history:default:field:field_data_field_buyer:field_buyer:label"
 msgid "Buyer"
-msgstr "Kupujúci"
+msgstr "Kupující"
 
 #: views:merit_history:default:field:field_data_field_amount_paid:field_amount_paid:label
 msgctxt ""
 "merit_history:default:field:field_data_field_amount_paid:field_amount_paid:label"
 msgid "Amount Paid"
-msgstr "Zaplatené"
+msgstr "Zaplaceno"
 
 #: views:merit_history:default:field:field_data_field_reward_amount:field_reward_amount:label
 msgctxt ""
 "merit_history:default:field:field_data_field_reward_amount:field_reward_amount:label"
 msgid "Reward amount"
-msgstr "Zaplatené"
+msgstr "Zaplaceno"
 
 #: views:merit_history:default:field:views:php:label
 msgctxt "merit_history:default:field:views:php:label"
 msgid "Reward"
-msgstr "Odmena"
+msgstr "Odměna"
 
 #: views:merit_history:default:argument:field_data_field_reward_recipient:field_reward_recipient_target_id:exception:title
 msgctxt ""
@@ -10239,17 +10239,17 @@ msgstr "All"
 msgctxt ""
 "merit_history:default:filter:field_data_field_reward_amount:field_reward_amount_value:expose:label"
 msgid "Reward amount"
-msgstr "Zaplatené"
+msgstr "Zaplaceno"
 
 #: views:merit_history:default:filter:users:uid:expose:label
 msgctxt "merit_history:default:filter:users:uid:expose:label"
 msgid "Buyer"
-msgstr "Kupujúci"
+msgstr "Kupující"
 
 #: views:merit_history:page_1:use_more_text
 msgctxt "merit_history:page_1:use_more_text"
 msgid "more"
-msgstr "viac"
+msgstr "více"
 
 #: views:merit_history:page_1:exposed_form:submit_button
 msgctxt "merit_history:page_1:exposed_form:submit_button"
@@ -10280,7 +10280,7 @@ msgstr "Desc"
 msgctxt ""
 "merit_history:page_1:bef:general:text_input_required:text_input_required:value"
 msgid "Select any filter and click on Apply to see results"
-msgstr "Select any filter and click on Apply to see results"
+msgstr "Vyberte filtr a klepněte na tlačítko Apply to see results"
 
 #: views:merit_history:page_1:bef:general:secondary_label
 msgctxt "merit_history:page_1:bef:general:secondary_label"
@@ -10325,13 +10325,13 @@ msgstr "»"
 #: views:commerce_cart_summary:default:use_more_text
 msgctxt "commerce_cart_summary:default:use_more_text"
 msgid "more"
-msgstr "viac"
+msgstr "více"
 
 #: views:commerce_cart_summary:default:footer:commerce_order:order_total:label_custom
 msgctxt ""
 "commerce_cart_summary:default:footer:commerce_order:order_total:label_custom"
 msgid "Order total"
-msgstr "Objednávka celkom"
+msgstr "Objednávka celkem"
 
 #: views:commerce_cart_summary:default:field:field_data_commerce_unit_price:commerce_unit_price:label
 msgctxt ""
@@ -10342,22 +10342,22 @@ msgstr "Cena"
 #: views:commerce_addressbook:default:use_more_text
 msgctxt "commerce_addressbook:default:use_more_text"
 msgid "more"
-msgstr "viac"
+msgstr "více"
 
 #: views:commerce_addressbook_defaults:default:use_more_text
 msgctxt "commerce_addressbook_defaults:default:use_more_text"
 msgid "more"
-msgstr "viac"
+msgstr "více"
 
 #: views:commerce_cart_block:default:use_more_text
 msgctxt "commerce_cart_block:default:use_more_text"
 msgid "more"
-msgstr "viac"
+msgstr "více"
 
 #: views:commerce_cart_form:default:use_more_text
 msgctxt "commerce_cart_form:default:use_more_text"
 msgid "more"
-msgstr "viac"
+msgstr "více"
 
 #: views:commerce_cart_form:default:field:field_data_commerce_unit_price:commerce_unit_price:label
 msgctxt ""
@@ -10368,23 +10368,23 @@ msgstr "Cena"
 #: views:commerce_customer_profiles:default:use_more_text
 msgctxt "commerce_customer_profiles:default:use_more_text"
 msgid "more"
-msgstr "viac"
+msgstr "více"
 
 #: views:commerce_customer_profiles:page_1:use_more_text
 msgctxt "commerce_customer_profiles:page_1:use_more_text"
 msgid "more"
-msgstr "viac"
+msgstr "více"
 
 #: views:commerce_line_item_table:default:use_more_text
 msgctxt "commerce_line_item_table:default:use_more_text"
 msgid "more"
-msgstr "viac"
+msgstr "více"
 
 #: views:commerce_line_item_table:default:field:commerce_line_item:line_item_title:label
 msgctxt ""
 "commerce_line_item_table:default:field:commerce_line_item:line_item_title:label"
 msgid "Title"
-msgstr "Názov"
+msgstr "Název"
 
 #: views:commerce_line_item_table:default:field:field_data_commerce_unit_price:commerce_unit_price:label
 msgctxt ""
@@ -10395,54 +10395,54 @@ msgstr "Price"
 #: views:commerce_orders:default:use_more_text
 msgctxt "commerce_orders:default:use_more_text"
 msgid "more"
-msgstr "viac"
+msgstr "více"
 
 #: views:commerce_orders:admin_page:use_more_text
 msgctxt "commerce_orders:admin_page:use_more_text"
 msgid "more"
-msgstr "viac"
+msgstr "více"
 
 #: views:commerce_orders:shopping_carts:use_more_text
 msgctxt "commerce_orders:shopping_carts:use_more_text"
 msgid "more"
-msgstr "viac"
+msgstr "více"
 
 #: views:commerce_order_revisions:default:use_more_text
 msgctxt "commerce_order_revisions:default:use_more_text"
 msgid "more"
-msgstr "viac"
+msgstr "více"
 
 #: views:commerce_order_revisions:order_revisions_page:use_more_text
 msgctxt "commerce_order_revisions:order_revisions_page:use_more_text"
 msgid "more"
-msgstr "viac"
+msgstr "více"
 
 #: views:commerce_payment_order:default:use_more_text
 msgctxt "commerce_payment_order:default:use_more_text"
 msgid "more"
-msgstr "viac"
+msgstr "více"
 
 #: views:commerce_payment_order:default:field:commerce_payment_transaction:created:label
 msgctxt ""
 "commerce_payment_order:default:field:commerce_payment_transaction:created:label"
 msgid "Date"
-msgstr "Dátum"
+msgstr "Datum"
 
 #: views:commerce_payment_order:default:field:commerce_payment_transaction:amount:label
 msgctxt ""
 "commerce_payment_order:default:field:commerce_payment_transaction:amount:label"
 msgid "Amount"
-msgstr "Množstvo"
+msgstr "Množství"
 
 #: views:commerce_products:default:use_more_text
 msgctxt "commerce_products:default:use_more_text"
 msgid "more"
-msgstr "viac"
+msgstr "více"
 
 #: views:commerce_products:default:field:commerce_product:title:label
 msgctxt "commerce_products:default:field:commerce_product:title:label"
 msgid "Title"
-msgstr "Názov"
+msgstr "Název"
 
 #: views:commerce_products:default:field:field_data_commerce_price:commerce_price:label
 msgctxt ""
@@ -10453,73 +10453,73 @@ msgstr "Cena"
 #: views:commerce_products:admin_page:use_more_text
 msgctxt "commerce_products:admin_page:use_more_text"
 msgid "more"
-msgstr "viac"
+msgstr "více"
 
 #: views:commerce_product_revisions:default:use_more_text
 msgctxt "commerce_product_revisions:default:use_more_text"
 msgid "more"
-msgstr "viac"
+msgstr "více"
 
 #: views:commerce_product_revisions:default:field:commerce_product_revision:title:label
 msgctxt ""
 "commerce_product_revisions:default:field:commerce_product_revision:title:label"
 msgid "Title"
-msgstr "Názov"
+msgstr "Název"
 
 #: views:commerce_product_revisions:product_revisions_page:use_more_text
 msgctxt "commerce_product_revisions:product_revisions_page:use_more_text"
 msgid "more"
-msgstr "viac"
+msgstr "více"
 
 #: views:commerce_user_orders:default:use_more_text
 msgctxt "commerce_user_orders:default:use_more_text"
 msgid "more"
-msgstr "viac"
+msgstr "více"
 
 #: views:commerce_user_orders:default:empty:views:text:content
 msgctxt "commerce_user_orders:default:empty:views:text:content"
 msgid "You have not placed any orders with us yet."
-msgstr "Zatiaľ nemáte žiadne objednávky."
+msgstr "Zatím nemáte žádné objednávky."
 
 #: views:commerce_user_orders:order_page:use_more_text
 msgctxt "commerce_user_orders:order_page:use_more_text"
 msgid "more"
-msgstr "viac"
+msgstr "více"
 
 #: views:popular:default:use_more_text
 msgctxt "popular:default:use_more_text"
 msgid "more"
-msgstr "viac"
+msgstr "více"
 
 #: views:popular:page:use_more_text
 msgctxt "popular:page:use_more_text"
 msgid "more"
-msgstr "viac"
+msgstr "více"
 
 #: views:popular:page_1:use_more_text
 msgctxt "popular:page_1:use_more_text"
 msgid "more"
-msgstr "viac"
+msgstr "více"
 
 #: views:popular:block:use_more_text
 msgctxt "popular:block:use_more_text"
 msgid "more"
-msgstr "viac"
+msgstr "více"
 
 #: views:popular:block_1:use_more_text
 msgctxt "popular:block_1:use_more_text"
 msgid "more"
-msgstr "viac"
+msgstr "více"
 
 #: views:users_pending_orders:default:use_more_text
 msgctxt "users_pending_orders:default:use_more_text"
 msgid "more"
-msgstr "viac"
+msgstr "více"
 
 #: views:project_merits_feed:block_1:use_more_text
 msgctxt "project_merits_feed:block_1:use_more_text"
 msgid "more ..."
-msgstr "viac ..."
+msgstr "více ..."
 
 #: views:project_merits_feed:block_1:exposed_form:submit_button
 msgctxt "project_merits_feed:block_1:exposed_form:submit_button"
@@ -10561,7 +10561,7 @@ msgstr "Buyer"
 msgctxt ""
 "project_merits_feed:block_1:field:field_data_field_amount_paid:field_amount_paid:label"
 msgid "Merits"
-msgstr "Množstvo"
+msgstr "Množství"
 
 #: views:project_merits_feed:block_1:argument:node:nid:exception:title
 msgctxt "project_merits_feed:block_1:argument:node:nid:exception:title"
@@ -10571,12 +10571,12 @@ msgstr "All"
 #: views:project_merits_feed:page_1:title
 msgctxt "project_merits_feed:page_1:title"
 msgid "Project rewards"
-msgstr "Odmeňovanie projektu"
+msgstr "Odměňování projektu"
 
 #: views:project_merits_feed:page_1:use_more_text
 msgctxt "project_merits_feed:page_1:use_more_text"
 msgid "more"
-msgstr "viac ..."
+msgstr "více ..."
 
 #: views:project_merits_feed:page_1:exposed_form:submit_button
 msgctxt "project_merits_feed:page_1:exposed_form:submit_button"
@@ -10660,7 +10660,7 @@ msgstr "Projekt"
 msgctxt ""
 "project_merits_feed:page_1:field:field_data_field_buyer:field_buyer:label"
 msgid "Buyer"
-msgstr "Kupujúci"
+msgstr "Kupující"
 
 #: views:project_merits_feed:page_1:field:field_data_body:language:label
 msgctxt "project_merits_feed:page_1:field:field_data_body:language:label"
@@ -10671,7 +10671,7 @@ msgstr "Poznámka"
 msgctxt ""
 "project_merits_feed:page_1:field:field_data_field_amount_paid:field_amount_paid_1:label"
 msgid "Amount Paid"
-msgstr "Zaplatené"
+msgstr "Zaplaceno"
 
 #: views:project_merits_feed:page_1:argument:node:nid:exception:title
 msgctxt "project_merits_feed:page_1:argument:node:nid:exception:title"
@@ -10687,7 +10687,7 @@ msgstr "<a href=\"/node/[nid]\">[field_purchase_date]</a>"
 #: views:project_merits_feed:services_1:use_more_text
 msgctxt "project_merits_feed:services_1:use_more_text"
 msgid "more"
-msgstr "more"
+msgstr "moře"
 
 #: views:project_merits_feed:services_1:exposed_form:submit_button
 msgctxt "project_merits_feed:services_1:exposed_form:submit_button"
@@ -10746,12 +10746,12 @@ msgstr "Project (field_receipt_project)"
 #: views:chron_holders_list:default:title
 msgctxt "chron_holders_list:default:title"
 msgid "Chron holders list"
-msgstr "Zoznam držiteľov chronov"
+msgstr "Seznam držitelů chronů"
 
 #: views:chron_holders_list:default:use_more_text
 msgctxt "chron_holders_list:default:use_more_text"
 msgid "more"
-msgstr "more"
+msgstr "moře"
 
 #: views:chron_holders_list:default:exposed_form:submit_button
 msgctxt "chron_holders_list:default:exposed_form:submit_button"
@@ -10817,7 +10817,7 @@ msgstr "»"
 #: views:chron_holders_list:default:field:users:name:label
 msgctxt "chron_holders_list:default:field:users:name:label"
 msgid "User"
-msgstr "Používateľ"
+msgstr "Uživatel"
 
 #: views:chron_holders_list:default:field:field_data_field_chrons_balance:field_chrons_balance:label
 msgctxt ""
@@ -10828,7 +10828,7 @@ msgstr "Stav účtu"
 #: views:chron_holders_list:page:use_more_text
 msgctxt "chron_holders_list:page:use_more_text"
 msgid "more"
-msgstr "more"
+msgstr "moře"
 
 #: views:chron_holders_list:page:exposed_form:submit_button
 msgctxt "chron_holders_list:page:exposed_form:submit_button"
@@ -10895,7 +10895,7 @@ msgstr "»"
 msgctxt ""
 "projects:projectsxf:field:field_data_field_merit_reward:field_merit_reward:label"
 msgid "Merit reward"
-msgstr "Merit odmena"
+msgstr "Merit odměna"
 
 #: views:top_10_workers_in_a_category:page:field:field_data_field_merit_reward:field_merit_reward:label
 msgctxt ""
@@ -10927,27 +10927,27 @@ msgstr "[field_reward_amount-value] ME"
 #: views:project_merit_rewards_chart:default:title
 msgctxt "project_merit_rewards_chart:default:title"
 msgid "Project statistics"
-msgstr "Štatistiky projektu"
+msgstr "Statistiky projektu"
 
 #: views:project_merit_rewards_chart:default:use_more_text
 msgctxt "project_merit_rewards_chart:default:use_more_text"
 msgid "more"
-msgstr "viac"
+msgstr "více"
 
 #: views:project_merit_rewards_chart:default:exposed_form:submit_button
 msgctxt "project_merit_rewards_chart:default:exposed_form:submit_button"
 msgid "Apply"
-msgstr "Použiť"
+msgstr "Použít"
 
 #: views:project_merit_rewards_chart:default:exposed_form:reset_button_label
 msgctxt "project_merit_rewards_chart:default:exposed_form:reset_button_label"
 msgid "Reset"
-msgstr "Obnoviť"
+msgstr "Obnovit"
 
 #: views:project_merit_rewards_chart:default:exposed_form:exposed_sorts_label
 msgctxt "project_merit_rewards_chart:default:exposed_form:exposed_sorts_label"
 msgid "Sort by"
-msgstr "Zoradiť podľa"
+msgstr "Řadit podle"
 
 #: views:project_merit_rewards_chart:default:exposed_form:sort_asc_label
 msgctxt "project_merit_rewards_chart:default:exposed_form:sort_asc_label"
@@ -10957,7 +10957,7 @@ msgstr "Vzost"
 #: views:project_merit_rewards_chart:default:exposed_form:sort_desc_label
 msgctxt "project_merit_rewards_chart:default:exposed_form:sort_desc_label"
 msgid "Desc"
-msgstr "Zost"
+msgstr "Zůstat"
 
 #: views:project_merit_rewards_chart:default:header:views:area:content
 msgctxt "project_merit_rewards_chart:default:header:views:area:content"
@@ -10994,7 +10994,7 @@ msgstr ""
 msgctxt ""
 "project_merit_rewards_chart:default:field:views_raw_sql:raw_field:label"
 msgid "date"
-msgstr "dátum"
+msgstr "datum"
 
 #: views:project_merit_rewards_chart:default:field:field_data_field_purchase_date:field_purchase_date:alter:text
 msgctxt ""
@@ -11012,27 +11012,27 @@ msgstr "Počet"
 msgctxt ""
 "project_merit_rewards_chart:default:argument:field_data_field_receipt_project:field_receipt_project_target_id:exception:title"
 msgid "All"
-msgstr "Všetko"
+msgstr "Vše"
 
 #: views:project_merit_rewards_chart:page:use_more_text
 msgctxt "project_merit_rewards_chart:page:use_more_text"
 msgid "more"
-msgstr "viac"
+msgstr "více"
 
 #: views:project_merit_rewards_chart:page:exposed_form:submit_button
 msgctxt "project_merit_rewards_chart:page:exposed_form:submit_button"
 msgid "Apply"
-msgstr "Použiť"
+msgstr "Použít"
 
 #: views:project_merit_rewards_chart:page:exposed_form:reset_button_label
 msgctxt "project_merit_rewards_chart:page:exposed_form:reset_button_label"
 msgid "Reset"
-msgstr "Obnoviť"
+msgstr "Obnovit"
 
 #: views:project_merit_rewards_chart:page:exposed_form:exposed_sorts_label
 msgctxt "project_merit_rewards_chart:page:exposed_form:exposed_sorts_label"
 msgid "Sort by"
-msgstr "Zoradiť podľa"
+msgstr "Řadit podle"
 
 #: views:project_merit_rewards_chart:page:exposed_form:sort_asc_label
 msgctxt "project_merit_rewards_chart:page:exposed_form:sort_asc_label"
@@ -11042,12 +11042,12 @@ msgstr "Vzost"
 #: views:project_merit_rewards_chart:page:exposed_form:sort_desc_label
 msgctxt "project_merit_rewards_chart:page:exposed_form:sort_desc_label"
 msgid "Desc"
-msgstr "Zost"
+msgstr "Zůstat"
 
 #: views:project_merit_rewards_chart:block_1:use_more_text
 msgctxt "project_merit_rewards_chart:block_1:use_more_text"
 msgid "more"
-msgstr "more"
+msgstr "moře"
 
 #: views:project_merit_rewards_chart:block_1:exposed_form:submit_button
 msgctxt "project_merit_rewards_chart:block_1:exposed_form:submit_button"
@@ -11077,22 +11077,22 @@ msgstr "Desc"
 #: views:project_merit_rewards_chart:chart_1:use_more_text
 msgctxt "project_merit_rewards_chart:chart_1:use_more_text"
 msgid "more"
-msgstr "viac"
+msgstr "více"
 
 #: views:project_merit_rewards_chart:chart_1:exposed_form:submit_button
 msgctxt "project_merit_rewards_chart:chart_1:exposed_form:submit_button"
 msgid "Apply"
-msgstr "Použiť"
+msgstr "Použít"
 
 #: views:project_merit_rewards_chart:chart_1:exposed_form:reset_button_label
 msgctxt "project_merit_rewards_chart:chart_1:exposed_form:reset_button_label"
 msgid "Reset"
-msgstr "Obnoviť"
+msgstr "Obnovit"
 
 #: views:project_merit_rewards_chart:chart_1:exposed_form:exposed_sorts_label
 msgctxt "project_merit_rewards_chart:chart_1:exposed_form:exposed_sorts_label"
 msgid "Sort by"
-msgstr "Zoradiť podľa"
+msgstr "Řadit podle"
 
 #: views:project_merit_rewards_chart:chart_1:exposed_form:sort_asc_label
 msgctxt "project_merit_rewards_chart:chart_1:exposed_form:sort_asc_label"
@@ -11102,7 +11102,7 @@ msgstr "Vzost"
 #: views:project_merit_rewards_chart:chart_1:exposed_form:sort_desc_label
 msgctxt "project_merit_rewards_chart:chart_1:exposed_form:sort_desc_label"
 msgid "Desc"
-msgstr "Zost"
+msgstr "Zůstat"
 
 #: views:project_merit_rewards_chart:chart_1:field:views_raw_sql:raw_field:label
 msgctxt ""
@@ -11114,7 +11114,7 @@ msgstr "Raw field"
 msgctxt ""
 "project_merit_rewards_chart:chart_1:field:field_data_field_date:field_date:label"
 msgid "Date"
-msgstr "Dátum"
+msgstr "Datum"
 
 #: views:project_merit_rewards_chart:chart_1:field:field_data_field_hours_worked:field_hours_worked:label
 msgctxt ""
@@ -11126,17 +11126,17 @@ msgstr "Čas"
 msgctxt ""
 "project_merit_rewards_chart:chart_1:argument:field_data_field_project:field_project_target_id:exception:title"
 msgid "All"
-msgstr "Všetky"
+msgstr "Všechny"
 
 #: views:investment:default:title
 msgctxt "investment:default:title"
 msgid "Investing in projects"
-msgstr "Investovanie do projektov"
+msgstr "Investování do projektů"
 
 #: views:investment:default:use_more_text
 msgctxt "investment:default:use_more_text"
 msgid "more"
-msgstr "more"
+msgstr "moře"
 
 #: views:investment:default:exposed_form:submit_button
 msgctxt "investment:default:exposed_form:submit_button"
@@ -11204,8 +11204,8 @@ msgid ""
 "If you do not see a project you want to reward in the list, try suggesting "
 "the project owner to allow investments."
 msgstr ""
-"If you do not see a project you want to reward in the list, try suggesting "
-"the project owner to allow investments."
+"Pokud jste do not viz a projekt budete chtít rewardovat v listu, navrhněte "
+"projekt, který investuje do allow investic."
 
 #: views:investment:default:relationship:node:uid:label
 msgctxt "investment:default:relationship:node:uid:label"
@@ -11251,7 +11251,7 @@ msgstr "Action"
 #: views:investment:page:use_more_text
 msgctxt "investment:page:use_more_text"
 msgid "more"
-msgstr "more"
+msgstr "moře"
 
 #: views:investment:page:exposed_form:submit_button
 msgctxt "investment:page:exposed_form:submit_button"
@@ -11333,7 +11333,7 @@ msgstr "Platby projektu"
 #: views:project_merits_feed:purchases:use_more_text
 msgctxt "project_merits_feed:purchases:use_more_text"
 msgid "more"
-msgstr "more"
+msgstr "moře"
 
 #: views:project_merits_feed:purchases:exposed_form:submit_button
 msgctxt "project_merits_feed:purchases:exposed_form:submit_button"
@@ -11399,7 +11399,7 @@ msgstr "»"
 #: views:project_merits_feed:purchases:field:node:created:label
 msgctxt "project_merits_feed:purchases:field:node:created:label"
 msgid "Date"
-msgstr "Dátum"
+msgstr "Datum"
 
 #: views:project_merits_feed:purchases:field:node:created:alter:text
 msgctxt "project_merits_feed:purchases:field:node:created:alter:text"
@@ -11409,7 +11409,7 @@ msgstr "<a href=\"/node/[nid]\">[created]</a>"
 #: views:project_merits_feed:purchases:field:views:php:label
 msgctxt "project_merits_feed:purchases:field:views:php:label"
 msgid "Buyer"
-msgstr "Kupujúci"
+msgstr "Kupující"
 
 #: views:project_merits_feed:purchases:field:views:php_2:label
 msgctxt "project_merits_feed:purchases:field:views:php_2:label"
@@ -11437,12 +11437,12 @@ msgstr "All"
 msgctxt ""
 "merit_history:default:relationship:field_data_field_receipt_project:field_receipt_project_target_id:label"
 msgid "project"
-msgstr "project"
+msgstr "projekt"
 
 #: views:merit_history:default:field:node:nid:label
 msgctxt "merit_history:default:field:node:nid:label"
 msgid "Receipt Id"
-msgstr "Potvrdenie"
+msgstr "Potvrzení"
 
 #: views:merit_history:default:field:node:created_1:label
 msgctxt "merit_history:default:field:node:created_1:label"
@@ -11465,12 +11465,12 @@ msgstr "Project"
 msgctxt ""
 "merit_history:default:filter:field_data_title_field:title_field_value:expose:description"
 msgid "Type the project title or its part"
-msgstr "Type the project title or its part"
+msgstr "Typ projektu title nebo jeho část"
 
 #: views:merit_history:block_1:use_more_text
 msgctxt "merit_history:block_1:use_more_text"
 msgid "more"
-msgstr "more"
+msgstr "moře"
 
 #: views:merit_history:block_1:exposed_form:submit_button
 msgctxt "merit_history:block_1:exposed_form:submit_button"
@@ -11501,7 +11501,7 @@ msgstr "Desc"
 msgctxt ""
 "merit_history:block_1:bef:general:text_input_required:text_input_required:value"
 msgid "Select any filter and click on Apply to see results"
-msgstr "Select any filter and click on Apply to see results"
+msgstr "Vyberte filtr a klepněte na tlačítko Apply to see results"
 
 #: views:merit_history:block_1:bef:general:secondary_label
 msgctxt "merit_history:block_1:bef:general:secondary_label"
@@ -11586,7 +11586,7 @@ msgstr "Merit list intro"
 msgctxt ""
 "users_merit_rank:default:field:field_data_field_country:field_country:label"
 msgid "Country"
-msgstr "Krajina"
+msgstr "Země"
 
 #: views:users_merit_rank:default:header:views:area:content
 msgctxt "users_merit_rank:default:header:views:area:content"
@@ -11594,8 +11594,8 @@ msgid ""
 "<span>The list ranks people by the amount of their <strong>economic value donated to society</strong>.</span>\n"
 "<span style=\"font-size: smaller; margin-bottom: 25px; display: block; margin-top: 4px;\">The Merit value equals the value in €, if we assume average hourly wage of 10€/hour.</span>"
 msgstr ""
-"<span>The list ranks people by the amount of their <strong>economic value donated to society</strong>.</span>\r\n"
-"<span style=\"font-size: smaller; margin-bottom: 25px; display: block; margin-top: 4px;\">The Merit value equals the value in €, if we assume average hourly wage of 10€/hour.</span>"
+"<span>The list ranks lidí na základě jejich <strong>economic value dáted to society</strong>.</span>\r\n"
+"<span style=\"font-size: smaller; margin-bottom: 25px; display: block; margin-top: 4px;\">The Merit value equals the value in €, pokud se předpokládá, že blíží se 10€/hour.</span>"
 
 #: views:users_merit_rank:default:field:users:created:label
 msgctxt "users_merit_rank:default:field:users:created:label"
@@ -11605,12 +11605,12 @@ msgstr "Od roku"
 #: views:project_income_statements:default:title
 msgctxt "project_income_statements:default:title"
 msgid "Project Income statements"
-msgstr "Uzávierky pre projekt"
+msgstr "Uzávěrky pro projekt"
 
 #: views:project_income_statements:default:use_more_text
 msgctxt "project_income_statements:default:use_more_text"
 msgid "more"
-msgstr "more"
+msgstr "moře"
 
 #: views:project_income_statements:default:exposed_form:submit_button
 msgctxt "project_income_statements:default:exposed_form:submit_button"
@@ -11704,7 +11704,7 @@ msgstr "All"
 #: views:project_income_statements:page:use_more_text
 msgctxt "project_income_statements:page:use_more_text"
 msgid "more"
-msgstr "more"
+msgstr "moře"
 
 #: views:project_income_statements:page:exposed_form:submit_button
 msgctxt "project_income_statements:page:exposed_form:submit_button"
