@@ -33,14 +33,14 @@ msgstr ""
 #: uc_attribute:attribute:2:description
 msgctxt "attribute:2:description"
 msgid "Select currency you want to use for conversion"
-msgstr "Vyberte měnu kterou chcete použít"
+msgstr "Vyberte menu ktorú chcete použiť"
 
 #: uc_attribute:attribute:2:label
 msgctxt "attribute:2:label"
 msgid "Currency"
-msgstr "Měna"
+msgstr "Mena"
 
 #: uc_attribute:attribute:2:name
 msgctxt "attribute:2:name"
 msgid "Currency"
-msgstr "Měna"
+msgstr "Mena"
