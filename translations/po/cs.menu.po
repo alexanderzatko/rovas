@@ -72,22 +72,22 @@ msgstr "Spory"
 #: menu:item:1433:title
 msgctxt "item:1433:title"
 msgid "Transactions"
-msgstr "Transakce"
+msgstr "Transakcie"
 
 #: menu:item:1902:title
 msgctxt "item:1902:title"
 msgid "My account"
-msgstr "Můj účet"
+msgstr "Môj účet"
 
 #: menu:item:1903:title
 msgctxt "item:1903:title"
 msgid "Log out"
-msgstr "Odhlásit"
+msgstr "Odhlásiť"
 
 #: menu:item:2557:description
 msgctxt "item:2557:description"
 msgid "The work reports timeline"
-msgstr "Seznam pracovních výkazů"
+msgstr "Zoznam pracovných výkazov"
 
 #: menu:item:2557:title
 msgctxt "item:2557:title"
@@ -97,22 +97,22 @@ msgstr "Výkazy"
 #: menu:item:2737:description
 msgctxt "item:2737:description"
 msgid "Exchange Chrons for national currency and vice versa"
-msgstr "Vyměnit Chrony za národní měnu nebo naopak"
+msgstr "Vymeniť Chrony za národnú menu alebo naopak"
 
 #: menu:item:2737:title
 msgctxt "item:2737:title"
 msgid "Forex"
-msgstr "Směnárna"
+msgstr "Zmenáreň"
 
 #: menu:item:4159:description
 msgctxt "item:4159:description"
 msgid "Purchase Merit shares in projects"
-msgstr "Koupit Merit podíl v projektech"
+msgstr "Kúpiť Merit podiel v projektoch"
 
 #: menu:item:4159:title
 msgctxt "item:4159:title"
 msgid "Investing"
-msgstr "Investování"
+msgstr "Investovanie"
 
 #: menu:item:4160:title
 msgctxt "item:4160:title"
@@ -127,7 +127,7 @@ msgstr "Nákupy"
 #: menu:item:718:title
 msgctxt "item:718:title"
 msgid "Home"
-msgstr "Domů"
+msgstr "Domov"
 
 #: menu:item:792:title
 msgctxt "item:792:title"
@@ -137,4 +137,4 @@ msgstr "Projekty"
 #: menu:item:857:title
 msgctxt "item:857:title"
 msgid "Messages"
-msgstr "Zprávy"
+msgstr "Správy"

@@ -16,7 +16,7 @@
       },
       { "NOT data_is" : { "data" : [ "node:language" ], "value" : "und" } },
       { "NOT text_matches" : { "text" : [ "node:language" ], "match" : [ "lang" ] } },
-      { "NOT php_eval" : { "code" : "return isset($node-\u003Etitle_field[$lang][0][\u0027value\u0027]);" } }
+      { "php_eval" : { "code" : "$_tv = isset($node-\u003Etitle_field[$lang][0][\u0027value\u0027]) ? trim($node-\u003Etitle_field[$lang][0][\u0027value\u0027]) : \u0027\u0027;\r\n$_bv = isset($node-\u003Ebody[$lang][0][\u0027value\u0027]) ? trim($node-\u003Ebody[$lang][0][\u0027value\u0027]) : \u0027\u0027;\r\nreturn $_tv === \u0027\u0027 || $_bv === \u0027\u0027;" } }
     ],
     "DO" : [
       { "variable_add" : {
@@ -32,7 +32,7 @@
       { "variable_add" : {
           "USING" : {
             "type" : "text",
-            "value" : "\u003C?php\r\nif (isset($node-\u003Etranslations-\u003Edata[$lang]) || $node-\u003Elanguage == $lang)\r\n\techo 1;\r\nelse\r\n\techo 0;\r\n?\u003E"
+            "value" : "\u003C?php\r\n$_tv = isset($node-\u003Etitle_field[$lang][0][\u0027value\u0027]) ? trim($node-\u003Etitle_field[$lang][0][\u0027value\u0027]) : \u0027\u0027;\r\n$_bv = isset($node-\u003Ebody[$lang][0][\u0027value\u0027]) ? trim($node-\u003Ebody[$lang][0][\u0027value\u0027]) : \u0027\u0027;\r\necho ($_tv !== \u0027\u0027 \u0026\u0026 $_bv !== \u0027\u0027) ? \u00271\u0027 : \u00270\u0027;\r\n?\u003E"
           },
           "PROVIDE" : { "variable_added" : { "translation_exists" : "exist translation for user" } }
         }
@@ -44,7 +44,23 @@
               { "variable_add" : {
                   "USING" : {
                     "type" : "text",
-                    "value" : "\u003C?php\r\nif (empty($node-\u003Etitle_field[$node-\u003Elanguage][0][\u0027value\u0027]) \u0026\u0026 isset($node-\u003Etitle_field[LANGUAGE_NONE][0][\u0027value\u0027])) {\r\n\t$node-\u003Etitle_field[$node-\u003Elanguage][0][\u0027value\u0027] = $node-\u003Etitle_field[LANGUAGE_NONE][0][\u0027value\u0027];\r\n\techo $node-\u003Etitle_field[LANGUAGE_NONE][0][\u0027value\u0027];\r\n}\r\nelse if (empty($node-\u003Etitle_field[$node-\u003Elanguage][0][\u0027value\u0027])) {\r\n\techo \u0027\u0027;\r\n}\r\nelse {\r\n\techo $node-\u003Etitle_field[$node-\u003Elanguage][0][\u0027value\u0027];\r\n}\r\n?\u003E"
+                    "value" : "\u003C?php\r\n$_nt = isset($node-\u003Etitle_field[$lang][0][\u0027value\u0027]) ? trim($node-\u003Etitle_field[$lang][0][\u0027value\u0027]) : \u0027\u0027;\r\necho ($_nt === \u0027\u0027) ? \u00271\u0027 : \u00270\u0027;\r\n?\u003E"
+                  },
+                  "PROVIDE" : { "variable_added" : { "need_title_trans" : "Need title translation" } }
+                }
+              },
+              { "variable_add" : {
+                  "USING" : {
+                    "type" : "text",
+                    "value" : "\u003C?php\r\n$_nb = isset($node-\u003Ebody[$lang][0][\u0027value\u0027]) ? trim($node-\u003Ebody[$lang][0][\u0027value\u0027]) : \u0027\u0027;\r\necho ($_nb === \u0027\u0027) ? \u00271\u0027 : \u00270\u0027;\r\n?\u003E"
+                  },
+                  "PROVIDE" : { "variable_added" : { "need_body_trans" : "Need body translation" } }
+                }
+              },
+              { "variable_add" : {
+                  "USING" : {
+                    "type" : "text",
+                    "value" : "\u003C?php\r\n$order = array(\u0027sk\u0027, \u0027en\u0027, \u0027und\u0027);\r\nforeach ($order as $lc) {\r\n  $k = ($lc === \u0027und\u0027) ? LANGUAGE_NONE : $lc;\r\n  if (!empty($node-\u003Etitle_field[$k][0][\u0027value\u0027])) {\r\n    echo $node-\u003Etitle_field[$k][0][\u0027value\u0027];\r\n    return;\r\n  }\r\n}\r\necho \u0027\u0027;\r\n?\u003E"
                   },
                   "PROVIDE" : { "variable_added" : { "title" : "title" } }
                 }
@@ -52,19 +68,91 @@
               { "variable_add" : {
                   "USING" : {
                     "type" : "text",
-                    "value" : "\u003C?php\r\nif (empty($node-\u003Ebody[$node-\u003Elanguage][0][\u0027value\u0027]) \u0026\u0026 isset($node-\u003Ebody[LANGUAGE_NONE][0][\u0027value\u0027])) {\r\n\t$node-\u003Ebody[$node-\u003Elanguage][0][\u0027value\u0027] = $node-\u003Ebody[LANGUAGE_NONE][0][\u0027value\u0027];\r\n\techo $node-\u003Ebody[LANGUAGE_NONE][0][\u0027value\u0027];\r\n}\r\nelse if (empty($node-\u003Ebody[$node-\u003Elanguage][0][\u0027value\u0027])) {\r\n\techo \u0027\u0027;\r\n}\r\nelse {\r\n\techo $node-\u003Ebody[$node-\u003Elanguage][0][\u0027value\u0027];\r\n}\r\n?\u003E"
+                    "value" : "\u003C?php\r\n$order = array(\u0027sk\u0027, \u0027en\u0027, \u0027und\u0027);\r\nforeach ($order as $lc) {\r\n  $k = ($lc === \u0027und\u0027) ? LANGUAGE_NONE : $lc;\r\n  if (!empty($node-\u003Ebody[$k][0][\u0027value\u0027])) {\r\n    echo $node-\u003Ebody[$k][0][\u0027value\u0027];\r\n    return;\r\n  }\r\n}\r\necho \u0027\u0027;\r\n?\u003E"
                   },
                   "PROVIDE" : { "variable_added" : { "body_check" : "body check" } }
                 }
               },
+              { "variable_add" : {
+                  "USING" : {
+                    "type" : "text",
+                    "value" : "\u003C?php\r\n$order = array(\u0027sk\u0027, \u0027en\u0027, \u0027und\u0027);\r\nforeach ($order as $lc) {\r\n  $k = ($lc === \u0027und\u0027) ? LANGUAGE_NONE : $lc;\r\n  if (!empty($node-\u003Etitle_field[$k][0][\u0027value\u0027])) {\r\n    echo $lc;\r\n    return;\r\n  }\r\n}\r\necho \u0027\u0027;\r\n?\u003E"
+                  },
+                  "PROVIDE" : { "variable_added" : { "title_src_lang" : "Title source language" } }
+                }
+              },
+              { "variable_add" : {
+                  "USING" : {
+                    "type" : "text",
+                    "value" : "\u003C?php\r\n$order = array(\u0027sk\u0027, \u0027en\u0027, \u0027und\u0027);\r\nforeach ($order as $lc) {\r\n  $k = ($lc === \u0027und\u0027) ? LANGUAGE_NONE : $lc;\r\n  if (!empty($node-\u003Ebody[$k][0][\u0027value\u0027])) {\r\n    echo $lc;\r\n    return;\r\n  }\r\n}\r\necho \u0027\u0027;\r\n?\u003E"
+                  },
+                  "PROVIDE" : { "variable_added" : { "body_src_lang" : "Body source language" } }
+                }
+              },
+              { "variable_add" : {
+                  "USING" : {
+                    "type" : "text",
+                    "value" : "\u003C?php\r\nif (empty($body_src_lang) || $body_src_lang === \u0027und\u0027) {\r\n  echo \u0027xx\u0027;\r\n}\r\nelse {\r\n  echo $body_src_lang;\r\n}\r\n?\u003E"
+                  },
+                  "PROVIDE" : { "variable_added" : { "body_google_from" : "Body Google from code" } }
+                }
+              },
+              { "variable_add" : {
+                  "USING" : {
+                    "type" : "text",
+                    "value" : "\u003C?php\r\nif (empty($title_src_lang) || $title_src_lang === \u0027und\u0027) {\r\n  echo \u0027xx\u0027;\r\n}\r\nelse {\r\n  echo $title_src_lang;\r\n}\r\n?\u003E"
+                  },
+                  "PROVIDE" : { "variable_added" : { "title_google_from" : "Title Google from code" } }
+                }
+              },
               { "CONDITIONAL" : [
                   {
-                    "IF" : { "data_is_empty" : { "data" : [ "body-check" ] } },
+                    "IF" : { "data_is" : { "data" : [ "need-body-trans" ], "value" : "1" } },
                     "DO" : [
-                      { "variable_add" : {
-                          "USING" : { "type" : "text" },
-                          "PROVIDE" : { "variable_added" : { "new_body" : "new body" } }
-                        }
+                      { "CONDITIONAL" : [
+                          {
+                            "IF" : { "data_is_empty" : { "data" : [ "body-check" ] } },
+                            "DO" : [
+                              { "variable_add" : {
+                                  "USING" : { "type" : "text" },
+                                  "PROVIDE" : { "variable_added" : { "new_body" : "new body" } }
+                                }
+                              }
+                            ]
+                          },
+                          { "ELSE" : [
+                              { "variable_add" : {
+                                  "USING" : {
+                                    "type" : "text",
+                                    "value" : "\u003C?php\r\n$qry = \u0022SELECT f.body_value AS new_body\r\nFROM {field_data_body} s\r\nLEFT JOIN {field_data_body} f ON s.entity_id = f.entity_id\r\nWHERE s.body_value = :intext\r\nAND s.language = :lang\r\nAND f.language = :outlang\r\nLIMIT 1\u0022;\r\n\r\n$result =  db_query($qry,array(\u0027:intext\u0027 =\u003E $body_check, \u0027:lang\u0027 =\u003E $body_src_lang, \u0027:outlang\u0027 =\u003E $lang));\r\n$resarray = $result-\u003EfetchAll();\r\n\r\necho empty($resarray) ? \u0027\u0027 : $resarray[0]-\u003Enew_body;\r\n?\u003E"
+                                  },
+                                  "PROVIDE" : { "variable_added" : { "cached_body" : "cached body" } }
+                                }
+                              },
+                              { "CONDITIONAL" : [
+                                  {
+                                    "IF" : { "data_is_empty" : { "data" : [ "cached-body" ] } },
+                                    "DO" : [
+                                      { "component_rules_google_translate_text" : {
+                                          "USING" : { "input" : [ "body-check" ], "to_code" : [ "lang" ], "from_code" : [ "body-google-from" ] },
+                                          "PROVIDE" : { "translation" : { "new_body" : "new body" } }
+                                        }
+                                      }
+                                    ]
+                                  },
+                                  { "ELSE" : [
+                                      { "variable_add" : {
+                                          "USING" : { "type" : "text", "value" : [ "cached-body" ] },
+                                          "PROVIDE" : { "variable_added" : { "new_body" : "new body" } }
+                                        }
+                                      }
+                                    ]
+                                  }
+                                ]
+                              }
+                            ]
+                          }
+                        ]
                       }
                     ]
                   },
@@ -72,26 +160,42 @@
                       { "variable_add" : {
                           "USING" : {
                             "type" : "text",
-                            "value" : "\u003C?php\r\n$qry = \u0022SELECT f.body_value AS new_body\r\nFROM {field_data_body} s\r\nLEFT JOIN {field_data_body} f ON s.entity_id = f.entity_id\r\nWHERE s.body_value = :intext\r\nAND s.language = :lang\r\nAND f.language = :outlang\r\nLIMIT 1\u0022;\r\n\r\n$result =  db_query($qry,array(\u0027:intext\u0027 =\u003E $body_check, \u0027:lang\u0027 =\u003E $node_lang, \u0027:outlang\u0027 =\u003E $lang));\r\n$resarray = $result-\u003EfetchAll();\r\n\r\necho empty($resarray) ? \u0027\u0027 : $resarray[0]-\u003Enew_body;\r\n?\u003E"
+                            "value" : "\u003C?php\r\nif (isset($node-\u003Ebody[$lang][0][\u0027value\u0027])) {\r\n  echo $node-\u003Ebody[$lang][0][\u0027value\u0027];\r\n}\r\nelse {\r\n  echo \u0027\u0027;\r\n}\r\n?\u003E"
                           },
-                          "PROVIDE" : { "variable_added" : { "cached_body" : "cached body" } }
+                          "PROVIDE" : { "variable_added" : { "new_body" : "new body" } }
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              { "CONDITIONAL" : [
+                  {
+                    "IF" : { "data_is" : { "data" : [ "need-title-trans" ], "value" : "1" } },
+                    "DO" : [
+                      { "variable_add" : {
+                          "USING" : {
+                            "type" : "text",
+                            "value" : "\u003C?php\r\n$qry = \u0022SELECT f.title_field_value AS new_title\r\nFROM {field_data_title_field} s\r\nLEFT JOIN {field_data_title_field} f ON s.entity_id = f.entity_id\r\nWHERE s.title_field_value = :intext\r\nAND s.language = :lang\r\nAND f.language = :outlang\r\nLIMIT 1\u0022;\r\n\r\n$result =  db_query($qry,array(\u0027:intext\u0027 =\u003E $title, \u0027:lang\u0027 =\u003E $title_src_lang, \u0027:outlang\u0027 =\u003E $lang));\r\n$resarray = $result-\u003EfetchAll();\r\n\r\necho empty($resarray) ? \u0027\u0027 : $resarray[0]-\u003Enew_title;\r\n?\u003E"
+                          },
+                          "PROVIDE" : { "variable_added" : { "cached_title" : "cached title" } }
                         }
                       },
                       { "CONDITIONAL" : [
                           {
-                            "IF" : { "data_is_empty" : { "data" : [ "cached-body" ] } },
+                            "IF" : { "data_is_empty" : { "data" : [ "cached-title" ] } },
                             "DO" : [
                               { "component_rules_google_translate_text" : {
-                                  "USING" : { "input" : [ "body-check" ], "to_code" : [ "lang" ], "from_code" : "xx" },
-                                  "PROVIDE" : { "translation" : { "new_body" : "new body" } }
+                                  "USING" : { "input" : [ "title" ], "to_code" : [ "lang" ], "from_code" : [ "title-google-from" ] },
+                                  "PROVIDE" : { "translation" : { "new_title" : "new title" } }
                                 }
                               }
                             ]
                           },
                           { "ELSE" : [
                               { "variable_add" : {
-                                  "USING" : { "type" : "text", "value" : [ "cached-body" ] },
-                                  "PROVIDE" : { "variable_added" : { "new_body" : "new body" } }
+                                  "USING" : { "type" : "text", "value" : [ "cached-title" ] },
+                                  "PROVIDE" : { "variable_added" : { "new_title" : "new title" } }
                                 }
                               }
                             ]
@@ -99,31 +203,13 @@
                         ]
                       }
                     ]
-                  }
-                ]
-              },
-              { "variable_add" : {
-                  "USING" : {
-                    "type" : "text",
-                    "value" : "\u003C?php\r\n$qry = \u0022SELECT f.title_field_value AS new_title\r\nFROM {field_data_title_field} s\r\nLEFT JOIN {field_data_title_field} f ON s.entity_id = f.entity_id\r\nWHERE s.title_field_value = :intext\r\nAND s.language = :lang\r\nAND f.language = :outlang\r\nLIMIT 1\u0022;\r\n\r\n$result =  db_query($qry,array(\u0027:intext\u0027 =\u003E $title, \u0027:lang\u0027 =\u003E $node_lang, \u0027:outlang\u0027 =\u003E $lang));\r\n$resarray = $result-\u003EfetchAll();\r\n\r\necho empty($resarray) ? \u0027\u0027 : $resarray[0]-\u003Enew_title;\r\n?\u003E"
-                  },
-                  "PROVIDE" : { "variable_added" : { "cached_title" : "cached title" } }
-                }
-              },
-              { "CONDITIONAL" : [
-                  {
-                    "IF" : { "data_is_empty" : { "data" : [ "cached-title" ] } },
-                    "DO" : [
-                      { "component_rules_google_translate_text" : {
-                          "USING" : { "input" : [ "title" ], "to_code" : [ "lang" ], "from_code" : "xx" },
-                          "PROVIDE" : { "translation" : { "new_title" : "new title" } }
-                        }
-                      }
-                    ]
                   },
                   { "ELSE" : [
                       { "variable_add" : {
-                          "USING" : { "type" : "text", "value" : [ "cached-title" ] },
+                          "USING" : {
+                            "type" : "text",
+                            "value" : "\u003C?php\r\nif (isset($node-\u003Etitle_field[$lang][0][\u0027value\u0027])) {\r\n  echo $node-\u003Etitle_field[$lang][0][\u0027value\u0027];\r\n}\r\nelse {\r\n  echo \u0027\u0027;\r\n}\r\n?\u003E"
+                          },
                           "PROVIDE" : { "variable_added" : { "new_title" : "new title" } }
                         }
                       }

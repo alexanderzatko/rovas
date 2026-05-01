@@ -187,19 +187,19 @@ msgstr ""
 #: node:type:article:title_label
 msgctxt "type:article:title_label"
 msgid "Title"
-msgstr "Název"
+msgstr "Názov"
 
 #: node:type:co_worker_merit_allocation:description
 msgctxt "type:co_worker_merit_allocation:description"
 msgid ""
 "Form for allocating share of Merits for an user working on a group project"
 msgstr ""
-"Form pro allocating share of Merits for user working on a group project"
+"Form for allocating share of Merits for an user working on a group project"
 
 #: node:type:co_worker_merit_allocation:name
 msgctxt "type:co_worker_merit_allocation:name"
 msgid "Worker Merit Allocation"
-msgstr "Merit podíl pro pracovníka"
+msgstr "Merit podiel pre pracovníka"
 
 #: node:type:co_worker_merit_allocation:title_label
 msgctxt "type:co_worker_merit_allocation:title_label"
@@ -212,8 +212,8 @@ msgid ""
 "Dispute is document type for capturing communication between a complaining "
 "worker and an accused worker."
 msgstr ""
-"Typ dokumentu \"Spor\" zachycuje komunikaci mezi stěžovatelem a obviněným "
-"pracovníkem."
+"Typ dokumentu \"Spor\" zachytáva komunikáciu medzi sťažovateľom a obvineným "
+"pracovníkom."
 
 #: node:type:dispute:name
 msgctxt "type:dispute:name"
@@ -233,17 +233,17 @@ msgstr "Účastník sporu"
 #: node:type:forex_transaction:name
 msgctxt "type:forex_transaction:name"
 msgid "Forex transaction"
-msgstr "Výměna peněz"
+msgstr "Výmena peňazí"
 
 #: node:type:forex_transaction:title_label
 msgctxt "type:forex_transaction:title_label"
 msgid "Title"
-msgstr "Název"
+msgstr "Názov"
 
 #: node:type:money_transfer:description
 msgctxt "type:money_transfer:description"
 msgid "Receipt for money transfer"
-msgstr "Doklad o zaslání peněz"
+msgstr "Doklad o zaslaní peňazí"
 
 #: node:type:money_transfer:name
 msgctxt "type:money_transfer:name"
@@ -258,7 +258,7 @@ msgstr "Title"
 #: node:type:page:title_label
 msgctxt "type:page:title_label"
 msgid "Title"
-msgstr "Název"
+msgstr "Názov"
 
 #: node:type:project:name
 msgctxt "type:project:name"
@@ -268,7 +268,7 @@ msgstr "Projekt"
 #: node:type:project:title_label
 msgctxt "type:project:title_label"
 msgid "Project name"
-msgstr "Název projektu"
+msgstr "Názov projektu"
 
 #: node:type:project_merit_allocation:description
 msgctxt "type:project_merit_allocation:description"
@@ -276,13 +276,13 @@ msgid ""
 "Content type allowing project owner to specify another project as a "
 "shareholder"
 msgstr ""
-"Content type allowing project owner to specify další projekt jako "
+"Content type allowing project owner to specify another project as a "
 "shareholder"
 
 #: node:type:project_merit_allocation:name
 msgctxt "type:project_merit_allocation:name"
 msgid "Project Merit Allocation"
-msgstr "Merit podíl pro projekt"
+msgstr "Merit podiel pre projekt"
 
 #: node:type:project_merit_allocation:title_label
 msgctxt "type:project_merit_allocation:title_label"
@@ -292,17 +292,17 @@ msgstr "Title"
 #: node:type:purchase_receipt:name
 msgctxt "type:purchase_receipt:name"
 msgid "Purchase"
-msgstr "Koupě"
+msgstr "Kúpa"
 
 #: node:type:time_share:name
 msgctxt "type:time_share:name"
 msgid "Time share"
-msgstr "Časový podíl"
+msgstr "Časový podiel"
 
 #: node:type:verification:name
 msgctxt "type:verification:name"
 msgid "Verification"
-msgstr "Ověření"
+msgstr "Overenie"
 
 #: node:type:verification:title_label
 msgctxt "type:verification:title_label"
@@ -312,7 +312,7 @@ msgstr "Title"
 #: node:type:work_report:description
 msgctxt "type:work_report:description"
 msgid "Work report for an existing project."
-msgstr "Pracovní výkaz pro stávající projekt."
+msgstr "Pracovný výkaz pre existujúci projekt."
 
 #: node:type:work_report:help
 msgctxt "type:work_report:help"
@@ -321,16 +321,16 @@ msgid ""
 "users, before the Chron reward is granted. You can speed up the verification"
 " process by providing trustworthy proof of your work."
 msgstr ""
-"Upozornění: Chrony za vykázanou práci dostanete až po ověření výkazu nejméně"
-" dvěma jinými uživateli. Ověřovací proces můžete urychlit poskytnutím "
-"důvěryhodného popisu vykonané práce."
+"Upozornenie: Chrony za vykázanú prácu dostanete až po overení výkazu "
+"najmenej dvoma inými používateľmi. Overovací proces môžte urýchliť "
+"poskytnutím dôveryhodného opisu vykonanej práce."
 
 #: node:type:work_report:name
 msgctxt "type:work_report:name"
 msgid "Work Report"
-msgstr "Pracovní výkaz"
+msgstr "Pracovný výkaz"
 
 #: node:type:work_report:title_label
 msgctxt "type:work_report:title_label"
 msgid "Activity"
-msgstr "Činnost"
+msgstr "Činnosť"
