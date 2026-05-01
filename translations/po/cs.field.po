@@ -27,11 +27,11 @@ msgstr ""
 
 msgctxt "body:project:description"
 msgid "Enter text describing the goods or services produced."
-msgstr ""
+msgstr "Zadejte text popisující vyrobené zboží nebo služby."
 
 msgctxt "body:project:label"
 msgid "Description"
-msgstr ""
+msgstr "Popis"
 
 #: field:body:timeshare_merit_allocation:label
 msgctxt "body:timeshare_merit_allocation:label"
@@ -163,6 +163,8 @@ msgid ""
 "If applicable, please enter web address of the page where more information "
 "can be found about the product or where it can be purchased."
 msgstr ""
+"Pokud existuje, zadejte webovou adresu stránky, na které lze nalézt další "
+"informace o projektu."
 
 #: field:field_buyer:purchase_merits:label
 msgctxt "field_buyer:purchase_merits:label"
@@ -238,7 +240,7 @@ msgstr ""
 
 msgctxt "field_classification:work_report:label"
 msgid "Classification"
-msgstr ""
+msgstr "Klasifikace"
 
 #: field:field_content_access_token:work_report:description
 msgctxt "field_content_access_token:work_report:description"
@@ -639,7 +641,7 @@ msgstr ""
 
 msgctxt "field_project_total_hours:project:label"
 msgid "Time worked"
-msgstr ""
+msgstr "Odpracovaný čas"
 
 #: field:field_purchase_date:purchase_merits:label
 msgctxt "field_purchase_date:purchase_merits:label"
@@ -908,7 +910,7 @@ msgstr ""
 
 msgctxt "field_work_evidence:work_report:label"
 msgid "Work Evidence Source"
-msgstr ""
+msgstr "Typ důkazu práce"
 
 #: field:title_field:page:label
 msgctxt "title_field:page:label"
@@ -928,7 +930,7 @@ msgstr ""
 #: field:body:dispute:label
 msgctxt "body:dispute:label"
 msgid "Complaint"
-msgstr "Námietka"
+msgstr "Námitka"
 
 #: field:body:merit_penalty:label
 msgctxt "body:merit_penalty:label"
@@ -938,7 +940,7 @@ msgstr "Poznámka"
 #: field:body:money_transfer:description
 msgctxt "body:money_transfer:description"
 msgid "Optional note about the transfer (will be shown to the recipient)."
-msgstr "Poznámka k transakcii - nepovinný údaj. Bude viditeľný adresátovi."
+msgstr "Poznámka k transakci - nepovinný údaj. Bude viditelný adresátovi."
 
 #: field:body:money_transfer:label
 msgctxt "body:money_transfer:label"
@@ -948,12 +950,12 @@ msgstr "Poznámka"
 #: field:body:project:description
 msgctxt "body:project:description"
 msgid "Enter text describing the goods or services produced."
-msgstr "Zadajte text opisujúci vyrobené tovary alebo služby."
+msgstr "Zadejte text popisující vyrobené zboží nebo služby."
 
 #: field:body:project:label
 msgctxt "body:project:label"
 msgid "Description"
-msgstr "Opis"
+msgstr "Popis"
 
 #: field:body:time_share:label
 msgctxt "body:time_share:label"
@@ -968,87 +970,87 @@ msgstr "Popis činnosti"
 #: field:comment_body:comment_node_article:label
 msgctxt "comment_body:comment_node_article:label"
 msgid "Comment"
-msgstr "Komentár"
+msgstr "Komentář"
 
 #: field:comment_body:comment_node_asset_usage_record:label
 msgctxt "comment_body:comment_node_asset_usage_record:label"
 msgid "Comment"
-msgstr "Komentár"
+msgstr "Komentář"
 
 #: field:comment_body:comment_node_co_worker_merit_allocation:label
 msgctxt "comment_body:comment_node_co_worker_merit_allocation:label"
 msgid "Comment"
-msgstr "Komentár"
+msgstr "Komentář"
 
 #: field:comment_body:comment_node_dispute:label
 msgctxt "comment_body:comment_node_dispute:label"
 msgid "Comment"
-msgstr "Komentár"
+msgstr "Komentář"
 
 #: field:comment_body:comment_node_dispute_party:label
 msgctxt "comment_body:comment_node_dispute_party:label"
 msgid "Comment"
-msgstr "Komentár"
+msgstr "Komentář"
 
 #: field:comment_body:comment_node_forex_transaction:label
 msgctxt "comment_body:comment_node_forex_transaction:label"
 msgid "Comment"
-msgstr "Komentár"
+msgstr "Komentář"
 
 #: field:comment_body:comment_node_merits_disbursement:label
 msgctxt "comment_body:comment_node_merits_disbursement:label"
 msgid "Comment"
-msgstr "Komentár"
+msgstr "Komentář"
 
 #: field:comment_body:comment_node_money_transfer:label
 msgctxt "comment_body:comment_node_money_transfer:label"
 msgid "Comment"
-msgstr "Komentár"
+msgstr "Komentář"
 
 #: field:comment_body:comment_node_page:label
 msgctxt "comment_body:comment_node_page:label"
 msgid "Comment"
-msgstr "Komentár"
+msgstr "Komentář"
 
 #: field:comment_body:comment_node_project:label
 msgctxt "comment_body:comment_node_project:label"
 msgid "Comment"
-msgstr "Komentár"
+msgstr "Komentář"
 
 #: field:comment_body:comment_node_project_merit_allocation:label
 msgctxt "comment_body:comment_node_project_merit_allocation:label"
 msgid "Comment"
-msgstr "Komentár"
+msgstr "Komentář"
 
 #: field:comment_body:comment_node_purchase_receipt:label
 msgctxt "comment_body:comment_node_purchase_receipt:label"
 msgid "Comment"
-msgstr "Komentár"
+msgstr "Komentář"
 
 #: field:comment_body:comment_node_verification:label
 msgctxt "comment_body:comment_node_verification:label"
 msgid "Comment"
-msgstr "Komentár"
+msgstr "Komentář"
 
 #: field:comment_body:comment_node_verification_slot:label
 msgctxt "comment_body:comment_node_verification_slot:label"
 msgid "Comment"
-msgstr "Komentár"
+msgstr "Komentář"
 
 #: field:comment_body:comment_node_work_report:label
 msgctxt "comment_body:comment_node_work_report:label"
 msgid "Comment"
-msgstr "Komentár"
+msgstr "Komentář"
 
 #: field:commerce_customer_billing:commerce_order:label
 msgctxt "commerce_customer_billing:commerce_order:label"
 msgid "Billing information"
-msgstr "Fakturačné údaje"
+msgstr "Fakturační údaje"
 
 #: field:commerce_order_total:commerce_order:label
 msgctxt "commerce_order_total:commerce_order:label"
 msgid "Order total"
-msgstr "Objednávka celkom"
+msgstr "Objednávka celkem"
 
 #: field:commerce_price:product:label
 msgctxt "commerce_price:product:label"
@@ -1063,7 +1065,7 @@ msgstr "Jednotková cena"
 #: field:field_accused:dispute:description
 msgctxt "field_accused:dispute:description"
 msgid "Type and select the user name of the accused."
-msgstr "Zadajte a vyberte meno používateľa obvineného"
+msgstr "Zadejte a vyberte uživatelské jméno obviněného"
 
 #: field:field_accused:dispute:label
 msgctxt "field_accused:dispute:label"
@@ -1088,7 +1090,7 @@ msgstr "Adresa 2"
 #: field:field_allow_purchasing_shares:project:label
 msgctxt "field_allow_purchasing_shares:project:label"
 msgid "Allow"
-msgstr "Povoliť"
+msgstr "Povolit"
 
 #: field:field_allow_purchasing_shares:project:description
 msgctxt "field_allow_purchasing_shares:project:description"
@@ -1100,12 +1102,12 @@ msgid ""
 "purchased hour has the same Merit-earning power as one hour reported in a "
 "work report."
 msgstr ""
-"Ak je táto možnosť začiarknutá, používatelia si budú môcť v tomto projekte "
-"kúpiť časový podiel (hodiny) za cenu, ktorú zadáte nižšie. Váš projekt bude "
-"odmenený zaplatenými chronmi a kupujúci dostane merity, v množstve "
-"zodpovedajúcom počtu zakúpených hodín, kedykoľvek niekto tento projekt "
-"odmení. Jedna zakúpená hodina bude odmenená rovnakým počtom meritov, ako "
-"odpracovaná hodina."
+"Pokud je tato možnost zaškrtnuta, uživatelé si budou moci v tomto projektu "
+"koupit časový podíl (hodiny) za cenu, kterou zadáte níže. Váš projekt bude "
+"odměněn zaplacenými chrony a kupující dostane merity, v množství "
+"odpovídajícím počtu zakoupených hodin, kdykoli někdo tento projekt odmění. "
+"Jedna zakoupená hodina bude odměněna stejným počtem meritů, jako odpracovaná"
+" hodina."
 
 #: field:field_amount:money_transfer:label
 msgctxt "field_amount:money_transfer:label"
@@ -1115,17 +1117,17 @@ msgstr "Suma"
 #: field:field_amount_paid:purchase_receipt:label
 msgctxt "field_amount_paid:purchase_receipt:label"
 msgid "Amount Paid"
-msgstr "Zaplatené"
+msgstr "Zaplaceno"
 
 #: field:field_asset_usage_fee:asset_usage_record:label
 msgctxt "field_asset_usage_fee:asset_usage_record:label"
 msgid "Paid"
-msgstr "Zaplatené"
+msgstr "Zaplaceno"
 
 #: field:field_asset_usage_fee:asset_usage_record:suffix
 msgctxt "field_asset_usage_fee:asset_usage_record:suffix"
 msgid " CH"
-msgstr " CH"
+msgstr "CH"
 
 #: field:field_asset_web_address:project:description
 msgctxt "field_asset_web_address:project:description"
@@ -1133,8 +1135,8 @@ msgid ""
 "If applicable, please enter web address of the page where more information "
 "can be found about the product or where it can be purchased."
 msgstr ""
-"Ak existuje, zadajte webovú adresu stránky, na ktorej je možné nájsť ďalšie "
-"informácie o projekte."
+"Pokud existuje, zadejte webovou adresu stránky, na které lze nalézt další "
+"informace o projektu."
 
 #: field:field_asset_web_address:project:label
 msgctxt "field_asset_web_address:project:label"
@@ -1148,9 +1150,9 @@ msgid ""
 "you. They will be then able to refer to this work report as a proof of work "
 "in their reports."
 msgstr ""
-"Ak chcete, môžte uviesť ľudí, ktorí s vami spolupracovali pri vykazovanej "
-"práci. Toto im umožní použiť váš výkaz ako dôkaz práce v ich výkazoch pre "
-"túto prácu."
+"Pokud chcete, můžete uvést lidi, kteří s vámi spolupracovali při vykazované "
+"práci. Toto jim umožní použít váš výkaz jako důkaz práce v jejich výkazech "
+"pro tuto práci."
 
 #: field:field_attendees:work_report:label
 msgctxt "field_attendees:work_report:label"
@@ -1160,12 +1162,12 @@ msgstr "Spolupracovníci"
 #: field:field_average_work_day:user:label
 msgctxt "field_average_work_day:user:label"
 msgid "Average effort"
-msgstr "Priemerný pracovný výkon"
+msgstr "Průměrný pracovní výkon"
 
 #: field:field_bank_account_iban:user:description
 msgctxt "field_bank_account_iban:user:description"
 msgid "IBAN number of your bank account."
-msgstr "Číslo vášho účtu vo formáte IBAN"
+msgstr "Číslo vašeho účtu ve formátu IBAN"
 
 #: field:field_bank_account_iban:user:label
 msgctxt "field_bank_account_iban:user:label"
@@ -1175,17 +1177,17 @@ msgstr "IBAN"
 #: field:field_buyer:forex_transaction:label
 msgctxt "field_buyer:forex_transaction:label"
 msgid "Buyer"
-msgstr "Kupujúci"
+msgstr "Kupující"
 
 #: field:field_buyer:purchase_receipt:label
 msgctxt "field_buyer:purchase_receipt:label"
 msgid "Buyer"
-msgstr "Kupujúci"
+msgstr "Kupující"
 
 #: field:field_category:time_share:label
 msgctxt "field_category:time_share:label"
 msgid "Category"
-msgstr "Kategória"
+msgstr "Kategorie"
 
 #: field:field_chrons_balance:user:label
 msgctxt "field_chrons_balance:user:label"
@@ -1203,18 +1205,18 @@ msgid ""
 "Beneficiary of the portion of a reward paid to the project that is not "
 "converted to Merits. If left empty, the project owner is the beneficiary."
 msgstr ""
-"Používateľ, ktorý dostane nemeritovú časť platieb za projekt. Ak je toto "
-"pole prázdne, príjemcom je vlastník projektu."
+"Uživatel, který obdrží nemeritovou část plateb za projekt. Je-li toto pole "
+"prázdné, příjemcem je vlastník projektu."
 
 #: field:field_chron_beneficiary:project:label
 msgctxt "field_chron_beneficiary:project:label"
 msgid "Payment beneficiary"
-msgstr "Príjemca platieb"
+msgstr "Příjemce plateb"
 
 #: field:field_city:field_address:label
 msgctxt "field_city:field_address:label"
 msgid "City"
-msgstr "Mesto"
+msgstr "Město"
 
 #: field:field_classification:user:description
 msgctxt "field_classification:user:description"
@@ -1224,15 +1226,15 @@ msgid ""
 "into the selected categories. If no categories are selected, you will be "
 "notified about all new work reports."
 msgstr ""
-"Vyberte kategórie, ktoré vás zaujímajú. Ak je nižšie uvedená možnosť "
-"„Oznamovať nové pracovné výkazy“ zapnutá, budete informovaný/á o výkazoch "
-"patriacich do vybraných kategórií. Ak nie sú vybrané žiadne kategórie, "
-"budete informovaný/á o všetkých nových pracovných výkazoch."
+"Vyberte kategorie, které vás zajímají. Pokud je níže uvedená možnost "
+"„Oznamovat nové pracovní výkazy“ zapnuta, budete informován/a o výkazech "
+"patřících do vybraných kategorií. Pokud nejsou vybrány žádné kategorie, "
+"budete informován/a o všech nových pracovních výkazech."
 
 #: field:field_classification:user:label
 msgctxt "field_classification:user:label"
 msgid "Categories of interest"
-msgstr "Sledované kategórie"
+msgstr "Sledované kategorie"
 
 #: field:field_classification:work_report:description
 msgctxt "field_classification:work_report:description"
@@ -1241,24 +1243,24 @@ msgid ""
 "the desired category, type a keyword like \"cleaning\" into the Filter terms"
 " field."
 msgstr ""
-"Vyberte kategóriu, ktorá najlepšie popisuje vykonanú prácu. Ak chcete rýchlo"
-" nájsť požadovanú kategóriu, do poľa \"Filtrovať výrazy\" zadajte kľúčové "
-"slovo, napríklad „čistenie“."
+"Vyberte kategorii, která nejlépe popisuje vykonanou práci. Chcete-li rychle "
+"najít požadovanou kategorii, do pole \"Filtrovat výrazy\" zadejte klíčové "
+"slovo, například „čištění“."
 
 #: field:field_classification:work_report:label
 msgctxt "field_classification:work_report:label"
 msgid "Classification"
-msgstr "Klasifikácia"
+msgstr "Klasifikace"
 
 #: field:field_closing_date:accounting_movements_nodes:label
 msgctxt "field_closing_date:accounting_movements_nodes:label"
 msgid "Closing date"
-msgstr "Dátum uzávierky"
+msgstr "Datum uzávěrky"
 
 #: field:field_conversion_type:#allowed_values:chrons_to_euros
 msgctxt "field_conversion_type:#allowed_values:chrons_to_euros"
 msgid "Chrons to Euros"
-msgstr "z Chronov na Eurá"
+msgstr "z Chronů na Eura"
 
 #: field:field_conversion_type:#allowed_values:euros_to_chrons
 msgctxt "field_conversion_type:#allowed_values:euros_to_chrons"
@@ -1268,17 +1270,17 @@ msgstr "z Eur na Chrony"
 #: field:field_conversion_type:forex_transaction:label
 msgctxt "field_conversion_type:forex_transaction:label"
 msgid "Conversion type"
-msgstr "Typ konverzie"
+msgstr "Typ konverze"
 
 #: field:field_country:field_address:label
 msgctxt "field_country:field_address:label"
 msgid "Country"
-msgstr "Štát"
+msgstr "Stát"
 
 #: field:field_country:user:label
 msgctxt "field_country:user:label"
 msgid "Country"
-msgstr "Štát"
+msgstr "Stát"
 
 #: field:field_coworker:co_worker_merit_allocation:description
 msgctxt "field_coworker:co_worker_merit_allocation:description"
@@ -1286,22 +1288,22 @@ msgid ""
 "Type any part of a worker name. Then select the desired one from the drop-"
 "down."
 msgstr ""
-"Zadajte ľubovoľnú časť mena. Potom zo zoznamu vyberte požadovanú osobu."
+"Zadejte libovolnou část jména. Potom ze seznamu vyberte požadovanou osobu."
 
 #: field:field_coworker:co_worker_merit_allocation:label
 msgctxt "field_coworker:co_worker_merit_allocation:label"
 msgid "Worker Name"
-msgstr "Meno pracovníka"
+msgstr "Jméno pracovníka"
 
 #: field:field_coworkers:project:label
 msgctxt "field_coworkers:project:label"
 msgid "Merit Shares"
-msgstr "Podiely Meritov"
+msgstr "Podíly Meritov"
 
 #: field:field_date:time_share:label
 msgctxt "field_date:time_share:label"
 msgid "Date"
-msgstr "Dátum"
+msgstr "Datum"
 
 #: field:field_date:work_report:description
 msgctxt "field_date:work_report:description"
@@ -1310,43 +1312,43 @@ msgid ""
 "to the NEO rules, only work performed after registering in Rovas will be "
 "accepted."
 msgstr ""
-"Zadajte dátum začatia práce. Upozorňujeme, že podľa pravidiel NEO budú "
-"akceptované iba práce vykonané po registrácii v Rovasi."
+"Zadejte datum zahájení práce. Upozorňujeme, že podle pravidel NEO budou "
+"akceptovány pouze práce provedené po registraci v Rovasu."
 
 #: field:field_date:work_report:label
 msgctxt "field_date:work_report:label"
 msgid "Date"
-msgstr "Dátum"
+msgstr "Datum"
 
 #: field:field_date_published:project:label
 msgctxt "field_date_published:project:label"
 msgid "Created"
-msgstr "Zverejnené"
+msgstr "Zveřejněno"
 
 #: field:field_date_rectified:dispute:label
 msgctxt "field_date_rectified:dispute:label"
 msgid "End date"
-msgstr "Uzávierka"
+msgstr "Uzávěrka"
 
 #: field:field_dispute_start_date:dispute:label
 msgctxt "field_dispute_start_date:dispute:label"
 msgid "Start date"
-msgstr "Spor zaevidovaný"
+msgstr "Spor zaevidován"
 
 #: field:field_dispute_status:#allowed_values:0
 msgctxt "field_dispute_status:#allowed_values:0"
 msgid "open"
-msgstr "otvorený"
+msgstr "otevřený"
 
 #: field:field_dispute_status:#allowed_values:4
 msgctxt "field_dispute_status:#allowed_values:4"
 msgid "closed (accused lost)"
-msgstr "zatvorený (žalovaný prehral)"
+msgstr "zavřený (žalovaný prohrál)"
 
 #: field:field_euro_basket:project:label
 msgctxt "field_euro_basket:project:label"
 msgid "Euro basket"
-msgstr "Peňazí k dispozícii (Euro košík)"
+msgstr "Peněz k dispozici (Euro košík)"
 
 #: field:field_full_name:user:default_value
 msgctxt "field_full_name:user:default_value"
@@ -1356,22 +1358,22 @@ msgstr "nomen omen"
 #: field:field_full_name:user:description
 msgctxt "field_full_name:user:description"
 msgid "Your full name"
-msgstr "Vaše celé meno"
+msgstr "Vaše celé jméno"
 
 #: field:field_full_name:user:label
 msgctxt "field_full_name:user:label"
 msgid "Full name"
-msgstr "Celé meno"
+msgstr "Celé jméno"
 
 #: field:field_get_euros:#allowed_values:0
 msgctxt "field_get_euros:#allowed_values:0"
 msgid "no"
-msgstr "nie"
+msgstr "ne"
 
 #: field:field_get_euros:#allowed_values:1
 msgctxt "field_get_euros:#allowed_values:1"
 msgid "yes"
-msgstr "áno"
+msgstr "ano"
 
 #: field:field_get_euros:project:description
 msgctxt "field_get_euros:project:description"
@@ -1379,13 +1381,13 @@ msgid ""
 "Immediately convert the Chrons rewarded/paid to the project to Euros. No "
 "conversion fee is charged."
 msgstr ""
-"Okamžite zameniť chrony vyplatené projektu na eurá. Transakcia je bez "
-"štandardného poplatku."
+"Okamžitě zaměnit chrony vyplacené projektu na eura. Transakce je bez "
+"standardního poplatku."
 
 #: field:field_get_euros:project:label
 msgctxt "field_get_euros:project:label"
 msgid "Get Euros"
-msgstr "Zameniť chrony na eurá"
+msgstr "Zaměnit chrony na eura"
 
 #: field:field_hours_worked:work_report:label
 msgctxt "field_hours_worked:work_report:label"
@@ -1395,7 +1397,7 @@ msgstr "Odpracovaný čas"
 #: field:field_input_amount:forex_transaction:label
 msgctxt "field_input_amount:forex_transaction:label"
 msgid "Paid amount"
-msgstr "Zaplatené"
+msgstr "Zaplaceno"
 
 #: field:field_location:work_report:description
 msgctxt "field_location:work_report:description"
@@ -1404,9 +1406,9 @@ msgid ""
 "tool and click to mark the place where your work was performed. Double click"
 " to complete the drawing. Click the hand icon to switch editing off."
 msgstr ""
-"Na paneli nástrojov v dolnej časti rámčeka mapy vyberte vhodný nástroj a "
-"kliknutím označte miesto, kde ste vykonali prácu. Dvojitým kliknutím "
-"dokončíte kresbu. Kliknutím na ikonu ruky vypnete editovací mód."
+"Na panelu nástrojů v dolní části rámečku mapy vyberte vhodný nástroj a "
+"klepnutím označte místo, kde jste provedli práci. Dvojitým kliknutím "
+"dokončíte kresbu. Klepnutím na ikonu ruky vypnete editovací mód."
 
 #: field:field_location:work_report:label
 msgctxt "field_location:work_report:label"
@@ -1416,7 +1418,7 @@ msgstr "Poloha"
 #: field:field_maximum_hourly_rate:project:label
 msgctxt "field_maximum_hourly_rate:project:label"
 msgid "Maximum hourly reward"
-msgstr "Najvyššia hodinová odmena"
+msgstr "Nejvyšší hodinová odměna"
 
 #: field:field_maximum_hourly_rate:project:suffix
 msgctxt "field_maximum_hourly_rate:project:suffix"
@@ -1426,7 +1428,7 @@ msgstr "€/hodinu"
 #: field:field_mentions_notifications:#allowed_values:1
 msgctxt "field_mentions_notifications:#allowed_values:1"
 msgid "Disable \"Mentions\" notifications"
-msgstr "Vypnúť \"zmienky\""
+msgstr "Vypnout \"zmínky\""
 
 #: field:field_mentions_notifications:user:description
 msgctxt "field_mentions_notifications:user:description"
@@ -1434,8 +1436,8 @@ msgid ""
 "Check if you do not want to receive email notification when somebody "
 "mentions your name in a comment or a post."
 msgstr ""
-"Zakliknite ak nechcete dostávať emailové oznamy v prípade, že vás niekto "
-"spomenie v príspevkoch alebo komentároch."
+"Zaklikněte pokud nechcete dostávat emailové oznámení v případě, že vás někdo"
+" vzpomene v příspěvcích nebo komentářích."
 
 #: field:field_mentions_notifications:user:label
 msgctxt "field_mentions_notifications:user:label"
@@ -1445,12 +1447,12 @@ msgstr "Mentions notifications"
 #: field:field_merge_daily_reports:#allowed_values:0
 msgctxt "field_merge_daily_reports:#allowed_values:0"
 msgid "no"
-msgstr "nie"
+msgstr "ne"
 
 #: field:field_merge_daily_reports:#allowed_values:1
 msgctxt "field_merge_daily_reports:#allowed_values:1"
 msgid "yes"
-msgstr "áno"
+msgstr "ano"
 
 #: field:field_merge_daily_reports:project:description
 msgctxt "field_merge_daily_reports:project:description"
@@ -1459,14 +1461,14 @@ msgid ""
 "the same category and send within one day. This setting applies only to this"
 " project."
 msgstr ""
-"Zakliknite, ak chcete zlúčiť všetky výkazy odoslané daným používateľom, "
-"patriace do rovnakej kategórie a odoslané v jednen deň. Toto nastavenie "
-"platí iba pre tento projekt."
+"Zaklikněte, chcete-li sloučit všechny výkazy odeslané daným uživatelům, "
+"patřící do stejné kategorie a odeslané v jeden den. Toto nastavení platí "
+"pouze pro tento projekt."
 
 #: field:field_merge_daily_reports:project:label
 msgctxt "field_merge_daily_reports:project:label"
 msgid "Merge daily reports"
-msgstr "Spojiť výkazy zaslané v jeden deň"
+msgstr "Spojit výkazy zaslané v jeden den"
 
 #: field:field_merge_reports_function:project:description
 msgctxt "field_merge_reports_function:project:description"
@@ -1481,17 +1483,17 @@ msgid ""
 " new report. All arguments are strings and max. length of the field value is"
 " 500 characters."
 msgstr ""
-"Ak má toto pole hodnotu, Rovas ju použije na zlúčenie hodnôt polí v "
-"pracovných výkazoch zaslaných do tohoto projektu. Nahradí hodnotu daného "
-"poľa kombináciou starej hodnoty poľa novou hodnotou zlúčeného výkazu. "
-"Hodnota ktorú treba vpísať vyššie, je názov lokálnej Rovas funkcie alebo "
-"adresa URL, na ktorej je možné nájsť zlučovaciu funkciu (adresa URL musí "
-"začínať https). Skontaktujte nás, ak chcete túto funkciu využiť."
+"Pokud má toto pole hodnotu, Rovas ji použije ke sloučení hodnot polí v "
+"pracovních výkazech zaslaných do tohoto projektu. Nahradí hodnotu daného "
+"pole kombinací staré hodnoty pole novou hodnotou sloučeného výkazu. Hodnota "
+"kterou je třeba vepsat výše, je název lokální Rovas funkce nebo adresa URL, "
+"na které je možné najít slučovací funkci (adresa URL musí začínat https). "
+"Zkontaktujte nás, pokud chcete tuto funkci využít."
 
 #: field:field_merge_reports_function:project:label
 msgctxt "field_merge_reports_function:project:label"
 msgid "Merge reports function"
-msgstr "Funkcia na spájane výkazov"
+msgstr "Funkce pro spojování výkazů"
 
 #: field:field_merits:user_expertise:label
 msgctxt "field_merits:user_expertise:label"
@@ -1501,17 +1503,17 @@ msgstr "Merity"
 #: field:field_merit_allocation:co_worker_merit_allocation:label
 msgctxt "field_merit_allocation:co_worker_merit_allocation:label"
 msgid "Merit Allocation"
-msgstr "Podiel"
+msgstr "Podíl"
 
 #: field:field_merit_allocation:co_worker_merit_allocation:suffix
 msgctxt "field_merit_allocation:co_worker_merit_allocation:suffix"
 msgid " %"
-msgstr " %"
+msgstr "%"
 
 #: field:field_merit_allocation:project_merit_allocation:description
 msgctxt "field_merit_allocation:project_merit_allocation:description"
 msgid "Please enter value greater than 0 %."
-msgstr "Vpíšte hodnotu vyššiu ako 0 %."
+msgstr "Vepište hodnotu vyšší než 0 %."
 
 #: field:field_merit_allocation:co_worker_merit_allocation:description
 msgctxt "field_merit_allocation:co_worker_merit_allocation:description"
@@ -1522,46 +1524,46 @@ msgid ""
 "</ol>\r\n"
 "The two methods can be combined, if the sum of all project workers' shares is less than 100. The remainder is automatically distributed among workers according to method 1."
 msgstr ""
-"Existujú dve metódy na prideľovanie Meritov medzi pracovníkov:\r\n"
-"<ol><li> <strong>Podľa času.</strong> Rováš rozdelí Merity mezi pracovníkov podľa počtu odpracovaných hodín. Napríklad za 100 Meritov získaných za predaj produktu dostanú Jano s 30 odrobenými hodinami 3/7 (43 ME) A Mária so 40 hodinami 4/7 (57 ME). Ak chcete použiť túto metódu, nechajte pole Podiel prázdne.</li>\r\n"
-"<li><strong>Podľa dohody.</strong> Pracovníci na projekte dohodnú medzi sebou percentuálne podiely podľa ktorých sa budú Merity prideľovať. Podiel vyjadrený v percenách vpíšte do poľa Podiel.</li>\r\n"
+"Existují dvě metody pro přidělování Meritů mezi pracovníky:\r\n"
+"<ol><li> <strong>Podle času.</strong> Rováš rozdělí Merity mezi pracovníky podle počtu odpracovaných hodin. Například za 100 Meritů získaných za prodej produktu dostanou Jano s 30 oddělanými hodinami 3/7 (43 ME) a ​​Maria se 40 hodinami 4/7 (57 ME). Chcete-li použít tuto metodu, nechte pole Podíl prázdné.</li>\r\n"
+"<li><strong>Podle dohody.</strong> Pracovníci na projektu dohodnou mezi sebou procentní podíly podle kterých se budou Merity přidělovat. Podíl vyjádřený v procentech vepište do pole Podíl.</li>\r\n"
 "</ol>\r\n"
-"Obe metódy môžu byť skombinované, ak percentuálny súčet podielov všetkých podielnikov je menej ako 100. V tom prípade budú zvyšné Merity rozdelené podľa metódy č. 1"
+"Obě metody mohou být zkombinovány, pokud procentuální součet podílů všech podílníků je méně než 100. V tom případě budou zbývající Merity rozděleny podle metody č. 2. 1"
 
 #: field:field_merit_allocation:project_merit_allocation:label
 msgctxt "field_merit_allocation:project_merit_allocation:label"
 msgid "Merit Allocation"
-msgstr "Podiel"
+msgstr "Podíl"
 
 #: field:field_merit_reward:project:label
 msgctxt "field_merit_reward:project:label"
 msgid "Merit reward"
-msgstr "Odmena"
+msgstr "Merit odměna"
 
 msgctxt "field_merit_reward:project:label"
 msgid "Merit reward"
-msgstr "Merit odmena"
+msgstr "Merit odměna"
 
 #: field:field_merit_reward:work_report:label
 msgctxt "field_merit_reward:work_report:label"
 msgid "Merit reward"
-msgstr "Odmena"
+msgstr "Merit odměna"
 
 msgctxt "field_merit_reward:work_report:label"
 msgid "Merit reward"
-msgstr "Merit odmena"
+msgstr "Merit odměna"
 
 #: field:field_minimum_time:project:description
 msgctxt "field_minimum_time:project:description"
 msgid "Enter the minimum length of share time that can be purchased"
 msgstr ""
-"Zadajte minimálnu veľkosť podielu, ktorú je možné zakúpiť. Ponechajte pole "
-"prázdne ak minimum nevyžadujete."
+"Zadejte minimální velikost podílu, kterou lze zakoupit. Ponechejte pole "
+"prázdné, pokud minimum nevyžadujete."
 
 #: field:field_minimum_time:project:label
 msgctxt "field_minimum_time:project:label"
 msgid "Minimum time"
-msgstr "Najmenší podiel"
+msgstr "Nejmenší podíl"
 
 #: field:field_note:asset_usage_record:label
 msgctxt "field_note:asset_usage_record:label"
@@ -1583,18 +1585,17 @@ msgid ""
 "document, which you can find in the document URL (.../node/XXXXX). Once "
 "submitted, this value can not be changed."
 msgstr ""
-"Zadajte názov dokumentu, proti ktorému otvárate spor. Môže to byť pracovný "
-"výkaz alebo projekt, ale najčastejšie to bude doklad overenia pracovného "
-"výkazu, ako napríklad v prípadoch keď je váš výkaz zamietnutý. Názvy "
-"všetkých dokladov overenia nájdete na stránke daného výkazu. Môžete tiež "
-"použiť číslo \"nódu\" dokumentu, ktoré nájdete v URL dokumentu "
-"(.../node/XXXXX). Po odoslaní formulára nie je možné túto hodnotu zmeniť. "
-"\r\n"
+"Zadejte název dokumentu, proti kterému otevíráte spor. Může to být pracovní "
+"výkaz nebo projekt, ale nejčastěji to bude doklad ověření pracovního výkazu,"
+" jako například v případech, kdy je váš výkaz zamítnut. Názvy všech dokladů "
+"ověření naleznete na stránce daného výkazu. Můžete také použít číslo "
+"\"nódu\" dokumentu, které naleznete v URL dokumentu (.../node/XXXXX). Po "
+"odeslání formuláře nelze tuto hodnotu změnit."
 
 #: field:field_object_of_complaint:dispute:label
 msgctxt "field_object_of_complaint:dispute:label"
 msgid "Object of complaint"
-msgstr "Predmet sporu"
+msgstr "Předmět sporu"
 
 #: field:field_order_record:forex_transaction:label
 msgctxt "field_order_record:forex_transaction:label"
@@ -1604,27 +1605,27 @@ msgstr "Objednávka"
 #: field:field_output_amount:forex_transaction:label
 msgctxt "field_output_amount:forex_transaction:label"
 msgid "Received amount"
-msgstr "Vyplatené"
+msgstr "Vyplaceno"
 
 #: field:field_parent_purchase_receipt:merits_disbursement:label
 msgctxt "field_parent_purchase_receipt:merits_disbursement:label"
 msgid "Parent purchase receipt"
-msgstr "Potvrdenie o kúpe"
+msgstr "Potvrzení o koupi"
 
 #: field:field_participation:#allowed_values:0
 msgctxt "field_participation:#allowed_values:0"
 msgid "Private"
-msgstr "kontrolovaný"
+msgstr "kontrolován"
 
 #: field:field_participation:#allowed_values:1
 msgctxt "field_participation:#allowed_values:1"
 msgid "Public"
-msgstr "otvorený"
+msgstr "otevřený"
 
 #: field:field_participation:#allowed_values:2
 msgctxt "field_participation:#allowed_values:2"
 msgid "Public - dependent on parent project"
-msgstr "otvorený - závisí na rodičovskom projekte"
+msgstr "otevřený - závisí na rodičovském projektu"
 
 #: field:field_participation:project:description
 msgctxt "field_participation:project:description"
@@ -1633,14 +1634,14 @@ msgid ""
 "over who can join this project. Set Participation to \"public\" to allow "
 "anybody to work on the project."
 msgstr ""
-"Nastavte typ projektu na \"Kontrolovaný\" ak si chcete uchovať možnosť "
-"rozhodnúť, kto na projekte môže pracovať. Nastavenie hodnoty na \"Otvorený\""
-" umožní pracovať na projekte komukoľvek."
+"Nastavte typ projektu na \"Kontrolovaný\" pokud si chcete uchovat možnost "
+"rozhodnout, kdo na projektu může pracovat. Nastavení hodnoty na \"Otevřený\""
+" umožní pracovat na projektu komukoli."
 
 #: field:field_participation:project:label
 msgctxt "field_participation:project:label"
 msgid "Project Participation"
-msgstr "Účasť"
+msgstr "Účast"
 
 #: field:field_parties:dispute:label
 msgctxt "field_parties:dispute:label"
@@ -1650,12 +1651,12 @@ msgstr "Účastníci"
 #: field:field_payment_recipient:commerce_order:label
 msgctxt "field_payment_recipient:commerce_order:label"
 msgid "Payment recipient"
-msgstr "Príjemca platby"
+msgstr "Příjemce platby"
 
 #: field:field_paypal_email:user:description
 msgctxt "field_paypal_email:user:description"
 msgid "Your PayPal email address."
-msgstr "Vaša PayPal email addresa"
+msgstr "Vaše PayPal email addresa"
 
 #: field:field_paypal_email:user:label
 msgctxt "field_paypal_email:user:label"
@@ -1665,17 +1666,17 @@ msgstr "PayPal email"
 #: field:field_pa_wallet_current_level:project:description
 msgctxt "field_pa_wallet_current_level:project:description"
 msgid "For the current month"
-msgstr "Pre tento mesiac"
+msgstr "Pro tento měsíc"
 
 #: field:field_pa_wallet_current_level:project:label
 msgctxt "field_pa_wallet_current_level:project:label"
 msgid "Income and allocations"
-msgstr "Príjem a odvody"
+msgstr "Příjem a odvody"
 
 #: field:field_pa_wallet_current_level:project:suffix
 msgctxt "field_pa_wallet_current_level:project:suffix"
 msgid " €"
-msgstr " €"
+msgstr "€"
 
 #: field:field_phone:user:description
 msgctxt "field_phone:user:description"
@@ -1684,14 +1685,14 @@ msgid ""
 "when you sell Chrons. We will inform you, if we are unable to buy credit for"
 " your phone number"
 msgstr ""
-"Tu môžete zadať svoje telefónne číslo, ak chcete telefónny kredit, namiesto "
-"eur pri predaji chronov. V prípade že táto možnosť nie je dostupná pre vaše "
-"telefónne číslo, vám pošleme oznam."
+"Zde můžete zadat své telefonní číslo, chcete-li telefonní kredit, namísto "
+"eur při prodeji chronů. V případě, že tato možnost není dostupná pro vaše "
+"telefonní číslo, vám pošleme oznámení."
 
 #: field:field_phone:user:label
 msgctxt "field_phone:user:label"
 msgid "Phone"
-msgstr "Telefón"
+msgstr "Telefon"
 
 #: field:field_photos:project:label
 msgctxt "field_photos:project:label"
@@ -1701,7 +1702,7 @@ msgstr "Fotografie"
 #: field:field_photos:work_report:description
 msgctxt "field_photos:work_report:description"
 msgid "Upload image(s) of the product if available."
-msgstr "Načítajte fotografie ako dôkaz vykonanej práce"
+msgstr "Načtěte fotografie jako důkaz vykonané práce"
 
 #: field:field_photos:work_report:label
 msgctxt "field_photos:work_report:label"
@@ -1720,19 +1721,19 @@ msgid ""
 "the Payment Recipient. Only after reaching this value is money deposited "
 "into the project's euro basket."
 msgstr ""
-"Množstvo peňazí z platieb projektu, ktoré je prednostne smerované Príjemcovi"
-" platieb. Až po dosiahnutí tejto hodnoty sú peniaze ukladané do euro košíka "
+"Množství peněz z plateb projektu, které je přednostně směrováno Příjemci "
+"plateb. Teprve po dosažení této hodnoty jsou peníze ukládány do euro košíku "
 "projektu."
 
 #: field:field_preferred_allocation_thres:project:label
 msgctxt "field_preferred_allocation_thres:project:label"
 msgid "Preferred allocation threshold"
-msgstr "Fixný odvod"
+msgstr "Fixní odvod"
 
 #: field:field_preferred_allocation_thres:project:suffix
 msgctxt "field_preferred_allocation_thres:project:suffix"
 msgid " €"
-msgstr " €"
+msgstr "€"
 
 #: field:field_price:project:description
 msgctxt "field_price:project:description"
@@ -1740,8 +1741,8 @@ msgid ""
 "Price for the goods or services produced. Leave blank for pay-as-much-as-"
 "you-want pricing scheme."
 msgstr ""
-"Cena za vyrobený tovar alebo poskytnuté služby. Nevypĺňajte, ak chcete aby "
-"mohli ľudia určiť výšku odmeny sami."
+"Cena za vyrobené zboží nebo poskytnuté služby. Nevyplňujte, pokud chcete aby"
+" mohli lidé určit výši odměny sami."
 
 #: field:field_price:project:label
 msgctxt "field_price:project:label"
@@ -1751,28 +1752,28 @@ msgstr "Cena"
 #: field:field_price_in_eur:project:description
 msgctxt "field_price_in_eur:project:description"
 msgid "Price in euro. Will be used if the Price field is empty"
-msgstr "Cena produktu v eurách. Bude použitá, ak pole Cena nemá hodnotu"
+msgstr "Cena produktu v eurech. Bude použita, pokud pole Cena nemá hodnotu"
 
 #: field:field_price_in_eur:project:label
 msgctxt "field_price_in_eur:project:label"
 msgid "Price in Eur"
-msgstr "Cena v eurách"
+msgstr "Cena v eurech"
 
 #: field:field_price_in_eur:project:suffix
 msgctxt "field_price_in_eur:project:suffix"
 msgid " €"
-msgstr " €"
+msgstr "€"
 
 #: field:field_privileged_users:project:description
 msgctxt "field_privileged_users:project:description"
 msgid "Users with privileged access to functions this project offers"
 msgstr ""
-"Používatelia s rozšíreným prístupom k funkciám, ktoré tento projekt ponúka"
+"Uživatelé s rozšířeným přístupem k funkcím, které tento projekt nabízí"
 
 #: field:field_privileged_users:project:label
 msgctxt "field_privileged_users:project:label"
 msgid "Privileged users"
-msgstr "Privilegovaní používatelia"
+msgstr "Privilegovaní uživatelé"
 
 #: field:field_project:co_worker_merit_allocation:label
 msgctxt "field_project:co_worker_merit_allocation:label"
@@ -1812,12 +1813,12 @@ msgstr "Chrony projektu"
 #: field:field_project_chrons:co_worker_merit_allocation:suffix
 msgctxt "field_project_chrons:co_worker_merit_allocation:suffix"
 msgid " Chr"
-msgstr " Chr"
+msgstr "Chr"
 
 #: field:field_project_exchange_rate:project:label
 msgctxt "field_project_exchange_rate:project:label"
 msgid "Project exchange rate"
-msgstr "Výmenný kurz projektu"
+msgstr "Směnný kurz projektu"
 
 #: field:field_project_id:project:label
 msgctxt "field_project_id:project:label"
@@ -1837,17 +1838,17 @@ msgstr "Odpracovaný čas"
 #: field:field_purchase_date:purchase_receipt:label
 msgctxt "field_purchase_date:purchase_receipt:label"
 msgid "Purchase Date"
-msgstr "Dátum kúpy"
+msgstr "Datum koupě"
 
 #: field:field_purchase_proof:time_share:description
 msgctxt "field_purchase_proof:time_share:description"
 msgid "The purchase receipt proving this time share was purchased"
-msgstr "The purchase receipt proving this time share was purchased"
+msgstr "Purchase receipt proving this time share was purchased"
 
 #: field:field_purchase_proof:time_share:label
 msgctxt "field_purchase_proof:time_share:label"
 msgid "Purchase proof"
-msgstr "Dôkaz kúpy"
+msgstr "Důkaz koupě"
 
 #: field:field_rate:project:description
 msgctxt "field_rate:project:description"
@@ -1855,19 +1856,19 @@ msgid ""
 "Enter the number of Chrons greater that 10, the buyer will have to pay to "
 "receive one hour share. Click the refresh icon, to see the cost in euros."
 msgstr ""
-"Zadajte počet chronov väčší ako 10, ktoré bude musieť kupujúci zaplatiť, aby"
-" získal jednohodinový podiel. Kliknutím na ikonu obnovenia zobrazíte cenu v "
-"eurách."
+"Zadejte počet chronů větší než 10, které bude muset kupující zaplatit, aby "
+"získal jednohodinový podíl. Klepnutím na ikonu obnovení zobrazíte cenu v "
+"eurech."
 
 #: field:field_rate:project:label
 msgctxt "field_rate:project:label"
 msgid "Time share cost"
-msgstr "Cena časového podielu"
+msgstr "Cena časového podílu"
 
 #: field:field_rate:project:suffix
 msgctxt "field_rate:project:suffix"
 msgid " CH"
-msgstr " CH"
+msgstr "CH"
 
 #: field:field_receipt_project:purchase_receipt:label
 msgctxt "field_receipt_project:purchase_receipt:label"
@@ -1877,7 +1878,7 @@ msgstr "Projekt"
 #: field:field_recipient:money_transfer:label
 msgctxt "field_recipient:money_transfer:label"
 msgid "Recipient"
-msgstr "Príjemca"
+msgstr "Příjemce"
 
 #: field:field_rewarded_report:purchase_receipt:description
 msgctxt "field_rewarded_report:purchase_receipt:description"
@@ -1885,23 +1886,23 @@ msgid ""
 "If the rewarded entity was a work report (and not project), specify the "
 "report here"
 msgstr ""
-"Ak bol odmeneným subjektom pracovný výkaz (a nie projekt), tu uveďte meno "
-"výkazu"
+"Pokud byl odměněným subjektem pracovní výkaz (a ne projekt), zde uveďte "
+"jméno výkazu"
 
 #: field:field_rewarded_report:purchase_receipt:label
 msgctxt "field_rewarded_report:purchase_receipt:label"
 msgid "Rewarded report"
-msgstr "Odmenený výkaz"
+msgstr "Odměněný výkaz"
 
 #: field:field_reward_amount:merits_disbursement:label
 msgctxt "field_reward_amount:merits_disbursement:label"
 msgid "Reward amount"
-msgstr "Odmena"
+msgstr "Odměna"
 
 #: field:field_reward_amount:merit_penalty:label
 msgctxt "field_reward_amount:merit_penalty:label"
 msgid "Reward amount"
-msgstr "Odmena"
+msgstr "Odměna"
 
 #: field:field_reward_merit_allocation:project:description
 msgctxt "field_reward_merit_allocation:project:description"
@@ -1909,28 +1910,28 @@ msgid ""
 "The portion of reward the project is granted that is converted to Merits. "
 "The rest is transferred to the reward recipient in Chrons or Euros."
 msgstr ""
-"Časť odmeny projektu, ktorá je vyplatená v meritoch. Zvyšok je vyplatený "
-"príjemcovi v chronoch alebo eurách."
+"Část odměny projektu, která je vyplacena v meritech. Zbytek je vyplacen "
+"příjemci v chronech nebo eurech."
 
 #: field:field_reward_merit_allocation:project:label
 msgctxt "field_reward_merit_allocation:project:label"
 msgid "Reward merit allocation"
-msgstr "Meritová časť odmeny"
+msgstr "Měřitová část odměny"
 
 #: field:field_reward_merit_allocation:project:suffix
 msgctxt "field_reward_merit_allocation:project:suffix"
 msgid " %"
-msgstr " %"
+msgstr "%"
 
 #: field:field_reward_recipient:merits_disbursement:label
 msgctxt "field_reward_recipient:merits_disbursement:label"
 msgid "Reward recipient"
-msgstr "Odmenený"
+msgstr "Odměněn"
 
 #: field:field_reward_recipient:merit_penalty:label
 msgctxt "field_reward_recipient:merit_penalty:label"
 msgid "Reward recipient"
-msgstr "Odmenený"
+msgstr "Odměněn"
 
 #: field:field_reward_target:#allowed_values:1
 msgctxt "field_reward_target:#allowed_values:1"
@@ -1950,41 +1951,41 @@ msgid ""
 "own Chron/Euro exchange rate just for its workers, choose <strong>This "
 "project</strong> option"
 msgstr ""
-"Ak chcete odmeny za projekt nasmerovať na konkrétneho používateľa, vyberte "
-"možnosť <strong>Jednotlivec</strong>. Ak chcete tento projekt nastaviť s "
-"vlastným výmenným chron/euro kurzom len pre pracovníkov projektu, vyberte "
-"možnosť <strong>Tento projekt</strong>"
+"Chcete-li odměny za projekt nasměrovat na konkrétního uživatele, vyberte "
+"možnost <strong>Jednotlivec</strong>. Chcete-li tento projekt nastavit s "
+"vlastním směnným chron/euro kurzem pouze pro pracovníky projektu, vyberte "
+"možnost <strong>Tento projekt</strong>"
 
 #: field:field_reward_target:project:label
 msgctxt "field_reward_target:project:label"
 msgid "Reward recipient"
-msgstr "Príjemca odmien"
+msgstr "Příjemce odměn"
 
 #: field:field_rovas_report:work_report:description
 msgctxt "field_rovas_report:work_report:description"
 msgid ""
 "Type in the report name containing a proof for this report you are filing."
-msgstr "Vpíšte názov výkazu, ktorý obsahuje dôkaz pre tento váš výkaz."
+msgstr "Vepište název výkazu, který obsahuje důkaz pro tento váš výkaz."
 
 #: field:field_rovas_report:work_report:label
 msgctxt "field_rovas_report:work_report:label"
 msgid "Rovas report"
-msgstr "Výkaz v Rovasi"
+msgstr "Výkaz v Rovasu"
 
 #: field:field_shareholder_project:project_merit_allocation:label
 msgctxt "field_shareholder_project:project_merit_allocation:label"
 msgid "Shareholder Project"
-msgstr "Projekt - podielnik"
+msgstr "Projekt - podílník"
 
 #: field:field_shareholder_project:project_merit_allocation:description
 msgctxt "field_shareholder_project:project_merit_allocation:description"
 msgid "Start typing name of the shareholder project"
-msgstr "Napíšte názov projektu, ktorý má mať v tomto projekte podiel"
+msgstr "Napište název projektu, který má mít v tomto projektu podíl"
 
 #: field:field_share_project_time:project_merit_allocation:label
 msgctxt "field_share_project_time:project_merit_allocation:label"
 msgid "Set share by time"
-msgstr "Nastaviť podiel podľa času"
+msgstr "Nastavit podíl podle času"
 
 #: field:field_share_project_time:project_merit_allocation:description
 msgctxt "field_share_project_time:project_merit_allocation:description"
@@ -1992,13 +1993,13 @@ msgid ""
 "Indicate if the share for this project will be given by the project total "
 "labor time instead of a set percentage"
 msgstr ""
-"Zakliknite, ak bude podiel pre tento projekt daný celkovým pracovným časom v"
-" ňom odpracovanom, namiesto fixnej percentuálnej hodnoty"
+"Zaklikněte, pokud bude podíl pro tento projekt dán celkovým pracovním časem "
+"v něm odpracovaném, namísto fixní procentuální hodnoty"
 
 #: field:field_state_province:field_address:label
 msgctxt "field_state_province:field_address:label"
 msgid "State / Province"
-msgstr "Štát / kraj"
+msgstr "Stát / kraj"
 
 #: field:field_status:#allowed_values:0
 msgctxt "field_status:#allowed_values:0"
@@ -2008,17 +2009,17 @@ msgstr "rozpracovaný"
 #: field:field_status:#allowed_values:1
 msgctxt "field_status:#allowed_values:1"
 msgid "for sale"
-msgstr "na predaj"
+msgstr "na prodej"
 
 #: field:field_status:#allowed_values:2
 msgctxt "field_status:#allowed_values:2"
 msgid "sold"
-msgstr "predaný"
+msgstr "prodán"
 
 #: field:field_status:#allowed_values:3
 msgctxt "field_status:#allowed_values:3"
 msgid "expired"
-msgstr "expirovaný"
+msgstr "expirován"
 
 #: field:field_status:project:label
 msgctxt "field_status:project:label"
@@ -2032,34 +2033,34 @@ msgid ""
 "verify other users' reports. Suspension will be automatically lifted when "
 "you publish a new work report."
 msgstr ""
-"Začiarknite pre pozastavenie žiadostí o overenie. Ak je začiarknuté, "
-"nebudete musieť overovať správy iných používateľov. Pozastavenie sa "
-"automaticky zruší ak zašlete nový pracovný výkaz."
+"Zaškrtněte pro pozastavení žádostí o ověření. Pokud je zaškrtnuto, nebudete "
+"muset ověřovat zprávy jiných uživatelů. Pozastavení se automaticky zruší, "
+"pokud zašlete nový pracovní výkaz."
 
 #: field:field_suspend_account:user:label
 msgctxt "field_suspend_account:user:label"
 msgid "Suspend verifications"
-msgstr "Pozastaviť výzvy na overenie"
+msgstr "Pozastavit výzvy k ověření"
 
 #: field:field_time_share_cost_euros:project:description
 msgctxt "field_time_share_cost_euros:project:description"
 msgid "Enter the cost of one hour share in Euros"
-msgstr "Zadajte cenu jednej hodiny podielu v eurách"
+msgstr "Zadejte cenu jedné hodiny podílu v eurech"
 
 #: field:field_time_share_cost_euros:project:label
 msgctxt "field_time_share_cost_euros:project:label"
 msgid "Time share cost euros"
-msgstr "Cena časového podielu v eurách"
+msgstr "Cena časového podílu v eurech"
 
 #: field:field_time_share_cost_euros:project:suffix
 msgctxt "field_time_share_cost_euros:project:suffix"
 msgid " €"
-msgstr " €"
+msgstr "€"
 
 #: field:field_usager:asset_usage_record:label
 msgctxt "field_usager:asset_usage_record:label"
 msgid "Consumer"
-msgstr "Kupujúci"
+msgstr "Kupující"
 
 #: field:field_verdict:#allowed_values:0
 msgctxt "field_verdict:#allowed_values:0"
@@ -2074,7 +2075,7 @@ msgstr "platný"
 #: field:field_verdict:verification:label
 msgctxt "field_verdict:verification:label"
 msgid "Verdict"
-msgstr "Rozhodnutie"
+msgstr "Rozhodnutí"
 
 #: field:field_verification_note:verification:label
 msgctxt "field_verification_note:verification:label"
@@ -2084,34 +2085,34 @@ msgstr "Poznámka"
 #: field:field_verification_notify:#allowed_values:0
 msgctxt "field_verification_notify:#allowed_values:0"
 msgid "no"
-msgstr "nie"
+msgstr "ne"
 
 #: field:field_verification_notify:#allowed_values:1
 msgctxt "field_verification_notify:#allowed_values:1"
 msgid "yes"
-msgstr "áno"
+msgstr "ano"
 
 #: field:field_verification_notify:user:description
 msgctxt "field_verification_notify:user:description"
 msgid "Check if you want to be notified when your work report gets verified"
 msgstr ""
-"Zakliknite ak chcete dostať email oznam, keď sa stane váš pracovný výkaz "
-"overený"
+"Zaklikněte pokud chcete dostat email oznámení, když se stane váš pracovní "
+"výkaz ověřený"
 
 #: field:field_verification_notify:user:label
 msgctxt "field_verification_notify:user:label"
 msgid "Verification notify"
-msgstr "Oznámenia o overení"
+msgstr "Oznámení o ověření"
 
 #: field:field_verification_reminders:#allowed_values:0
 msgctxt "field_verification_reminders:#allowed_values:0"
 msgid "do not send me the reminders"
-msgstr "nezasielať pripomienky"
+msgstr "nezasílat připomínky"
 
 #: field:field_verification_reminders:#allowed_values:1
 msgctxt "field_verification_reminders:#allowed_values:1"
 msgid "send me the reminders"
-msgstr "zasielať pripomienky"
+msgstr "zasílat připomínky"
 
 #: field:field_verification_reminders:user:description
 msgctxt "field_verification_reminders:user:description"
@@ -2119,18 +2120,18 @@ msgid ""
 "Indicate if you want to be reminded about your unverified work reports via "
 "email"
 msgstr ""
-"Zakliknite ak chcete, aby vám boli e-mailom pripomenuté vaše neoverené "
-"pracovné výkazy"
+"Zaklikněte pokud chcete, aby vám byly e-mailem připomenuty vaše neověřené "
+"pracovní výkazy"
 
 #: field:field_verification_requests:#allowed_values:0
 msgctxt "field_verification_requests:#allowed_values:0"
 msgid "do not send"
-msgstr "nezasielať"
+msgstr "nezasílat"
 
 #: field:field_verification_requests:#allowed_values:1
 msgctxt "field_verification_requests:#allowed_values:1"
 msgid "Ok to send verification requests"
-msgstr "Súhlasím so zasielaním žiadostí o overenie"
+msgstr "Souhlasím se zasíláním žádostí o ověření"
 
 #: field:field_verification_requests:user:description
 msgctxt "field_verification_requests:user:description"
@@ -2139,29 +2140,29 @@ msgid ""
 "<br>Rovas needs to send such requests in (rare) cases, when a work report is filled in NACE codes, for which not enough verifiers can be found.\r\n"
 "<br><strong>With this checkbox unchecked, your own reports filled in such NACE codes will not get verified.</strong>"
 msgstr ""
-"Nechajte zakliknuté, ak súhlasíte so zasielaním žiadostí o overenie výkazov pre typy činností, v ktorých nemusíte mať expertízu.\r\n"
-"<br>Rováš z času na čas potrebuje zaslať takéto žiadosti, keď má výkaz NACE kód, pre ktorý sa nenájde dostatok overovateľov.\r\n"
-"<br><strong>Ak toto políčko nezačiarknete, ani vaše výkazy nebudú overené, ak pre ne nenájdeme vhodných overovateľov.</strong>"
+"Nechte zakliknuté, pokud souhlasíte se zasíláním žádostí o ověření výkazů pro typy činností, ve kterých nemusíte mít expertizu.\r\n"
+"<br>Rováš čas od času potřebuje zaslat takové žádosti, když má výkaz NACE kód, pro který se nenajde dostatek ověřovatelů.\r\n"
+"<br><strong>Pokud toto políčko nezaškrtnete, ani vaše výkazy nebudou ověřeny, pokud pro ně nenajdeme vhodné ověřovatele.</strong>"
 
 #: field:field_verification_requests:user:label
 msgctxt "field_verification_requests:user:label"
 msgid "Verification requests"
-msgstr "Žiadosti o overenie"
+msgstr "Žádosti o ověření"
 
 #: field:field_verification_score:user:label
 msgctxt "field_verification_score:user:label"
 msgid "Compliance score"
-msgstr "Index súladu s pravidlami"
+msgstr "Index souladu s pravidly"
 
 #: field:field_verification_slip:work_report:label
 msgctxt "field_verification_slip:work_report:label"
 msgid "Verification tickets"
-msgstr "Doklady overenia"
+msgstr "Doklady ověření"
 
 #: field:field_verification_status:#allowed_values:0
 msgctxt "field_verification_status:#allowed_values:0"
 msgid "not verified"
-msgstr "neoverený"
+msgstr "neověřený"
 
 #: field:field_verification_status:#allowed_values:1
 msgctxt "field_verification_status:#allowed_values:1"
@@ -2176,22 +2177,22 @@ msgstr "neplatný"
 #: field:field_verification_status:work_report:label
 msgctxt "field_verification_status:work_report:label"
 msgid "Verification status"
-msgstr "Stav overenia"
+msgstr "Stav ověření"
 
 #: field:field_verified_time:verification:description
 msgctxt "field_verified_time:verification:description"
 msgid "The time as reported in the work report this verification relates to."
-msgstr "Čas uvedený v pracovnej správe, ktorej sa toto overenie týka."
+msgstr "Čas uvedený v pracovní zprávě, které se toto ověření týká."
 
 #: field:field_verified_time:verification:label
 msgctxt "field_verified_time:verification:label"
 msgid "Verified time"
-msgstr "Overený čas"
+msgstr "Ověřený čas"
 
 #: field:field_verifier:verification:label
 msgctxt "field_verifier:verification:label"
 msgid "Verifier"
-msgstr "Overovateľ"
+msgstr "Ověřovatel"
 
 #: field:field_voluntary:#allowed_values:0
 msgctxt "field_voluntary:#allowed_values:0"
@@ -2206,12 +2207,12 @@ msgstr "yes"
 #: field:field_voluntary:verification_slot:description
 msgctxt "field_voluntary:verification_slot:description"
 msgid "Can verifier refuse to verify the report?"
-msgstr "Môže overovateľ odmietnuť overenie?"
+msgstr "Může ověřovatel odmítnout ověření?"
 
 #: field:field_voluntary:verification_slot:label
 msgctxt "field_voluntary:verification_slot:label"
 msgid "Voluntary"
-msgstr "Dobrovoľný"
+msgstr "Dobrovolný"
 
 #: field:field_webhook_url:project:description
 msgctxt "field_webhook_url:project:description"
@@ -2221,16 +2222,15 @@ msgid ""
 "class=\"glyphicon glyphicon-new-window\"></span></a></strong>, enter the URL"
 " to be called after an order is processed."
 msgstr ""
-"Ak váš projekt používa <strong><a href = \"https://neofund.sk/rovas-payment-"
-"processor\" target = \"_ blank\">funkciu spracovania platieb <span "
-"class=\"glyphicon glyphicon-new-window\"></span></a></strong>, zadajte URL, "
-"ktorá sa má zavolať po dokončení objednávky."
+"Pokud váš projekt používá <strong><a href = \"https://neofund.sk/rovas-"
+"payment-processor\" target = \"_ blank\">funkci zpracování plateb <span "
+"class=\"glyphicon glyphicon-new-window\"></span></a></strong>, zadejte URL, "
+"která má být zavolána po dokončení objednávky."
 
 #: field:field_web_address:work_report:description
 msgctxt "field_web_address:work_report:description"
 msgid "Enter web address that can serve as evidence of the work performed."
-msgstr ""
-"Zadajte webovú adresu, na ktorej je možné vidieť dôkaz o vykonanej práci."
+msgstr "Zadejte webovou adresu, na které lze vidět důkaz o provedené práci."
 
 #: field:field_web_address:work_report:label
 msgctxt "field_web_address:work_report:label"
@@ -2240,7 +2240,7 @@ msgstr "Web adresa"
 #: field:field_worker_reports:project:label
 msgctxt "field_worker_reports:project:label"
 msgid "Work Reports"
-msgstr "Pracovné výkazy"
+msgstr "Pracovní výkazy"
 
 #: field:field_work_evidence:#allowed_values:1
 msgctxt "field_work_evidence:#allowed_values:1"
@@ -2255,89 +2255,89 @@ msgstr "Addresa"
 #: field:field_work_evidence:#allowed_values:3
 msgctxt "field_work_evidence:#allowed_values:3"
 msgid "Place on a Map"
-msgstr "Miesto na mape"
+msgstr "Místo na mapě"
 
 #: field:field_work_evidence:#allowed_values:4
 msgctxt "field_work_evidence:#allowed_values:4"
 msgid "Photograph"
-msgstr "Fotografia"
+msgstr "Fotografie"
 
 #: field:field_work_evidence:#allowed_values:5
 msgctxt "field_work_evidence:#allowed_values:5"
 msgid "Rovas report"
-msgstr "Výkaz v Rovasi"
+msgstr "Výkaz v Rovasu"
 
 #: field:field_work_evidence:work_report:description
 msgctxt "field_work_evidence:work_report:description"
 msgid ""
 "Choose the types of proofs you want to provide. At least one must be "
 "selected and provided."
-msgstr "Zvoľte typ informácie pre dôkaz vašej práce."
+msgstr "Zvolte typ informace pro důkaz vaší práce."
 
 #: field:field_work_evidence:work_report:label
 msgctxt "field_work_evidence:work_report:label"
 msgid "Work Evidence Source"
-msgstr "Typ dôkazu práce"
+msgstr "Typ důkazu práce"
 
 #: field:field_work_report:asset_usage_record:description
 msgctxt "field_work_report:asset_usage_record:description"
 msgid "The work report that used the asset"
-msgstr "Pracovný výkaz v ktorom bol použitý tento prenajímaný prostriedok"
+msgstr "Pracovní výkaz, ve kterém byl použit tento pronajímaný prostředek"
 
 #: field:field_work_report:asset_usage_record:label
 msgctxt "field_work_report:asset_usage_record:label"
 msgid "Work report"
-msgstr "Pracovný výkaz"
+msgstr "Pracovní výkaz"
 
 #: field:field_work_report:verification:label
 msgctxt "field_work_report:verification:label"
 msgid "Work report"
-msgstr "Pracovný výkaz"
+msgstr "Pracovní výkaz"
 
 #: field:field_work_report_notify:#allowed_values:0
 msgctxt "field_work_report_notify:#allowed_values:0"
 msgid "no"
-msgstr "nie"
+msgstr "ne"
 
 #: field:field_work_report_notify:#allowed_values:1
 msgctxt "field_work_report_notify:#allowed_values:1"
 msgid "yes"
-msgstr "áno"
+msgstr "ano"
 
 #: field:field_work_report_notify:user:description
 msgctxt "field_work_report_notify:user:description"
 msgid "Sends email notification when a new work report is created."
 msgstr ""
-"Budú zasielané email notifikácie pri zverejnení nových pracovných výkazov."
+"Budou zasílány email notifikace při zveřejnění nových pracovních výkazů."
 
 #: field:field_work_report_notify:user:label
 msgctxt "field_work_report_notify:user:label"
 msgid "Work report notify"
-msgstr "Oznamovať nové pracovné výkazy"
+msgstr "Oznamovat nové pracovní výkazy"
 
 #: field:field__asset_owning_project:asset_usage_record:description
 msgctxt "field__asset_owning_project:asset_usage_record:description"
 msgid ""
 "The project \"owning\" the asset. This is the project that will receive the "
 "reward."
-msgstr "Projekt do ktorého je smerovaný tento poplatok za použitie"
+msgstr "Projekt do kterého je směřován tento poplatek za použití"
 
 #: field:field__asset_owning_project:asset_usage_record:label
 msgctxt "field__asset_owning_project:asset_usage_record:label"
 msgid "Asset owning project"
-msgstr "Odmenený projekt"
+msgstr "Odměněný projekt"
 
 #: field:title_field:project:label
 msgctxt "title_field:project:label"
 msgid "Title"
-msgstr "Názov"
+msgstr "Název"
 
 #: field:title_field:work_report:description
 msgctxt "title_field:work_report:description"
 msgid "Short name for the activity"
-msgstr "Krátky názov činnosti"
+msgstr "Krátký název činnosti"
 
 #: field:title_field:work_report:label
 msgctxt "title_field:work_report:label"
 msgid "Activity"
-msgstr "Činnosť"
+msgstr "Činnost"
