@@ -67,3 +67,37 @@ function rovas_base_update_7001() {
     db_create_table('rovas_translation_freshness', $schema);
   }
 }
+
+/**
+ * Fix entity_translation rows with empty source (breaks /node/N/translate overview).
+ */
+function rovas_base_update_7002() {
+  if (!db_table_exists('entity_translation')) {
+    return;
+  }
+  $broken = db_select('entity_translation', 'et')
+    ->fields('et', array('entity_id', 'language'))
+    ->condition('entity_type', 'node')
+    ->condition('source', '')
+    ->execute();
+  foreach ($broken as $row) {
+    $node = node_load($row->entity_id);
+    if (!$node || !function_exists('entity_translation_enabled') || !entity_translation_enabled('node', $node)) {
+      continue;
+    }
+    $handler = entity_translation_get_handler('node', $node, TRUE);
+    $tr = $handler->getTranslations();
+    $orig = !empty($tr->original) ? $tr->original : $node->language;
+    $orig = drupal_strtolower(trim((string) $orig));
+    if ($orig === '') {
+      $orig = 'en';
+    }
+    db_update('entity_translation')
+      ->fields(array('source' => $orig))
+      ->condition('entity_type', 'node')
+      ->condition('entity_id', $row->entity_id)
+      ->condition('language', $row->language)
+      ->condition('source', '')
+      ->execute();
+  }
+}
