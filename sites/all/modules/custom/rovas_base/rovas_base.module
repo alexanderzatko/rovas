@@ -793,6 +793,10 @@ function rovas_base_translation_hash_set($nid, $target_lang, $field_name, $sourc
  * For now this is intentionally scoped to pages to avoid changing behavior of
  * other bundles that are mostly immutable in current workflows.
  *
+ * If there is no stored fingerprint but the target language already has text for
+ * this field, returns TRUE so Rules can refresh (legacy nodes or post–SK edits
+ * without a row cannot be proven aligned with the current source).
+ *
  * @param object $node
  *   Node object.
  * @param string $target_lang
@@ -828,6 +832,11 @@ function rovas_base_translation_is_stale($node, $target_lang, $field_name) {
   $current_hash = rovas_base_translation_hash_text($source_text);
   $stored = rovas_base_translation_hash_get($node->nid, $target_lang, $field_name);
   if (!$stored || empty($stored->source_hash)) {
+    $target_key = ($target_lang === 'und') ? LANGUAGE_NONE : $target_lang;
+    $target_val = isset($node->{$field_name}[$target_key][0]['value']) ? trim((string) $node->{$field_name}[$target_key][0]['value']) : '';
+    if ($target_val !== '') {
+      return TRUE;
+    }
     return FALSE;
   }
 
