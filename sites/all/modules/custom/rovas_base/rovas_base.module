@@ -673,44 +673,6 @@ function _rovas_base_map_lang_code($lang_code) {
   return rovas_base_normalize_to_enabled_language($lang_code);
 }
 
-// #region agent log
-/**
- * Log file path for Cursor debug session 11383b (remove after verification).
- *
- * Order: getenv('ROVAS_AGENT_DEBUG_LOG'); else Drupal public files (works on
- * remote dev servers); else local Cursor workspace path (Mac checkout only).
- */
-function rovas_base_debug_agent_11383b_log_path() {
-  $from_env = getenv('ROVAS_AGENT_DEBUG_LOG');
-  if (is_string($from_env) && $from_env !== '') {
-    return $from_env;
-  }
-  if (defined('DRUPAL_ROOT') && function_exists('drupal_realpath')) {
-    $public = drupal_realpath('public://');
-    if ($public && is_dir($public) && is_writable($public)) {
-      return $public . '/rovas-debug-11383b.log';
-    }
-  }
-  return '/Users/sano/Documents/homeProjects/rovas/.cursor/debug-11383b.log';
-}
-
-/**
- * Writes one NDJSON debug line for Cursor session 11383b (remove after verification).
- */
-function rovas_base_debug_agent_11383b_log($location, $message, array $data = array(), $hypothesis_id = '') {
-  $path = rovas_base_debug_agent_11383b_log_path();
-  $line = array(
-    'sessionId' => '11383b',
-    'timestamp' => (int) round(microtime(TRUE) * 1000),
-    'location' => $location,
-    'message' => $message,
-    'data' => $data,
-    'hypothesisId' => $hypothesis_id,
-  );
-  @file_put_contents($path, drupal_json_encode($line) . "\n", FILE_APPEND | LOCK_EX);
-}
-// #endregion
-
 /**
  * Returns the canonical source text for a translatable field.
  *
@@ -859,28 +821,12 @@ function rovas_base_translation_is_stale($node, $target_lang, $field_name) {
   }
   $node_lang = !empty($node->language) ? drupal_strtolower((string) $node->language) : '';
   if ($target_lang === $node_lang) {
-    // #region agent log
-    rovas_base_debug_agent_11383b_log('rovas_base.module:rovas_base_translation_is_stale', 'short_circuit_target_equals_node_lang', array(
-      'nid' => (int) $node->nid,
-      'target_lang' => $target_lang,
-      'node_lang' => $node_lang,
-      'field_name' => $field_name,
-    ), 'H2');
-    // #endregion
     return FALSE;
   }
 
   $source_lang = '';
   $source_text = rovas_base_translation_pick_source_text($node, $field_name, $source_lang);
   if ($source_text === '') {
-    // #region agent log
-    rovas_base_debug_agent_11383b_log('rovas_base.module:rovas_base_translation_is_stale', 'empty_pick_source_text', array(
-      'nid' => (int) $node->nid,
-      'target_lang' => $target_lang,
-      'field_name' => $field_name,
-      'node_lang' => $node_lang,
-    ), 'H3');
-    // #endregion
     return FALSE;
   }
   $current_hash = rovas_base_translation_hash_text($source_text);
@@ -888,39 +834,13 @@ function rovas_base_translation_is_stale($node, $target_lang, $field_name) {
   if (!$stored || empty($stored->source_hash)) {
     $target_key = ($target_lang === 'und') ? LANGUAGE_NONE : $target_lang;
     $target_val = isset($node->{$field_name}[$target_key][0]['value']) ? trim((string) $node->{$field_name}[$target_key][0]['value']) : '';
-    $missing_stale = ($target_val !== '');
-    // #region agent log
-    rovas_base_debug_agent_11383b_log('rovas_base.module:rovas_base_translation_is_stale', 'no_stored_hash_row', array(
-      'nid' => (int) $node->nid,
-      'target_lang' => $target_lang,
-      'field_name' => $field_name,
-      'source_lang' => $source_lang,
-      'current_hash8' => drupal_substr($current_hash, 0, 8),
-      'target_val_len' => drupal_strlen($target_val),
-      'stale' => $missing_stale,
-    ), 'H1');
-    // #endregion
-    if ($missing_stale) {
+    if ($target_val !== '') {
       return TRUE;
     }
     return FALSE;
   }
 
-  $stale = ($stored->source_hash !== $current_hash);
-  // #region agent log
-  rovas_base_debug_agent_11383b_log('rovas_base.module:rovas_base_translation_is_stale', 'hash_compare', array(
-    'nid' => (int) $node->nid,
-    'target_lang' => $target_lang,
-    'field_name' => $field_name,
-    'source_lang' => $source_lang,
-    'source_text_len' => drupal_strlen($source_text),
-    'stored_hash8' => drupal_substr($stored->source_hash, 0, 8),
-    'current_hash8' => drupal_substr($current_hash, 0, 8),
-    'hashes_equal' => !$stale,
-    'stale' => $stale,
-  ), $stale ? 'H1' : 'H5');
-  // #endregion
-  return $stale;
+  return $stored->source_hash !== $current_hash;
 }
 
 /**
@@ -950,16 +870,6 @@ function rovas_base_translation_record_hashes($node, $target_lang, array $field_
     }
     $hash = rovas_base_translation_hash_text($source_text);
     rovas_base_translation_hash_set($node->nid, $target_lang, $field_name, $source_lang, $hash);
-    // #region agent log
-    rovas_base_debug_agent_11383b_log('rovas_base.module:rovas_base_translation_record_hashes', 'hash_persisted', array(
-      'nid' => (int) $node->nid,
-      'target_lang' => $target_lang,
-      'field_name' => $field_name,
-      'source_lang' => $source_lang,
-      'hash8' => drupal_substr($hash, 0, 8),
-      'source_text_len' => drupal_strlen($source_text),
-    ), 'H5');
-    // #endregion
   }
 }
 
@@ -984,13 +894,6 @@ function rovas_base_translation_seed_hashes_for_existing_translation($node, $tar
   foreach (array('title_field', 'body') as $field_name) {
     $stored = rovas_base_translation_hash_get($node->nid, $target_lang, $field_name);
     if (!$stored || empty($stored->source_hash)) {
-      // #region agent log
-      rovas_base_debug_agent_11383b_log('rovas_base.module:rovas_base_translation_seed_hashes_for_existing_translation', 'seeding_missing_row', array(
-        'nid' => (int) $node->nid,
-        'target_lang' => $target_lang,
-        'field_name' => $field_name,
-      ), 'H1');
-      // #endregion
       rovas_base_translation_record_hashes($node, $target_lang, array($field_name));
     }
   }
