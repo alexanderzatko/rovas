@@ -674,16 +674,83 @@ function _rovas_base_map_lang_code($lang_code) {
 }
 
 /**
- * Returns the canonical source text for a translatable field.
+ * Returns Entity Translation's original (source) language for a node.
  *
- * Source fallback order is: sk > en > und (LANGUAGE_NONE).
+ * @param object $node
+ *   Node object.
+ *
+ * @return string
+ *   Lowercase langcode, or empty if not available.
+ */
+function rovas_base_translation_node_source_language($node) {
+  if (empty($node) || !is_object($node)) {
+    return '';
+  }
+  if (module_exists('entity_translation') && function_exists('entity_translation_enabled') && function_exists('entity_translation_get_handler') && entity_translation_enabled('node', $node)) {
+    $handler = entity_translation_get_handler('node', $node, FALSE);
+    if ($handler) {
+      $translations = $handler->getTranslations();
+      if (!empty($translations->original)) {
+        return drupal_strtolower((string) $translations->original);
+      }
+      if (method_exists($handler, 'getSourceLanguage')) {
+        $src = $handler->getSourceLanguage();
+        if ($src !== FALSE && $src !== NULL && drupal_strlen(trim((string) $src)) > 0) {
+          return drupal_strtolower(trim((string) $src));
+        }
+      }
+    }
+  }
+  return '';
+}
+
+/**
+ * Forces Title's active language during saves (paired with _end).
+ *
+ * Entity Translation + Title copy node->title into title_field[active] on
+ * presave; without this, saving while the UI/content language is the target
+ * language overwrites that translation with node->title (the source string).
+ *
+ * @param string $entity_source_lang
+ *   Language code for the node's translation source (e.g. en).
+ *
+ * @return string|null
+ *   Previous active language for title_active_language(), or NULL if unchanged.
+ */
+function rovas_base_translation_begin_presave_title_context($entity_source_lang) {
+  if (!function_exists('title_active_language')) {
+    return NULL;
+  }
+  $entity_source_lang = drupal_strtolower(trim((string) $entity_source_lang));
+  if ($entity_source_lang === '') {
+    return NULL;
+  }
+  $prev = title_active_language();
+  title_active_language($entity_source_lang);
+  return $prev;
+}
+
+/**
+ * Restores Title active language after rovas_base_translation_begin_presave_title_context().
+ *
+ * @param string|null $previous
+ *   Value returned from begin, or NULL.
+ */
+function rovas_base_translation_end_presave_title_context($previous) {
+  if ($previous !== NULL && function_exists('title_active_language')) {
+    title_active_language($previous);
+  }
+}
+
+/**
+ * Returns source field text using Entity Translation's original language only.
  *
  * @param object $node
  *   Node object.
  * @param string $field_name
  *   Field machine name (e.g. body, title_field).
  * @param string|null $source_lang
- *   Optional reference output. Receives sk|en|und when found, or ''.
+ *   Optional reference output: ET original langcode or ''.
  *
  * @return string
  *   Source text or empty string.
@@ -694,13 +761,14 @@ function rovas_base_translation_pick_source_text($node, $field_name, &$source_la
     return '';
   }
 
-  $order = array('sk', 'en', 'und');
-  foreach ($order as $lang_code) {
-    $key = ($lang_code === 'und') ? LANGUAGE_NONE : $lang_code;
-    if (!empty($node->{$field_name}[$key][0]['value'])) {
-      $source_lang = $lang_code;
-      return (string) $node->{$field_name}[$key][0]['value'];
-    }
+  $preferred = rovas_base_translation_node_source_language($node);
+  if ($preferred === '') {
+    return '';
+  }
+  $key = ($preferred === 'und') ? LANGUAGE_NONE : $preferred;
+  if (!empty($node->{$field_name}[$key][0]['value'])) {
+    $source_lang = $preferred;
+    return (string) $node->{$field_name}[$key][0]['value'];
   }
 
   return '';
@@ -759,7 +827,7 @@ function rovas_base_translation_hash_get($nid, $target_lang, $field_name) {
  * @param string $field_name
  *   Field machine name.
  * @param string $source_lang
- *   Source language code used (sk|en|und).
+ *   Entity Translation original language code (or '').
  * @param string $source_hash
  *   Hash of canonical source text.
  */
@@ -928,6 +996,9 @@ function rovas_base_process_page(&$variables) {
   $lang = isset($GLOBALS['language']->language) ? $GLOBALS['language']->language : '';
   if ($lang === '' || $lang === LANGUAGE_NONE) {
     return;
+  }
+  if (function_exists('title_entity_sync_static_reset')) {
+    title_entity_sync_static_reset('node', array($node->nid));
   }
   title_entity_sync('node', $node, $lang);
   if (!empty($node->title)) {
