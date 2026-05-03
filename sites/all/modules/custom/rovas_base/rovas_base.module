@@ -917,7 +917,12 @@ function rovas_base_process_page(&$variables) {
   if (empty($node->nid) || $node->type !== 'page' || !function_exists('title_entity_sync')) {
     return;
   }
+  // node_is_page() is TRUE on node/*/edit because it only compares nids; only
+  // sync on canonical node/% view (not edit, revisions, translate UI, etc.).
   if (!function_exists('node_is_page') || !node_is_page($node)) {
+    return;
+  }
+  if (arg(0) !== 'node' || !is_numeric(arg(1)) || (int) arg(1) !== (int) $node->nid || arg(2) !== NULL) {
     return;
   }
   $lang = isset($GLOBALS['language']->language) ? $GLOBALS['language']->language : '';
