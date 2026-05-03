@@ -4,4 +4,5 @@ core = 7.x
 package = Rovas
 
 dependencies[] = commerce
+dependencies[] = rovas_base
 dependencies[] = rovas_purchase_shares

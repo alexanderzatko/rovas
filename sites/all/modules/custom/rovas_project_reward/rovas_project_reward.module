@@ -6,7 +6,8 @@ function rovas_project_reward_menu() {
   $items = array();
 
   $items['rewpro'] = array(
-    'title' => t('Purchase Details')	,
+    'title' => 'Purchase Details',
+    'title callback' => 'rovas_project_reward_rewpro_menu_title',
     'description' => t('Reward a project'),
     'page callback' => 'drupal_get_form',
     'page arguments' => array('rovas_project_reward_form'),
@@ -25,9 +26,108 @@ function rovas_project_reward_menu() {
   return $items;
 }
 
+/**
+ * Menu title callback: translate after rewpro interface language is applied.
+ */
+function rovas_project_reward_rewpro_menu_title() {
+  return t('Purchase Details');
+}
+
+/**
+ * Implements hook_init().
+ */
+function rovas_project_reward_init() {
+  if (arg(0) === 'rewpro' || _rovas_project_reward_is_rewpro_ajax_request()) {
+    _rovas_project_reward_apply_rewpro_interface_language();
+  }
+}
+
+/**
+ * TRUE when this request is Drupal #ajax for rovas_project_reward_form.
+ */
+function _rovas_project_reward_is_rewpro_ajax_request() {
+  if (arg(0) !== 'system' || arg(1) !== 'ajax') {
+    return FALSE;
+  }
+  if (empty($_POST['form_build_id']) || !is_string($_POST['form_build_id'])) {
+    return FALSE;
+  }
+  $form_state = form_state_defaults();
+  $form = form_get_cache($_POST['form_build_id'], $form_state);
+  return ($form && isset($form['#form_id']) && $form['#form_id'] === 'rovas_project_reward_form');
+}
+
+/**
+ * Resolves interface language for /rewpro and its #ajax callbacks.
+ *
+ * Logged-in users: account language, normalized to an enabled language (EN fallback).
+ * Anonymous: lang query parameter via _rovas_base_map_lang_code(); if absent, no override.
+ * Session keeps anonymous choice for system/ajax rebuilds.
+ *
+ * @return string|false
+ *   Enabled language code, or FALSE to keep negotiation default.
+ */
+function _rovas_project_reward_resolve_rewpro_interface_langcode() {
+  global $user;
+
+  if (!function_exists('rovas_base_normalize_to_enabled_language') || !function_exists('_rovas_base_map_lang_code')) {
+    return FALSE;
+  }
+
+  $ajax = _rovas_project_reward_is_rewpro_ajax_request();
+  $rewpro_path = (arg(0) === 'rewpro');
+
+  if (!$rewpro_path && !$ajax) {
+    return FALSE;
+  }
+
+  if (!empty($user->uid)) {
+    unset($_SESSION['rovas_rewpro_ui_lang']);
+    $raw = isset($user->language) ? $user->language : '';
+    return rovas_base_normalize_to_enabled_language($raw);
+  }
+
+  if ($ajax) {
+    return !empty($_SESSION['rovas_rewpro_ui_lang']) ? $_SESSION['rovas_rewpro_ui_lang'] : FALSE;
+  }
+
+  $params = drupal_get_query_parameters();
+  if (!empty($params['lang'])) {
+    $mapped = _rovas_base_map_lang_code($params['lang']);
+    $_SESSION['rovas_rewpro_ui_lang'] = $mapped;
+    return $mapped;
+  }
+
+  unset($_SESSION['rovas_rewpro_ui_lang']);
+  return FALSE;
+}
+
+/**
+ * Sets $language (interface) when resolve returns a langcode.
+ */
+function _rovas_project_reward_apply_rewpro_interface_language() {
+  $langcode = _rovas_project_reward_resolve_rewpro_interface_langcode();
+  if ($langcode === FALSE) {
+    return;
+  }
+  $enabled_groups = language_list('enabled');
+  if (empty($enabled_groups[1]) || !is_array($enabled_groups[1])) {
+    return;
+  }
+  $languages = $enabled_groups[1];
+  if (!isset($languages[$langcode])) {
+    return;
+  }
+  global $language;
+  $language = $languages[$langcode];
+  $GLOBALS['language'] = $language;
+}
+
 function rovas_project_reward_form ($form, &$form_state) {
 
 	global $user, $language;
+
+	_rovas_project_reward_apply_rewpro_interface_language();
 
 	$text = '';
 	$weight_text = 1;
