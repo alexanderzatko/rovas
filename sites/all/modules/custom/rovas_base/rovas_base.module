@@ -898,3 +898,53 @@ function rovas_base_translation_seed_hashes_for_existing_translation($node, $tar
     }
   }
 }
+
+/**
+ * Implements hook_process_page().
+ *
+ * Aligns the HTML and page-template title with title_field for the user's
+ * interface language ($GLOBALS['language']). Rules "translate node" uses
+ * site:current-page:language (same as interface), while node_view() defaults
+ * to $GLOBALS['language_content'] for entity_prepare_view / Title sync, so
+ * when those languages differ $node->title can stay on the English source
+ * even after a successful body retranslation.
+ */
+function rovas_base_process_page(&$variables) {
+  if (empty($variables['node']) || !is_object($variables['node'])) {
+    return;
+  }
+  $node = $variables['node'];
+  if (empty($node->nid) || $node->type !== 'page' || !function_exists('title_entity_sync')) {
+    return;
+  }
+  if (!function_exists('node_is_page') || !node_is_page($node)) {
+    return;
+  }
+  $lang = isset($GLOBALS['language']->language) ? $GLOBALS['language']->language : '';
+  if ($lang === '' || $lang === LANGUAGE_NONE) {
+    return;
+  }
+  title_entity_sync('node', $node, $lang);
+  if (!empty($node->title)) {
+    $variables['title'] = check_plain($node->title);
+    drupal_set_title($node->title);
+  }
+
+  if (variable_get('rovas_debug_rules_translate_node', FALSE)) {
+    $iface = isset($GLOBALS['language']->language) ? $GLOBALS['language']->language : '';
+    $content = isset($GLOBALS['language_content']->language) ? $GLOBALS['language_content']->language : '';
+    $tf = '';
+    $k = ($lang === 'und') ? LANGUAGE_NONE : $lang;
+    if (!empty($node->title_field[$k][0]['value'])) {
+      $tf = drupal_substr($node->title_field[$k][0]['value'], 0, 120);
+    }
+    watchdog('rovas_base', 'rules translate title sync nid=@nid interface=@iface content_lang=@cl title_field[@lc]=@tf node_title=@nt', array(
+      '@nid' => (int) $node->nid,
+      '@iface' => $iface,
+      '@cl' => $content,
+      '@lc' => $lang,
+      '@tf' => $tf !== '' ? $tf : '(empty)',
+      '@nt' => drupal_substr((string) $node->title, 0, 120),
+    ), WATCHDOG_DEBUG);
+  }
+}
