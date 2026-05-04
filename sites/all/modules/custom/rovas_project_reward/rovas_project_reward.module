@@ -34,101 +34,161 @@ function rovas_project_reward_rewpro_menu_title() {
 }
 
 /**
- * Implements hook_init().
+ * Implements hook_language_negotiation_info().
  *
- * Site-wide interface language:
- * - Logged-in users: account language (normalized; unsupported → EN).
- * - Anonymous: session value from last /rewpro?lang=… visit (cleared when they
- *   open /rewpro without lang). Applies on every path until the session changes.
+ * Runs during DRUPAL_BOOTSTRAP_LANGUAGE (before hook_init), so anonymous /rewpro
+ * can override browser-based negotiation on the first hit.
  */
-function rovas_project_reward_init() {
-  _rovas_project_reward_rewpro_url_sync_session_lang();
-  _rovas_project_reward_apply_session_interface_language();
+function rovas_project_reward_language_negotiation_info() {
+  return array(
+    'rovas_rewpro_query' => array(
+      'callbacks' => array('language' => 'rovas_project_reward_language_from_rewpro_query'),
+      'weight' => -10,
+      'types' => array(LANGUAGE_TYPE_INTERFACE),
+      'name' => t('Rewpro URL (anonymous)'),
+      'description' => t('For anonymous users: use the lang query parameter on /rewpro, then a short-lived session preference. Logged-in users use their account language instead.'),
+    ),
+  );
 }
 
 /**
- * Updates anonymous session language from /rewpro only (signing unchanged).
- */
-function _rovas_project_reward_rewpro_url_sync_session_lang() {
-  global $user;
-  if (arg(0) !== 'rewpro') {
-    return;
-  }
-  if (!empty($user->uid)) {
-    unset($_SESSION['rovas_rewpro_ui_lang']);
-    return;
-  }
-  if (!function_exists('_rovas_base_map_lang_code')) {
-    return;
-  }
-  $params = drupal_get_query_parameters();
-  if (!empty($params['lang'])) {
-    $_SESSION['rovas_rewpro_ui_lang'] = _rovas_base_map_lang_code($params['lang']);
-  }
-  else {
-    unset($_SESSION['rovas_rewpro_ui_lang']);
-  }
-}
-
-/**
- * Resolves enabled interface langcode for the current request.
+ * Language negotiation callback for rovas_rewpro_query.
+ *
+ * @param array $languages
+ *   Enabled languages keyed by langcode.
  *
  * @return string|false
- *   Enabled language code, or FALSE to leave Drupal negotiation unchanged.
+ *   A langcode or FALSE to fall through to other providers.
  */
-function _rovas_project_reward_resolve_session_interface_langcode() {
+function rovas_project_reward_language_from_rewpro_query(array $languages) {
   global $user;
 
-  if (!function_exists('rovas_base_normalize_to_enabled_language')) {
+  if (!empty($user->uid)) {
+    unset($_SESSION['rovas_rewpro_ui_lang']);
     return FALSE;
   }
 
-  if (!empty($user->uid)) {
+  if (!function_exists('_rovas_base_map_lang_code') && module_exists('rovas_base')) {
+    drupal_load('module', 'rovas_base');
+  }
+  if (!function_exists('_rovas_base_map_lang_code')) {
+    return FALSE;
+  }
+
+  if (_rovas_project_reward_request_is_rewpro_path()) {
+    $raw_lang = isset($_GET['lang']) ? $_GET['lang'] : '';
+    if ($raw_lang !== '' && $raw_lang !== NULL) {
+      $langcode = _rovas_base_map_lang_code($raw_lang);
+      $_SESSION['rovas_rewpro_ui_lang'] = $langcode;
+      return isset($languages[$langcode]) ? $langcode : FALSE;
+    }
     unset($_SESSION['rovas_rewpro_ui_lang']);
-    $raw = isset($user->language) ? $user->language : '';
-    return rovas_base_normalize_to_enabled_language($raw);
+    return FALSE;
   }
 
   if (!empty($_SESSION['rovas_rewpro_ui_lang'])) {
-    return $_SESSION['rovas_rewpro_ui_lang'];
+    $langcode = $_SESSION['rovas_rewpro_ui_lang'];
+    return isset($languages[$langcode]) ? $langcode : FALSE;
   }
 
   return FALSE;
 }
 
 /**
- * Sets interface (and content) language from session / user profile.
+ * Returns TRUE when the request path is the rewpro menu route (before full bootstrap).
  *
- * Resets Commerce checkout static caches so labels rebuilt with t() under the
- * active locale (Commerce freezes many strings on first drupal_static build).
+ * @see drupal_path_initialize()
  */
-function _rovas_project_reward_apply_session_interface_language() {
-  $langcode = _rovas_project_reward_resolve_session_interface_langcode();
-  if ($langcode === FALSE) {
-    return;
+function _rovas_project_reward_request_is_rewpro_path() {
+  $q = isset($_GET['q']) ? $_GET['q'] : '';
+  if ($q === 'rewpro') {
+    return TRUE;
   }
-  $enabled_groups = language_list('enabled');
-  if (empty($enabled_groups[1]) || !is_array($enabled_groups[1])) {
-    return;
+  if ($q !== '' && preg_match('#(^|/)rewpro$#', $q)) {
+    return TRUE;
   }
-  $languages = $enabled_groups[1];
-  if (!isset($languages[$langcode])) {
-    return;
-  }
-  global $language;
-  $previous = isset($language->language) ? $language->language : NULL;
-  $language = $languages[$langcode];
-  $GLOBALS['language'] = $language;
+  return FALSE;
+}
 
-  if (isset($GLOBALS['language_content'])) {
-    $GLOBALS['language_content'] = $language;
+/**
+ * Inserts the rewpro language provider first for interface negotiation.
+ */
+function rovas_project_reward_register_rewpro_language_provider() {
+  if (!function_exists('language_negotiation_set') || !drupal_multilingual()) {
+    return;
+  }
+  require_once DRUPAL_ROOT . '/includes/language.inc';
+  drupal_static_reset('language_negotiation_info');
+
+  $type = LANGUAGE_TYPE_INTERFACE;
+  $current = variable_get("language_negotiation_$type", array());
+  if (isset($current['rovas_rewpro_query'])) {
+    return;
   }
 
-  if ($previous !== $langcode) {
-    drupal_static_reset('commerce_checkout_pages');
-    drupal_static_reset('commerce_checkout_panes');
-    drupal_static_reset('commerce_customer_profile_types');
+  $wkey = "locale_language_providers_weight_$type";
+  $pws = variable_get($wkey, array());
+  $defined = language_negotiation_info();
+  $weights = array('rovas_rewpro_query' => -10);
+  foreach ($current as $id => $data) {
+    if ($id === LANGUAGE_NEGOTIATION_DEFAULT || !isset($defined[$id])) {
+      continue;
+    }
+    $weights[$id] = isset($pws[$id]) ? $pws[$id] : language_provider_weight($defined[$id]);
   }
+  if (isset($current[LANGUAGE_NEGOTIATION_DEFAULT]) && isset($defined[LANGUAGE_NEGOTIATION_DEFAULT])) {
+    $weights[LANGUAGE_NEGOTIATION_DEFAULT] = isset($pws[LANGUAGE_NEGOTIATION_DEFAULT]) ? $pws[LANGUAGE_NEGOTIATION_DEFAULT] : language_provider_weight($defined[LANGUAGE_NEGOTIATION_DEFAULT]);
+  }
+
+  foreach ($weights as $id => $weight) {
+    $pws[$id] = $weight;
+  }
+  language_negotiation_set($type, $weights);
+  variable_set($wkey, $pws);
+}
+
+/**
+ * Removes the rewpro language provider from saved negotiation settings.
+ */
+function rovas_project_reward_unregister_rewpro_language_provider() {
+  if (!function_exists('language_negotiation_set')) {
+    return;
+  }
+  require_once DRUPAL_ROOT . '/includes/language.inc';
+  drupal_static_reset('language_negotiation_info');
+
+  $type = LANGUAGE_TYPE_INTERFACE;
+  $negotiation = variable_get("language_negotiation_$type", array());
+  $wkey = "locale_language_providers_weight_$type";
+  $pws = variable_get($wkey, array());
+  if (!isset($negotiation['rovas_rewpro_query']) && !isset($pws['rovas_rewpro_query'])) {
+    return;
+  }
+  unset($pws['rovas_rewpro_query']);
+  $defined = language_negotiation_info();
+  $weights = array();
+  foreach ($negotiation as $id => $data) {
+    if ($id === 'rovas_rewpro_query' || !isset($defined[$id])) {
+      continue;
+    }
+    $weights[$id] = isset($pws[$id]) ? $pws[$id] : language_provider_weight($defined[$id]);
+  }
+  variable_set($wkey, $pws);
+  language_negotiation_set($type, $weights);
+}
+
+/**
+ * Implements hook_enable().
+ */
+function rovas_project_reward_enable() {
+  rovas_project_reward_register_rewpro_language_provider();
+}
+
+/**
+ * Implements hook_disable().
+ */
+function rovas_project_reward_disable() {
+  rovas_project_reward_unregister_rewpro_language_provider();
 }
 
 function rovas_project_reward_form ($form, &$form_state) {

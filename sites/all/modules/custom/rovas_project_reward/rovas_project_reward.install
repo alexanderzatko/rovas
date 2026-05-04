@@ -254,3 +254,10 @@ function rovas_project_reward_update_7101() {
     db_create_table('rovas_bank_callback_delivery', $schema['rovas_bank_callback_delivery']);
   }
 }
+
+/**
+ * Register Rewpro URL language negotiation (anonymous /rewpro?lang= overrides browser).
+ */
+function rovas_project_reward_update_7102() {
+  rovas_project_reward_register_rewpro_language_provider();
+}
