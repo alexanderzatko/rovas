@@ -341,10 +341,6 @@ function rovas_project_reward_apply_rewpro_interface_language_fallback() {
     return;
   }
 
-  if (_rovas_project_reward_request_is_rewpro_path() || !empty($_SESSION['rovas_rewpro_ui_lang'])) {
-    _rovas_project_reward_commerce_checkout_static_reset();
-  }
-
   if (!function_exists('_rovas_base_map_lang_code') && module_exists('rovas_base')) {
     drupal_load('module', 'rovas_base');
   }
@@ -2500,13 +2496,6 @@ function _handle_review_form_modifications(&$form, &$form_state) {
     if (isset($form['buttons']['back']['#value'])) {
       $form['buttons']['back']['#value'] = t('Go back');
     }
-    if (variable_get('rovas_rewpro_checkout_lang_debug', FALSE)) {
-      watchdog('rpr_checkout_lang', 'Review GET: interface=@lang rewpro_session=@rp path=@path', array(
-        '@lang' => isset($GLOBALS['language']->language) ? $GLOBALS['language']->language : '?',
-        '@rp' => !empty($_SESSION['rovas_rewpro_ui_lang']) ? $_SESSION['rovas_rewpro_ui_lang'] : '-',
-        '@path' => isset($_GET['q']) ? $_GET['q'] : '',
-      ), WATCHDOG_NOTICE);
-    }
   }
 
 	$order_id = $form_state['order']->order_id;
@@ -2930,17 +2919,6 @@ function rovas_project_reward_js_alter(&$javascript) {
         unset($javascript[$path]);
       }
     }
-  }
-
-  // commerce_stripe_pi.elements.js uses Stripe(pk); pass locale for Elements/Link copy.
-  global $language;
-  if (!empty($language->language) && !empty($javascript['settings']['data']) && is_array($javascript['settings']['data'])) {
-    foreach ($javascript['settings']['data'] as &$chunk) {
-      if (is_array($chunk) && isset($chunk['stripe_pi']) && is_array($chunk['stripe_pi']) && empty($chunk['stripe_pi']['locale'])) {
-        $chunk['stripe_pi']['locale'] = $language->language;
-      }
-    }
-    unset($chunk);
   }
 }
 
