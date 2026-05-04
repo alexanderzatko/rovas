@@ -27,8 +27,12 @@
         };
 
         $("#card-element").once('elements', function() {
-          // Create an instance of Stripe Elements
-          self.stripe_pi = Stripe(settings.stripe_pi.publicKey);
+          // Create an instance of Stripe Elements (locale from Drupal.settings via rovas_project_reward_js_alter).
+          var stripeOpts = {};
+          if (settings.stripe_pi.locale) {
+            stripeOpts.locale = settings.stripe_pi.locale;
+          }
+          self.stripe_pi = Stripe(settings.stripe_pi.publicKey, stripeOpts);
           self.elements = self.stripe_pi.elements();
           self.card = {};
 
