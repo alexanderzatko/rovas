@@ -295,10 +295,11 @@ function rovas_project_reward_disable() {
 /**
  * Implements hook_module_implements_alter().
  *
- * Commerce caches checkout page titles/button labels (t() output) in
- * commerce_checkout_pages() on first access. Other modules' hook_init() can
- * trigger that while $language is still wrong if they run before us, so we
- * move this module's init to the front of the list.
+ * Commerce caches checkout page titles (t() output) in commerce_checkout_pages().
+ * Other modules' hook_init() can prime that cache before rewpro language is
+ * applied, so this module runs first. The first checkout step also overwrites
+ * the title via rowas_anonym_render_order_info(); review re-applies t() in
+ * _handle_review_form_modifications() for anonymous users.
  */
 function rovas_project_reward_module_implements_alter(&$implementations, $hook) {
   if ($hook === 'init' && isset($implementations['rovas_project_reward'])) {
@@ -2488,6 +2489,25 @@ function _handle_review_form_modifications(&$form, &$form_state) {
 	}
 
   global $user;
+
+  // The first checkout step overwrites Commerce's page title with explicit t()
+  // in rowas_anonym_render_order_info() (e.g. "Rewarding project"). The review
+  // step does not, so the title/back still reflect commerce_checkout_pages()
+  // values frozen when that static was first built (often English for uid 0).
+  // Re-apply the same msgids Commerce uses so locale picks the active language.
+  if (empty($user->uid)) {
+    drupal_set_title(t('Review order'));
+    if (isset($form['buttons']['back']['#value'])) {
+      $form['buttons']['back']['#value'] = t('Go back');
+    }
+    if (variable_get('rovas_rewpro_checkout_lang_debug', FALSE)) {
+      watchdog('rpr_checkout_lang', 'Review GET: interface=@lang rewpro_session=@rp path=@path', array(
+        '@lang' => isset($GLOBALS['language']->language) ? $GLOBALS['language']->language : '?',
+        '@rp' => !empty($_SESSION['rovas_rewpro_ui_lang']) ? $_SESSION['rovas_rewpro_ui_lang'] : '-',
+        '@path' => isset($_GET['q']) ? $_GET['q'] : '',
+      ), WATCHDOG_NOTICE);
+    }
+  }
 
 	$order_id = $form_state['order']->order_id;
 	$order = commerce_order_load($order_id);
