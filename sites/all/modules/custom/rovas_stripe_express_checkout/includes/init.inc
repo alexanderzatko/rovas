@@ -2,6 +2,45 @@
 
 require_once DRUPAL_ROOT . '/sites/all/libraries/stripe-php/init.php';
 
+/**
+ * Short language label and normalized langcode for Stripe metadata.
+ *
+ * Prefer rewpro ?lang= (passed by express_checkout.js), then session from
+ * /rewpro negotiation, then Drupal interface language, then Accept-Language.
+ *
+ * @return array
+ *   Numeric keys 0 and 1: metadata keys "language" and "language_mapped".
+ */
+function _rovas_stripe_express_checkout_init_language_metadata() {
+  if (!empty($_GET['lang']) && function_exists('_rovas_base_map_lang_code')) {
+    $mapped = _rovas_base_map_lang_code($_GET['lang']);
+    return array($mapped, $mapped);
+  }
+  if (session_id() && !empty($_SESSION['rovas_rewpro_ui_lang']) && function_exists('_rovas_base_map_lang_code')) {
+    $mapped = _rovas_base_map_lang_code($_SESSION['rovas_rewpro_ui_lang']);
+    return array($mapped, $mapped);
+  }
+  global $language;
+  if (!empty($language->language) && function_exists('_rovas_base_map_lang_code')) {
+    $mapped = _rovas_base_map_lang_code($language->language);
+    return array($mapped, $mapped);
+  }
+
+  $accept_language = isset($_SERVER['HTTP_ACCEPT_LANGUAGE']) ? $_SERVER['HTTP_ACCEPT_LANGUAGE'] : '';
+  $parsed = '';
+  if (!empty($accept_language)) {
+    $languages = explode(',', $accept_language);
+    $primary_lang = trim($languages[0]);
+    if (preg_match('/^([a-z]{2})/i', $primary_lang, $matches)) {
+      $parsed = drupal_strtolower($matches[1]);
+    }
+  }
+  $language_mapped = function_exists('_rovas_base_map_lang_code')
+    ? _rovas_base_map_lang_code($parsed)
+    : 'en';
+  return array($parsed, $language_mapped);
+}
+
 function _rovas_stripe_express_checkout_init() {
   $secret_key = variable_get('stripe_secret_key', '');
 
@@ -40,19 +79,7 @@ function _rovas_stripe_express_checkout_init() {
   $currency = 'eur';
 
   try {
-    $accept_language = isset($_SERVER['HTTP_ACCEPT_LANGUAGE']) ? $_SERVER['HTTP_ACCEPT_LANGUAGE'] : '';
-    $language = '';
-    
-    if (!empty($accept_language)) {
-			$languages = explode(',', $accept_language);
-			$primary_lang = trim($languages[0]);
-			
-			if (preg_match('/^([a-z]{2})/i', $primary_lang, $matches)) {
-				$language = strtolower($matches[1]);
-			}
-    }
-
-		$language_mapped = _rovas_base_map_lang_code ($language);
+    list($language, $language_mapped) = _rovas_stripe_express_checkout_init_language_metadata();
 
 		$intent = \Stripe\PaymentIntent::create([
 			'amount' => isset($_GET['amount']) ? (int) $_GET['amount'] : 0,

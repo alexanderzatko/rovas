@@ -328,13 +328,18 @@
           const urlParams = new URLSearchParams(window.location.search);
           const paytype = urlParams.get('paytype');
           const recipient = urlParams.get('recipient');
+          const rewproLang = urlParams.get('lang');
+          const langQuery = rewproLang
+            ? ('&lang=' + encodeURIComponent(rewproLang))
+            : '';
 
           let fetchUrl;
 
           if (paytype === 'buyshares' && recipient && Drupal.settings.rovasExpressBuyshares && Drupal.settings.rovasExpressBuyshares.token) {
             fetchUrl = '/stripe/express-checkout/init-buyshares?amount=' + cents
               + '&recipient=' + encodeURIComponent(recipient)
-              + '&token=' + encodeURIComponent(Drupal.settings.rovasExpressBuyshares.token);
+              + '&token=' + encodeURIComponent(Drupal.settings.rovasExpressBuyshares.token)
+              + langQuery;
           }
           else if (paytype === 'buyshares') {
             console.log('[ECE] buyshares init aborted: missing Drupal.settings.rovasExpressBuyshares.token');
@@ -350,7 +355,8 @@
           else if (paytype === 'buymerits' && recipient && Drupal.settings.rovasExpressBuymerits && Drupal.settings.rovasExpressBuymerits.token) {
             fetchUrl = '/stripe/express-checkout/init-buymerits?amount=' + cents
               + '&recipient=' + encodeURIComponent(recipient)
-              + '&token=' + encodeURIComponent(Drupal.settings.rovasExpressBuymerits.token);
+              + '&token=' + encodeURIComponent(Drupal.settings.rovasExpressBuymerits.token)
+              + langQuery;
           }
           else if (paytype === 'buymerits') {
             console.log('[ECE] buymerits init aborted: missing Drupal.settings.rovasExpressBuymerits.token');
@@ -389,6 +395,8 @@
           if (paytype && recipient) {
             fetchUrl += `&recipient=${encodeURIComponent(recipient)}&paytype=${encodeURIComponent(paytype)}`;
           }
+
+          fetchUrl += langQuery;
           
           // Add email parameter if email field exists and has a valid value
           if (emailValue && isValidEmail(emailValue)) {
