@@ -36,8 +36,10 @@ function rovas_project_reward_rewpro_menu_title() {
 /**
  * Implements hook_language_negotiation_info().
  *
- * Runs during DRUPAL_BOOTSTRAP_LANGUAGE (before hook_init), so anonymous /rewpro
- * can override browser-based negotiation on the first hit.
+ * Runs during DRUPAL_BOOTSTRAP_LANGUAGE when this provider is enabled in
+ * language negotiation settings (see rovas_project_reward_register_*).
+ * rovas_project_reward_init() applies the same rules again so hosts that never
+ * saved the provider still get the correct interface language before render.
  */
 function rovas_project_reward_language_negotiation_info() {
   return array(
@@ -49,6 +51,49 @@ function rovas_project_reward_language_negotiation_info() {
       'description' => t('For anonymous users: use the lang query parameter on /rewpro, then a short-lived session preference. Logged-in users use their account language instead.'),
     ),
   );
+}
+
+/**
+ * Maps ?lang= from a 3rd-party rewpro link to an enabled Drupal interface language.
+ *
+ * rovas_base_normalize_to_enabled_language() maps unknown codes (e.g. cs when
+ * Czech is not enabled) to English. Partners often send lang=cs for Czech UI;
+ * rovas_base_map_partner_user_language() maps cs/cz to Slovak when appropriate.
+ * When Czech is enabled on the site, lang=cs is preserved.
+ *
+ * @param string $raw
+ *   Raw lang query value.
+ * @param array $languages
+ *   Enabled languages keyed by langcode (same as negotiation callback).
+ *
+ * @return string|false
+ *   Enabled langcode or FALSE if nothing matches.
+ */
+function rovas_project_reward_map_rewpro_url_lang_to_enabled($raw, array $languages) {
+  $raw = trim((string) $raw);
+  if ($raw === '') {
+    return FALSE;
+  }
+  $lower = drupal_strtolower($raw);
+  $primary = $lower;
+  if (strpos($lower, '-') !== FALSE || strpos($lower, '_') !== FALSE) {
+    $parts = preg_split('/[-_]/', $lower, 2);
+    $primary = $parts[0];
+  }
+  if (strpos($primary, 'cs') === 0 && isset($languages['cs'])) {
+    return 'cs';
+  }
+  if (function_exists('rovas_base_map_partner_user_language')) {
+    $mapped = rovas_base_map_partner_user_language($raw);
+    if (isset($languages[$mapped])) {
+      return $mapped;
+    }
+  }
+  if (function_exists('_rovas_base_map_lang_code')) {
+    $mapped = _rovas_base_map_lang_code($raw);
+    return isset($languages[$mapped]) ? $mapped : FALSE;
+  }
+  return FALSE;
 }
 
 /**
@@ -65,33 +110,77 @@ function rovas_project_reward_language_from_rewpro_query(array $languages) {
 
   if (!empty($user->uid)) {
     unset($_SESSION['rovas_rewpro_ui_lang']);
+    rovas_project_reward_rewpro_language_debug_log('skip_logged_in', array());
     return FALSE;
   }
 
   if (!function_exists('_rovas_base_map_lang_code') && module_exists('rovas_base')) {
     drupal_load('module', 'rovas_base');
   }
-  if (!function_exists('_rovas_base_map_lang_code')) {
+  if (!function_exists('_rovas_base_map_lang_code') && !function_exists('rovas_base_map_partner_user_language')) {
+    rovas_project_reward_rewpro_language_debug_log('skip_no_rovas_base', array());
     return FALSE;
   }
 
   if (_rovas_project_reward_request_is_rewpro_path()) {
     $raw_lang = isset($_GET['lang']) ? $_GET['lang'] : '';
     if ($raw_lang !== '' && $raw_lang !== NULL) {
-      $langcode = _rovas_base_map_lang_code($raw_lang);
-      $_SESSION['rovas_rewpro_ui_lang'] = $langcode;
-      return isset($languages[$langcode]) ? $langcode : FALSE;
+      $langcode = rovas_project_reward_map_rewpro_url_lang_to_enabled($raw_lang, $languages);
+      if ($langcode !== FALSE) {
+        $_SESSION['rovas_rewpro_ui_lang'] = $langcode;
+        rovas_project_reward_rewpro_language_debug_log('rewpro_url_resolved', array(
+          'raw' => $raw_lang,
+          'resolved' => $langcode,
+        ));
+        return $langcode;
+      }
+      unset($_SESSION['rovas_rewpro_ui_lang']);
+      rovas_project_reward_rewpro_language_debug_log('rewpro_url_no_match', array(
+        'raw' => $raw_lang,
+        'enabled' => array_keys($languages),
+      ));
+      return FALSE;
     }
     unset($_SESSION['rovas_rewpro_ui_lang']);
+    rovas_project_reward_rewpro_language_debug_log('rewpro_url_no_lang_param', array());
     return FALSE;
   }
 
   if (!empty($_SESSION['rovas_rewpro_ui_lang'])) {
     $langcode = $_SESSION['rovas_rewpro_ui_lang'];
-    return isset($languages[$langcode]) ? $langcode : FALSE;
+    if (isset($languages[$langcode])) {
+      rovas_project_reward_rewpro_language_debug_log('session_resolved', array(
+        'resolved' => $langcode,
+      ));
+      return $langcode;
+    }
   }
 
+  rovas_project_reward_rewpro_language_debug_log('fallthrough', array());
   return FALSE;
+}
+
+/**
+ * Watchdog helper for rewpro language negotiation (disabled by default).
+ *
+ * Enable with: drush vset rovas_rewpro_language_debug 1
+ * Disable with: drush vdel rovas_rewpro_language_debug
+ */
+function rovas_project_reward_rewpro_language_debug_log($event, array $context = array()) {
+  if (!variable_get('rovas_rewpro_language_debug', FALSE)) {
+    return;
+  }
+  $context['event'] = $event;
+  $context['uid'] = isset($GLOBALS['user']->uid) ? (int) $GLOBALS['user']->uid : 0;
+  $context['q'] = isset($_GET['q']) ? $_GET['q'] : '';
+  if (isset($_GET['lang'])) {
+    $context['lang_param'] = $_GET['lang'];
+  }
+  $msg = json_encode($context);
+  if ($msg === FALSE || $msg === NULL) {
+    $msg = print_r($context, TRUE);
+  }
+  watchdog('rovas_rewpro_lang', '@msg', array('@msg' => $msg), WATCHDOG_DEBUG);
 }
 
 /**
@@ -106,6 +195,12 @@ function _rovas_project_reward_request_is_rewpro_path() {
   }
   if ($q !== '' && preg_match('#(^|/)rewpro$#', $q)) {
     return TRUE;
+  }
+  if (function_exists('request_path')) {
+    $rp = request_path();
+    if ($rp === 'rewpro' || ($rp !== '' && preg_match('#(^|/)rewpro$#', $rp))) {
+      return TRUE;
+    }
   }
   return FALSE;
 }
@@ -189,6 +284,99 @@ function rovas_project_reward_enable() {
  */
 function rovas_project_reward_disable() {
   rovas_project_reward_unregister_rewpro_language_provider();
+}
+
+/**
+ * Implements hook_init().
+ *
+ * Rewpro language is negotiated early when the rovas_rewpro_query provider is
+ * registered (see rovas_project_reward_register_rewpro_language_provider()).
+ * If that variable was never saved on a host, negotiation still yields the
+ * browser/default language — so we re-apply the same rules here before the
+ * page is built. Also disables Drupal page cache for /rewpro (language and
+ * checkout state vary by query string; CDNs should not strip the query from
+ * cache keys).
+ */
+function rovas_project_reward_init() {
+  if (_rovas_project_reward_request_is_rewpro_path()) {
+    drupal_page_is_cacheable(FALSE);
+    drupal_add_http_header('Cache-Control', 'private, no-cache, must-revalidate');
+  }
+  rovas_project_reward_apply_rewpro_interface_language_fallback();
+}
+
+/**
+ * Forces interface (and content) language for anonymous rewpro/session rules.
+ *
+ * @see rovas_project_reward_language_from_rewpro_query()
+ */
+function rovas_project_reward_apply_rewpro_interface_language_fallback() {
+  global $user;
+
+  if (!empty($user->uid)) {
+    unset($_SESSION['rovas_rewpro_ui_lang']);
+    return;
+  }
+
+  if (!function_exists('_rovas_base_map_lang_code') && module_exists('rovas_base')) {
+    drupal_load('module', 'rovas_base');
+  }
+  if (!function_exists('rovas_project_reward_map_rewpro_url_lang_to_enabled')) {
+    return;
+  }
+
+  $enabled = language_list('enabled');
+  if (empty($enabled[1]) || !is_array($enabled[1])) {
+    return;
+  }
+  $languages = $enabled[1];
+
+  if (_rovas_project_reward_request_is_rewpro_path()) {
+    $raw = isset($_GET['lang']) ? $_GET['lang'] : '';
+    if ($raw !== '' && $raw !== NULL) {
+      $langcode = rovas_project_reward_map_rewpro_url_lang_to_enabled($raw, $languages);
+      if ($langcode !== FALSE) {
+        $_SESSION['rovas_rewpro_ui_lang'] = $langcode;
+        _rovas_project_reward_force_interface_langcode($langcode, $languages);
+        return;
+      }
+      unset($_SESSION['rovas_rewpro_ui_lang']);
+    }
+    else {
+      unset($_SESSION['rovas_rewpro_ui_lang']);
+    }
+    return;
+  }
+
+  if (!empty($_SESSION['rovas_rewpro_ui_lang'])) {
+    $code = $_SESSION['rovas_rewpro_ui_lang'];
+    if (isset($languages[$code])) {
+      _rovas_project_reward_force_interface_langcode($code, $languages);
+    }
+  }
+}
+
+/**
+ * Sets global interface language and resets Commerce checkout string caches.
+ */
+function _rovas_project_reward_force_interface_langcode($langcode, array $languages) {
+  global $language;
+
+  if (!isset($languages[$langcode])) {
+    return;
+  }
+  $previous = isset($language->language) ? $language->language : NULL;
+  if ($previous === $langcode) {
+    return;
+  }
+  $language = $languages[$langcode];
+  $GLOBALS['language'] = $language;
+  if (isset($GLOBALS['language_content'])) {
+    $GLOBALS['language_content'] = $language;
+  }
+  drupal_static_reset('commerce_checkout_pages');
+  drupal_static_reset('commerce_checkout_panes');
+  drupal_static_reset('commerce_customer_profile_types');
 }
 
 function rovas_project_reward_form ($form, &$form_state) {
