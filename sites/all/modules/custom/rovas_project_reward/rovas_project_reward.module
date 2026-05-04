@@ -274,31 +274,6 @@ function _rovas_project_reward_order_qualifies_for_rewpro_lang($order) {
 }
 
 /**
- * Resolves rewpro UI langcode for anonymous shoppers (?lang=, then session).
- *
- * @return string|false
- *   Enabled langcode or FALSE.
- */
-function rovas_project_reward_resolve_rewpro_anonymous_ui_langcode() {
-  $enabled = language_list('enabled');
-  if (empty($enabled[1]) || !is_array($enabled[1])) {
-    return FALSE;
-  }
-  $languages = $enabled[1];
-  $raw = isset($_GET['lang']) ? $_GET['lang'] : '';
-  if ($raw !== '' && $raw !== NULL) {
-    $mapped = rovas_project_reward_map_rewpro_url_lang_to_enabled($raw, $languages);
-    if ($mapped !== FALSE) {
-      return $mapped;
-    }
-  }
-  if (session_id() && !empty($_SESSION['rovas_rewpro_ui_lang']) && isset($languages[$_SESSION['rovas_rewpro_ui_lang']])) {
-    return $_SESSION['rovas_rewpro_ui_lang'];
-  }
-  return FALSE;
-}
-
-/**
  * Preferred interface langcode for rewpro order output (persisted, URL, session).
  *
  * @param object $order
@@ -2090,10 +2065,12 @@ function rovas_project_reward_form_submit($form, &$form_state) {
       $order->field_buyer_email[LANGUAGE_NONE][0]['value'] = $email;
     }
 
-    // Persist rewpro UI language for anonymous EUR checkouts (thank-you page + invoice mail).
+    // Persist rewpro UI language for anonymous EUR checkouts (thank-you page + invoice
+    // mail + bank reconcile e-mail). Prefer order_rewpro_ui_langcode() so session and
+    // ?lang= match commerce-order-invoice-view.tpl.php, not only the stricter resolver.
     if ($uid == 0 && !empty($order->order_id)) {
-      $ui_lang = rovas_project_reward_resolve_rewpro_anonymous_ui_langcode();
-      if ($ui_lang !== FALSE) {
+      $ui_lang = rovas_project_reward_order_rewpro_ui_langcode($order);
+      if ($ui_lang !== NULL && $ui_lang !== '') {
         if (!isset($order->data) || !is_array($order->data)) {
           $order->data = array();
         }
@@ -4517,6 +4494,29 @@ function rovas_project_reward_create_bank_intent($order, $paytype, $recipient_id
   $epc_payload = rovas_project_reward_build_epc_qr_payload($beneficiary, $iban, $bic, $amount, $epc_remittance, $message);
   $callback_expires = REQUEST_TIME + (int) variable_get('rovas_bank_delayed_token_ttl', 3 * 24 * 3600);
 
+  $intent_meta = array(
+    'callback_context' => isset($session_data['original_url']) ? $session_data['original_url'] : '',
+    'product_name'     => isset($session_data['name']) ? $session_data['name'] : '',
+    'expiration'       => isset($session_data['expiration']) ? $session_data['expiration'] : NULL,
+  );
+  // Same idea as Stripe payment_intent metadata: survive cron/admin reconcile when
+  // composing buyer e-mail (anonymous has no account language).
+  $lang_for_meta = '';
+  if (!empty($order->data['rpr_ui_lang'])) {
+    $lang_for_meta = $order->data['rpr_ui_lang'];
+  }
+  else {
+    $resolved_lang = rovas_project_reward_order_rewpro_ui_langcode($order);
+    if ($resolved_lang !== NULL && $resolved_lang !== '') {
+      $lang_for_meta = $resolved_lang;
+    }
+  }
+  if ($lang_for_meta !== '') {
+    $intent_meta['language_mapped'] = function_exists('rovas_base_normalize_to_enabled_language')
+      ? rovas_base_normalize_to_enabled_language($lang_for_meta)
+      : $lang_for_meta;
+  }
+
   $intent_fields = array(
     'intent_id' => $intent_id,
     'provider' => $provider,
@@ -4530,11 +4530,7 @@ function rovas_project_reward_create_bank_intent($order, $paytype, $recipient_id
     'callback_token' => isset($session_data['token']) ? $session_data['token'] : '',
     'callback_expires' => $callback_expires,
     'epc_payload' => $epc_payload,
-    'meta' => drupal_json_encode(array(
-      'callback_context' => isset($session_data['original_url']) ? $session_data['original_url'] : '',
-      'product_name'     => isset($session_data['name']) ? $session_data['name'] : '',
-      'expiration'       => isset($session_data['expiration']) ? $session_data['expiration'] : NULL,
-    )),
+    'meta' => drupal_json_encode($intent_meta),
     'changed' => REQUEST_TIME,
   );
 
@@ -6530,10 +6526,41 @@ function rovas_project_reward_send_bank_transfer_notification($order, $mail_key,
     }
   }
 
-  // Determine target language, mirroring the invoice template logic.
+  // Load bank intent for 3rd-party context (callback_token, callback_context,
+  // product_name, language_mapped in intent->meta at order creation).
+  $callback_token   = '';
+  $callback_context = '';
+  $product_name     = '';
+  $intent_meta_lang = '';
+  $intent = db_select('rovas_bank_payment_intent', 'i')
+    ->fields('i')
+    ->condition('order_id', (int) $order->order_id)
+    ->execute()
+    ->fetchObject();
+  if ($intent) {
+    $callback_token = !empty($intent->callback_token) ? $intent->callback_token : '';
+    $meta = !empty($intent->meta) ? drupal_json_decode($intent->meta) : array();
+    $callback_context = !empty($meta['callback_context']) ? $meta['callback_context'] : '';
+    $product_name     = !empty($meta['product_name'])     ? $meta['product_name']     : '';
+    if (!empty($meta['language_mapped'])) {
+      $intent_meta_lang = function_exists('rovas_base_normalize_to_enabled_language')
+        ? rovas_base_normalize_to_enabled_language($meta['language_mapped'])
+        : $meta['language_mapped'];
+    }
+  }
+
+  // Determine target language, mirroring commerce-order-invoice-view.tpl.php.
   $target_lang = language_default()->language;
   if (!empty($order->data['stripe_pi']['payment_intent']['metadata']['language_mapped'])) {
     $target_lang = $order->data['stripe_pi']['payment_intent']['metadata']['language_mapped'];
+  }
+  elseif (!empty($order->data['rpr_ui_lang'])) {
+    $target_lang = function_exists('rovas_base_normalize_to_enabled_language')
+      ? rovas_base_normalize_to_enabled_language($order->data['rpr_ui_lang'])
+      : $order->data['rpr_ui_lang'];
+  }
+  elseif ($intent_meta_lang !== '') {
+    $target_lang = $intent_meta_lang;
   }
   elseif (!empty($order->uid)) {
     $account = user_load($order->uid);
@@ -6562,23 +6589,6 @@ function rovas_project_reward_send_bank_transfer_notification($order, $mail_key,
     catch (Exception $e) {
       watchdog('rovas_project_reward', 'Could not resolve recipient name for order @oid: @err', array('@oid' => $order->order_id, '@err' => $e->getMessage()), WATCHDOG_WARNING);
     }
-  }
-
-  // Load bank intent for 3rd-party context (callback_token, callback_context,
-  // product_name persisted in intent->meta at order creation).
-  $callback_token   = '';
-  $callback_context = '';
-  $product_name     = '';
-  $intent = db_select('rovas_bank_payment_intent', 'i')
-    ->fields('i')
-    ->condition('order_id', (int) $order->order_id)
-    ->execute()
-    ->fetchObject();
-  if ($intent) {
-    $callback_token = !empty($intent->callback_token) ? $intent->callback_token : '';
-    $meta = !empty($intent->meta) ? drupal_json_decode($intent->meta) : array();
-    $callback_context = !empty($meta['callback_context']) ? $meta['callback_context'] : '';
-    $product_name     = !empty($meta['product_name'])     ? $meta['product_name']     : '';
   }
 
   global $base_url;
