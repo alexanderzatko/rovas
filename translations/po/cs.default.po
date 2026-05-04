@@ -53721,8 +53721,8 @@ msgid ""
 "You can now access the product or service <strong>@product</strong> you "
 "purchased at !site_link."
 msgstr ""
-"Nyní můžete přistupovat k produktu nebo službě <strong>@product</strong>, "
-"kterou jste si zakoupili, na !site_link."
+"Nyní máte přístup k produktu nebo službě <strong>@product</strong>, "
+"které jste si zakoupili na !site_link."
 
 #: /prekladac
 msgid "You can now return to !site_link to access your purchase."
