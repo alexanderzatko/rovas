@@ -3986,6 +3986,22 @@ function rovas_project_reward_commerce_stripe_pi_payment_intent_data_alter(array
       $payment_intent_data['metadata']['product_name'] = $session['name'];
     }
   }
+
+  // Persist the active checkout UI language for invoice mail (anonymous users
+  // have no account language; commerce_invoice_receipt uses uid 0 otherwise).
+  if (!isset($payment_intent_data['metadata']) || !is_array($payment_intent_data['metadata'])) {
+    $payment_intent_data['metadata'] = array();
+  }
+  if (empty($payment_intent_data['metadata']['language_mapped'])) {
+    global $language;
+    $raw = (isset($language->language) && $language->language !== '') ? $language->language : language_default()->language;
+    if (function_exists('rovas_base_normalize_to_enabled_language')) {
+      $payment_intent_data['metadata']['language_mapped'] = rovas_base_normalize_to_enabled_language($raw);
+    }
+    else {
+      $payment_intent_data['metadata']['language_mapped'] = $raw;
+    }
+  }
 }
 
 /**
@@ -4203,7 +4219,7 @@ function rovas_project_reward_process_bank_transfer_checkout_complete($order) {
   if (function_exists('commerce_invoice_receipt_action_mail')) {
     $to = token_replace('[commerce-order:owner] <[commerce-order:mail]>', array('commerce-order' => $order), array('clear' => TRUE));
     $subject = token_replace('[site:name]: Order #[commerce-order:order-id]', array('commerce-order' => $order), array('clear' => TRUE));
-    commerce_invoice_receipt_action_mail($order, $to, $subject, NULL);
+    rovas_project_reward_invoice_receipt_action_mail($order, $to, $subject, NULL);
   }
 
   $order = commerce_order_load($order->order_id);
@@ -6066,6 +6082,85 @@ function _rovas_project_reward_admin_overpayment_notification_content(array $par
 }
 
 /**
+ * Returns the language object to use for order invoice / receipt email.
+ *
+ * Anonymous rewpro checkouts negotiate UI language via ?lang= and session; card
+ * flows also persist language_mapped on the Stripe PaymentIntent metadata.
+ *
+ * @param object $order
+ *   Commerce order entity.
+ *
+ * @return object
+ *   A Drupal language object (same shape as language_default()).
+ */
+function rovas_project_reward_order_invoice_mail_language($order) {
+  if (!empty($order->data['stripe_pi']['payment_intent']['metadata']['language_mapped'])) {
+    $code = $order->data['stripe_pi']['payment_intent']['metadata']['language_mapped'];
+    $languages = language_list('language');
+    if (isset($languages[$code])) {
+      return $languages[$code];
+    }
+  }
+
+  if (empty($order->uid) && session_id() && !empty($_SESSION['rovas_rewpro_ui_lang'])) {
+    $code = $_SESSION['rovas_rewpro_ui_lang'];
+    if (function_exists('rovas_base_normalize_to_enabled_language')) {
+      $code = rovas_base_normalize_to_enabled_language($code);
+    }
+    $languages = language_list('language');
+    if (isset($languages[$code])) {
+      return $languages[$code];
+    }
+  }
+
+  $account = user_load($order->uid);
+  return user_preferred_language($account);
+}
+
+/**
+ * Sends the Commerce Invoice Receipt email using order-aware language.
+ *
+ * Same behavior as commerce_invoice_receipt_action_mail() except the mail
+ * language is resolved for anonymous rewpro / Stripe metadata (see
+ * rovas_project_reward_order_invoice_mail_language()).
+ *
+ * @see commerce_invoice_receipt_action_mail()
+ */
+function rovas_project_reward_invoice_receipt_action_mail($order, $to, $subject, $from = NULL) {
+  if (!function_exists('commerce_invoice_receipt_action_mail')) {
+    return;
+  }
+  if (!empty($order->order_id)) {
+    $order = commerce_order_load($order->order_id, TRUE);
+  }
+  if (!$order) {
+    return;
+  }
+  $to = str_replace(array("\r", "\n"), '', $to);
+  $from = !empty($from) ? str_replace(array("\r", "\n"), '', $from) : NULL;
+
+  $recipients = explode(',', $to);
+
+  $params = array(
+    'subject' => $subject,
+    'order' => $order,
+  );
+
+  $language = rovas_project_reward_order_invoice_mail_language($order);
+
+  foreach ($recipients as $recipient) {
+    if ($recipient == '') {
+      continue;
+    }
+    $message = drupal_mail('commerce_invoice_receipt', 'invoice', $recipient, $language, $params, $from);
+
+    if ($message['result']) {
+      watchdog('rules', 'Successfully sent email to %recipient', array('%recipient' => $recipient));
+    }
+  }
+}
+
+/**
  * Implements hook_rules_action_info_alter().
  *
  * Routes invoice send action through custom wrapper so express-checkout
@@ -6105,7 +6200,7 @@ function rovas_project_reward_commerce_invoice_receipt_action_mail_execute($orde
   if ($acting_user && !empty($acting_user->uid)) {
     $user = $acting_user;
   }
-  commerce_invoice_receipt_action_mail($order, $to, $subject, $from);
+  rovas_project_reward_invoice_receipt_action_mail($order, $to, $subject, $from);
   $user = $original_user;
 
   if (rovas_project_reward_is_express_buyshares_order($order)) {

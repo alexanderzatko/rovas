@@ -47,24 +47,36 @@ if (!empty($line_item_refs[0]['line_item_id'])) {
 
 $show_order_table = TRUE;
 
-global $user;
-
 $default_lang = language_default()->language;
 
 $accept_language = isset($_SERVER['HTTP_ACCEPT_LANGUAGE']) ? $_SERVER['HTTP_ACCEPT_LANGUAGE'] : '';
 
-// Try language from payment metadata
+// Try language from payment metadata (set for Stripe PI checkouts).
 if (!empty($order->data['stripe_pi']['payment_intent']['metadata']['language_mapped'])) {
   $target_lang = $order->data['stripe_pi']['payment_intent']['metadata']['language_mapped'];
 }
-// Use registered user's language if available
-elseif ($user->uid && !empty($user->language)) {
-  $target_lang = $user->language;
+// Anonymous /rewpro ?lang= is kept in session during checkout (no metadata yet).
+elseif (session_id() && !empty($_SESSION['rovas_rewpro_ui_lang'])) {
+  $target_lang = function_exists('rovas_base_normalize_to_enabled_language')
+    ? rovas_base_normalize_to_enabled_language($_SESSION['rovas_rewpro_ui_lang'])
+    : $_SESSION['rovas_rewpro_ui_lang'];
 }
-else if ($accept_language) {
-	$target_lang = substr($accept_language, 0, 2);
+// Order owner's account language (do not use global $user — mail may run as another user).
+elseif (!empty($order->uid)) {
+  $order_owner = user_load($order->uid);
+  if ($order_owner && !empty($order_owner->language)) {
+    $target_lang = $order_owner->language;
+  }
+  elseif ($accept_language) {
+    $target_lang = substr($accept_language, 0, 2);
+  }
+  else {
+    $target_lang = $default_lang;
+  }
 }
-// Fallback to site default
+elseif ($accept_language) {
+  $target_lang = substr($accept_language, 0, 2);
+}
 else {
   $target_lang = $default_lang;
 }
