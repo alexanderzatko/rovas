@@ -31883,7 +31883,7 @@ msgstr "SEPA QR kód"
 msgid ""
 "Your order remains pending until payment is confirmed by bank settlement."
 msgstr ""
-"Objednávka zůstává ve stavu čekání, dokud platbu nepotvrdí bankovní zúčtování."
+"Vaše objednávka bude zpracována až po připsání platby na účet."
 
 #: /admin/structure/views/view/commerce_orders/edit/admin_page?destination=admin/commerce/orders
 msgid "Transaction"

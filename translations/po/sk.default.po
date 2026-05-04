@@ -31976,7 +31976,7 @@ msgstr "SEPA QR kód"
 msgid ""
 "Your order remains pending until payment is confirmed by bank settlement."
 msgstr ""
-"Objednávka zostáva v stave čakania, kým platbu nepotvrdí bankové zúčtovanie."
+"Vaša objednávka bude spracovaná až po pripísaní platby na účet."
 
 #: /admin/structure/views/view/commerce_orders/edit/admin_page?destination=admin/commerce/orders
 msgid "Transaction"
