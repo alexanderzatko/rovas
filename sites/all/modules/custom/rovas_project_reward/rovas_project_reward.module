@@ -35,125 +35,51 @@ function rovas_project_reward_rewpro_menu_title() {
 
 /**
  * Implements hook_init().
+ *
+ * Site-wide interface language:
+ * - Logged-in users: account language (normalized; unsupported → EN).
+ * - Anonymous: session value from last /rewpro?lang=… visit (cleared when they
+ *   open /rewpro without lang). Applies on every path until the session changes.
  */
 function rovas_project_reward_init() {
-  if (arg(0) === 'rewpro'
-      || _rovas_project_reward_is_rewpro_ajax_request()
-      || _rovas_project_reward_is_rewpro_checkout_path()
-      || _rovas_project_reward_is_rewpro_checkout_ajax_request()) {
-    _rovas_project_reward_apply_rewpro_interface_language();
-  }
+  _rovas_project_reward_rewpro_url_sync_session_lang();
+  _rovas_project_reward_apply_session_interface_language();
 }
 
 /**
- * Loads cached form + form_state for a system/ajax POST (single fetch per request).
- *
- * @return array|false
- *   Array with keys 'form', 'form_state', or FALSE.
+ * Updates anonymous session language from /rewpro only (signing unchanged).
  */
-function _rovas_project_reward_ajax_load_form_bundle() {
-  static $bundle = NULL;
-  static $resolved = FALSE;
-  if (!$resolved) {
-    $resolved = TRUE;
-    $bundle = FALSE;
-    if (arg(0) === 'system' && arg(1) === 'ajax' && !empty($_POST['form_build_id']) && is_string($_POST['form_build_id'])) {
-      $form_state = form_state_defaults();
-      $form = form_get_cache($_POST['form_build_id'], $form_state);
-      if ($form) {
-        $bundle = array('form' => $form, 'form_state' => $form_state);
-      }
-    }
+function _rovas_project_reward_rewpro_url_sync_session_lang() {
+  global $user;
+  if (arg(0) !== 'rewpro') {
+    return;
   }
-  return $bundle;
+  if (!empty($user->uid)) {
+    unset($_SESSION['rovas_rewpro_ui_lang']);
+    return;
+  }
+  if (!function_exists('_rovas_base_map_lang_code')) {
+    return;
+  }
+  $params = drupal_get_query_parameters();
+  if (!empty($params['lang'])) {
+    $_SESSION['rovas_rewpro_ui_lang'] = _rovas_base_map_lang_code($params['lang']);
+  }
+  else {
+    unset($_SESSION['rovas_rewpro_ui_lang']);
+  }
 }
 
 /**
- * TRUE when this request is Drupal #ajax for rovas_project_reward_form.
- */
-function _rovas_project_reward_is_rewpro_ajax_request() {
-  $b = _rovas_project_reward_ajax_load_form_bundle();
-  return ($b && isset($b['form']['#form_id']) && $b['form']['#form_id'] === 'rovas_project_reward_form');
-}
-
-/**
- * TRUE when #ajax rebuild is for a Commerce checkout form tied to a rewpro order.
- */
-function _rovas_project_reward_is_rewpro_checkout_ajax_request() {
-  $b = _rovas_project_reward_ajax_load_form_bundle();
-  if (!$b || empty($b['form']['#form_id'])) {
-    return FALSE;
-  }
-  $fid = $b['form']['#form_id'];
-  if (strpos($fid, 'commerce_checkout_form_') !== 0) {
-    return FALSE;
-  }
-  if (empty($b['form_state']['order']) || empty($b['form_state']['order']->order_id)) {
-    return FALSE;
-  }
-  return _rovas_project_reward_order_is_rewpro($b['form_state']['order']);
-}
-
-/**
- * TRUE when the current path is checkout/{order_id}/… for a rewpro Commerce order.
- */
-function _rovas_project_reward_is_rewpro_checkout_path() {
-  if (arg(0) !== 'checkout') {
-    return FALSE;
-  }
-  $oid = arg(1);
-  if ($oid === NULL || $oid === '' || !ctype_digit((string) $oid)) {
-    return FALSE;
-  }
-  return _rovas_project_reward_order_id_is_rewpro((int) $oid);
-}
-
-/**
- * TRUE when the Commerce order was created in the rewpro flow.
- */
-function _rovas_project_reward_order_is_rewpro($order) {
-  return $order && is_object($order) && !empty($order->data['rpr_paytype']);
-}
-
-/**
- * Cached rewpro check by order id (avoids repeated loads per request).
- */
-function _rovas_project_reward_order_id_is_rewpro($order_id) {
-  static $cache = array();
-  $order_id = (int) $order_id;
-  if ($order_id < 1) {
-    return FALSE;
-  }
-  if (!array_key_exists($order_id, $cache)) {
-    $order = function_exists('commerce_order_load') ? commerce_order_load($order_id) : NULL;
-    $cache[$order_id] = _rovas_project_reward_order_is_rewpro($order);
-  }
-  return $cache[$order_id];
-}
-
-/**
- * Resolves interface language for /rewpro, Commerce checkout for rewpro orders, and #ajax.
- *
- * Logged-in users: account language, normalized to an enabled language (EN fallback).
- * Anonymous: lang query on /rewpro via _rovas_base_map_lang_code(); session carries choice
- * through rewpro #ajax and rewpro checkout (including card payment steps).
+ * Resolves enabled interface langcode for the current request.
  *
  * @return string|false
- *   Enabled language code, or FALSE to keep negotiation default.
+ *   Enabled language code, or FALSE to leave Drupal negotiation unchanged.
  */
-function _rovas_project_reward_resolve_rewpro_interface_langcode() {
+function _rovas_project_reward_resolve_session_interface_langcode() {
   global $user;
 
-  if (!function_exists('rovas_base_normalize_to_enabled_language') || !function_exists('_rovas_base_map_lang_code')) {
-    return FALSE;
-  }
-
-  $rewpro_path = (arg(0) === 'rewpro');
-  $checkout_rewpro = _rovas_project_reward_is_rewpro_checkout_path();
-  $ajax_rewpro = _rovas_project_reward_is_rewpro_ajax_request();
-  $ajax_checkout_rewpro = _rovas_project_reward_is_rewpro_checkout_ajax_request();
-
-  if (!$rewpro_path && !$checkout_rewpro && !$ajax_rewpro && !$ajax_checkout_rewpro) {
+  if (!function_exists('rovas_base_normalize_to_enabled_language')) {
     return FALSE;
   }
 
@@ -163,37 +89,21 @@ function _rovas_project_reward_resolve_rewpro_interface_langcode() {
     return rovas_base_normalize_to_enabled_language($raw);
   }
 
-  if ($ajax_rewpro || $ajax_checkout_rewpro) {
-    return !empty($_SESSION['rovas_rewpro_ui_lang']) ? $_SESSION['rovas_rewpro_ui_lang'] : FALSE;
-  }
-
-  if ($rewpro_path) {
-    $params = drupal_get_query_parameters();
-    if (!empty($params['lang'])) {
-      $mapped = _rovas_base_map_lang_code($params['lang']);
-      $_SESSION['rovas_rewpro_ui_lang'] = $mapped;
-      return $mapped;
-    }
-    unset($_SESSION['rovas_rewpro_ui_lang']);
-    return FALSE;
-  }
-
-  if ($checkout_rewpro) {
-    return !empty($_SESSION['rovas_rewpro_ui_lang']) ? $_SESSION['rovas_rewpro_ui_lang'] : FALSE;
+  if (!empty($_SESSION['rovas_rewpro_ui_lang'])) {
+    return $_SESSION['rovas_rewpro_ui_lang'];
   }
 
   return FALSE;
 }
 
 /**
- * Sets interface (and content) language when resolve returns a langcode.
+ * Sets interface (and content) language from session / user profile.
  *
- * Commerce caches checkout page/pane labels in drupal_static via t() on first
- * build, which often runs before hook_init — so we reset those caches after
- * switching so checkout/review titles and buttons pick up the active locale.
+ * Resets Commerce checkout static caches so labels rebuilt with t() under the
+ * active locale (Commerce freezes many strings on first drupal_static build).
  */
-function _rovas_project_reward_apply_rewpro_interface_language() {
-  $langcode = _rovas_project_reward_resolve_rewpro_interface_langcode();
+function _rovas_project_reward_apply_session_interface_language() {
+  $langcode = _rovas_project_reward_resolve_session_interface_langcode();
   if ($langcode === FALSE) {
     return;
   }
@@ -206,25 +116,24 @@ function _rovas_project_reward_apply_rewpro_interface_language() {
     return;
   }
   global $language;
+  $previous = isset($language->language) ? $language->language : NULL;
   $language = $languages[$langcode];
   $GLOBALS['language'] = $language;
 
-  // Align content language with interface so field/pane labels use the same
-  // locale as t() for Commerce checkout (avoids EN headers + CS fields).
   if (isset($GLOBALS['language_content'])) {
     $GLOBALS['language_content'] = $language;
   }
 
-  drupal_static_reset('commerce_checkout_pages');
-  drupal_static_reset('commerce_checkout_panes');
-  drupal_static_reset('commerce_customer_profile_types');
+  if ($previous !== $langcode) {
+    drupal_static_reset('commerce_checkout_pages');
+    drupal_static_reset('commerce_checkout_panes');
+    drupal_static_reset('commerce_customer_profile_types');
+  }
 }
 
 function rovas_project_reward_form ($form, &$form_state) {
 
 	global $user, $language;
-
-	_rovas_project_reward_apply_rewpro_interface_language();
 
 	$text = '';
 	$weight_text = 1;
