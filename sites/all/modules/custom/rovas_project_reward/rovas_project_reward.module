@@ -141,7 +141,13 @@ function rovas_project_reward_language_from_rewpro_query(array $languages) {
       ));
       return FALSE;
     }
-    unset($_SESSION['rovas_rewpro_ui_lang']);
+    // Form POSTs to /rewpro usually drop ?lang= from the URL; keep session choice.
+    if (!empty($_SESSION['rovas_rewpro_ui_lang']) && isset($languages[$_SESSION['rovas_rewpro_ui_lang']])) {
+      rovas_project_reward_rewpro_language_debug_log('rewpro_path_session_preserved', array(
+        'resolved' => $_SESSION['rovas_rewpro_ui_lang'],
+      ));
+      return $_SESSION['rovas_rewpro_ui_lang'];
+    }
     rovas_project_reward_rewpro_language_debug_log('rewpro_url_no_lang_param', array());
     return FALSE;
   }
@@ -363,7 +369,10 @@ function rovas_project_reward_apply_rewpro_interface_language_fallback() {
       unset($_SESSION['rovas_rewpro_ui_lang']);
     }
     else {
-      unset($_SESSION['rovas_rewpro_ui_lang']);
+      // Preserve ?lang= across rewpro POSTs (form action often has no query string).
+      if (!empty($_SESSION['rovas_rewpro_ui_lang']) && isset($languages[$_SESSION['rovas_rewpro_ui_lang']])) {
+        _rovas_project_reward_force_interface_langcode($_SESSION['rovas_rewpro_ui_lang'], $languages);
+      }
     }
     return;
   }
@@ -2901,6 +2910,17 @@ function rovas_project_reward_js_alter(&$javascript) {
         unset($javascript[$path]);
       }
     }
+  }
+
+  // commerce_stripe_pi.elements.js uses Stripe(pk); pass locale for Elements/Link copy.
+  global $language;
+  if (!empty($language->language) && !empty($javascript['settings']['data']) && is_array($javascript['settings']['data'])) {
+    foreach ($javascript['settings']['data'] as &$chunk) {
+      if (is_array($chunk) && isset($chunk['stripe_pi']) && is_array($chunk['stripe_pi']) && empty($chunk['stripe_pi']['locale'])) {
+        $chunk['stripe_pi']['locale'] = $language->language;
+      }
+    }
+    unset($chunk);
   }
 }
 
