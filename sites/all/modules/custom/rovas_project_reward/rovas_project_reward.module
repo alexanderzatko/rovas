@@ -186,7 +186,11 @@ function _rovas_project_reward_resolve_rewpro_interface_langcode() {
 }
 
 /**
- * Sets $language (interface) when resolve returns a langcode.
+ * Sets interface (and content) language when resolve returns a langcode.
+ *
+ * Commerce caches checkout page/pane labels in drupal_static via t() on first
+ * build, which often runs before hook_init — so we reset those caches after
+ * switching so checkout/review titles and buttons pick up the active locale.
  */
 function _rovas_project_reward_apply_rewpro_interface_language() {
   $langcode = _rovas_project_reward_resolve_rewpro_interface_langcode();
@@ -204,6 +208,16 @@ function _rovas_project_reward_apply_rewpro_interface_language() {
   global $language;
   $language = $languages[$langcode];
   $GLOBALS['language'] = $language;
+
+  // Align content language with interface so field/pane labels use the same
+  // locale as t() for Commerce checkout (avoids EN headers + CS fields).
+  if (isset($GLOBALS['language_content'])) {
+    $GLOBALS['language_content'] = $language;
+  }
+
+  drupal_static_reset('commerce_checkout_pages');
+  drupal_static_reset('commerce_checkout_panes');
+  drupal_static_reset('commerce_customer_profile_types');
 }
 
 function rovas_project_reward_form ($form, &$form_state) {
