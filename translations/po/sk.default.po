@@ -17636,7 +17636,7 @@ msgstr ""
 
 #: /admin/store/settings/payment/method/bank_transfer
 msgid "IBAN"
-msgstr ""
+msgstr "IBAN"
 
 #: /admin/store/settings/payment/method/bank_transfer
 msgid "International Bank Account Number"
@@ -31951,30 +31951,32 @@ msgstr ""
 
 #: /checkout/2570/paypal_ec
 msgid "Bank transfer"
-msgstr ""
+msgstr "Bankový prevod"
 
 #: /checkout/2570/paypal_ec
 msgid ""
 "Please complete your order by transferring the amount to the bank account "
 "below."
 msgstr ""
+"Objednávku dokončite prevodom sumy na bankový účet uvedený nižšie."
 
 #: /checkout/2570/paypal_ec
 msgid "Beneficiary"
-msgstr ""
+msgstr "Príjemca"
 
 #: /checkout/2570/paypal_ec
 msgid "Reference (VS)"
-msgstr ""
+msgstr "Referencia (VS)"
 
 #: /checkout/2570/paypal_ec
 msgid "SEPA QR code"
-msgstr ""
+msgstr "SEPA QR kód"
 
 #: /checkout/2570/paypal_ec
 msgid ""
 "Your order remains pending until payment is confirmed by bank settlement."
 msgstr ""
+"Objednávka zostáva v stave čakania, kým platbu nepotvrdí bankové zúčtovanie."
 
 #: /admin/structure/views/view/commerce_orders/edit/admin_page?destination=admin/commerce/orders
 msgid "Transaction"
@@ -54060,3 +54062,11 @@ msgstr ""
 #: /rewpro?paytype=buymerits&recipient=289
 msgid "Use your Chrons or Euros to add Merits to your account"
 msgstr "Zvýšte počet meritov na vašom účte za chrony alebo eurá"
+
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module
+msgid "Variable symbol: @vs"
+msgstr "Variabilný symbol: @vs"
+
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module
+msgid "BIC"
+msgstr "BIC"

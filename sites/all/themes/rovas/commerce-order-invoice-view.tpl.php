@@ -55,6 +55,12 @@ $accept_language = isset($_SERVER['HTTP_ACCEPT_LANGUAGE']) ? $_SERVER['HTTP_ACCE
 if (!empty($order->data['stripe_pi']['payment_intent']['metadata']['language_mapped'])) {
   $target_lang = $order->data['stripe_pi']['payment_intent']['metadata']['language_mapped'];
 }
+// Anonymous rewpro: persisted on the order at submit (survives invoice mail / shutdown).
+elseif (!empty($order->data['rpr_ui_lang'])) {
+  $target_lang = function_exists('rovas_base_normalize_to_enabled_language')
+    ? rovas_base_normalize_to_enabled_language($order->data['rpr_ui_lang'])
+    : $order->data['rpr_ui_lang'];
+}
 // Anonymous /rewpro ?lang= is kept in session during checkout (no metadata yet).
 elseif (session_id() && !empty($_SESSION['rovas_rewpro_ui_lang'])) {
   $target_lang = function_exists('rovas_base_normalize_to_enabled_language')

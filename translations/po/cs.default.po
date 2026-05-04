@@ -31858,30 +31858,32 @@ msgstr ""
 
 #: /checkout/2570/paypal_ec
 msgid "Bank transfer"
-msgstr ""
+msgstr "Bankovní převod"
 
 #: /checkout/2570/paypal_ec
 msgid ""
 "Please complete your order by transferring the amount to the bank account "
 "below."
 msgstr ""
+"Dokončete objednávku převodem částky na bankovní účet uvedený níže."
 
 #: /checkout/2570/paypal_ec
 msgid "Beneficiary"
-msgstr ""
+msgstr "Příjemce"
 
 #: /checkout/2570/paypal_ec
 msgid "Reference (VS)"
-msgstr ""
+msgstr "Reference (VS)"
 
 #: /checkout/2570/paypal_ec
 msgid "SEPA QR code"
-msgstr ""
+msgstr "SEPA QR kód"
 
 #: /checkout/2570/paypal_ec
 msgid ""
 "Your order remains pending until payment is confirmed by bank settlement."
 msgstr ""
+"Objednávka zůstává ve stavu čekání, dokud platbu nepotvrdí bankovní zúčtování."
 
 #: /admin/structure/views/view/commerce_orders/edit/admin_page?destination=admin/commerce/orders
 msgid "Transaction"
@@ -31890,6 +31892,14 @@ msgstr ""
 #: sites/all/modules/custom/rovas_stripe_express_checkout/js/express_checkout.js
 msgid "Enter a valid amount (up to two decimal places)."
 msgstr ""
+
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module
+msgid "Variable symbol: @vs"
+msgstr "Variabilní symbol: @vs"
+
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module
+msgid "BIC"
+msgstr "BIC"
 
 #: /buyshares/45623
 msgid "Redirect to unified purchase flow."

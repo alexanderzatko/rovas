@@ -48,7 +48,7 @@ function rovas_project_reward_language_negotiation_info() {
       'weight' => -10,
       'types' => array(LANGUAGE_TYPE_INTERFACE),
       'name' => t('Rewpro URL (anonymous)'),
-      'description' => t('For anonymous users: use the lang query parameter on /rewpro, then a short-lived session preference. Logged-in users use their account language instead.'),
+      'description' => t('For anonymous users: use the lang query parameter on /rewpro and on checkout order-complete pages; session and order-stored language apply across checkout. Logged-in users use their account language instead.'),
     ),
   );
 }
@@ -122,7 +122,10 @@ function rovas_project_reward_language_from_rewpro_query(array $languages) {
     return FALSE;
   }
 
-  if (_rovas_project_reward_request_is_rewpro_path()) {
+  $rewpro_path = _rovas_project_reward_request_is_rewpro_path();
+  $checkout_complete_path = _rovas_project_reward_request_is_rewpro_checkout_complete_path();
+
+  if ($rewpro_path || $checkout_complete_path) {
     $raw_lang = isset($_GET['lang']) ? $_GET['lang'] : '';
     if ($raw_lang !== '' && $raw_lang !== NULL) {
       $langcode = rovas_project_reward_map_rewpro_url_lang_to_enabled($raw_lang, $languages);
@@ -131,25 +134,48 @@ function rovas_project_reward_language_from_rewpro_query(array $languages) {
         rovas_project_reward_rewpro_language_debug_log('rewpro_url_resolved', array(
           'raw' => $raw_lang,
           'resolved' => $langcode,
+          'path' => $rewpro_path ? 'rewpro' : 'checkout_complete',
         ));
         return $langcode;
       }
-      unset($_SESSION['rovas_rewpro_ui_lang']);
-      rovas_project_reward_rewpro_language_debug_log('rewpro_url_no_match', array(
-        'raw' => $raw_lang,
-        'enabled' => array_keys($languages),
-      ));
+      if ($rewpro_path) {
+        unset($_SESSION['rovas_rewpro_ui_lang']);
+        rovas_project_reward_rewpro_language_debug_log('rewpro_url_no_match', array(
+          'raw' => $raw_lang,
+          'enabled' => array_keys($languages),
+        ));
+        return FALSE;
+      }
+    }
+
+    if ($rewpro_path) {
+      // Form POSTs to /rewpro usually drop ?lang= from the URL; keep session choice.
+      if (!empty($_SESSION['rovas_rewpro_ui_lang']) && isset($languages[$_SESSION['rovas_rewpro_ui_lang']])) {
+        rovas_project_reward_rewpro_language_debug_log('rewpro_path_session_preserved', array(
+          'resolved' => $_SESSION['rovas_rewpro_ui_lang'],
+        ));
+        return $_SESSION['rovas_rewpro_ui_lang'];
+      }
+      rovas_project_reward_rewpro_language_debug_log('rewpro_url_no_lang_param', array());
       return FALSE;
     }
-    // Form POSTs to /rewpro usually drop ?lang= from the URL; keep session choice.
-    if (!empty($_SESSION['rovas_rewpro_ui_lang']) && isset($languages[$_SESSION['rovas_rewpro_ui_lang']])) {
-      rovas_project_reward_rewpro_language_debug_log('rewpro_path_session_preserved', array(
-        'resolved' => $_SESSION['rovas_rewpro_ui_lang'],
-      ));
-      return $_SESSION['rovas_rewpro_ui_lang'];
+
+    if ($checkout_complete_path && module_exists('commerce') && function_exists('commerce_order_load') && function_exists('arg')) {
+      $oid = arg(1);
+      if (is_numeric($oid)) {
+        $complete_order = commerce_order_load((int) $oid);
+        if ($complete_order && _rovas_project_reward_order_qualifies_for_rewpro_lang($complete_order) && !empty($complete_order->data['rpr_ui_lang']) && isset($languages[$complete_order->data['rpr_ui_lang']])) {
+          $_SESSION['rovas_rewpro_ui_lang'] = $complete_order->data['rpr_ui_lang'];
+          rovas_project_reward_rewpro_language_debug_log('checkout_complete_order_lang', array(
+            'resolved' => $complete_order->data['rpr_ui_lang'],
+            'order_id' => $complete_order->order_id,
+          ));
+          return $complete_order->data['rpr_ui_lang'];
+        }
+      }
+      rovas_project_reward_rewpro_language_debug_log('checkout_complete_no_stored_lang', array());
+      return FALSE;
     }
-    rovas_project_reward_rewpro_language_debug_log('rewpro_url_no_lang_param', array());
-    return FALSE;
   }
 
   if (!empty($_SESSION['rovas_rewpro_ui_lang'])) {
@@ -209,6 +235,145 @@ function _rovas_project_reward_request_is_rewpro_path() {
     }
   }
   return FALSE;
+}
+
+/**
+ * TRUE when the request is Commerce checkout order complete (thank-you page).
+ */
+function _rovas_project_reward_request_is_rewpro_checkout_complete_path() {
+  if (function_exists('arg')) {
+    if (arg(0) === 'checkout' && arg(2) === 'complete' && is_numeric(arg(1))) {
+      return TRUE;
+    }
+  }
+  $q = isset($_GET['q']) ? $_GET['q'] : '';
+  if ($q !== '' && preg_match('#^checkout/\d+/complete#', $q)) {
+    return TRUE;
+  }
+  if (function_exists('request_path')) {
+    $rp = request_path();
+    if ($rp !== '' && preg_match('#^checkout/\d+/complete#', $rp)) {
+      return TRUE;
+    }
+  }
+  return FALSE;
+}
+
+/**
+ * TRUE when the order is from the rewpro reward flow (language + bank UX apply).
+ */
+function _rovas_project_reward_order_qualifies_for_rewpro_lang($order) {
+  if (empty($order) || empty($order->order_id)) {
+    return FALSE;
+  }
+  if (!empty($order->data['rpr_paytype'])) {
+    return TRUE;
+  }
+  $recipient_items = field_get_items('commerce_order', $order, 'field_payment_recipient');
+  return !empty($recipient_items[0]['value']);
+}
+
+/**
+ * Resolves rewpro UI langcode for anonymous shoppers (?lang=, then session).
+ *
+ * @return string|false
+ *   Enabled langcode or FALSE.
+ */
+function rovas_project_reward_resolve_rewpro_anonymous_ui_langcode() {
+  $enabled = language_list('enabled');
+  if (empty($enabled[1]) || !is_array($enabled[1])) {
+    return FALSE;
+  }
+  $languages = $enabled[1];
+  $raw = isset($_GET['lang']) ? $_GET['lang'] : '';
+  if ($raw !== '' && $raw !== NULL) {
+    $mapped = rovas_project_reward_map_rewpro_url_lang_to_enabled($raw, $languages);
+    if ($mapped !== FALSE) {
+      return $mapped;
+    }
+  }
+  if (session_id() && !empty($_SESSION['rovas_rewpro_ui_lang']) && isset($languages[$_SESSION['rovas_rewpro_ui_lang']])) {
+    return $_SESSION['rovas_rewpro_ui_lang'];
+  }
+  return FALSE;
+}
+
+/**
+ * Preferred interface langcode for rewpro order output (persisted, URL, session).
+ *
+ * @param object $order
+ *   Commerce order entity.
+ *
+ * @return string|null
+ *   Normalized enabled langcode, or NULL to use default negotiation.
+ */
+function rovas_project_reward_order_rewpro_ui_langcode($order) {
+  if (empty($order)) {
+    return NULL;
+  }
+  $raw = isset($_GET['lang']) ? $_GET['lang'] : '';
+  if ($raw !== '' && $raw !== NULL && function_exists('language_list')) {
+    $enabled = language_list('enabled');
+    if (!empty($enabled[1]) && is_array($enabled[1])) {
+      $mapped = rovas_project_reward_map_rewpro_url_lang_to_enabled($raw, $enabled[1]);
+      if ($mapped !== FALSE) {
+        return function_exists('rovas_base_normalize_to_enabled_language')
+          ? rovas_base_normalize_to_enabled_language($mapped)
+          : $mapped;
+      }
+    }
+  }
+  if (!empty($order->data['rpr_ui_lang'])) {
+    $code = $order->data['rpr_ui_lang'];
+    if (function_exists('rovas_base_normalize_to_enabled_language')) {
+      $code = rovas_base_normalize_to_enabled_language($code);
+    }
+    return $code;
+  }
+  if (session_id() && !empty($_SESSION['rovas_rewpro_ui_lang'])) {
+    $code = $_SESSION['rovas_rewpro_ui_lang'];
+    if (function_exists('rovas_base_normalize_to_enabled_language')) {
+      $code = rovas_base_normalize_to_enabled_language($code);
+    }
+    return $code;
+  }
+  return NULL;
+}
+
+/**
+ * RFC-safe recipient line for invoice mail (tokens can yield "Anonymous <>").
+ *
+ * @param object $order
+ *   Commerce order entity.
+ *
+ * @return string
+ *   Address string or empty if no valid e-mail.
+ */
+function _rovas_project_reward_invoice_mail_to_address($order) {
+  if (empty($order)) {
+    return '';
+  }
+  $mail = '';
+  if (!empty($order->mail) && function_exists('valid_email_address') && valid_email_address(trim($order->mail))) {
+    $mail = trim($order->mail);
+  }
+  elseif (function_exists('field_get_items') && function_exists('valid_email_address')) {
+    $items = field_get_items('commerce_order', $order, 'field_buyer_email');
+    if (!empty($items[0]['value']) && valid_email_address(trim($items[0]['value']))) {
+      $mail = trim($items[0]['value']);
+    }
+  }
+  if ($mail === '') {
+    return '';
+  }
+  if (function_exists('token_replace')) {
+    $name = token_replace('[commerce-order:owner]', array('commerce-order' => $order), array('clear' => TRUE));
+    $name = trim(str_replace(array("\r", "\n"), '', $name));
+    if ($name !== '') {
+      return $name . ' <' . $mail . '>';
+    }
+  }
+  return $mail;
 }
 
 /**
@@ -325,6 +490,10 @@ function rovas_project_reward_init() {
     drupal_page_is_cacheable(FALSE);
     drupal_add_http_header('Cache-Control', 'private, no-cache, must-revalidate');
   }
+  elseif (_rovas_project_reward_request_is_rewpro_checkout_complete_path() && isset($_GET['lang'])) {
+    drupal_page_is_cacheable(FALSE);
+    drupal_add_http_header('Cache-Control', 'private, no-cache, must-revalidate');
+  }
   rovas_project_reward_apply_rewpro_interface_language_fallback();
 }
 
@@ -354,7 +523,10 @@ function rovas_project_reward_apply_rewpro_interface_language_fallback() {
   }
   $languages = $enabled[1];
 
-  if (_rovas_project_reward_request_is_rewpro_path()) {
+  $rewpro_path = _rovas_project_reward_request_is_rewpro_path();
+  $checkout_complete_path = _rovas_project_reward_request_is_rewpro_checkout_complete_path();
+
+  if ($rewpro_path || $checkout_complete_path) {
     $raw = isset($_GET['lang']) ? $_GET['lang'] : '';
     if ($raw !== '' && $raw !== NULL) {
       $langcode = rovas_project_reward_map_rewpro_url_lang_to_enabled($raw, $languages);
@@ -363,15 +535,32 @@ function rovas_project_reward_apply_rewpro_interface_language_fallback() {
         _rovas_project_reward_force_interface_langcode($langcode, $languages);
         return;
       }
-      unset($_SESSION['rovas_rewpro_ui_lang']);
+      if ($rewpro_path) {
+        unset($_SESSION['rovas_rewpro_ui_lang']);
+      }
     }
-    else {
+    elseif ($rewpro_path) {
       // Preserve ?lang= across rewpro POSTs (form action often has no query string).
       if (!empty($_SESSION['rovas_rewpro_ui_lang']) && isset($languages[$_SESSION['rovas_rewpro_ui_lang']])) {
         _rovas_project_reward_force_interface_langcode($_SESSION['rovas_rewpro_ui_lang'], $languages);
       }
+      return;
     }
-    return;
+    elseif ($checkout_complete_path && module_exists('commerce') && function_exists('commerce_order_load') && function_exists('arg')) {
+      $oid = arg(1);
+      if (is_numeric($oid)) {
+        $complete_order = commerce_order_load((int) $oid);
+        if ($complete_order && _rovas_project_reward_order_qualifies_for_rewpro_lang($complete_order) && !empty($complete_order->data['rpr_ui_lang']) && isset($languages[$complete_order->data['rpr_ui_lang']])) {
+          $_SESSION['rovas_rewpro_ui_lang'] = $complete_order->data['rpr_ui_lang'];
+          _rovas_project_reward_force_interface_langcode($complete_order->data['rpr_ui_lang'], $languages);
+          return;
+        }
+      }
+    }
+    if ($rewpro_path) {
+      return;
+    }
+    // checkout/*/complete: may still use session rewpro language below.
   }
 
   if (!empty($_SESSION['rovas_rewpro_ui_lang'])) {
@@ -1901,6 +2090,17 @@ function rovas_project_reward_form_submit($form, &$form_state) {
       $order->field_buyer_email[LANGUAGE_NONE][0]['value'] = $email;
     }
 
+    // Persist rewpro UI language for anonymous EUR checkouts (thank-you page + invoice mail).
+    if ($uid == 0 && !empty($order->order_id)) {
+      $ui_lang = rovas_project_reward_resolve_rewpro_anonymous_ui_langcode();
+      if ($ui_lang !== FALSE) {
+        if (!isset($order->data) || !is_array($order->data)) {
+          $order->data = array();
+        }
+        $order->data['rpr_ui_lang'] = $ui_lang;
+      }
+    }
+
     // Handle different payment methods
     if ($pay_method === 'pay-choice-bank') {
       // Attach billing profile and update status for bank payments
@@ -2655,6 +2855,11 @@ function _handle_complete_form_modifications(&$form, &$form_state) {
     return;
   }
 
+  global $user;
+  if (empty($user->uid)) {
+    drupal_set_title(t('Checkout complete'));
+  }
+
   // Remove the standard Commerce completion message for all roles.
   // It contains "Your order number is X..." and "Return to the front page."
   // We replace both with controlled output below.
@@ -2663,7 +2868,6 @@ function _handle_complete_form_modifications(&$form, &$form_state) {
   }
 
   // For authenticated users only, show the order number without the front page link.
-  global $user;
   if ($user->uid != 0) {
     $order_url = url('user/' . $user->uid . '/orders/' . $order->order_id);
     $form['rovas_rewpro_order_message'] = array(
@@ -2678,7 +2882,8 @@ function _handle_complete_form_modifications(&$form, &$form_state) {
     );
   }
 
-  $bank_markup = rovas_project_reward_render_bank_transfer_info($order);
+  $bank_lang = rovas_project_reward_order_rewpro_ui_langcode($order);
+  $bank_markup = rovas_project_reward_render_bank_transfer_info($order, $bank_lang);
   if (!empty($bank_markup)) {
     $form['rovas_rewpro_complete_bank'] = array(
       '#type' => 'markup',
@@ -4217,9 +4422,18 @@ function rovas_project_reward_process_bank_transfer_checkout_complete($order) {
   }
 
   if (function_exists('commerce_invoice_receipt_action_mail')) {
-    $to = token_replace('[commerce-order:owner] <[commerce-order:mail]>', array('commerce-order' => $order), array('clear' => TRUE));
-    $subject = token_replace('[site:name]: Order #[commerce-order:order-id]', array('commerce-order' => $order), array('clear' => TRUE));
-    rovas_project_reward_invoice_receipt_action_mail($order, $to, $subject, NULL);
+    $to = _rovas_project_reward_invoice_mail_to_address($order);
+    if ($to === '') {
+      $to = token_replace('[commerce-order:owner] <[commerce-order:mail]>', array('commerce-order' => $order), array('clear' => TRUE));
+      $to = str_replace(array("\r", "\n"), '', $to);
+    }
+    if ($to === '' || !preg_match('/@/', $to)) {
+      watchdog('rovas_project_reward', 'Bank checkout complete: skipping invoice mail — no valid recipient for order @id.', array('@id' => $order->order_id), WATCHDOG_WARNING);
+    }
+    else {
+      $subject = token_replace('[site:name]: Order #[commerce-order:order-id]', array('commerce-order' => $order), array('clear' => TRUE));
+      rovas_project_reward_invoice_receipt_action_mail($order, $to, $subject, NULL);
+    }
   }
 
   $order = commerce_order_load($order->order_id);
@@ -4552,14 +4766,14 @@ function rovas_project_reward_render_bank_transfer_info($order, $langcode = NULL
   $iban = isset($sepa['iban']) ? $sepa['iban'] : '';
   $bic = isset($sepa['bic']) ? $sepa['bic'] : '';
   $reference = $sepa['reference'];
-  $bank_details = rovas_project_reward_get_bank_transfer_details($order);
+  $bank_details = rovas_project_reward_get_bank_transfer_details($order, $langcode);
 
   $out = '<div class="rovas-bank-transfer-box" style="padding:12px;margin:10px 0 16px 0;">';
   $out .= '<p>' . check_plain(t('Please complete your order by transferring the amount to the bank account below.', array(), $t_opts)) . '</p>';
   $out .= '<ul style="margin-left:16px;">';
   $out .= '<li><strong>' . check_plain(t('Beneficiary', array(), $t_opts)) . ':</strong> ' . check_plain($beneficiary) . '</li>';
-  $out .= '<li><strong>IBAN:</strong> ' . check_plain($iban) . '</li>';
-  $out .= '<li><strong>BIC:</strong> ' . check_plain($bic) . '</li>';
+  $out .= '<li><strong>' . check_plain(t('IBAN', array(), $t_opts)) . ':</strong> ' . check_plain($iban) . '</li>';
+  $out .= '<li><strong>' . check_plain(t('BIC', array(), $t_opts)) . ':</strong> ' . check_plain($bic) . '</li>';
   $out .= '<li><strong>' . check_plain(t('Amount', array(), $t_opts)) . ':</strong> ' . check_plain($amount . ' ' . $currency) . '</li>';
   $out .= '<li><strong>' . check_plain(t('Reference (VS)', array(), $t_opts)) . ':</strong> ' . check_plain($reference) . '</li>';
   $out .= '</ul>';
@@ -4581,8 +4795,12 @@ function rovas_project_reward_render_bank_transfer_info($order, $langcode = NULL
  * Uses the active bank transfer payment method instance as source of truth
  * (including details enabled through Rules action), then falls back to legacy
  * variables when needed.
+ *
+ * @param object|null $order
+ * @param string|null $langcode
+ *   Optional langcode for the default variable-symbol hint string.
  */
-function rovas_project_reward_get_bank_transfer_details($order = NULL) {
+function rovas_project_reward_get_bank_transfer_details($order = NULL, $langcode = NULL) {
   $details = array(
     'account_owner' => '',
     'account_number' => '',
@@ -4618,7 +4836,8 @@ function rovas_project_reward_get_bank_transfer_details($order = NULL) {
     $details['account_swift'] = variable_get('rovas_bank_bic', 'FIOZSKBAXXX');
   }
   if (empty($details['policy'])) {
-    $details['policy'] = t('Variable symbol: @vs', array('@vs' => !empty($order->order_id) ? $order->order_id : ''));
+    $t_opts = ($langcode !== NULL && $langcode !== '') ? array('langcode' => $langcode) : array();
+    $details['policy'] = t('Variable symbol: @vs', array('@vs' => !empty($order->order_id) ? $order->order_id : ''), $t_opts);
   }
 
   return $details;
@@ -6096,6 +6315,17 @@ function _rovas_project_reward_admin_overpayment_notification_content(array $par
 function rovas_project_reward_order_invoice_mail_language($order) {
   if (!empty($order->data['stripe_pi']['payment_intent']['metadata']['language_mapped'])) {
     $code = $order->data['stripe_pi']['payment_intent']['metadata']['language_mapped'];
+    $languages = language_list('language');
+    if (isset($languages[$code])) {
+      return $languages[$code];
+    }
+  }
+
+  if (empty($order->uid) && !empty($order->data['rpr_ui_lang'])) {
+    $code = $order->data['rpr_ui_lang'];
+    if (function_exists('rovas_base_normalize_to_enabled_language')) {
+      $code = rovas_base_normalize_to_enabled_language($code);
+    }
     $languages = language_list('language');
     if (isset($languages[$code])) {
       return $languages[$code];
