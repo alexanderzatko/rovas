@@ -180,7 +180,7 @@ function rovas_project_reward_rewpro_language_debug_log($event, array $context =
   if ($msg === FALSE || $msg === NULL) {
     $msg = print_r($context, TRUE);
   }
-  watchdog('rovas_rewpro_lang', '@msg', array('@msg' => $msg), WATCHDOG_DEBUG);
+  watchdog('rovas_rewpro_lang', '@msg', array('@msg' => $msg), WATCHDOG_NOTICE);
 }
 
 /**
@@ -287,6 +287,22 @@ function rovas_project_reward_disable() {
 }
 
 /**
+ * Implements hook_module_implements_alter().
+ *
+ * Commerce caches checkout page titles/button labels (t() output) in
+ * commerce_checkout_pages() on first access. Other modules' hook_init() can
+ * trigger that while $language is still wrong if they run before us, so we
+ * move this module's init to the front of the list.
+ */
+function rovas_project_reward_module_implements_alter(&$implementations, $hook) {
+  if ($hook === 'init' && isset($implementations['rovas_project_reward'])) {
+    $group = $implementations['rovas_project_reward'];
+    unset($implementations['rovas_project_reward']);
+    $implementations = array_merge(array('rovas_project_reward' => $group), $implementations);
+  }
+}
+
+/**
  * Implements hook_init().
  *
  * Rewpro language is negotiated early when the rovas_rewpro_query provider is
@@ -316,6 +332,10 @@ function rovas_project_reward_apply_rewpro_interface_language_fallback() {
   if (!empty($user->uid)) {
     unset($_SESSION['rovas_rewpro_ui_lang']);
     return;
+  }
+
+  if (_rovas_project_reward_request_is_rewpro_path() || !empty($_SESSION['rovas_rewpro_ui_lang'])) {
+    _rovas_project_reward_commerce_checkout_static_reset();
   }
 
   if (!function_exists('_rovas_base_map_lang_code') && module_exists('rovas_base')) {
@@ -365,18 +385,27 @@ function _rovas_project_reward_force_interface_langcode($langcode, array $langua
   if (!isset($languages[$langcode])) {
     return;
   }
-  $previous = isset($language->language) ? $language->language : NULL;
-  if ($previous === $langcode) {
-    return;
-  }
   $language = $languages[$langcode];
   $GLOBALS['language'] = $language;
   if (isset($GLOBALS['language_content'])) {
     $GLOBALS['language_content'] = $language;
   }
+  _rovas_project_reward_commerce_checkout_static_reset();
+}
+
+/**
+ * Clears Commerce checkout caches that freeze translated labels from t().
+ */
+function _rovas_project_reward_commerce_checkout_static_reset() {
   drupal_static_reset('commerce_checkout_pages');
   drupal_static_reset('commerce_checkout_panes');
   drupal_static_reset('commerce_customer_profile_types');
+  if (function_exists('commerce_order_statuses_reset')) {
+    commerce_order_statuses_reset();
+  }
+  if (function_exists('commerce_order_states_reset')) {
+    commerce_order_states_reset();
+  }
 }
 
 function rovas_project_reward_form ($form, &$form_state) {
