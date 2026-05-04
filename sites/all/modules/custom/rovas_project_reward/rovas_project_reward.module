@@ -2920,6 +2920,18 @@ function rovas_project_reward_js_alter(&$javascript) {
       }
     }
   }
+
+  // commerce_stripe_pi.elements.js: Stripe(pk) alone leaves Elements placeholders
+  // (e.g. "Card number") in English; pass interface language as locale.
+  global $language;
+  if (!empty($language->language) && !empty($javascript['settings']['data']) && is_array($javascript['settings']['data'])) {
+    foreach ($javascript['settings']['data'] as &$chunk) {
+      if (is_array($chunk) && isset($chunk['stripe_pi']) && is_array($chunk['stripe_pi']) && empty($chunk['stripe_pi']['locale'])) {
+        $chunk['stripe_pi']['locale'] = $language->language;
+      }
+    }
+    unset($chunk);
+  }
 }
 
 /**
