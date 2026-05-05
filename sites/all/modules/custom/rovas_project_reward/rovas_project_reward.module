@@ -316,6 +316,42 @@ function rovas_project_reward_order_rewpro_ui_langcode($order) {
 }
 
 /**
+ * Resolves the buyer notification e-mail for a Commerce order (rewpro + bank).
+ *
+ * Anonymous checkouts populate order.mail / field_buyer_email on submit.
+ * Authenticated rewpro hides the contact field; if order.mail is missing or
+ * invalid after checkout saves (Commerce account pane was skipped), fall back to
+ * the account e-mail—the same fallback commerce_cart_order_convert() uses.
+ *
+ * @param object $order
+ *   Commerce order entity.
+ *
+ * @return string
+ *   Valid trimmed e-mail, or empty if none found.
+ */
+function rovas_project_reward_order_buyer_mail($order) {
+  if (empty($order)) {
+    return '';
+  }
+  if (!empty($order->mail) && function_exists('valid_email_address') && valid_email_address(trim($order->mail))) {
+    return trim($order->mail);
+  }
+  if (function_exists('field_get_items') && function_exists('valid_email_address')) {
+    $items = field_get_items('commerce_order', $order, 'field_buyer_email');
+    if (!empty($items[0]['value']) && valid_email_address(trim($items[0]['value']))) {
+      return trim($items[0]['value']);
+    }
+  }
+  if (!empty($order->uid)) {
+    $account = user_load($order->uid);
+    if ($account && !empty($account->mail) && valid_email_address(trim($account->mail))) {
+      return trim($account->mail);
+    }
+  }
+  return '';
+}
+
+/**
  * RFC-safe recipient line for invoice mail (tokens can yield "Anonymous <>").
  *
  * @param object $order
@@ -328,16 +364,7 @@ function _rovas_project_reward_invoice_mail_to_address($order) {
   if (empty($order)) {
     return '';
   }
-  $mail = '';
-  if (!empty($order->mail) && function_exists('valid_email_address') && valid_email_address(trim($order->mail))) {
-    $mail = trim($order->mail);
-  }
-  elseif (function_exists('field_get_items') && function_exists('valid_email_address')) {
-    $items = field_get_items('commerce_order', $order, 'field_buyer_email');
-    if (!empty($items[0]['value']) && valid_email_address(trim($items[0]['value']))) {
-      $mail = trim($items[0]['value']);
-    }
-  }
+  $mail = rovas_project_reward_order_buyer_mail($order);
   if ($mail === '') {
     return '';
   }
@@ -2064,6 +2091,14 @@ function rovas_project_reward_form_submit($form, &$form_state) {
       $order->mail = $email;
       $order->field_buyer_email[LANGUAGE_NONE][0]['value'] = $email;
     }
+    elseif ($uid > 0) {
+      // Logged-in rewpro has no e-mail field on the form; ensure order.mail is set
+      // for bank invoice + later bank_transfer_* notifications (mirrors anon path).
+      $resolved = rovas_project_reward_order_buyer_mail($order);
+      if ($resolved !== '') {
+        $order->mail = $resolved;
+      }
+    }
 
     // Persist rewpro UI language for anonymous EUR checkouts (thank-you page + invoice
     // mail + bank reconcile e-mail). Prefer order_rewpro_ui_langcode() so session and
@@ -3070,7 +3105,7 @@ function rovas_project_reward_bank_order_return_url($order) {
 
   $amount   = isset($intent->amount) ? (int) round((float) $intent->amount * 100) : 0;
   $currency = !empty($intent->currency) ? $intent->currency : 'EUR';
-  $email    = !empty($order->mail) ? $order->mail : '';
+  $email    = rovas_project_reward_order_buyer_mail($order);
 
   $params = array(
     'token'       => $token,
@@ -5730,7 +5765,7 @@ function rovas_project_reward_notify_bank_purchase_confirmed($order) {
   $signature = strtolower(hash_hmac('sha256', $token, $secret));
 
   $order_total_minor = (int) $wrapper->commerce_order_total->amount->value();
-  $email = $order->mail;
+  $email = rovas_project_reward_order_buyer_mail($order);
 
   $expiration_webhook = NULL;
   if (!empty($intent->meta)) {
@@ -5941,7 +5976,7 @@ function rovas_project_reward_enqueue_delayed_callback($order, $event_type) {
   }
   $amount_paid = isset($intent->amount) ? (int) round((float) $intent->amount * 100) : 0;
   $currency = !empty($intent->currency) ? $intent->currency : 'EUR';
-  $email = !empty($order->mail) ? $order->mail : '';
+  $email = rovas_project_reward_order_buyer_mail($order);
 
   $expiration_delayed = NULL;
   if (!empty($intent->meta)) {
@@ -6514,7 +6549,8 @@ function rovas_project_reward_notify_site_admin_overpayment($order, $expected_am
  *   for this order; FALSE if there is no e-mail address or sending failed.
  */
 function rovas_project_reward_send_bank_transfer_notification($order, $mail_key, array $extra_params = array()) {
-  if (empty($order->mail)) {
+  $buyer_mail = rovas_project_reward_order_buyer_mail($order);
+  if ($buyer_mail === '') {
     return FALSE;
   }
 
@@ -6608,7 +6644,7 @@ function rovas_project_reward_send_bank_transfer_notification($order, $mail_key,
     'order_id'         => $order->order_id,
     'order_amount'     => $order_amount,
     'order_date'       => $order_date,
-    'order_mail'       => $order->mail,
+    'order_mail'       => $buyer_mail,
     'recipient_name'   => $recipient_name,
     'target_lang'      => $target_lang,
     'callback_token'   => $callback_token,
@@ -6646,13 +6682,13 @@ function rovas_project_reward_send_bank_transfer_notification($order, $mail_key,
       $params['subject'] = t('Rovas: Order #@id notification', array('@id' => $order->order_id), array('langcode' => $target_lang));
   }
 
-  $mail_result = drupal_mail('rovas_project_reward', $mail_key, $order->mail, $target_lang, $params);
+  $mail_result = drupal_mail('rovas_project_reward', $mail_key, $buyer_mail, $target_lang, $params);
   if (empty($mail_result['result'])) {
-    watchdog('rovas_project_reward', 'Failed to send @key notification for order @oid to @mail.', array('@key' => $mail_key, '@oid' => $order->order_id, '@mail' => $order->mail), WATCHDOG_WARNING);
+    watchdog('rovas_project_reward', 'Failed to send @key notification for order @oid to @mail.', array('@key' => $mail_key, '@oid' => $order->order_id, '@mail' => $buyer_mail), WATCHDOG_WARNING);
     return FALSE;
   }
 
-  watchdog('rovas_project_reward', 'Sent @key notification for order @oid to @mail.', array('@key' => $mail_key, '@oid' => $order->order_id, '@mail' => $order->mail), WATCHDOG_INFO);
+  watchdog('rovas_project_reward', 'Sent @key notification for order @oid to @mail.', array('@key' => $mail_key, '@oid' => $order->order_id, '@mail' => $buyer_mail), WATCHDOG_INFO);
 
   if ($mail_key === 'bank_transfer_confirmed') {
     $order_reload = commerce_order_load($order->order_id);
