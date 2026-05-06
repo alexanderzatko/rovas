@@ -49301,7 +49301,7 @@ msgstr "Installa un altro modulo"
 
 #: /admin/structure/views/view/chron_balance
 msgid "Chron balance"
-msgstr "Chronov sul conto"
+msgstr "Chron sul conto"
 
 #: /admin/structure/views/view/chron_balance
 msgid "more"
@@ -49314,7 +49314,7 @@ msgstr "Fare domanda a"
 #: /admin/structure/views/view/chron_balance;
 #: sites/all/modules/rovas_stripe_express_checkout/js/express_checkout.js
 msgid "Chrons"
-msgstr "Crono"
+msgstr "Chron"
 
 #: /user
 msgid "Country"
@@ -49338,7 +49338,7 @@ msgstr "Il tuo punteggio di merito è:"
 
 #: /user
 msgid "Your Chron balance is:"
-msgstr "Chronov sul conto:"
+msgstr "Chron sul conto:"
 
 #: /verify-by-person
 msgid "Reason"
@@ -50554,7 +50554,7 @@ msgstr "Quantità"
 
 #: /node/add/money-transfer
 msgid "Chrons in your account: "
-msgstr "Chronov sul tuo account:"
+msgstr "Chron sul tuo account:"
 
 #: /node/add/money-transfer
 msgid ""
@@ -52404,7 +52404,7 @@ msgid ""
 "You are sending a reward of @eur € (@chr Chrons) to project <a "
 "href=\"@url\">@projname</a>"
 msgstr ""
-"Stai inviando l'importo @eur € (@chr chronov) al progetto <a "
+"Stai inviando l'importo @eur € (@chr chron) al progetto <a "
 "href=\"@url\">@projname</a>"
 
 #: /node/2452
@@ -52665,7 +52665,7 @@ msgid ""
 "You are sending a reward of <strong>@eur €</strong> (@chr Chrons) to project"
 " <a href=\"@url\">@projname</a>."
 msgstr ""
-"Stai inviando l'importo <strong>@eur €</strong> (@chr chronov) al progetto "
+"Stai inviando l'importo <strong>@eur €</strong> (@chr chron) al progetto "
 "<a href=\"@url\">@projname</a>."
 
 #: /checkout/198
@@ -52807,7 +52807,7 @@ msgid ""
 "After paying the chosen amount of Chrons, you will receive Merit-earning "
 "timeshares."
 msgstr ""
-"Dopo aver pagato l'importo selezionato in crono, riceverai una condivisione "
+"Dopo aver pagato l'importo selezionato in chron, riceverai una condivisione "
 "del tempo nei premi di merito di questo progetto."
 
 #: /buyshares/35259
@@ -52836,7 +52836,7 @@ msgid ""
 "rewarded  with 100 Chrons"
 msgstr ""
 "Il numero di meriti per il contributo di un'ora, se il progetto viene "
-"premiato con 100 corone"
+"premiato con 100 chron"
 
 #: /buyshares/35259
 msgid "Timeshare cost"
@@ -52954,7 +52954,7 @@ msgid ""
 "Estimated yield is <strong>@aplyield Merits</strong> for 100 Chrons of "
 "reward"
 msgstr ""
-"Il rendimento stimato è di <strong>@aplyield meriti</strong> per 100 corone "
+"Il rendimento stimato è di <strong>@aplyield meriti</strong> per 100 chron "
 "premio"
 
 #: /admin/structure/views/view/investment/edit/page
@@ -53229,7 +53229,7 @@ msgstr "Acquirente"
 
 #: /user/289/chrons
 msgid "Send Chrons"
-msgstr "Invia cronometri"
+msgstr "Invia chron"
 
 #: /node/185500/edit
 msgid "Rewards sharing"
@@ -53499,7 +53499,7 @@ msgstr ""
 #: /buyshares/35259
 msgid "Use your Chrons or Euros to buy timeshares for this project."
 msgstr ""
-"Usa i tuoi crono o euro per acquistare una multiproprietà in questo "
+"Usa i tuoi chron o euro per acquistare una multiproprietà in questo "
 "progetto."
 
 #: /buyshares/35259
@@ -53601,7 +53601,7 @@ msgid ""
 "value after changing the Chron value."
 msgstr ""
 "Impossibile inviare l'ordine perché non hai ricalcolato il valore del Merit "
-"dopo aver modificato il valore del Crono"
+"dopo aver modificato il valore del Chron"
 
 #: /prekladac
 msgid ""
@@ -53667,7 +53667,7 @@ msgstr "Metodo di pagamento"
 #: /rewpro?paytype=project&recipient=35384&token=81987b5a657425e0b9c06d5227c7681094128132d7347f3000206955c0c3a837&callbackurl=https%3A%2F%2Fwww.freemap.sk%2FpurchaseCallback.html&expiration=1746908657
 msgctxt "reward project"
 msgid "Chrons"
-msgstr "cronov"
+msgstr "chron"
 
 #: /rewpro?paytype=project&recipient=35384&token=81987b5a657425e0b9c06d5227c7681094128132d7347f3000206955c0c3a837&callbackurl=https%3A%2F%2Fwww.freemap.sk%2FpurchaseCallback.html&expiration=1746908657
 msgctxt "reward project"
@@ -53735,13 +53735,13 @@ msgid ""
 " You can pay with Euros, or with Chrons, that can be earned for volunteer "
 "work (see below)."
 msgstr ""
-"Puoi pagare in euro o corone, che possono essere guadagnati per il lavoro di"
+"Puoi pagare in euro o chron, che possono essere guadagnati per il lavoro di"
 " volontariato (vedi sotto)."
 
 #: /prekladac
 msgctxt "rovas_project_reward"
 msgid "Chrons"
-msgstr "cronov"
+msgstr "chron"
 
 #: /prekladac
 msgctxt "rovas_project_reward"
@@ -53769,7 +53769,7 @@ msgid ""
 " You can pay with Euros, or with Chrons, that can be earned for volunteer "
 "work (see below)."
 msgstr ""
-"Puoi pagare in euro o corone, che possono essere guadagnati per il lavoro di"
+"Puoi pagare in euro o chron, che possono essere guadagnati per il lavoro di"
 " volontariato (vedi sotto)."
 
 #: /prekladac
@@ -53794,7 +53794,7 @@ msgid ""
 "at least @chr Chrons</strong>, or more."
 msgstr ""
 "Per accedere alle funzionalità premium di questo progetto, devi "
-"<strong>pagare @chr Chronov</strong> o più."
+"<strong>pagare @chr chron</strong> o più."
 
 #: /prekladac
 msgid "Payment amount"
@@ -53814,7 +53814,7 @@ msgstr "Caricamento delle opzioni di pagamento..."
 
 #: /prekladac
 msgid "You must be logged in to make payments with Chrons."
-msgstr "Devi essere loggato per effettuare un pagamento con chroni."
+msgstr "Devi essere loggato per effettuare un pagamento con chron."
 
 #: /prekladac
 msgid ""
@@ -54252,7 +54252,7 @@ msgstr "Paga con carta"
 
 #: /rewpro?paytype=buyshares&recipient=45623
 msgid "Use your Chrons or Euros to buy time shares for this project."
-msgstr "Puoi acquistare una quota in questo progetto per corone o euro."
+msgstr "Puoi acquistare una quota in questo progetto per chron o euro."
 
 #: /rewpro?paytype=buyshares&recipient=45623
 msgid ""
@@ -54264,7 +54264,7 @@ msgstr ""
 
 #: /rewpro?paytype=buyshares&recipient=45623
 msgid "Clicking Confirm will complete your Chron payment."
-msgstr "Fai clic sul pulsante Conferma per completare il pagamento chronmi"
+msgstr "Fai clic sul pulsante Conferma per completare il pagamento chron"
 
 #: /rewpro?paytype=buyshares&recipient=45623
 msgid "Purchased time"
@@ -54321,7 +54321,7 @@ msgstr ""
 
 #: /rewpro?paytype=buymerits&recipient=289
 msgid "Use your Chrons or Euros to add Merits to your account"
-msgstr "Aumenta il numero di crediti sul tuo conto con crono o euro"
+msgstr "Aumenta il numero di crediti sul tuo conto con chron o euro"
 
 #: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module
 msgid "Variable symbol: @vs"

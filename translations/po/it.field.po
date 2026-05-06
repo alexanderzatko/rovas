@@ -1384,13 +1384,13 @@ msgid ""
 "Immediately convert the Chrons rewarded/paid to the project to Euros. No "
 "conversion fee is charged."
 msgstr ""
-"Cambia immediatamente in euro le corone versate al progetto. La transazione "
+"Cambia immediatamente in euro i chron versati al progetto. La transazione "
 "è senza commissione standard."
 
 #: field:field_get_euros:project:label
 msgctxt "field_get_euros:project:label"
 msgid "Get Euros"
-msgstr "Converti cronometri in euro"
+msgstr "Converti chron in euro"
 
 #: field:field_hours_worked:work_report:label
 msgctxt "field_hours_worked:work_report:label"
@@ -1921,7 +1921,7 @@ msgid ""
 "The rest is transferred to the reward recipient in Chrons or Euros."
 msgstr ""
 "Parte della ricompensa del progetto che viene pagata in merito. Il resto "
-"viene pagato al destinatario in corone o euro."
+"viene pagato al destinatario in chron o euro."
 
 #: field:field_reward_merit_allocation:project:label
 msgctxt "field_reward_merit_allocation:project:label"
