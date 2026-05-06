@@ -26963,7 +26963,7 @@ msgstr ""
 
 #: /node/4191
 msgid "Project Participation"
-msgstr ""
+msgstr "Účast"
 
 #: /admin/structure/views/view/project_merits_feed/edit/page_1?destination=project-purchases/2001
 msgid "<a href=\"/node/[nid]\">[field_purchase_date]</a>"
