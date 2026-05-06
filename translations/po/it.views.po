@@ -11420,7 +11420,7 @@ msgstr "E-mail"
 msgctxt ""
 "project_merits_feed:purchases:field:field_data_field_asset_usage_fee:field_asset_usage_fee:label"
 msgid "Chrons"
-msgstr "Cronov"
+msgstr "Chrons"
 
 #: views:project_merits_feed:purchases:field:views:php_1:label
 msgctxt "project_merits_feed:purchases:field:views:php_1:label"

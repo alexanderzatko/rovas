@@ -52266,7 +52266,7 @@ msgstr "Fai clic sul pulsante qui sotto per completare il pagamento"
 
 #: /rewpro?paytype=project&recipient=2001
 msgid "chrons"
-msgstr "cronov"
+msgstr "chron"
 
 #: /rewpro?paytype=project&recipient=2001
 msgid "Chosen amount"
@@ -52290,7 +52290,7 @@ msgstr "Paga @euro euro"
 msgid ""
 "<strong>Pay @chrons chrons</strong> (@hours hours of your own volunteer "
 "work)"
-msgstr "<strong>Paga @chrons chronov</strong> (@hours ore di volontariato)"
+msgstr "<strong>Paga @chrons chron</strong> (@hours ore di volontariato)"
 
 #: /node/2452
 msgid "How to pay with own time?"
