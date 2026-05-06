@@ -144,7 +144,7 @@ msgstr ""
 #: views:projects:default:filter:field_data_field_participation:field_participation_value:expose:label
 msgctxt "projects:default:filter:field_data_field_participation:field_participation_value:expose:label"
 msgid "Project Participation (field_participation)"
-msgstr ""
+msgstr "Účasť"
 
 #: views:projects:block:title
 msgctxt "projects:block:title"
