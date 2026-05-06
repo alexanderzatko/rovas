@@ -47,3 +47,57 @@ function rovas_site_rules_hybridauth_provider_is_allowed($provider) {
   }
   return in_array($provider, rovas_site_rules_allowed_hybridauth_providers(), TRUE);
 }
+
+/**
+ * Implements hook_user_delete().
+ *
+ * Delete the user's "system project" before core removes the user record.
+ */
+function rovas_site_rules_user_delete($account) {
+  if (empty($account->uid) || !is_numeric($account->uid)) {
+    return;
+  }
+
+  // If Rules is not available, fall back to doing nothing rather than partially
+  // deleting a project without its business cleanup.
+  if (!module_exists('rules') || !function_exists('rules_invoke_component')) {
+    watchdog('rovas_site_rules', 'Skipping system project deletion for uid @uid because Rules is unavailable.', array('@uid' => $account->uid), WATCHDOG_WARNING);
+    return;
+  }
+
+  // Match the lookup used by the Rules component `rules_find_system_project_for_user`.
+  if (!db_table_exists('field_data_field_system_project')) {
+    return;
+  }
+
+  $nids = db_query(
+    "SELECT node.nid AS nid
+     FROM {node} node
+     INNER JOIN {field_data_field_system_project} s ON node.nid = s.entity_id
+       AND s.entity_type = 'node'
+     WHERE node.uid = :uid
+       AND node.status = '1'
+       AND node.type = 'project'
+       AND s.field_system_project_value = '1'
+     ORDER BY node.created ASC",
+    array(':uid' => (int) $account->uid)
+  )->fetchCol();
+
+  if (count($nids) > 1) {
+    watchdog('rovas_site_rules', 'More than one system project found for uid @uid (@nids). Deleting the oldest.', array('@uid' => $account->uid, '@nids' => implode(',', $nids)), WATCHDOG_WARNING);
+  }
+
+  $nid = !empty($nids) ? (int) $nids[0] : 0;
+  if ($nid <= 0) {
+    return;
+  }
+
+  $project = node_load($nid);
+  if (!$project || empty($project->nid) || $project->type !== 'project') {
+    return;
+  }
+
+  // Use the existing Rules action set for full project cleanup. Pass "REST api"
+  // to avoid UI redirects in this non-interactive context.
+  rules_invoke_component('rules_delete_project', $project, 'REST api');
+}
