@@ -55,16 +55,18 @@
 						$col_help = $field;
 					}
 					if ($renderhelp) {
-						print "&nbsp;<a 
-							tabindex='0'
-							role='button'
-							data-content='<div>".$col_help."</div>'
-							data-toggle='popover'
-							data-placement='top'
-							data-trigger='click'
-							data-html='true'><span class='help-r'><i class='glyphicon glyphicon-question-sign'></i></span>
+						$col_help_safe = check_plain($col_help);
+						$data_content_attr = check_plain('<div>' . $col_help_safe . '</div>');
+						print '&nbsp;<a
+							tabindex="0"
+							role="button"
+							data-content="' . $data_content_attr . '"
+							data-toggle="popover"
+							data-placement="top"
+							data-trigger="click"
+							data-html="true"><span class="help-r"><i class="glyphicon glyphicon-question-sign"></i></span>
 							</a>
-						";
+						';
 						}
 					}
 
@@ -81,16 +83,18 @@
 						$col_help = $field;
 					}
 					if ($renderhelp) {
-						print "&nbsp;<a 
-							tabindex='0'
-							role='button'
-							data-content='<div>".$col_help."</div>'
-							data-toggle='popover'
-							data-placement='top'
-							data-trigger='click'
-							data-html='true'><span class='help-r'><i class='glyphicon glyphicon-question-sign'></i></span>
+						$col_help_safe = check_plain($col_help);
+						$data_content_attr = check_plain('<div>' . $col_help_safe . '</div>');
+						print '&nbsp;<a
+							tabindex="0"
+							role="button"
+							data-content="' . $data_content_attr . '"
+							data-toggle="popover"
+							data-placement="top"
+							data-trigger="click"
+							data-html="true"><span class="help-r"><i class="glyphicon glyphicon-question-sign"></i></span>
 							</a>
-						";
+						';
 						}
 					}
 
