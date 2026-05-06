@@ -32310,7 +32310,7 @@ msgstr "Tempo"
 #: ; sites/all/modules/views/js/views-admin.js;
 #: sites/all/modules/contrib/views/js/views-admin.js
 msgid "Add"
-msgstr "Aggiungere"
+msgstr "Aggiungi"
 
 msgid "View"
 msgstr "Visualizzazione"
