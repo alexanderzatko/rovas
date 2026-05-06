@@ -35200,7 +35200,7 @@ msgid "More information"
 msgstr "Maggiori informazioni"
 
 msgid "!title !required"
-msgstr "!titolo !rrichiesto"
+msgstr "!title !required"
 
 msgid "My blog"
 msgstr "Il mio blog"
@@ -35300,7 +35300,7 @@ msgid "Number of users to display"
 msgstr "Numero di utenti visualizzati"
 
 msgid "RSS - !title"
-msgstr "RSS - !titolo"
+msgstr "RSS - !title"
 
 msgid "..."
 msgstr "..."
