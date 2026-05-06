@@ -10,7 +10,8 @@ function rovas_delete_confirm_form_alter(&$form, $form_state, $form_id) {
 				// OR 
 				// current user is the owner AND the owner has role "accused"
 				global $user;
-				if(rules_invoke_component('rules_delete_project_permissive', $user, $node)) {
+				$allowed = ($user->uid == 1) || rules_invoke_component('rules_delete_project_permissive', $user, $node);
+				if ($allowed) {
 					drupal_set_title(t('Are you sure you want to delete') . ' ' . t('project') . ' ' . $node->title . '?');
 					$form['description'] = array('#markup' => t('This action cannot be undone.'));
 					$form['actions'] = array (
