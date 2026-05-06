@@ -50,6 +50,40 @@
         return $('#pay-choice-bank');
       }
 
+      function normalizeLangToStripeLocale(rawLang) {
+        if (!rawLang) return null;
+        const v = String(rawLang).trim().toLowerCase().replace('_', '-');
+        if (!v) return null;
+        // Stripe locales are BCP47-ish; prefer base language (e.g. "cs" from "cs-CZ").
+        const base = v.split('-')[0];
+        // Keep a small allow-list to avoid passing an unsupported locale.
+        const supported = {
+          ar: true, bg: true, cs: true, da: true, de: true, el: true, en: true, es: true, et: true, fi: true,
+          fr: true, he: true, hr: true, hu: true, id: true, it: true, ja: true, ko: true, lt: true, lv: true,
+          ms: true, mt: true, nb: true, nl: true, pl: true, pt: true, ro: true, ru: true, sk: true, sl: true,
+          sv: true, th: true, tr: true, vi: true, zh: true
+        };
+        return supported[base] ? base : null;
+      }
+
+      function getStripeLocale() {
+        const urlParams = new URLSearchParams(window.location.search);
+        const urlLang = urlParams.get('lang');
+        const isAnon = !settings || !settings.rovasStripeExpressCheckout || !settings.rovasStripeExpressCheckout.uid;
+
+        // Requirement: only enforce locale from ?lang for anonymous users.
+        if (isAnon && urlLang) {
+          return normalizeLangToStripeLocale(urlLang);
+        }
+
+        // Safe fallback: use negotiated interface lang if exposed (works for anon rewpro too).
+        if (settings && settings.rovasStripeExpressCheckout && settings.rovasStripeExpressCheckout.uiLang) {
+          return normalizeLangToStripeLocale(settings.rovasStripeExpressCheckout.uiLang);
+        }
+
+        return null;
+      }
+
       function getECEStateKey() {
         const paymentRaw = (getRewproPaymentInput().val() || '').trim();
         const currency = ($('input[name="payment-currency"]:checked').val() || 'eur').toLowerCase();
@@ -423,7 +457,8 @@
             return;
           }
 
-          stripe = Stripe(stripePublicKey);
+          const stripeLocale = getStripeLocale();
+          stripe = stripeLocale ? Stripe(stripePublicKey, { locale: stripeLocale }) : Stripe(stripePublicKey);
           elements = stripe.elements({ clientSecret: data.clientSecret });
 
           if (expressCheckoutElement) {

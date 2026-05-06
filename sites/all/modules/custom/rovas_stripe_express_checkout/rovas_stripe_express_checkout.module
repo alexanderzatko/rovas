@@ -39,6 +39,13 @@ function rovas_stripe_express_checkout_menu() {
 
 function rovas_stripe_express_checkout_add_js() {
   drupal_add_js(drupal_get_path('module', 'rovas_stripe_express_checkout') . '/js/express_checkout.js');
+  global $user, $language;
+  drupal_add_js(array(
+    'rovasStripeExpressCheckout' => array(
+      'uid' => !empty($user->uid) ? (int) $user->uid : 0,
+      'uiLang' => !empty($language->language) ? (string) $language->language : '',
+    ),
+  ), 'setting');
 }
 
 function rovas_stripe_express_checkout_init_x() {

@@ -1298,7 +1298,7 @@ msgstr "Jméno pracovníka"
 #: field:field_coworkers:project:label
 msgctxt "field_coworkers:project:label"
 msgid "Merit Shares"
-msgstr "Podíly Meritov"
+msgstr "Podíly Meritů"
 
 #: field:field_date:time_share:label
 msgctxt "field_date:time_share:label"
