@@ -3940,7 +3940,7 @@ msgstr ""
 #: views:projects:projectsxf:filter:field_data_field_participation:field_participation_value_i18n:expose:label
 msgctxt "projects:projectsxf:filter:field_data_field_participation:field_participation_value_i18n:expose:label"
 msgid "Project Participation"
-msgstr ""
+msgstr "Účasť"
 
 #: views:projects:projectsxf:filter:field_data_field_status:field_status_value_i18n:expose:label
 msgctxt "projects:projectsxf:filter:field_data_field_status:field_status_value_i18n:expose:label"
