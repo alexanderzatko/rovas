@@ -9220,7 +9220,7 @@ msgstr ""
 
 #: /admin/structure/views/view/projects/edit/page_1
 msgid "Project Participation (field_participation)"
-msgstr ""
+msgstr "Účast"
 
 #: /find_project
 msgid "[field_project_owner] ([name])"
@@ -18134,7 +18134,7 @@ msgstr ""
 
 #: /admin/structure/views/view/projects/edit/projectsxf
 msgid "Project Participation (translated)"
-msgstr ""
+msgstr "Účast"
 
 #: sites/all/modules/better_exposed_filters/better_exposed_filters.js;
 #: sites/all/modules/contrib/better_exposed_filters/better_exposed_filters.js
