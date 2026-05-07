@@ -81,20 +81,33 @@ function _rovas_stripe_express_checkout_init() {
   try {
     list($language, $language_mapped) = _rovas_stripe_express_checkout_init_language_metadata();
 
+		$metadata = [
+			'user_id' => $uid,
+			'context' => 'express_checkout',
+			'language' => $language,
+			'language_mapped' => $language_mapped,
+			'product_name' => isset($sessary['name']) ? $sessary['name'] : '',
+			'project_id' => isset($_GET['recipient']) ? $_GET['recipient'] : 'none', //not only project ID, see paytypes below
+			'paytype' => isset($_GET['paytype']) ? $_GET['paytype'] : 'none', //project|wreport|user
+		];
+
+		// Critical for webhook-side 3rd-party notification: Stripe webhooks run
+		// without browser session context (and rovas_stripe_webhooks suppresses
+		// session writes). Persist the callback token/expiration on the PaymentIntent
+		// so payment_intent.succeeded can notify even when the session is gone.
+		if (!empty($sessary['token']) && is_string($sessary['token'])) {
+			$metadata['callback_token'] = $sessary['token'];
+		}
+		if (!empty($sessary['expiration']) && $sessary['expiration'] !== INF && is_numeric($sessary['expiration'])) {
+			$metadata['callback_expiration'] = (string) ((int) $sessary['expiration']);
+		}
+
 		$intent = \Stripe\PaymentIntent::create([
 			'amount' => isset($_GET['amount']) ? (int) $_GET['amount'] : 0,
 			'currency' => $currency,
 			'receipt_email' => $usremail,
 			'automatic_payment_methods' => ['enabled' => true],
-			'metadata' => [
-				'user_id' => $uid,
-				'context' => 'express_checkout',
-				'language' => $language,
-				'language_mapped' => $language_mapped,
-				'product_name' => isset($sessary['name']) ? $sessary['name'] : '',
-				'project_id' => isset($_GET['recipient']) ? $_GET['recipient'] : 'none', //not only project ID, see paytypes below
-				'paytype' => isset($_GET['paytype']) ? $_GET['paytype'] : 'none', //project|wreport|user
-			],
+			'metadata' => $metadata,
 		]);
 
     watchdog('xpress checkout init', 'intent: <pre>' . print_r($intent,1) . '</pre>');

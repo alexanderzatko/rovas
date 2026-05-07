@@ -3613,20 +3613,75 @@ function rovas_project_reward_notify_purchase($rewarded_project, $amount_paid_mi
     _rovas_project_reward_queue_redirect(url('node/' . $rewarded_project->nid, array('absolute' => TRUE)));
 		return;
 	}
-	
-	// Prepare validation data.
-	$token = $sessary['token'];
-  
-	$owner_uid = $rewarded_project->uid;
-	$service_endpoint = 'rovas_endpoint';				
-	$keys = rules_invoke_component('rules_retrieve_user_s_api_key_and_token',$owner_uid,$service_endpoint);
-	$secret = $keys[0];
-	
-//watchdog('rovas_project_reward', 'token and secret <pre>' . print_r([$token,$secret],1) . '</pre>');
 
-	$signature = strtolower(hash_hmac('sha256', $token, $secret));
+	$expiration = NULL;
+	if (!empty($sessary['expiration']) && $sessary['expiration'] !== INF && is_numeric($sessary['expiration'])) {
+		$expiration = (int) $sessary['expiration'];
+	}
+
+	$response = rovas_project_reward_notify_purchase_with_token(
+		$rewarded_project,
+		$amount_paid_minor,
+		$currency,
+		$email,
+		$sessary['token'],
+		$expiration,
+		!empty($sessary['paytype']) ? (string) $sessary['paytype'] : 'card_or_express',
+		!empty($sessary['commerce_order_id']) ? (int) $sessary['commerce_order_id'] : NULL,
+		TRUE,
+		!empty($sessary['callback_url']) ? (string) $sessary['callback_url'] : ''
+	);
+
+	watchdog('rovas_project_reward', 'response <pre>' . print_r($response,1) . '</pre>');
+
+	if ((int) $response->code === 204) {
+		// Queue the callback redirect; see note in the empty-sessary block above.
+		_rovas_project_reward_queue_redirect($sessary['callback_url']);
+	}
+	else {
+		$project_name = $rewarded_project->title;
+		drupal_set_message(t('<p>Thank you for the payment.</p><p><strong>Due to a temporary problem, the premium features at @project could not be immediately activated.</strong></p><p>We will remedy the problem, and notify you as soon as possible.</p>',['@project' => $project_name]), 'error');
+
+		$message = 'Unusual response from the receiving server when rewarding project <a href="/node/'.$rewarded_project->nid.'">' . $rewarded_project->nid . '</a>.<p>The response is <pre>' . print_r($response,1) . '</pre></p>';
+		rules_invoke_component('rules_send_email','alexanderz@neofund.sk','Payment failure',$message,'en');
+	}
+}
+
+/**
+ * Notify a 3rd party app about a completed purchase without relying on session.
+ *
+ * This is required for webhook-based completions (Stripe/bank), where there is
+ * no browser session context.
+ *
+ * @param object $rewarded_project
+ * @param int $amount_paid_minor
+ * @param string $currency
+ * @param string|null $email
+ * @param string $token
+ * @param int|null $expiration
+ * @param string $paytype
+ * @param int|null $order_id
+ * @param bool $include_delivery_headers
+ * @param string $callback_url
+ *
+ * @return object
+ *   drupal_http_request() response object.
+ */
+function rovas_project_reward_notify_purchase_with_token($rewarded_project, $amount_paid_minor, $currency, $email, $token, $expiration = NULL, $paytype = 'card_or_express', $order_id = NULL, $include_delivery_headers = FALSE, $callback_url = '') {
+	if (empty($token) || !is_string($token)) {
+		return (object) array('code' => 0, 'error' => 'Missing token');
+	}
 
 	$endpoint = isset($rewarded_project->field_webhook_url[LANGUAGE_NONE][0]['value']) ? $rewarded_project->field_webhook_url[LANGUAGE_NONE][0]['value'] : '';
+	if (empty($endpoint)) {
+		return (object) array('code' => 0, 'error' => 'Missing endpoint');
+	}
+
+	$owner_uid = $rewarded_project->uid;
+	$keys = rules_invoke_component('rules_retrieve_user_s_api_key_and_token', $owner_uid, 'rovas_endpoint');
+	$secret = $keys[0];
+
+	$signature = strtolower(hash_hmac('sha256', $token, $secret));
 
 	$payload = array(
 		'event' => 'payment-completed',
@@ -3637,52 +3692,41 @@ function rovas_project_reward_notify_purchase($rewarded_project, $amount_paid_mi
 		'email' => $email,
 		'occurred_at' => (int) REQUEST_TIME,
 	);
-	if (!empty($sessary['expiration']) && $sessary['expiration'] !== INF && is_numeric($sessary['expiration'])) {
-		$payload['expiration'] = (int) $sessary['expiration'];
+	if ($expiration !== NULL) {
+		$payload['expiration'] = (int) $expiration;
 	}
+
+	$headers = array(
+		'Content-Type' => 'application/json',
+		'X-Rovas-Event' => 'payment-completed',
+	);
+	// $include_delivery_headers/$callback_url reserved for future use; do not add
+	// user-controlled URLs to headers.
 
 	$options = array(
 		'method' => 'POST',
 		'data' => drupal_json_encode($payload),
-		'headers' => array(
-			'Content-Type' => 'application/json',
-			'X-Rovas-Event' => 'payment-completed',
-		),
+		'headers' => $headers,
 		'timeout' => 5,
 	);
-	
+
 	$response = drupal_http_request($endpoint, $options);
 
-  _rovas_project_reward_record_outbound_webhook(array(
-    'source_module' => 'rovas_project_reward',
-    'payment_type' => !empty($sessary['paytype']) ? (string) $sessary['paytype'] : 'card_or_express',
-    'event_type' => 'payment-completed',
-    'order_id' => !empty($sessary['commerce_order_id']) ? (int) $sessary['commerce_order_id'] : NULL,
-    'endpoint' => $endpoint,
-    'request_headers' => isset($options['headers']) ? $options['headers'] : array(),
-    'request_payload' => $payload,
-    'http_code' => isset($response->code) ? (int) $response->code : NULL,
-    'response_error' => isset($response->error) ? $response->error : '',
-    'response_body' => isset($response->data) ? $response->data : '',
-    'status' => (isset($response->code) && (int) $response->code >= 200 && (int) $response->code < 300) ? 'delivered' : 'failed',
-  ));
+	_rovas_project_reward_record_outbound_webhook(array(
+		'source_module' => 'rovas_project_reward',
+		'payment_type' => $paytype,
+		'event_type' => 'payment-completed',
+		'order_id' => $order_id,
+		'endpoint' => $endpoint,
+		'request_headers' => $headers,
+		'request_payload' => $payload,
+		'http_code' => isset($response->code) ? (int) $response->code : NULL,
+		'response_error' => isset($response->error) ? $response->error : '',
+		'response_body' => isset($response->data) ? $response->data : '',
+		'status' => (isset($response->code) && (int) $response->code >= 200 && (int) $response->code < 300) ? 'delivered' : 'failed',
+	));
 
-watchdog('rovas_project_reward', 'response <pre>' . print_r($response,1) . '</pre>');
-
-//	if (FALSE) {
-	if ((int)$response->code === 204) {
-    // Queue the callback redirect; see note in the empty-sessary block above.
-    _rovas_project_reward_queue_redirect($sessary['callback_url']);
-	}
-	else {
-		$project_name = $rewarded_project->title;
-		drupal_set_message(t('<p>Thank you for the payment.</p><p><strong>Due to a temporary problem, the premium features at @project could not be immediately activated.</strong></p><p>We will remedy the problem, and notify you as soon as possible.</p>',['@project' => $project_name]), 'error');
-
-		$message = 'Unusual response from the receiving server when rewarding project <a href="/node/'.$rewarded_project->nid.'">' . $rewarded_project->nid . '</a>.<p>The response is <pre>' . print_r($response,1) . '</pre></p>';
-		rules_invoke_component('rules_send_email','alexanderz@neofund.sk','Payment failure',$message,'en');
-
-//		watchdog('rovas_project_reward', $message);
-	}
+	return $response;
 }
 
 /**

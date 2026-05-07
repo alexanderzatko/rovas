@@ -112,6 +112,10 @@ function rovas_stripe_webhooks_process_payment_intent_succeeded($event, $record)
           $order->data['rovas_express_invoice_ready'] = REQUEST_TIME;
           commerce_order_save($order);
 
+          // 3rd-party rewpro notification must not rely on session (webhook runs
+          // out-of-band and rovas_stripe_webhooks suppresses session access).
+          _rovas_stripe_webhooks_maybe_notify_third_party($order, $intent);
+
           if (function_exists('rovas_project_reward_commerce_invoice_receipt_action_mail_execute')) {
             $to = token_replace('[commerce-order:owner] <[commerce-order:mail]>', array('commerce-order' => $order), array('clear' => TRUE));
             $subject = token_replace('[site:name]: Order #[commerce-order:order-id]', array('commerce-order' => $order), array('clear' => TRUE));
@@ -191,6 +195,8 @@ function rovas_stripe_webhooks_process_payment_intent_succeeded($event, $record)
           $order->data['rovas_express_invoice_ready'] = REQUEST_TIME;
           commerce_order_save($order);
 
+          _rovas_stripe_webhooks_maybe_notify_third_party($order, $intent);
+
           if (function_exists('rovas_project_reward_commerce_invoice_receipt_action_mail_execute')) {
             $to = token_replace('[commerce-order:owner] <[commerce-order:mail]>', array('commerce-order' => $order), array('clear' => TRUE));
             $subject = token_replace('[site:name]: Order #[commerce-order:order-id]', array('commerce-order' => $order), array('clear' => TRUE));
@@ -257,6 +263,10 @@ function rovas_stripe_webhooks_process_payment_intent_succeeded($event, $record)
               rules_invoke_event('commerce_checkout_complete', $order);
             }
             _rovas_stripe_webhooks_add_balance_fees_and_process($order, $intent);
+
+            // Notify 3rd party (rewpro) if the PaymentIntent carried a callback token.
+            $order = commerce_order_load($order->order_id, TRUE);
+            _rovas_stripe_webhooks_maybe_notify_third_party($order, $intent);
           }
           else {
             watchdog('rovas_stripe_webhooks', 'Failed to create payment transaction for order @order_id', array('@order_id' => $order->order_id), WATCHDOG_ERROR);
@@ -335,6 +345,8 @@ function rovas_stripe_webhooks_process_payment_intent_succeeded($event, $record)
           'Order completed via Stripe payment_intent.succeeded webhook.');
         $order = commerce_order_load($order->order_id);
       }
+
+      _rovas_stripe_webhooks_maybe_notify_third_party($order, $intent);
     }
     else {
       watchdog('rovas_stripe_webhooks', 'No existing order found for payment intent @pi from regular card payment.', array('@pi' => $payment_intent_id), WATCHDOG_WARNING);
@@ -342,6 +354,87 @@ function rovas_stripe_webhooks_process_payment_intent_succeeded($event, $record)
   }
 
   return $order !== NULL;
+}
+
+/**
+ * Notify 3rd-party app for rewpro purchases if token is present in PI metadata.
+ *
+ * Stripe webhooks run without browser session context and rovas_stripe_webhooks
+ * suppresses session handling, so any session-gated notification must be driven
+ * from persisted data (PaymentIntent metadata and order fields).
+ */
+function _rovas_stripe_webhooks_maybe_notify_third_party($order, array $intent) {
+  if (empty($order) || empty($order->order_id) || empty($intent['metadata']) || !is_array($intent['metadata'])) {
+    return;
+  }
+
+  if (!module_exists('rovas_project_reward') || !function_exists('rovas_project_reward_notify_purchase_with_token')) {
+    return;
+  }
+
+  $meta = $intent['metadata'];
+  $token = !empty($meta['callback_token']) ? (string) $meta['callback_token'] : '';
+  if ($token === '') {
+    return;
+  }
+
+  // Idempotency per order.
+  if (!empty($order->data['rovas_stripe_purchase_notified'])) {
+    watchdog('rovas_stripe_webhooks', 'Skipping 3rd-party notify: already notified for order @oid', array('@oid' => $order->order_id), WATCHDOG_DEBUG);
+    return;
+  }
+
+  // Determine the rewarded node: prefer PI metadata, fallback to order field.
+  $recipient_id = NULL;
+  if (!empty($meta['project_id']) && is_numeric($meta['project_id'])) {
+    $recipient_id = (int) $meta['project_id'];
+  }
+  elseif (!empty($order->field_payment_recipient[LANGUAGE_NONE][0]['value']) && is_numeric($order->field_payment_recipient[LANGUAGE_NONE][0]['value'])) {
+    $recipient_id = (int) $order->field_payment_recipient[LANGUAGE_NONE][0]['value'];
+  }
+  if (empty($recipient_id)) {
+    watchdog('rovas_stripe_webhooks', 'Skipping 3rd-party notify: missing recipient for order @oid', array('@oid' => $order->order_id), WATCHDOG_WARNING);
+    return;
+  }
+
+  $rewarded = node_load($recipient_id);
+  if (!$rewarded) {
+    watchdog('rovas_stripe_webhooks', 'Skipping 3rd-party notify: recipient node @nid not found for order @oid', array('@nid' => $recipient_id, '@oid' => $order->order_id), WATCHDOG_WARNING);
+    return;
+  }
+
+  $expiration = NULL;
+  if (!empty($meta['callback_expiration']) && is_numeric($meta['callback_expiration'])) {
+    $expiration = (int) $meta['callback_expiration'];
+  }
+
+  $paytype = !empty($meta['paytype']) ? (string) $meta['paytype'] : 'card_or_express';
+  $email = NULL;
+  if (!empty($intent['receipt_email'])) {
+    $email = $intent['receipt_email'];
+  }
+  elseif (!empty($intent['charges']['data'][0]['billing_details']['email'])) {
+    $email = $intent['charges']['data'][0]['billing_details']['email'];
+  }
+
+  $amount_minor = function_exists('rovas_project_reward_commerce_order_total_minor_units')
+    ? rovas_project_reward_commerce_order_total_minor_units($order)
+    : (!empty($order->commerce_order_total[LANGUAGE_NONE][0]['amount']) ? (int) $order->commerce_order_total[LANGUAGE_NONE][0]['amount'] : 0);
+
+  $response = rovas_project_reward_notify_purchase_with_token($rewarded, $amount_minor, 'EUR', $email, $token, $expiration, $paytype, (int) $order->order_id);
+
+  // Mark as attempted to prevent duplicates from Stripe retries / concurrent webhooks.
+  if (empty($order->data) || !is_array($order->data)) {
+    $order->data = array();
+  }
+  $order->data['rovas_stripe_purchase_notified'] = REQUEST_TIME;
+  $order->data['rovas_stripe_purchase_notified_http'] = isset($response->code) ? (int) $response->code : 0;
+  commerce_order_save($order);
+
+  watchdog('rovas_stripe_webhooks', '3rd-party notify attempted for order @oid (HTTP @code).', array(
+    '@oid' => $order->order_id,
+    '@code' => isset($response->code) ? $response->code : '?',
+  ), ((isset($response->code) && (int) $response->code >= 200 && (int) $response->code < 300) ? WATCHDOG_INFO : WATCHDOG_WARNING));
 }
 
 /**
