@@ -201,32 +201,20 @@ function rovas_stripe_express_checkout_thanks() {
 			if ($project_id && $project_id !== 'none') {
 					$project = node_load($project_id);
 					if ($project) {
-						// Populate rewpro session with order_id for outbound webhook logs
-						// and dedupe: if webhook already notified, don't POST again here.
-						$order_id = _rovas_stripe_express_checkout_find_order_id_by_payment_intent($payment_intent_id, $intent);
-						if ($order_id && function_exists('rovas_project_reward_session_get') && function_exists('rovas_project_reward_session_set')) {
-							$sessary = rovas_project_reward_session_get('rovas_project_reward', array());
-							$sessary['commerce_order_id'] = (int) $order_id;
-							rovas_project_reward_session_set('rovas_project_reward', $sessary);
-						}
-
-						$already_notified = FALSE;
-						if ($order_id && function_exists('commerce_order_load')) {
-							$o = commerce_order_load((int) $order_id);
-							$already_notified = ($o && !empty($o->data['rovas_stripe_purchase_notified']));
-						}
-
-						if ($already_notified) {
-							// Webhook already notified; keep UX redirect without duplicating the POST.
-							if (!isset($sessary) && function_exists('rovas_project_reward_session_get')) {
-								$sessary = rovas_project_reward_session_get('rovas_project_reward', array());
-							}
-							if (!empty($sessary['callback_url']) && is_string($sessary['callback_url'])) {
-								$buyshares_redirect = $sessary['callback_url'];
-							}
-						}
-						else {
-							rovas_project_reward_notify_purchase($project, $paid_minor, 'EUR', $email);
+						// Rewpro Express Checkout creates the Commerce order via the Stripe
+						// payment_intent.succeeded webhook (out-of-band). The thank-you page
+						// can be reached before that webhook runs; in that case no order id
+						// exists yet and notifying here creates duplicates.
+						//
+						// Since we now persist callback_token on the PaymentIntent and the
+						// webhook reliably performs the 3rd-party notification, this thank-you
+						// handler only redirects back to the 3rd party (when callback_url is in
+						// session) and never sends the notify POST.
+						$sessary = function_exists('rovas_project_reward_session_get')
+							? rovas_project_reward_session_get('rovas_project_reward', array())
+							: array();
+						if (!empty($sessary['callback_url']) && is_string($sessary['callback_url'])) {
+							$buyshares_redirect = $sessary['callback_url'];
 						}
 					} else {
 						watchdog('rovas_stripe', 'Project @nid not found for PI: @pi_id', array('@nid' => $project_id, '@pi_id' => $payment_intent_id), WATCHDOG_WARNING);
@@ -267,49 +255,4 @@ function rovas_stripe_express_checkout_thanks() {
 		. '<script>window.location.replace(' . drupal_json_encode($redirect) . ');</script>'
 		. '</head><body>Redirecting...</body></html>';
 	drupal_exit();
-}
-
-/**
- * Best-effort lookup: map Stripe PaymentIntent id to Commerce order id.
- *
- * Used by the thank-you path to enrich outbound webhook logs (order column)
- * and to avoid duplicate third-party notifications when the webhook already ran.
- */
-function _rovas_stripe_express_checkout_find_order_id_by_payment_intent($payment_intent_id, $intent = NULL) {
-	if (empty($payment_intent_id) || !is_string($payment_intent_id)) {
-		return NULL;
-	}
-
-	// If intent includes commerce_order_id (buyshares/buymerits), trust it.
-	if ($intent && is_object($intent) && isset($intent->metadata) && !empty($intent->metadata->commerce_order_id)) {
-		$oid = (int) $intent->metadata->commerce_order_id;
-		if ($oid > 0) {
-			return $oid;
-		}
-	}
-
-	// Primary: transaction remote_id points to PI id.
-	$oid = db_select('commerce_payment_transaction', 'cpt')
-		->fields('cpt', array('order_id'))
-		->condition('cpt.remote_id', $payment_intent_id)
-		->condition('cpt.payment_method', 'commerce_stripe_pi')
-		->range(0, 1)
-		->execute()
-		->fetchField();
-	if ($oid) {
-		return (int) $oid;
-	}
-
-	// Fallback: order data sometimes stores PI payload.
-	$oid = db_select('commerce_order', 'co')
-		->fields('co', array('order_id'))
-		->condition('co.data', '%' . db_like($payment_intent_id) . '%', 'LIKE')
-		->range(0, 1)
-		->execute()
-		->fetchField();
-	if ($oid) {
-		return (int) $oid;
-	}
-
-	return NULL;
 }
