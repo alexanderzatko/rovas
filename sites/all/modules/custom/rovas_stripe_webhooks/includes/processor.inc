@@ -276,7 +276,29 @@ function rovas_stripe_webhooks_process_payment_intent_succeeded($event, $record)
     }
   }
   else {
-    $order = _rovas_stripe_webhooks_find_order_by_payment_intent($payment_intent_id);
+    // Prefer an explicit order id stored on the PaymentIntent metadata.
+    // For regular (non-express) card payments, commerce_stripe_pi commonly sets:
+    //   - metadata.order_id
+    //   - metadata.order_number
+    // (and we may additionally set metadata.commerce_order_id in custom flows).
+    $order = NULL;
+    $meta_order_id = NULL;
+    if (!empty($metadata['order_id']) && is_numeric($metadata['order_id'])) {
+      $meta_order_id = (int) $metadata['order_id'];
+    }
+    elseif (!empty($metadata['order_number']) && is_numeric($metadata['order_number'])) {
+      $meta_order_id = (int) $metadata['order_number'];
+    }
+
+    if ($meta_order_id) {
+      $order = commerce_order_load($meta_order_id);
+    }
+    if (!$order) {
+      // Do not attempt fuzzy matching by PaymentIntent id. Regular card PIs
+      // are expected to carry the Commerce order id in metadata.
+      watchdog('rovas_stripe_webhooks', 'No order id in PaymentIntent metadata for PI @pi; cannot correlate regular card payment.', array('@pi' => $payment_intent_id), WATCHDOG_WARNING);
+      return FALSE;
+    }
     if ($order) {
       // Always work with a fresh copy from the DB.
       $order = commerce_order_load($order->order_id);
@@ -435,36 +457,6 @@ function _rovas_stripe_webhooks_maybe_notify_third_party($order, array $intent) 
     '@oid' => $order->order_id,
     '@code' => isset($response->code) ? $response->code : '?',
   ), ((isset($response->code) && (int) $response->code >= 200 && (int) $response->code < 300) ? WATCHDOG_INFO : WATCHDOG_WARNING));
-}
-
-/**
- * Find order by Stripe payment intent ID.
- */
-function _rovas_stripe_webhooks_find_order_by_payment_intent($payment_intent_id) {
-  $order_id = db_select('commerce_payment_transaction', 'cpt')
-    ->fields('cpt', array('order_id'))
-    ->condition('cpt.remote_id', $payment_intent_id)
-    ->condition('cpt.payment_method', 'commerce_stripe_pi')
-    ->range(0, 1)
-    ->execute()
-    ->fetchField();
-
-  if ($order_id) {
-    return commerce_order_load($order_id);
-  }
-
-  $order_id = db_select('commerce_order', 'co')
-    ->fields('co', array('order_id'))
-    ->condition('co.data', '%' . db_like($payment_intent_id) . '%', 'LIKE')
-    ->range(0, 1)
-    ->execute()
-    ->fetchField();
-
-  if ($order_id) {
-    return commerce_order_load($order_id);
-  }
-
-  return FALSE;
 }
 
 /**

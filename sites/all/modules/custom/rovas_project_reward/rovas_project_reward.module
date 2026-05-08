@@ -3614,6 +3614,9 @@ function rovas_project_reward_notify_purchase($rewarded_project, $amount_paid_mi
 		return;
 	}
 
+  // Session-driven card flows should already have the order id persisted.
+  $order_id_for_log = !empty($sessary['commerce_order_id']) ? (int) $sessary['commerce_order_id'] : NULL;
+
 	$expiration = NULL;
 	if (!empty($sessary['expiration']) && $sessary['expiration'] !== INF && is_numeric($sessary['expiration'])) {
 		$expiration = (int) $sessary['expiration'];
@@ -3627,7 +3630,7 @@ function rovas_project_reward_notify_purchase($rewarded_project, $amount_paid_mi
 		$sessary['token'],
 		$expiration,
 		!empty($sessary['paytype']) ? (string) $sessary['paytype'] : 'card_or_express',
-		!empty($sessary['commerce_order_id']) ? (int) $sessary['commerce_order_id'] : NULL,
+		$order_id_for_log,
 		TRUE,
 		!empty($sessary['callback_url']) ? (string) $sessary['callback_url'] : ''
 	);
@@ -4262,6 +4265,22 @@ function rovas_project_reward_commerce_stripe_pi_payment_intent_data_alter(array
     else {
       $payment_intent_data['metadata']['language_mapped'] = $raw;
     }
+  }
+
+  // Critical for webhook-side 3rd-party notification: store callback token on PI.
+  if (empty($payment_intent_data['metadata']['callback_token']) && !empty($session['token']) && is_string($session['token'])) {
+    $payment_intent_data['metadata']['callback_token'] = (string) $session['token'];
+  }
+  if (empty($payment_intent_data['metadata']['callback_expiration']) && !empty($session['expiration']) && $session['expiration'] !== INF && is_numeric($session['expiration'])) {
+    $payment_intent_data['metadata']['callback_expiration'] = (string) ((int) $session['expiration']);
+  }
+
+  // Also persist rewpro context fields when available.
+  if (empty($payment_intent_data['metadata']['paytype']) && !empty($session['paytype'])) {
+    $payment_intent_data['metadata']['paytype'] = (string) $session['paytype'];
+  }
+  if (empty($payment_intent_data['metadata']['project_id']) && !empty($session['recipient']) && is_numeric($session['recipient'])) {
+    $payment_intent_data['metadata']['project_id'] = (string) ((int) $session['recipient']);
   }
 }
 
