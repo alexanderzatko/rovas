@@ -1313,7 +1313,7 @@ msgid ""
 "accepted."
 msgstr ""
 "Zadejte datum zahájení práce. Upozorňujeme, že podle pravidel NEO budou "
-"akceptovány pouze práce provedené po registraci v Rovasu."
+"akceptovány pouze práce provedené po registraci v Rováši."
 
 #: field:field_date:work_report:label
 msgctxt "field_date:work_report:label"
@@ -1970,7 +1970,7 @@ msgstr "Vepište název výkazu, který obsahuje důkaz pro tento váš výkaz."
 #: field:field_rovas_report:work_report:label
 msgctxt "field_rovas_report:work_report:label"
 msgid "Rovas report"
-msgstr "Výkaz v Rovasu"
+msgstr "Výkaz v Rováši"
 
 #: field:field_shareholder_project:project_merit_allocation:label
 msgctxt "field_shareholder_project:project_merit_allocation:label"
@@ -2265,7 +2265,7 @@ msgstr "Fotografie"
 #: field:field_work_evidence:#allowed_values:5
 msgctxt "field_work_evidence:#allowed_values:5"
 msgid "Rovas report"
-msgstr "Výkaz v Rovasu"
+msgstr "Výkaz v Rováši"
 
 #: field:field_work_evidence:work_report:description
 msgctxt "field_work_evidence:work_report:description"

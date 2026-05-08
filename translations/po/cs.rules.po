@@ -3494,7 +3494,7 @@ msgstr ""
 "\r\n"
 "Podle <a href=\"[site:url]rules\">pravidel NEO</a> může být váš čas, odpracovaný na jakýchkoli projektech sloužících jiným, odměněn komunitní měnou chron.\r\n"
 "\r\n"
-"Pokud chcete, chrony můžete získat i za samotnou registraci v Rovasu. Jednoduše vyplňte a odešlete <a href=\"[site:url]node/add/work-report/[system-project:nid]\">výkaz</a> ve speciálním projektu, který jsme pro vás vytvořili.\r\n"
+"Pokud chcete, chrony můžete získat i za samotnou registraci v Rováši. Jednoduše vyplňte a odešlete <a href=\"[site:url]node/add/work-report/[system-project:nid]\">výkaz</a> ve speciálním projektu, který jsme pro vás vytvořili.\r\n"
 "\r\n"
 "Chrony lze také koupit (nebo prodat) v <a href=\"[site:url]forex\">Směnárně</a>."
 

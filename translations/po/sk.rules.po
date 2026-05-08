@@ -3599,12 +3599,12 @@ msgstr "Send email to dispute parties"
 #: rules:rules_config:rules_send_welcome_email:6:subject
 msgctxt "rules_config:rules_send_welcome_email:6:subject"
 msgid "Welcome to Rovas"
-msgstr "Vitajte v aplikácii Rovas"
+msgstr "Vitajte v aplikácii Rováš"
 
 #: rules:rules_config:rules_send_welcome_email:8:subject
 msgctxt "rules_config:rules_send_welcome_email:8:subject"
 msgid "Welcome to Rovas"
-msgstr "Vitajte v aplikácii Rovas"
+msgstr "Vitajte v aplikácii Rováš"
 
 #: rules:rules_config:rules_send_welcome_email:label
 msgctxt "rules_config:rules_send_welcome_email:label"
