@@ -3681,14 +3681,6 @@ function rovas_project_reward_notify_purchase_with_token($rewarded_project, $amo
 		return (object) array('code' => 0, 'error' => 'Missing token');
 	}
 
-	// Idempotent skip: Stripe webhook or a prior Rules call may have already notified.
-	if (!empty($order_id) && is_numeric($order_id) && (int) $order_id > 0 && function_exists('commerce_order_load')) {
-		$existing = commerce_order_load((int) $order_id, TRUE);
-		if ($existing && !empty($existing->data['rovas_stripe_purchase_notified'])) {
-			return (object) array('code' => 204, 'data' => '', 'error' => '');
-		}
-	}
-
 	$endpoint = isset($rewarded_project->field_webhook_url[LANGUAGE_NONE][0]['value']) ? $rewarded_project->field_webhook_url[LANGUAGE_NONE][0]['value'] : '';
 	if (empty($endpoint)) {
 		return (object) array('code' => 0, 'error' => 'Missing endpoint');
@@ -3727,37 +3719,83 @@ function rovas_project_reward_notify_purchase_with_token($rewarded_project, $amo
 		'timeout' => 5,
 	);
 
-	$response = drupal_http_request($endpoint, $options);
+	// Serialize outbound Rewpro POSTs: Rules (paid_in_full) and Stripe webhooks can
+	// run concurrently; both may pass an idempotency read before either saves
+	// rovas_stripe_purchase_notified — use a per-order (or per-token) lock.
+	$lock_name = 'rovas_rewpro_payment_completed_';
+	if (!empty($order_id) && is_numeric($order_id) && (int) $order_id > 0) {
+		$lock_name .= 'o' . (int) $order_id;
+	}
+	else {
+		$lock_name .= 't' . md5($token);
+	}
 
-	_rovas_project_reward_record_outbound_webhook(array(
-		'source_module' => 'rovas_project_reward',
-		'payment_type' => $paytype,
-		'event_type' => 'payment-completed',
-		'order_id' => $order_id,
-		'endpoint' => $endpoint,
-		'request_headers' => $headers,
-		'request_payload' => $payload,
-		'http_code' => isset($response->code) ? (int) $response->code : NULL,
-		'response_error' => isset($response->error) ? $response->error : '',
-		'response_body' => isset($response->data) ? $response->data : '',
-		'status' => (isset($response->code) && (int) $response->code >= 200 && (int) $response->code < 300) ? 'delivered' : 'failed',
-	));
-
-	// Same idempotency flag as _rovas_stripe_webhooks_maybe_notify_third_party():
-	// Rules-driven card checkout notifies here first (HTTP 204); without this,
-	// payment_intent.succeeded would POST again and simulators often return 400
-	// on duplicate token use.
-	if (isset($response->code) && (int) $response->code >= 200 && (int) $response->code < 300
-		&& !empty($order_id) && is_numeric($order_id) && (int) $order_id > 0
-		&& function_exists('commerce_order_load') && function_exists('commerce_order_save')) {
-		$order = commerce_order_load((int) $order_id, TRUE);
-		if ($order && !empty($order->order_id)) {
-			if (!isset($order->data) || !is_array($order->data)) {
-				$order->data = array();
+	$lock_held = lock_acquire($lock_name, 120.0);
+	$wait_until = time() + 30;
+	while (!$lock_held) {
+		if (!empty($order_id) && is_numeric($order_id) && (int) $order_id > 0 && function_exists('commerce_order_load')) {
+			$existing = commerce_order_load((int) $order_id, TRUE);
+			if ($existing && !empty($existing->data['rovas_stripe_purchase_notified'])) {
+				return (object) array('code' => 204, 'data' => '', 'error' => '');
 			}
-			$order->data['rovas_stripe_purchase_notified'] = REQUEST_TIME;
-			$order->data['rovas_stripe_purchase_notified_http'] = (int) $response->code;
-			commerce_order_save($order);
+		}
+		if (time() >= $wait_until) {
+			watchdog('rovas_project_reward', 'rewpro notify: lock wait exceeded for @lock; skipping duplicate POST', array('@lock' => $lock_name), WATCHDOG_WARNING);
+			return (object) array('code' => 204, 'data' => '', 'error' => 'lock_wait');
+		}
+		lock_wait($lock_name, 2);
+		$lock_held = lock_acquire($lock_name, 120.0);
+	}
+
+	$response = NULL;
+	$did_http = FALSE;
+	try {
+		// Re-check under lock (another request may have finished while we waited).
+		if (!empty($order_id) && is_numeric($order_id) && (int) $order_id > 0 && function_exists('commerce_order_load')) {
+			$existing = commerce_order_load((int) $order_id, TRUE);
+			if ($existing && !empty($existing->data['rovas_stripe_purchase_notified'])) {
+				$response = (object) array('code' => 204, 'data' => '', 'error' => '');
+			}
+		}
+		if ($response === NULL) {
+			$response = drupal_http_request($endpoint, $options);
+			$did_http = TRUE;
+		}
+
+		if ($did_http) {
+			_rovas_project_reward_record_outbound_webhook(array(
+				'source_module' => 'rovas_project_reward',
+				'payment_type' => $paytype,
+				'event_type' => 'payment-completed',
+				'order_id' => $order_id,
+				'endpoint' => $endpoint,
+				'request_headers' => $headers,
+				'request_payload' => $payload,
+				'http_code' => isset($response->code) ? (int) $response->code : NULL,
+				'response_error' => isset($response->error) ? $response->error : '',
+				'response_body' => isset($response->data) ? $response->data : '',
+				'status' => (isset($response->code) && (int) $response->code >= 200 && (int) $response->code < 300) ? 'delivered' : 'failed',
+			));
+		}
+
+		// Same idempotency flag as _rovas_stripe_webhooks_maybe_notify_third_party().
+		if (isset($response->code) && (int) $response->code >= 200 && (int) $response->code < 300
+			&& !empty($order_id) && is_numeric($order_id) && (int) $order_id > 0
+			&& function_exists('commerce_order_load') && function_exists('commerce_order_save')) {
+			$order = commerce_order_load((int) $order_id, TRUE);
+			if ($order && !empty($order->order_id)) {
+				if (!isset($order->data) || !is_array($order->data)) {
+					$order->data = array();
+				}
+				$order->data['rovas_stripe_purchase_notified'] = REQUEST_TIME;
+				$order->data['rovas_stripe_purchase_notified_http'] = (int) $response->code;
+				commerce_order_save($order);
+			}
+		}
+	}
+	finally {
+		if ($lock_held) {
+			lock_release($lock_name);
 		}
 	}
 
