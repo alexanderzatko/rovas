@@ -3592,8 +3592,11 @@ function rovas_project_reward_commerce_order_total_minor_units($order) {
  *   CHR or EUR.
  * @param string $email
  *   The order email (might be different from user email if user is registered)
+ * @param object|null $commerce_order
+ *   Optional Commerce order from Rules (paid_in_full). Used when session does not
+ *   contain commerce_order_id so Rewpro idempotency flags can be saved.
  */
-function rovas_project_reward_notify_purchase($rewarded_project, $amount_paid_minor, $currency, $email) {
+function rovas_project_reward_notify_purchase($rewarded_project, $amount_paid_minor, $currency, $email, $commerce_order = NULL) {
 	$sessary = rovas_project_reward_session_get('rovas_project_reward', array());
 
 //watchdog('rovas_project_reward', 'sessary <pre>' . print_r($sessary,1) . '</pre>');
@@ -3614,8 +3617,11 @@ function rovas_project_reward_notify_purchase($rewarded_project, $amount_paid_mi
 		return;
 	}
 
-  // Session-driven card flows should already have the order id persisted.
+  // Prefer session; Rules often has no commerce_order_id in session at paid_in_full.
   $order_id_for_log = !empty($sessary['commerce_order_id']) ? (int) $sessary['commerce_order_id'] : NULL;
+  if ($order_id_for_log === NULL && !empty($commerce_order) && !empty($commerce_order->order_id)) {
+    $order_id_for_log = (int) $commerce_order->order_id;
+  }
 
 	$expiration = NULL;
 	if (!empty($sessary['expiration']) && $sessary['expiration'] !== INF && is_numeric($sessary['expiration'])) {
@@ -3673,6 +3679,14 @@ function rovas_project_reward_notify_purchase($rewarded_project, $amount_paid_mi
 function rovas_project_reward_notify_purchase_with_token($rewarded_project, $amount_paid_minor, $currency, $email, $token, $expiration = NULL, $paytype = 'card_or_express', $order_id = NULL, $include_delivery_headers = FALSE, $callback_url = '') {
 	if (empty($token) || !is_string($token)) {
 		return (object) array('code' => 0, 'error' => 'Missing token');
+	}
+
+	// Idempotent skip: Stripe webhook or a prior Rules call may have already notified.
+	if (!empty($order_id) && is_numeric($order_id) && (int) $order_id > 0 && function_exists('commerce_order_load')) {
+		$existing = commerce_order_load((int) $order_id, TRUE);
+		if ($existing && !empty($existing->data['rovas_stripe_purchase_notified'])) {
+			return (object) array('code' => 204, 'data' => '', 'error' => '');
+		}
 	}
 
 	$endpoint = isset($rewarded_project->field_webhook_url[LANGUAGE_NONE][0]['value']) ? $rewarded_project->field_webhook_url[LANGUAGE_NONE][0]['value'] : '';
