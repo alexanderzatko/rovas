@@ -3729,6 +3729,24 @@ function rovas_project_reward_notify_purchase_with_token($rewarded_project, $amo
 		'status' => (isset($response->code) && (int) $response->code >= 200 && (int) $response->code < 300) ? 'delivered' : 'failed',
 	));
 
+	// Same idempotency flag as _rovas_stripe_webhooks_maybe_notify_third_party():
+	// Rules-driven card checkout notifies here first (HTTP 204); without this,
+	// payment_intent.succeeded would POST again and simulators often return 400
+	// on duplicate token use.
+	if (isset($response->code) && (int) $response->code >= 200 && (int) $response->code < 300
+		&& !empty($order_id) && is_numeric($order_id) && (int) $order_id > 0
+		&& function_exists('commerce_order_load') && function_exists('commerce_order_save')) {
+		$order = commerce_order_load((int) $order_id, TRUE);
+		if ($order && !empty($order->order_id)) {
+			if (!isset($order->data) || !is_array($order->data)) {
+				$order->data = array();
+			}
+			$order->data['rovas_stripe_purchase_notified'] = REQUEST_TIME;
+			$order->data['rovas_stripe_purchase_notified_http'] = (int) $response->code;
+			commerce_order_save($order);
+		}
+	}
+
 	return $response;
 }
 

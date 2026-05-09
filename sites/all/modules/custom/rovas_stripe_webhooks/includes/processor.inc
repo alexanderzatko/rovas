@@ -394,6 +394,12 @@ function _rovas_stripe_webhooks_maybe_notify_third_party($order, array $intent) 
     return;
   }
 
+  // Fresh load: Rules may have just notified and set rovas_stripe_purchase_notified.
+  $order = commerce_order_load($order->order_id, TRUE);
+  if (empty($order) || empty($order->order_id)) {
+    return;
+  }
+
   $meta = $intent['metadata'];
   $token = !empty($meta['callback_token']) ? (string) $meta['callback_token'] : '';
   if ($token === '') {
