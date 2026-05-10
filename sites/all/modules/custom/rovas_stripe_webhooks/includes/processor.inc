@@ -390,7 +390,7 @@ function _rovas_stripe_webhooks_maybe_notify_third_party($order, array $intent) 
     return;
   }
 
-  if (!module_exists('rovas_project_reward') || !function_exists('rovas_project_reward_notify_purchase_with_token')) {
+  if (!module_exists('rovas_project_reward') || !function_exists('rovas_project_reward_enqueue_payment_completed_callback')) {
     return;
   }
 
@@ -449,20 +449,32 @@ function _rovas_stripe_webhooks_maybe_notify_third_party($order, array $intent) 
     ? rovas_project_reward_commerce_order_total_minor_units($order)
     : (!empty($order->commerce_order_total[LANGUAGE_NONE][0]['amount']) ? (int) $order->commerce_order_total[LANGUAGE_NONE][0]['amount'] : 0);
 
-  $response = rovas_project_reward_notify_purchase_with_token($rewarded, $amount_minor, 'EUR', $email, $token, $expiration, $paytype, (int) $order->order_id);
+  $queued = rovas_project_reward_enqueue_payment_completed_callback($order, array(
+    'token' => $token,
+    'recipient_id' => $recipient_id,
+    'amount_paid' => $amount_minor,
+    'currency' => 'EUR',
+    'email' => $email,
+    'expiration' => $expiration,
+    'paytype' => $paytype,
+    'intent_id' => !empty($intent['id']) ? (string) $intent['id'] : '',
+  ), 'stripe_webhook');
 
-  // Mark as attempted to prevent duplicates from Stripe retries / concurrent webhooks.
-  if (empty($order->data) || !is_array($order->data)) {
-    $order->data = array();
+  if (!$queued) {
+    watchdog('rovas_stripe_webhooks', 'Failed to enqueue 3rd-party notify for order @oid.', array('@oid' => $order->order_id), WATCHDOG_WARNING);
+    return;
   }
-  $order->data['rovas_stripe_purchase_notified'] = REQUEST_TIME;
-  $order->data['rovas_stripe_purchase_notified_http'] = isset($response->code) ? (int) $response->code : 0;
-  commerce_order_save($order);
 
-  watchdog('rovas_stripe_webhooks', '3rd-party notify attempted for order @oid (HTTP @code).', array(
+  // Process a few queue items immediately to preserve "notify before redirect"
+  // in the common case, while cron handles retries and delayed delivery.
+  rovas_project_reward_process_callback_delivery_queue(3);
+
+  $order = commerce_order_load($order->order_id, TRUE);
+  $code = !empty($order->data['rovas_stripe_purchase_notified_http']) ? (int) $order->data['rovas_stripe_purchase_notified_http'] : 0;
+  watchdog('rovas_stripe_webhooks', '3rd-party notify queue run for order @oid (HTTP @code).', array(
     '@oid' => $order->order_id,
-    '@code' => isset($response->code) ? $response->code : '?',
-  ), ((isset($response->code) && (int) $response->code >= 200 && (int) $response->code < 300) ? WATCHDOG_INFO : WATCHDOG_WARNING));
+    '@code' => $code ? $code : '?',
+  ), (!empty($order->data['rovas_stripe_purchase_notified']) ? WATCHDOG_INFO : WATCHDOG_WARNING));
 }
 
 /**

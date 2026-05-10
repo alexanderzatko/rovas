@@ -201,21 +201,27 @@ function rovas_stripe_express_checkout_thanks() {
 			if ($project_id && $project_id !== 'none') {
 					$project = node_load($project_id);
 					if ($project) {
-						// Rewpro Express Checkout creates the Commerce order via the Stripe
-						// payment_intent.succeeded webhook (out-of-band). The thank-you page
-						// can be reached before that webhook runs; in that case no order id
-						// exists yet and notifying here creates duplicates.
-						//
-						// Since we now persist callback_token on the PaymentIntent and the
-						// webhook reliably performs the 3rd-party notification, this thank-you
-						// handler only redirects back to the 3rd party (when callback_url is in
-						// session) and never sends the notify POST.
-						$sessary = function_exists('rovas_project_reward_session_get')
-							? rovas_project_reward_session_get('rovas_project_reward', array())
-							: array();
-						if (!empty($sessary['callback_url']) && is_string($sessary['callback_url'])) {
-							$buyshares_redirect = $sessary['callback_url'];
-						}
+            $order_id = !empty($intent->metadata->commerce_order_id) ? (int) $intent->metadata->commerce_order_id : 0;
+            if ($order_id > 0 && function_exists('commerce_order_load') && function_exists('rovas_project_reward_wait_for_callback_redirect')) {
+              $order = commerce_order_load($order_id, TRUE);
+              if ($order && function_exists('rovas_project_reward_persist_callback_context')) {
+                rovas_project_reward_persist_callback_context($order);
+                $buyshares_redirect = rovas_project_reward_wait_for_callback_redirect($order, 'express_thanks');
+              }
+            }
+            if (empty($buyshares_redirect)) {
+              $sessary = function_exists('rovas_project_reward_session_get')
+                ? rovas_project_reward_session_get('rovas_project_reward', array())
+                : array();
+              if (!empty($sessary['callback_url']) && is_string($sessary['callback_url'])) {
+                if (function_exists('rovas_project_reward_append_query_params')) {
+                  $buyshares_redirect = rovas_project_reward_append_query_params($sessary['callback_url'], array('error' => 'activation_pending'));
+                }
+                else {
+                  $buyshares_redirect = $sessary['callback_url'];
+                }
+              }
+            }
 					} else {
 						watchdog('rovas_stripe', 'Project @nid not found for PI: @pi_id', array('@nid' => $project_id, '@pi_id' => $payment_intent_id), WATCHDOG_WARNING);
 					}

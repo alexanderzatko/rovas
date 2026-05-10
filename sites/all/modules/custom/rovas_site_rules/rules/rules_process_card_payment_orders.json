@@ -143,7 +143,7 @@
                       "PROVIDE" : { "entity_fetched" : { "rewarded_node" : "rewarded node" } }
                     }
                   },
-                  { "php_eval" : { "code" : "\/*\r\n* Calling \u0022purchase completed\u0022 redirects\r\n* Orders created by Express Checkout (ApplePay), call this function in the rovas_stripe_express_checkout_thanks() function\r\n*\/\r\nif (\r\n\t!isset($commerce_order-\u003Edata[\u0027stripe_pi\u0027][\u0027payment_intent\u0027][\u0027metadata\u0027][\u0027context\u0027]) ||\r\n\t$commerce_order-\u003Edata[\u0027stripe_pi\u0027][\u0027payment_intent\u0027][\u0027metadata\u0027][\u0027context\u0027] != \u0027express_checkout\u0027\r\n) {\r\n\trovas_project_reward_notify_purchase($rewarded_node, rovas_project_reward_commerce_order_total_minor_units($commerce_order), \u0027EUR\u0027, $email, $commerce_order);\r\n}" } }
+                  { "php_eval" : { "code" : "\/*\r\n* Rewpro payment-completed delivery moved to async webhook queue.\r\n* Keep this Rules step as an explicit no-op to preserve rule shape.\r\n*\/\r\nreturn;" } }
                 ]
               }
             },
@@ -164,7 +164,7 @@
                       "PROVIDE" : { "entity_fetched" : { "rewarded_node" : "rewarded node" } }
                     }
                   },
-                  { "php_eval" : { "code" : "\/*\r\n* Queue post-checkout redirect (work report reward); same express_checkout guard as project.\r\n*\/\r\nif (\r\n\t!isset($commerce_order-\u003Edata[\u0027stripe_pi\u0027][\u0027payment_intent\u0027][\u0027metadata\u0027][\u0027context\u0027]) ||\r\n\t$commerce_order-\u003Edata[\u0027stripe_pi\u0027][\u0027payment_intent\u0027][\u0027metadata\u0027][\u0027context\u0027] != \u0027express_checkout\u0027\r\n) {\r\n\trovas_project_reward_notify_purchase($rewarded_node, rovas_project_reward_commerce_order_total_minor_units($commerce_order), \u0027EUR\u0027, $email, $commerce_order);\r\n}" } }
+                  { "php_eval" : { "code" : "\/*\r\n* Rewpro payment-completed delivery moved to async webhook queue.\r\n* Keep this Rules step as an explicit no-op to preserve rule shape.\r\n*\/\r\nreturn;" } }
                 ]
               }
             },

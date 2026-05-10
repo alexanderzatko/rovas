@@ -3035,7 +3035,8 @@ function rovas_project_reward_url_strip_query_params($url, array $param_names) {
 /**
  * Returns validated callback URL for rewpro third-party return link, or empty string.
  *
- * Prefers session; falls back to rovas_bank_payment_intent.callback_url.
+ * Prefers session; falls back to order data, Stripe metadata, then
+ * rovas_bank_payment_intent.callback_url.
  */
 function rovas_project_reward_order_callback_url($order) {
   if (empty($order->order_id)) {
@@ -3045,6 +3046,13 @@ function rovas_project_reward_order_callback_url($order) {
   $url = isset($sessary['callback_url']) ? $sessary['callback_url'] : '';
   if ($url !== '' && valid_url($url, TRUE)) {
     return $url;
+  }
+  if (!empty($order->data['rewpro_callback_url']) && valid_url($order->data['rewpro_callback_url'], TRUE)) {
+    return (string) $order->data['rewpro_callback_url'];
+  }
+  if (!empty($order->data['stripe_pi']['payment_intent']['metadata']['callback_url'])
+    && valid_url($order->data['stripe_pi']['payment_intent']['metadata']['callback_url'], TRUE)) {
+    return (string) $order->data['stripe_pi']['payment_intent']['metadata']['callback_url'];
   }
   $intent = db_select('rovas_bank_payment_intent', 'i')
     ->fields('i', array('callback_url'))
@@ -3056,6 +3064,144 @@ function rovas_project_reward_order_callback_url($order) {
     return $intent['callback_url'];
   }
   return '';
+}
+
+/**
+ * Persist rewpro callback URL/token context on order for async flows.
+ */
+function rovas_project_reward_persist_callback_context(&$order) {
+  if (empty($order->order_id) || !function_exists('commerce_order_save')) {
+    return;
+  }
+  $sessary = rovas_project_reward_session_get('rovas_project_reward', array());
+  if (empty($sessary) || !is_array($sessary)) {
+    return;
+  }
+  if (!isset($order->data) || !is_array($order->data)) {
+    $order->data = array();
+  }
+  $changed = FALSE;
+  if (!empty($sessary['callback_url']) && valid_url($sessary['callback_url'], TRUE)
+    && (empty($order->data['rewpro_callback_url']) || $order->data['rewpro_callback_url'] !== $sessary['callback_url'])) {
+    $order->data['rewpro_callback_url'] = (string) $sessary['callback_url'];
+    $changed = TRUE;
+  }
+  if (!empty($sessary['token']) && is_string($sessary['token'])
+    && (empty($order->data['rewpro_callback_token']) || $order->data['rewpro_callback_token'] !== $sessary['token'])) {
+    $order->data['rewpro_callback_token'] = (string) $sessary['token'];
+    $changed = TRUE;
+  }
+  if (!empty($sessary['paytype']) && is_string($sessary['paytype'])
+    && (empty($order->data['rewpro_paytype']) || $order->data['rewpro_paytype'] !== $sessary['paytype'])) {
+    $order->data['rewpro_paytype'] = (string) $sessary['paytype'];
+    $changed = TRUE;
+  }
+  if (isset($sessary['expiration']) && $sessary['expiration'] !== INF && is_numeric($sessary['expiration'])
+    && (empty($order->data['rewpro_callback_expiration']) || (int) $order->data['rewpro_callback_expiration'] !== (int) $sessary['expiration'])) {
+    $order->data['rewpro_callback_expiration'] = (int) $sessary['expiration'];
+    $changed = TRUE;
+  }
+  if ($changed) {
+    commerce_order_save($order);
+  }
+}
+
+/**
+ * Appends query params to a callback URL while preserving existing params.
+ */
+function rovas_project_reward_append_query_params($url, array $params) {
+  if ($url === '') {
+    return '';
+  }
+  $parsed = @parse_url($url);
+  if ($parsed === FALSE) {
+    return $url;
+  }
+  $existing = array();
+  if (!empty($parsed['query'])) {
+    parse_str($parsed['query'], $existing);
+  }
+  foreach ($params as $k => $v) {
+    $existing[$k] = $v;
+  }
+  $rebuilt = '';
+  if (!empty($parsed['scheme'])) {
+    $rebuilt .= $parsed['scheme'] . '://';
+  }
+  if (!empty($parsed['user'])) {
+    $rebuilt .= $parsed['user'];
+    if (!empty($parsed['pass'])) {
+      $rebuilt .= ':' . $parsed['pass'];
+    }
+    $rebuilt .= '@';
+  }
+  if (!empty($parsed['host'])) {
+    $rebuilt .= $parsed['host'];
+  }
+  if (!empty($parsed['port'])) {
+    $rebuilt .= ':' . $parsed['port'];
+  }
+  $rebuilt .= !empty($parsed['path']) ? $parsed['path'] : '';
+  $query = http_build_query($existing);
+  if ($query !== '') {
+    $rebuilt .= '?' . $query;
+  }
+  if (!empty($parsed['fragment'])) {
+    $rebuilt .= '#' . $parsed['fragment'];
+  }
+  return $rebuilt;
+}
+
+/**
+ * Wait briefly for async partner notify, then return callback redirect URL.
+ */
+function rovas_project_reward_wait_for_callback_redirect($order, $context = 'checkout') {
+  if (empty($order->order_id)) {
+    return '';
+  }
+  $callback_url = rovas_project_reward_order_callback_url($order);
+  if ($callback_url === '') {
+    return '';
+  }
+
+  $max_wait = (int) variable_get('rovas_rewpro_callback_wait_seconds', 6);
+  if ($max_wait < 0) {
+    $max_wait = 0;
+  }
+  if ($max_wait > 15) {
+    $max_wait = 15;
+  }
+
+  $start = microtime(TRUE);
+  $deadline = $start + $max_wait;
+  $current = commerce_order_load($order->order_id, TRUE);
+  while ($current && microtime(TRUE) <= $deadline) {
+    if (!empty($current->data['rovas_stripe_purchase_notified'])) {
+      return $callback_url;
+    }
+    usleep(250000);
+    $current = commerce_order_load($order->order_id, TRUE);
+  }
+
+  // Fallback: enqueue from persisted order context if webhook path did not yet
+  // enqueue or deliver.
+  $current = commerce_order_load($order->order_id, TRUE);
+  if ($current) {
+    rovas_project_reward_enqueue_payment_completed_callback_for_order($current, 'wait_timeout_' . $context);
+    rovas_project_reward_process_callback_delivery_queue(3);
+    $current = commerce_order_load($order->order_id, TRUE);
+    if ($current && !empty($current->data['rovas_stripe_purchase_notified'])) {
+      return $callback_url;
+    }
+  }
+
+  watchdog('rovas_project_reward', 'callback redirect pending: notify not confirmed within @sec sec for order @oid (@ctx).', array(
+    '@sec' => $max_wait,
+    '@oid' => $order->order_id,
+    '@ctx' => $context,
+  ), WATCHDOG_WARNING);
+
+  return rovas_project_reward_append_query_params($callback_url, array('error' => 'activation_pending'));
 }
 
 /**
@@ -3225,6 +3371,10 @@ function rovas_project_reward_review_finalize_payment($form, &$form_state) {
   $pm = commerce_payment_method_instance_load('commerce_stripe_pi|commerce_payment_commerce_stripe_pi');
   $pi = \Stripe\PaymentIntent::retrieve($pi_id);
 
+  // Persist callback context early so webhook/queue logic does not depend only
+  // on browser session availability.
+  rovas_project_reward_persist_callback_context($order);
+
   // Create the Commerce payment transaction if status is OK.
   // NOTE: this triggers hook_commerce_payment_transaction_insert which invokes
   // commerce_payment_order_paid_in_full (Rules) which calls
@@ -3269,13 +3419,12 @@ function rovas_project_reward_review_finalize_payment($form, &$form_state) {
     }
   }
 
-  // Execute the redirect that was queued by rovas_project_reward_notify_purchase()
-  // during the transaction-insert hook chain above. At this point
-  // paid_in_full_invoked has been saved by Commerce, so the Stripe webhook will
-  // find it set and skip its own paid_in_full invocation, preventing duplicates.
-  $redirect = _rovas_project_reward_queue_redirect();
-  if ($redirect) {
-    drupal_goto($redirect);
+  $fresh_order = commerce_order_load($order->order_id, TRUE);
+  if ($fresh_order) {
+    $redirect = rovas_project_reward_wait_for_callback_redirect($fresh_order, 'checkout_review');
+    if ($redirect !== '') {
+      drupal_goto($redirect);
+    }
   }
 }
 
@@ -3638,14 +3787,18 @@ function rovas_project_reward_notify_purchase($rewarded_project, $amount_paid_mi
 		!empty($sessary['paytype']) ? (string) $sessary['paytype'] : 'card_or_express',
 		$order_id_for_log,
 		TRUE,
-		!empty($sessary['callback_url']) ? (string) $sessary['callback_url'] : ''
+		!empty($sessary['callback_url']) ? (string) $sessary['callback_url'] : '',
+    'rules'
 	);
-
-	watchdog('rovas_project_reward', 'response <pre>' . print_r($response,1) . '</pre>');
 
 	if ((int) $response->code === 204) {
 		// Queue the callback redirect; see note in the empty-sessary block above.
 		_rovas_project_reward_queue_redirect($sessary['callback_url']);
+    watchdog('rovas_project_reward', 'rewpro notify succeeded for order @oid via @caller (HTTP @code).', array(
+      '@oid' => $order_id_for_log ? $order_id_for_log : 0,
+      '@caller' => 'rules',
+      '@code' => (int) $response->code,
+    ), WATCHDOG_INFO);
 	}
 	else {
 		$project_name = $rewarded_project->title;
@@ -3653,6 +3806,12 @@ function rovas_project_reward_notify_purchase($rewarded_project, $amount_paid_mi
 
 		$message = 'Unusual response from the receiving server when rewarding project <a href="/node/'.$rewarded_project->nid.'">' . $rewarded_project->nid . '</a>.<p>The response is <pre>' . print_r($response,1) . '</pre></p>';
 		rules_invoke_component('rules_send_email','alexanderz@neofund.sk','Payment failure',$message,'en');
+    watchdog('rovas_project_reward', 'rewpro notify failed for order @oid via @caller (HTTP @code, error @error).', array(
+      '@oid' => $order_id_for_log ? $order_id_for_log : 0,
+      '@caller' => 'rules',
+      '@code' => isset($response->code) ? (int) $response->code : 0,
+      '@error' => !empty($response->error) ? $response->error : '',
+    ), WATCHDOG_WARNING);
 	}
 }
 
@@ -3672,11 +3831,12 @@ function rovas_project_reward_notify_purchase($rewarded_project, $amount_paid_mi
  * @param int|null $order_id
  * @param bool $include_delivery_headers
  * @param string $callback_url
+ * @param string $caller
  *
  * @return object
  *   drupal_http_request() response object.
  */
-function rovas_project_reward_notify_purchase_with_token($rewarded_project, $amount_paid_minor, $currency, $email, $token, $expiration = NULL, $paytype = 'card_or_express', $order_id = NULL, $include_delivery_headers = FALSE, $callback_url = '') {
+function rovas_project_reward_notify_purchase_with_token($rewarded_project, $amount_paid_minor, $currency, $email, $token, $expiration = NULL, $paytype = 'card_or_express', $order_id = NULL, $include_delivery_headers = FALSE, $callback_url = '', $caller = 'unknown') {
 	if (empty($token) || !is_string($token)) {
 		return (object) array('code' => 0, 'error' => 'Missing token');
 	}
@@ -3736,11 +3896,19 @@ function rovas_project_reward_notify_purchase_with_token($rewarded_project, $amo
 		if (!empty($order_id) && is_numeric($order_id) && (int) $order_id > 0 && function_exists('commerce_order_load')) {
 			$existing = commerce_order_load((int) $order_id, TRUE);
 			if ($existing && !empty($existing->data['rovas_stripe_purchase_notified'])) {
-				return (object) array('code' => 204, 'data' => '', 'error' => '');
+        watchdog('rovas_project_reward', 'rewpro notify skip already_notified (order @oid, caller @caller).', array(
+          '@oid' => (int) $order_id,
+          '@caller' => $caller,
+        ), WATCHDOG_DEBUG);
+				return (object) array('code' => 204, 'data' => '', 'error' => 'already_notified');
 			}
 		}
 		if (time() >= $wait_until) {
-			watchdog('rovas_project_reward', 'rewpro notify: lock wait exceeded for @lock; skipping duplicate POST', array('@lock' => $lock_name), WATCHDOG_WARNING);
+			watchdog('rovas_project_reward', 'rewpro notify lock_wait for @lock (caller @caller, order @oid).', array(
+        '@lock' => $lock_name,
+        '@caller' => $caller,
+        '@oid' => (int) $order_id,
+      ), WATCHDOG_WARNING);
 			return (object) array('code' => 204, 'data' => '', 'error' => 'lock_wait');
 		}
 		lock_wait($lock_name, 2);
@@ -3754,7 +3922,7 @@ function rovas_project_reward_notify_purchase_with_token($rewarded_project, $amo
 		if (!empty($order_id) && is_numeric($order_id) && (int) $order_id > 0 && function_exists('commerce_order_load')) {
 			$existing = commerce_order_load((int) $order_id, TRUE);
 			if ($existing && !empty($existing->data['rovas_stripe_purchase_notified'])) {
-				$response = (object) array('code' => 204, 'data' => '', 'error' => '');
+				$response = (object) array('code' => 204, 'data' => '', 'error' => 'already_notified');
 			}
 		}
 		if ($response === NULL) {
@@ -3775,23 +3943,26 @@ function rovas_project_reward_notify_purchase_with_token($rewarded_project, $amo
 				'response_error' => isset($response->error) ? $response->error : '',
 				'response_body' => isset($response->data) ? $response->data : '',
 				'status' => (isset($response->code) && (int) $response->code >= 200 && (int) $response->code < 300) ? 'delivered' : 'failed',
+        'caller' => $caller,
 			));
 		}
 
-		// Same idempotency flag as _rovas_stripe_webhooks_maybe_notify_third_party().
-		if (isset($response->code) && (int) $response->code >= 200 && (int) $response->code < 300
-			&& !empty($order_id) && is_numeric($order_id) && (int) $order_id > 0
-			&& function_exists('commerce_order_load') && function_exists('commerce_order_save')) {
-			$order = commerce_order_load((int) $order_id, TRUE);
-			if ($order && !empty($order->order_id)) {
-				if (!isset($order->data) || !is_array($order->data)) {
-					$order->data = array();
-				}
-				$order->data['rovas_stripe_purchase_notified'] = REQUEST_TIME;
-				$order->data['rovas_stripe_purchase_notified_http'] = (int) $response->code;
-				commerce_order_save($order);
-			}
-		}
+    if (!empty($order_id) && is_numeric($order_id) && (int) $order_id > 0
+      && function_exists('commerce_order_load') && function_exists('commerce_order_save')) {
+      $order = commerce_order_load((int) $order_id, TRUE);
+      if ($order && !empty($order->order_id)) {
+        if (!isset($order->data) || !is_array($order->data)) {
+          $order->data = array();
+        }
+        $order->data['rovas_stripe_purchase_notify_last_attempt'] = REQUEST_TIME;
+        $order->data['rovas_stripe_purchase_notify_last_caller'] = (string) $caller;
+        $order->data['rovas_stripe_purchase_notified_http'] = isset($response->code) ? (int) $response->code : 0;
+        if (isset($response->code) && (int) $response->code >= 200 && (int) $response->code < 300) {
+          $order->data['rovas_stripe_purchase_notified'] = REQUEST_TIME;
+        }
+        commerce_order_save($order);
+      }
+    }
 	}
 	finally {
 		if ($lock_held) {
@@ -4351,6 +4522,9 @@ function rovas_project_reward_commerce_stripe_pi_payment_intent_data_alter(array
   }
   if (empty($payment_intent_data['metadata']['project_id']) && !empty($session['recipient']) && is_numeric($session['recipient'])) {
     $payment_intent_data['metadata']['project_id'] = (string) ((int) $session['recipient']);
+  }
+  if (empty($payment_intent_data['metadata']['callback_url']) && !empty($session['callback_url']) && valid_url($session['callback_url'], TRUE)) {
+    $payment_intent_data['metadata']['callback_url'] = (string) $session['callback_url'];
   }
 }
 
@@ -5881,22 +6055,6 @@ function rovas_project_reward_notify_bank_purchase_confirmed($order) {
     return;
   }
 
-  $endpoint = isset($rewarded_project->field_webhook_url[LANGUAGE_NONE][0]['value'])
-    ? $rewarded_project->field_webhook_url[LANGUAGE_NONE][0]['value']
-    : '';
-  if (empty($endpoint)) {
-    return;
-  }
-
-  // Derive signature using the project owner's API secret, identical to
-  // what rovas_project_reward_notify_purchase() does for card/express orders.
-  $owner_uid = $rewarded_project->uid;
-  $keys = rules_invoke_component('rules_retrieve_user_s_api_key_and_token', $owner_uid, 'rovas_endpoint');
-  $secret = $keys[0];
-
-  $token = $intent->callback_token;
-  $signature = strtolower(hash_hmac('sha256', $token, $secret));
-
   $order_total_minor = (int) $wrapper->commerce_order_total->amount->value();
   $email = rovas_project_reward_order_buyer_mail($order);
 
@@ -5911,52 +6069,26 @@ function rovas_project_reward_notify_bank_purchase_confirmed($order) {
     $expiration_webhook = (int) $intent->callback_expires;
   }
 
-  $payload_bank = array(
-    'event' => 'payment-completed',
-    'token' => $token,
-    'signature' => $signature,
-    'amount_paid' => $order_total_minor,
-    'currency' => 'EUR',
-    'email' => $email,
-    'occurred_at' => (int) REQUEST_TIME,
+  $response = rovas_project_reward_notify_purchase_with_token(
+    $rewarded_project,
+    $order_total_minor,
+    'EUR',
+    $email,
+    (string) $intent->callback_token,
+    $expiration_webhook,
+    'bank',
+    (int) $order->order_id,
+    FALSE,
+    '',
+    'bank_confirmed'
   );
-  if ($expiration_webhook !== NULL) {
-    $payload_bank['expiration'] = $expiration_webhook;
+
+  if ((int) $response->code >= 200 && (int) $response->code < 300) {
+    $order->data['rovas_bank_purchase_notified'] = REQUEST_TIME;
+    commerce_order_save($order);
   }
 
-  $options = array(
-    'method' => 'POST',
-    'data' => drupal_json_encode($payload_bank),
-    'headers' => array(
-      'Content-Type' => 'application/json',
-      'X-Rovas-Event' => 'payment-completed',
-    ),
-    'timeout' => 5,
-  );
-
-  _rovas_project_reward_log_bank_webhook('outbound', $endpoint, $payload_bank);
-
-  $response = drupal_http_request($endpoint, $options);
-
-  _rovas_project_reward_record_outbound_webhook(array(
-    'source_module' => 'rovas_project_reward',
-    'payment_type' => 'bank',
-    'event_type' => 'payment-completed',
-    'order_id' => (int) $order->order_id,
-    'endpoint' => $endpoint,
-    'request_headers' => isset($options['headers']) ? $options['headers'] : array(),
-    'request_payload' => $payload_bank,
-    'http_code' => isset($response->code) ? (int) $response->code : NULL,
-    'response_error' => isset($response->error) ? $response->error : '',
-    'response_body' => isset($response->data) ? $response->data : '',
-    'status' => (isset($response->code) && (int) $response->code >= 200 && (int) $response->code < 300) ? 'delivered' : 'failed',
-  ));
-
-  // Mark as notified before saving, so a concurrent call cannot also send.
-  $order->data['rovas_bank_purchase_notified'] = REQUEST_TIME;
-  commerce_order_save($order);
-
-  watchdog('rovas_project_reward', 'Bank purchase confirmed: notified 3rd party for order @oid (HTTP @code).', array('@oid' => $order->order_id, '@code' => isset($response->code) ? $response->code : '?'), WATCHDOG_INFO);
+  watchdog('rovas_project_reward', 'Bank purchase confirmed: attempted 3rd-party notify for order @oid (HTTP @code).', array('@oid' => $order->order_id, '@code' => isset($response->code) ? $response->code : '?'), ((isset($response->code) && (int) $response->code >= 200 && (int) $response->code < 300) ? WATCHDOG_INFO : WATCHDOG_WARNING));
 
   if ((int) $response->code !== 204) {
     $message = 'Bank transfer: unexpected response notifying project <a href="/node/' . $rewarded_project->nid . '">' . $rewarded_project->nid . '</a> for order ' . $order->order_id . '.<p>Response: <pre>' . print_r($response, 1) . '</pre></p>';
@@ -6076,6 +6208,130 @@ function rovas_project_reward_mark_bank_order_failed($order_id, $status = 'faile
 }
 
 /**
+ * Enqueue async payment-completed partner callback for card/express orders.
+ */
+function rovas_project_reward_enqueue_payment_completed_callback($order, array $data, $caller = 'stripe_webhook') {
+  if (empty($order->order_id)) {
+    return FALSE;
+  }
+  if (empty($data['token']) || !is_string($data['token'])) {
+    return FALSE;
+  }
+  if (empty($data['recipient_id']) || !is_numeric($data['recipient_id'])) {
+    return FALSE;
+  }
+
+  $recipient_id = (int) $data['recipient_id'];
+  $rewarded = node_load($recipient_id);
+  if (!$rewarded || empty($rewarded->field_webhook_url[LANGUAGE_NONE][0]['value'])) {
+    watchdog('rovas_project_reward', 'Skipping queued payment-completed: missing endpoint for recipient @nid (order @oid).', array(
+      '@nid' => $recipient_id,
+      '@oid' => (int) $order->order_id,
+    ), WATCHDOG_WARNING);
+    return FALSE;
+  }
+
+  $delivery_id = 'pc_' . substr(hash('sha256', (int) $order->order_id . '|' . $data['token']), 0, 40);
+  $existing = db_select('rovas_bank_callback_delivery', 'd')
+    ->fields('d', array('id'))
+    ->condition('delivery_id', $delivery_id)
+    ->range(0, 1)
+    ->execute()
+    ->fetchField();
+  if ($existing) {
+    return TRUE;
+  }
+
+  $payload = array(
+    'event' => 'payment-completed',
+    'token' => (string) $data['token'],
+    'order_id' => (int) $order->order_id,
+    'recipient_id' => $recipient_id,
+    'amount_paid' => isset($data['amount_paid']) ? (int) $data['amount_paid'] : rovas_project_reward_commerce_order_total_minor_units($order),
+    'currency' => !empty($data['currency']) ? (string) $data['currency'] : 'EUR',
+    'email' => isset($data['email']) ? (string) $data['email'] : rovas_project_reward_order_buyer_mail($order),
+    'paytype' => !empty($data['paytype']) ? (string) $data['paytype'] : 'card_or_express',
+    'caller' => (string) $caller,
+  );
+  if (isset($data['expiration']) && $data['expiration'] !== NULL && is_numeric($data['expiration'])) {
+    $payload['expiration'] = (int) $data['expiration'];
+  }
+
+  db_insert('rovas_bank_callback_delivery')
+    ->fields(array(
+      'delivery_id' => $delivery_id,
+      'order_id' => (int) $order->order_id,
+      'intent_id' => !empty($data['intent_id']) ? (string) $data['intent_id'] : ('pi_order_' . (int) $order->order_id),
+      'event_type' => 'payment-completed',
+      'endpoint' => (string) $rewarded->field_webhook_url[LANGUAGE_NONE][0]['value'],
+      'payload' => drupal_json_encode($payload),
+      'status' => 'queued',
+      'attempts' => 0,
+      'next_attempt' => REQUEST_TIME,
+      'created' => REQUEST_TIME,
+      'changed' => REQUEST_TIME,
+    ))
+    ->execute();
+
+  watchdog('rovas_project_reward', 'Queued payment-completed callback @delivery for order @oid (caller @caller).', array(
+    '@delivery' => $delivery_id,
+    '@oid' => (int) $order->order_id,
+    '@caller' => $caller,
+  ), WATCHDOG_DEBUG);
+
+  return TRUE;
+}
+
+/**
+ * Enqueue payment-completed callback from persisted order/PI context.
+ */
+function rovas_project_reward_enqueue_payment_completed_callback_for_order($order, $caller = 'order_fallback') {
+  if (empty($order->order_id)) {
+    return FALSE;
+  }
+
+  $meta = array();
+  if (!empty($order->data['stripe_pi']['payment_intent']['metadata']) && is_array($order->data['stripe_pi']['payment_intent']['metadata'])) {
+    $meta = $order->data['stripe_pi']['payment_intent']['metadata'];
+  }
+  $token = !empty($meta['callback_token']) ? (string) $meta['callback_token'] : '';
+  if ($token === '' && !empty($order->data['rewpro_callback_token'])) {
+    $token = (string) $order->data['rewpro_callback_token'];
+  }
+  if ($token === '') {
+    return FALSE;
+  }
+  $recipient_id = 0;
+  if (!empty($meta['project_id']) && is_numeric($meta['project_id'])) {
+    $recipient_id = (int) $meta['project_id'];
+  }
+  elseif (!empty($order->field_payment_recipient[LANGUAGE_NONE][0]['value']) && is_numeric($order->field_payment_recipient[LANGUAGE_NONE][0]['value'])) {
+    $recipient_id = (int) $order->field_payment_recipient[LANGUAGE_NONE][0]['value'];
+  }
+  if ($recipient_id <= 0) {
+    return FALSE;
+  }
+
+  $data = array(
+    'token' => $token,
+    'recipient_id' => $recipient_id,
+    'amount_paid' => rovas_project_reward_commerce_order_total_minor_units($order),
+    'currency' => 'EUR',
+    'email' => rovas_project_reward_order_buyer_mail($order),
+    'paytype' => !empty($meta['paytype']) ? (string) $meta['paytype'] : (!empty($order->data['rewpro_paytype']) ? (string) $order->data['rewpro_paytype'] : 'card_or_express'),
+    'intent_id' => !empty($order->data['stripe_pi']['payment_intent']['id']) ? (string) $order->data['stripe_pi']['payment_intent']['id'] : '',
+  );
+  if (!empty($meta['callback_expiration']) && is_numeric($meta['callback_expiration'])) {
+    $data['expiration'] = (int) $meta['callback_expiration'];
+  }
+  elseif (!empty($order->data['rewpro_callback_expiration']) && is_numeric($order->data['rewpro_callback_expiration'])) {
+    $data['expiration'] = (int) $order->data['rewpro_callback_expiration'];
+  }
+
+  return rovas_project_reward_enqueue_payment_completed_callback($order, $data, $caller);
+}
+
+/**
  * Add delayed callback event to delivery queue.
  */
 function rovas_project_reward_enqueue_delayed_callback($order, $event_type) {
@@ -6183,6 +6439,75 @@ function rovas_project_reward_enqueue_delayed_callback($order, $event_type) {
 /**
  * Deliver queued delayed callbacks.
  */
+function rovas_project_reward_process_payment_completed_delivery_row($row, array $payload_arr) {
+  $order_id = !empty($payload_arr['order_id']) ? (int) $payload_arr['order_id'] : (int) $row->order_id;
+  $recipient_id = !empty($payload_arr['recipient_id']) ? (int) $payload_arr['recipient_id'] : 0;
+  if ($order_id <= 0 || $recipient_id <= 0 || empty($payload_arr['token'])) {
+    rovas_project_reward_mark_callback_delivery_dead($row->id, 0, 'Invalid payment-completed payload');
+    return;
+  }
+
+  $order = commerce_order_load($order_id, TRUE);
+  if (!$order) {
+    rovas_project_reward_mark_callback_delivery_dead($row->id, 0, 'Order not found');
+    return;
+  }
+  if (!empty($order->data['rovas_stripe_purchase_notified'])) {
+    db_update('rovas_bank_callback_delivery')
+      ->fields(array(
+        'status' => 'delivered',
+        'attempts' => (int) $row->attempts + 1,
+        'last_http_code' => 204,
+        'last_error' => '',
+        'changed' => REQUEST_TIME,
+      ))
+      ->condition('id', $row->id)
+      ->execute();
+    return;
+  }
+
+  $rewarded = node_load($recipient_id);
+  if (!$rewarded) {
+    rovas_project_reward_mark_callback_delivery_dead($row->id, 0, 'Recipient node not found');
+    return;
+  }
+
+  $response = rovas_project_reward_notify_purchase_with_token(
+    $rewarded,
+    isset($payload_arr['amount_paid']) ? (int) $payload_arr['amount_paid'] : rovas_project_reward_commerce_order_total_minor_units($order),
+    !empty($payload_arr['currency']) ? (string) $payload_arr['currency'] : 'EUR',
+    isset($payload_arr['email']) ? (string) $payload_arr['email'] : rovas_project_reward_order_buyer_mail($order),
+    (string) $payload_arr['token'],
+    isset($payload_arr['expiration']) && is_numeric($payload_arr['expiration']) ? (int) $payload_arr['expiration'] : NULL,
+    !empty($payload_arr['paytype']) ? (string) $payload_arr['paytype'] : 'card_or_express',
+    (int) $order_id,
+    FALSE,
+    '',
+    !empty($payload_arr['caller']) ? ('queue_' . (string) $payload_arr['caller']) : 'queue_worker'
+  );
+
+  $code = isset($response->code) ? (int) $response->code : 0;
+  if ($code >= 200 && $code < 300) {
+    db_update('rovas_bank_callback_delivery')
+      ->fields(array(
+        'status' => 'delivered',
+        'attempts' => (int) $row->attempts + 1,
+        'last_http_code' => $code,
+        'last_error' => '',
+        'changed' => REQUEST_TIME,
+      ))
+      ->condition('id', $row->id)
+      ->execute();
+  }
+  else {
+    $error = !empty($response->error) ? $response->error : 'HTTP ' . $code;
+    rovas_project_reward_mark_callback_delivery_retry($row, $code, $error);
+  }
+}
+
+/**
+ * Deliver queued delayed callbacks.
+ */
 function rovas_project_reward_process_callback_delivery_queue($limit = 20) {
   // Each attempt may wait for HTTP timeout; many retries in one cron run can
   // exceed default max_execution_time and leave newer queue rows unprocessed.
@@ -6207,6 +6532,12 @@ function rovas_project_reward_process_callback_delivery_queue($limit = 20) {
       rovas_project_reward_mark_callback_delivery_dead($row->id, 0, 'Invalid JSON payload');
       continue;
     }
+
+    if ($row->event_type === 'payment-completed') {
+      rovas_project_reward_process_payment_completed_delivery_row($row, $payload_arr);
+      continue;
+    }
+
     // Spec uses top-level token; nested context.token is for compatibility.
     $has_token = !empty($payload_arr['token']);
     if (!$has_token && isset($payload_arr['context']) && is_array($payload_arr['context'])) {
