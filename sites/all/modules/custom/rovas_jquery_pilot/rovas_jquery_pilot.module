@@ -1,0 +1,140 @@
+<?php
+
+/**
+ * @file
+ * Opt-in jQuery 3 pilot override for staged validation.
+ */
+
+/**
+ * Implements hook_menu().
+ */
+function rovas_jquery_pilot_menu() {
+  $items = array();
+
+  $items['admin/config/development/rovas-jquery-pilot'] = array(
+    'title' => 'Rovas jQuery pilot',
+    'description' => 'Configure opt-in jQuery 3 pilot overrides.',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('rovas_jquery_pilot_settings_form'),
+    'access arguments' => array('administer site configuration'),
+    'type' => MENU_NORMAL_ITEM,
+  );
+
+  return $items;
+}
+
+/**
+ * Settings form for pilot toggles.
+ */
+function rovas_jquery_pilot_settings_form($form, &$form_state) {
+  $form['rovas_jquery_pilot_enabled'] = array(
+    '#type' => 'checkbox',
+    '#title' => t('Enable jQuery 3 pilot override'),
+    '#default_value' => variable_get('rovas_jquery_pilot_enabled', 0),
+    '#description' => t('When enabled, the system jQuery library is replaced with jQuery 3.7.1. Keep disabled in production until validated.'),
+  );
+
+  $form['rovas_jquery_pilot_include_admin'] = array(
+    '#type' => 'checkbox',
+    '#title' => t('Apply pilot override on admin pages'),
+    '#default_value' => variable_get('rovas_jquery_pilot_include_admin', 0),
+    '#description' => t('Leave unchecked to reduce operational risk while validating public-facing flows first.'),
+  );
+
+  $form['rovas_jquery_pilot_use_migrate'] = array(
+    '#type' => 'checkbox',
+    '#title' => t('Load jQuery Migrate'),
+    '#default_value' => variable_get('rovas_jquery_pilot_use_migrate', 1),
+    '#description' => t('Recommended for pilot mode. Keep enabled while remediating deprecated APIs.'),
+  );
+
+  $form['rovas_jquery_pilot_jquery_url'] = array(
+    '#type' => 'textfield',
+    '#title' => t('jQuery 3 URL'),
+    '#default_value' => variable_get('rovas_jquery_pilot_jquery_url', '//code.jquery.com/jquery-3.7.1.min.js'),
+    '#size' => 80,
+    '#maxlength' => 255,
+    '#description' => t('External URL used to load jQuery 3 when pilot mode is enabled.'),
+  );
+
+  $form['rovas_jquery_pilot_migrate_url'] = array(
+    '#type' => 'textfield',
+    '#title' => t('jQuery Migrate URL'),
+    '#default_value' => variable_get('rovas_jquery_pilot_migrate_url', '//code.jquery.com/jquery-migrate-3.4.1.min.js'),
+    '#size' => 80,
+    '#maxlength' => 255,
+    '#states' => array(
+      'visible' => array(
+        ':input[name="rovas_jquery_pilot_use_migrate"]' => array('checked' => TRUE),
+      ),
+    ),
+    '#description' => t('External URL used to load jQuery Migrate after jQuery 3.'),
+  );
+
+  return system_settings_form($form);
+}
+
+/**
+ * Implements hook_module_implements_alter().
+ *
+ * Run this module after jquery_update for deterministic overrides.
+ */
+function rovas_jquery_pilot_module_implements_alter(&$implementations, $hook) {
+  if (in_array($hook, array('library_alter', 'js_alter'), TRUE) && isset($implementations['rovas_jquery_pilot'])) {
+    $group = $implementations['rovas_jquery_pilot'];
+    unset($implementations['rovas_jquery_pilot']);
+    $implementations['rovas_jquery_pilot'] = $group;
+  }
+}
+
+/**
+ * Implements hook_library_alter().
+ */
+function rovas_jquery_pilot_library_alter(&$libraries, $module) {
+  if ($module !== 'system' || !_rovas_jquery_pilot_is_active()) {
+    return;
+  }
+
+  if (empty($libraries['jquery']['js']['misc/jquery.js'])) {
+    return;
+  }
+
+  $url = variable_get('rovas_jquery_pilot_jquery_url', '//code.jquery.com/jquery-3.7.1.min.js');
+  $libraries['jquery']['js']['misc/jquery.js']['data'] = $url;
+  $libraries['jquery']['js']['misc/jquery.js']['type'] = 'external';
+  $libraries['jquery']['version'] = '3.7.1';
+}
+
+/**
+ * Implements hook_js_alter().
+ */
+function rovas_jquery_pilot_js_alter(&$javascript) {
+  if (!_rovas_jquery_pilot_is_active() || !variable_get('rovas_jquery_pilot_use_migrate', 1)) {
+    return;
+  }
+
+  $migrate_url = variable_get('rovas_jquery_pilot_migrate_url', '//code.jquery.com/jquery-migrate-3.4.1.min.js');
+  $javascript['rovas_jquery_pilot_migrate'] = array(
+    'data' => $migrate_url,
+    'type' => 'external',
+    'group' => JS_LIBRARY,
+    'weight' => -19,
+    'every_page' => TRUE,
+    'preprocess' => FALSE,
+  );
+}
+
+/**
+ * Helper to determine if pilot overrides should run for this request.
+ */
+function _rovas_jquery_pilot_is_active() {
+  if (!variable_get('rovas_jquery_pilot_enabled', 0)) {
+    return FALSE;
+  }
+
+  if (!variable_get('rovas_jquery_pilot_include_admin', 0) && path_is_admin(current_path())) {
+    return FALSE;
+  }
+
+  return TRUE;
+}

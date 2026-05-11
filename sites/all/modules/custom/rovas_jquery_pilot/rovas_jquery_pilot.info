@@ -1,0 +1,4 @@
+name = Rovas jQuery Pilot
+description = Opt-in jQuery 3 + jQuery Migrate runtime override for staged validation.
+core = 7.x
+package = Rovas

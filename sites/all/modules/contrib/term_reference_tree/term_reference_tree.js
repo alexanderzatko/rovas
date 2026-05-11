@@ -165,7 +165,7 @@ Drupal.behaviors.termReferenceTree = {
         var track_list_container = $(this).find('.term-reference-tree-track-list');
 
         // Var to track whether using checkboxes or radio buttons.
-        var input_type = $(this).has('input[type=checkbox]').size() > 0 ? 'checkbox' : 'radio';
+        var input_type = $(this).has('input[type=checkbox]').length > 0 ? 'checkbox' : 'radio';
 
         // Find all the checked controls.
         var checked_controls = $(this).find('input[type=' + input_type + ']:checked');
@@ -240,7 +240,7 @@ function addItemToTrackList(track_list_container, item_text, control_id, control
     var current_items = track_list_container.find('li');
 
     //If there are no items on the track list, add the new item.
-    if ( current_items.size() == 0 ) {
+    if ( current_items.length == 0 ) {
       track_list_container.append(new_item);
     }
     else {
@@ -295,13 +295,13 @@ function addItemToTrackList(track_list_container, item_text, control_id, control
 function showNothingSelectedMessage(track_list_container) {
   //Is the message there already?
   var message_showing =
-      (track_list_container.find('.term_ref_tree_nothing_message').size() != 0);
+      (track_list_container.find('.term_ref_tree_nothing_message').length != 0);
 
   //Number of real items showing.
   var num_real_items_showing =
       message_showing
-      ? track_list_container.find('li').size() - 1
-      : track_list_container.find('li').size();
+      ? track_list_container.find('li').length - 1
+      : track_list_container.find('li').length;
   if ( num_real_items_showing == 0 ) {
     //No items showing, so show the message.
     if ( ! message_showing ) {

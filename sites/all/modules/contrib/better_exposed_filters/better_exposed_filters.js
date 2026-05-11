@@ -126,7 +126,7 @@
             var checked = $(this).attr('checked');
 
             // Determine the number of unchecked sibling checkboxes.
-            var ct = $(this).parents('ul:first').find('input.form-checkboxes:not(:checked)').size();
+            var ct = $(this).parents('ul:first').find('input.form-checkboxes:not(:checked)').length;
 
             // If the child term is unchecked, uncheck the parent.
             if (!checked) {

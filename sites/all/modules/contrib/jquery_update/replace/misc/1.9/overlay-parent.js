@@ -482,7 +482,8 @@ Drupal.overlay.eventhandlerAlterDisplacedElements = function (event) {
     // http://www.gtalbot.org/BugzillaSection/DocumentAllDHTMLproperties.html
     // There seems to be absolutely no way to detect whether the scrollbar
     // is on the left side in Opera; always expect scrollbar to be on the left.
-    if ($.browser.opera) {
+    var isOpera = (!!window.opera || navigator.userAgent.indexOf(' OPR/') !== -1);
+    if (isOpera) {
       Drupal.overlay.leftSidedScrollbarOffset = document.documentElement.clientWidth - this.iframeWindow.document.documentElement.clientWidth + this.iframeWindow.document.documentElement.clientLeft;
     }
     else if (this.iframeWindow.document.documentElement.clientLeft) {

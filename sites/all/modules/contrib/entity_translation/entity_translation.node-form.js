@@ -6,7 +6,7 @@ Drupal.behaviors.translationNodeFieldsetSummaries = {
     $('fieldset#edit-translation', context).drupalSetSummary(function (context) {
       var status = $('#edit-translation-status', context).is(':checked') ? Drupal.t('Translation published') : Drupal.t('Translation not published');
       var translate;
-      if ($('#edit-translation-retranslate', context).size()) {
+      if ($('#edit-translation-retranslate', context).length) {
         translate = $('#edit-translation-retranslate', context).is(':checked') ? Drupal.t('Flag translations as outdated') : Drupal.t('Do not flag translations as outdated');
       }
       else {

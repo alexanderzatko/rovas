@@ -583,7 +583,7 @@
     // Get element selector from settings (and remove "visible" option since
     // our select element is hidden by default).
     var selector = settings.chosen.selector.replace(/:visible/, '');
-    if ((settings.settings.use_chosen === 'always') || ((settings.settings.use_chosen === 'chosen') && $element.is(selector) && ($element.find('option').size() >= minimum || minimum === 'Always Apply'))) {
+    if ((settings.settings.use_chosen === 'always') || ((settings.settings.use_chosen === 'chosen') && $element.is(selector) && ($element.find('option').length >= minimum || minimum === 'Always Apply'))) {
       options = $.extend(options, {
         width: (($element.width() < minWidth) ? minWidth : $element.width()) + 'px'
       });
