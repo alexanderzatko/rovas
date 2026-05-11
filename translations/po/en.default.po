@@ -49370,7 +49370,7 @@ msgstr ""
 
 #: /admin/commerce/orders/882/view/print
 msgid "Printable invoice"
-msgstr ""
+msgstr "Printable invoice"
 
 #: /admin/commerce/orders/882/view/print
 msgid "Order Confirmation"
@@ -49829,7 +49829,7 @@ msgstr ""
 
 #: /user/1284/orders/965
 msgid "Printable Invoice"
-msgstr ""
+msgstr "Printable invoice"
 
 #: /node/405773
 msgctxt "Work report"

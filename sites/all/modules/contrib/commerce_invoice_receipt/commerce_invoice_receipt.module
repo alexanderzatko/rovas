@@ -84,7 +84,7 @@ function commerce_invoice_receipt_menu() {
   );
 
   $items['user/%user/orders/%commerce_order/print'] = array(
-    'title' => 'Printable Invoice',
+    'title' => 'Printable invoice',
     'page callback' => 'commerce_invoice_receipt_view_print',
     'page arguments' => array(3),
     'access callback' => 'commerce_order_customer_order_view_access',

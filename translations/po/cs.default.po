@@ -30187,7 +30187,7 @@ msgstr ""
 
 #: /admin/commerce/orders/882/view/print
 msgid "Printable invoice"
-msgstr ""
+msgstr "Faktura k tisku"
 
 #: /admin/config/regional/translate/edit/21102?destination=admin/config/regional/translate/translate
 msgid "Disable validation"
@@ -30546,7 +30546,7 @@ msgstr ""
 
 #: /user/1284/orders/965
 msgid "Printable Invoice"
-msgstr ""
+msgstr "Faktura k tisku"
 
 #: /admin/structure/views/view/verif_slots/edit/page?destination=verif-slots%3Fuid%3D%26field_declined_value%3DAll%26field_voluntary_value%3DAll%26nid%3D352814
 msgid "slip"
