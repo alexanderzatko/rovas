@@ -3153,6 +3153,34 @@ function rovas_project_reward_append_query_params($url, array $params) {
 }
 
 /**
+ * Return TRUE if payment-completed partner notify is already confirmed.
+ */
+function rovas_project_reward_payment_completed_confirmed($order_id) {
+  $order_id = (int) $order_id;
+  if ($order_id <= 0) {
+    return FALSE;
+  }
+
+  $order = commerce_order_load($order_id, TRUE);
+  if ($order && !empty($order->data['rovas_stripe_purchase_notified'])) {
+    return TRUE;
+  }
+
+  // Fallback for cross-request timing races: queue worker may mark delivery as
+  // delivered before this request observes fresh order->data.
+  $delivered = db_select('rovas_bank_callback_delivery', 'd')
+    ->fields('d', array('id'))
+    ->condition('order_id', $order_id)
+    ->condition('event_type', 'payment-completed')
+    ->condition('status', 'delivered')
+    ->range(0, 1)
+    ->execute()
+    ->fetchField();
+
+  return !empty($delivered);
+}
+
+/**
  * Wait briefly for async partner notify, then return callback redirect URL.
  */
 function rovas_project_reward_wait_for_callback_redirect($order, $context = 'checkout') {
@@ -3174,13 +3202,11 @@ function rovas_project_reward_wait_for_callback_redirect($order, $context = 'che
 
   $start = microtime(TRUE);
   $deadline = $start + $max_wait;
-  $current = commerce_order_load($order->order_id, TRUE);
-  while ($current && microtime(TRUE) <= $deadline) {
-    if (!empty($current->data['rovas_stripe_purchase_notified'])) {
+  while (microtime(TRUE) <= $deadline) {
+    if (rovas_project_reward_payment_completed_confirmed((int) $order->order_id)) {
       return $callback_url;
     }
     usleep(250000);
-    $current = commerce_order_load($order->order_id, TRUE);
   }
 
   // Fallback: enqueue from persisted order context if webhook path did not yet
@@ -3189,8 +3215,7 @@ function rovas_project_reward_wait_for_callback_redirect($order, $context = 'che
   if ($current) {
     rovas_project_reward_enqueue_payment_completed_callback_for_order($current, 'wait_timeout_' . $context);
     rovas_project_reward_process_callback_delivery_queue(3);
-    $current = commerce_order_load($order->order_id, TRUE);
-    if ($current && !empty($current->data['rovas_stripe_purchase_notified'])) {
+    if (rovas_project_reward_payment_completed_confirmed((int) $order->order_id)) {
       return $callback_url;
     }
   }
