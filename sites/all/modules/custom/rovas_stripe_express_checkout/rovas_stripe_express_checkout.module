@@ -69,6 +69,33 @@ function rovas_stripe_express_checkout_init_buymerits() {
   return _rovas_stripe_express_checkout_init_buymerits();
 }
 
+/**
+ * Resolve an order created for a given PaymentIntent id.
+ *
+ * Express webhook processing persists the full PI payload under order->data.
+ * Use this to bridge the race where thank-you loads before metadata has
+ * commerce_order_id populated in the redirecting browser request.
+ */
+function rovas_stripe_express_checkout_load_order_by_pi_id($payment_intent_id) {
+  $payment_intent_id = (string) $payment_intent_id;
+  if ($payment_intent_id === '') {
+    return NULL;
+  }
+
+  $order_id = db_select('commerce_order', 'co')
+    ->fields('co', array('order_id'))
+    ->condition('co.data', '%' . db_like($payment_intent_id) . '%', 'LIKE')
+    ->orderBy('order_id', 'DESC')
+    ->range(0, 1)
+    ->execute()
+    ->fetchField();
+  if (!$order_id) {
+    return NULL;
+  }
+
+  return commerce_order_load((int) $order_id, TRUE);
+}
+
 function rovas_stripe_express_checkout_thanks() {
     /*
     https://dev.rovas.app/stripe/express-checkout/thank-you?
@@ -201,19 +228,42 @@ function rovas_stripe_express_checkout_thanks() {
 			if ($project_id && $project_id !== 'none') {
 					$project = node_load($project_id);
 					if ($project) {
+            $order = NULL;
             $order_id = !empty($intent->metadata->commerce_order_id) ? (int) $intent->metadata->commerce_order_id : 0;
-            if ($order_id > 0 && function_exists('commerce_order_load') && function_exists('rovas_project_reward_wait_for_callback_redirect')) {
+            if ($order_id > 0 && function_exists('commerce_order_load')) {
               $order = commerce_order_load($order_id, TRUE);
-              if ($order && function_exists('rovas_project_reward_persist_callback_context')) {
-                rovas_project_reward_persist_callback_context($order);
-                $buyshares_redirect = rovas_project_reward_wait_for_callback_redirect($order, 'express_thanks');
+            }
+            if (!$order && function_exists('rovas_stripe_express_checkout_load_order_by_pi_id')) {
+              $max_wait = (int) variable_get('rovas_express_order_wait_seconds', 8);
+              if ($max_wait < 0) {
+                $max_wait = 0;
               }
+              if ($max_wait > 20) {
+                $max_wait = 20;
+              }
+              $deadline = microtime(TRUE) + $max_wait;
+              while (!$order && microtime(TRUE) <= $deadline) {
+                $order = rovas_stripe_express_checkout_load_order_by_pi_id($payment_intent_id);
+                if ($order) {
+                  break;
+                }
+                usleep(250000);
+              }
+            }
+            if ($order && function_exists('rovas_project_reward_wait_for_callback_redirect')) {
+              if (function_exists('rovas_project_reward_persist_callback_context')) {
+                rovas_project_reward_persist_callback_context($order);
+              }
+              $buyshares_redirect = rovas_project_reward_wait_for_callback_redirect($order, 'express_thanks');
             }
             if (empty($buyshares_redirect)) {
               $sessary = function_exists('rovas_project_reward_session_get')
                 ? rovas_project_reward_session_get('rovas_project_reward', array())
                 : array();
               if (!empty($sessary['callback_url']) && is_string($sessary['callback_url'])) {
+                watchdog('rovas_stripe', 'Express thanks fallback to activation_pending redirect for PI @pi.', array(
+                  '@pi' => $payment_intent_id,
+                ), WATCHDOG_WARNING);
                 if (function_exists('rovas_project_reward_append_query_params')) {
                   $buyshares_redirect = rovas_project_reward_append_query_params($sessary['callback_url'], array('error' => 'activation_pending'));
                 }
