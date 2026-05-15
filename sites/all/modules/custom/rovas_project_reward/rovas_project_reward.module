@@ -955,7 +955,8 @@ function rovas_project_reward_form ($form, &$form_state) {
 			$donation_ack_default = 1;
 		}
 	}
-	$payments_gated_by_ack = $requires_donation_ack && empty($donation_ack_default);
+	// Payment gating is client-side (rewpro_donation_ack.js); do not use #disabled here
+	// or AJAX rebuilds (e.g. currency switch) will re-lock card/bank/ECE after the user checks the box.
 
 	//test validity of the submitted beneficiary object
 	if ($recipient) {
@@ -1546,12 +1547,13 @@ function rovas_project_reward_form ($form, &$form_state) {
 		'#options' => ['CHR' => t('Chrons',[],['context' => 'reward project currency unit']),'EUR' => t('Euros',[],['context' => 'reward project'])],
 		'#description' => t('Choose the way you want to pay'),
 		'#access' => $show_currency_switch,
-		'#disabled' => $switch_disbld || $payments_gated_by_ack,
+		'#disabled' => $switch_disbld,
 		'#ajax' => [
 			'callback' => '_rpr_currency_switcher',
 			'wrapper' => 'payment-wrapper',
 			'method' => 'replace',
 			'effect' => 'fade',
+			'limit_validation_errors' => array(),
 		],
 		'#weight' => $payment_currency_weight,
 	];
@@ -1609,7 +1611,6 @@ function rovas_project_reward_form ($form, &$form_state) {
 		'#maxlength' => 24,
 		'#required' => TRUE,
 		'#access' => $show_pay_field,
-		'#disabled' => $payments_gated_by_ack,
     '#attributes' => [
         'type' => 'number',
 				'step'     => '1',
@@ -1626,6 +1627,20 @@ function rovas_project_reward_form ($form, &$form_state) {
 	];
 
 	$form['payment_wrapper']['payment']['#attributes']['class'][] = 'edit-payment';
+
+	$payment_default = '';
+	if (isset($form_state['values']['payment']) && $form_state['values']['payment'] !== '') {
+		$payment_default = $form_state['values']['payment'];
+	}
+	elseif (isset($form_state['input']['payment']) && $form_state['input']['payment'] !== '') {
+		$payment_default = $form_state['input']['payment'];
+	}
+	elseif (!empty($callback_url) && is_numeric($payment_amount) && $payment_amount > 0) {
+		$payment_default = $payment_amount;
+	}
+	if ($payment_default !== '') {
+		$form['payment_wrapper']['payment']['#default_value'] = $payment_default;
+	}
 
 	if ($test && $paytype === 'buyshares' && $user->uid > 0 && is_numeric($recipient) && function_exists('rovas_purchase_shares_compute_share_hours_for_payment') && function_exists('rovas_purchase_shares_buyshares_hours_preview_markup')) {
 		$proj_preview = node_load($recipient);
@@ -1878,9 +1893,6 @@ JS;
 		'#weight' => 10,
 	];
 	
-	$pay_controls_disabled = $disbld || $payments_gated_by_ack;
-	$pay_bank_disabled = $disbld_bank || $payments_gated_by_ack;
-
 	$form['submit']['card'] = [
 		'#type' => 'submit',
 		'#value' => $butn_label,
@@ -1891,7 +1903,7 @@ JS;
 		],
 		'#access' => TRUE,
 		'#weight' => 10,
-		'#disabled' => $pay_controls_disabled,
+		'#disabled' => $disbld,
 		'#html' => TRUE,
 	];
 
@@ -1905,7 +1917,7 @@ JS;
 		],
 		'#access' => $access_bank,
 		'#weight' => 11,
-		'#disabled' => $pay_bank_disabled,
+		'#disabled' => $disbld_bank,
 		'#html' => TRUE,
 	];
 
@@ -2013,11 +2025,27 @@ function _rpr_buymerits_payment_preview($form, $form_state) {
 	);
 }
 
+/**
+ * Whether the current request is a rewpro payment submit (not currency/preview AJAX).
+ */
+function rovas_project_reward_rewpro_is_payment_submit(array $form_state) {
+  if (empty($form_state['submitted'])) {
+    return FALSE;
+  }
+  $trigger = isset($form_state['triggering_element']) ? $form_state['triggering_element'] : array();
+  if (!empty($trigger['#ajax'])) {
+    return FALSE;
+  }
+  return TRUE;
+}
+
 //validate the form
 function rovas_project_reward_form_validate($form, &$form_state) {
 
 //watchdog('rovas_project_reward','normal validation <pre>' . print_r($form_state['values'],1) . '</pre>');
   global $user;
+
+  $is_payment_submit = rovas_project_reward_rewpro_is_payment_submit($form_state);
 
   // Get necessary values
   $paid_amt = isset($form_state['values']['payment']) ? $form_state['values']['payment'] : '';
@@ -2028,11 +2056,11 @@ function rovas_project_reward_form_validate($form, &$form_state) {
   
 	$callback_url = isset($form_state['rovas_session_data']['callback_url']) ? $form_state['rovas_session_data']['callback_url'] : NULL;
 
-  // Validate payment amount
-  if ($paid_amt <= 0) {
+  // Validate payment amount only on an intentional pay submit (not currency AJAX, etc.).
+  if ($is_payment_submit && ($paid_amt === '' || !is_numeric($paid_amt) || (float) $paid_amt <= 0)) {
     form_set_error('payment', t('Please enter amount greater than 0'));
   }
-  elseif ($callback_url && $paid_amt < $pprice) {
+  elseif ($is_payment_submit && $callback_url && is_numeric($paid_amt) && (float) $paid_amt < (float) $pprice) {
     form_set_error('payment', t('The price for this product is') . ' ' . $pprice . ' ' . 
                              ($currency == 'EUR' ? '€' : 'CH') . '. ' .
                              t('However, you are sending only') . ' ' . $paid_amt);
@@ -2089,7 +2117,7 @@ function rovas_project_reward_form_validate($form, &$form_state) {
     }
   }
 
-  if (!empty($form_state['rewpro_requires_donation_ack']) && empty($form_state['values']['donation_ack'])) {
+  if ($is_payment_submit && !empty($form_state['rewpro_requires_donation_ack']) && empty($form_state['values']['donation_ack'])) {
     form_set_error('donation_ack', t('Please confirm that you understand this payment does not activate Premium access.'));
   }
 

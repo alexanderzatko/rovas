@@ -352,13 +352,13 @@
 					eceInitializing = true;
           eceStateKey = nextStateKey;
 					showLoading();
-					// Disable both buttons while ECE is loading
-          const cardButton = getCardButton();
-          const bankButton = getBankButton();
-          if (cardButton.length) cardButton.prop('disabled', true);
-          if (bankButton.length) bankButton.prop('disabled', true);
+					// Disable card/bank only while Stripe is mounting; re-enable on ready or error.
+          setSubmitButtonsDisabled(true);
 					initializeStripeECE();
 				}
+        else if (shouldShowECE && eceInitialized && !eceInitializing && !disableSubmit) {
+          setSubmitButtonsDisabled(false);
+        }
       }
 
       async function initializeStripeECE() {
