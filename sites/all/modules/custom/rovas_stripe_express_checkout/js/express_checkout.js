@@ -84,6 +84,22 @@
         return null;
       }
 
+      function donationAckBlocksPayment() {
+        return typeof Drupal.rovasRewproDonationAckAllowed === 'function' &&
+          !Drupal.rovasRewproDonationAckAllowed();
+      }
+
+      function setSubmitButtonsDisabled(disabled) {
+        const cardButton = getCardButton();
+        const bankButton = getBankButton();
+        if (cardButton.length) {
+          cardButton.prop('disabled', disabled);
+        }
+        if (bankButton.length) {
+          bankButton.prop('disabled', disabled);
+        }
+      }
+
       function getECEStateKey() {
         const paymentRaw = (getRewproPaymentInput().val() || '').trim();
         const currency = ($('input[name="payment-currency"]:checked').val() || 'eur').toLowerCase();
@@ -173,6 +189,21 @@
         const currencyInput = $('input[name="payment-currency"]:checked');
         const eceContainerLive = $('#express-checkout-container');
         console.log('[ECE] toggleECEVisibility called, paymentInputs:', paymentInputLive.length, 'currencyInputs:', currencyInput.length, 'containers:', eceContainerLive.length);
+
+        if (donationAckBlocksPayment()) {
+          if (eceContainerLive.length) {
+            eceContainerLive.hide();
+          }
+          if (expressCheckoutElement) {
+            expressCheckoutElement.unmount();
+            expressCheckoutElement = null;
+          }
+          eceInitialized = false;
+          eceInitializing = false;
+          eceStateKey = null;
+          setSubmitButtonsDisabled(true);
+          return;
+        }
 				const currencyLabel = currencyInput.val() === 'CHR' ? Drupal.t('CHR') : Drupal.t('€');
 
 				const rawVal = (getRewproPaymentInput().val() || '').trim();
@@ -222,7 +253,8 @@
         const hasPprice = pprice !== null;
         const meetsMinimumAmount = hasPprice ? actualAmt >= pprice : actualAmt > 0;
 
-        const shouldShowECE = meetsMinimumAmount &&
+        const shouldShowECE = !donationAckBlocksPayment() &&
+                             meetsMinimumAmount &&
                              isValidPaymentFormat &&
                              (currency === 'eur') &&
                              emailRequirementMet;
@@ -273,18 +305,14 @@
           // - Email requirement not met
           // - Not a whole integer
           // - Amount is less than pprice (when pprice exists)
-					const disableSubmit = (actualAmt <= 0) ||
+					const disableSubmit = donationAckBlocksPayment() ||
+                               (actualAmt <= 0) ||
                                !emailRequirementMet ||
                                !isValidPaymentFormat ||
                                (pprice !== null && actualAmt < pprice);
           
           // Apply the same logic to both buttons
-					if (cardButton.length) {
-            cardButton.prop('disabled', disableSubmit);
-          }
-          if (bankButton.length) {
-            bankButton.prop('disabled', disableSubmit);
-          }
+          setSubmitButtonsDisabled(disableSubmit);
         }
 
         if (!shouldShowECE && expressCheckoutElement) {
@@ -292,12 +320,9 @@
 					expressCheckoutElement = null;
 					eceInitialized = false;
 					eceInitializing = false;
-					if (paymentValue > 0) {
+					if (paymentValue > 0 && !donationAckBlocksPayment()) {
             // Re-enable both buttons when ECE is hidden and payment value is valid
-            const cardButton = getCardButton();
-            const bankButton = getBankButton();
-            if (cardButton.length) cardButton.prop('disabled', false);
-            if (bankButton.length) bankButton.prop('disabled', false);
+            setSubmitButtonsDisabled(false);
 					}
 				}
 
@@ -337,6 +362,16 @@
       }
 
       async function initializeStripeECE() {
+        if (donationAckBlocksPayment()) {
+          console.log('[ECE] initializeStripeECE aborted: donation ack not checked');
+          eceInitialized = false;
+          eceInitializing = false;
+          eceStateKey = null;
+          hideLoading();
+          setSubmitButtonsDisabled(true);
+          return;
+        }
+
         const paymentInput = getRewproPaymentInput();
         const amount = parseFloat(paymentInput.val() || '0');
         console.log('[ECE] initializeStripeECE: amount=', amount, 'cents=', Math.round(amount * 100));
@@ -346,10 +381,9 @@
 			    eceInitializing = false;
           eceStateKey = null;
           hideLoading();
-          const c0 = getCardButton();
-          const b0 = getBankButton();
-          if (c0.length) c0.prop('disabled', false);
-          if (b0.length) b0.prop('disabled', false);
+          if (!donationAckBlocksPayment()) {
+            setSubmitButtonsDisabled(false);
+          }
           return;
         }
 
@@ -380,10 +414,9 @@
             hideLoading();
             eceInitializing = false;
             eceStateKey = null;
-            const cTok = getCardButton();
-            const bTok = getBankButton();
-            if (cTok.length) cTok.prop('disabled', false);
-            if (bTok.length) bTok.prop('disabled', false);
+            if (!donationAckBlocksPayment()) {
+              setSubmitButtonsDisabled(false);
+            }
             return;
           }
           else if (paytype === 'buymerits' && recipient && Drupal.settings.rovasExpressBuymerits && Drupal.settings.rovasExpressBuymerits.token) {
@@ -397,10 +430,9 @@
             hideLoading();
             eceInitializing = false;
             eceStateKey = null;
-            const cTokM = getCardButton();
-            const bTokM = getBankButton();
-            if (cTokM.length) cTokM.prop('disabled', false);
-            if (bTokM.length) bTokM.prop('disabled', false);
+            if (!donationAckBlocksPayment()) {
+              setSubmitButtonsDisabled(false);
+            }
             return;
           }
           else {
@@ -582,6 +614,13 @@
           return;
         }
         setTimeout(() => toggleECEVisibility(), 0);
+      });
+
+      $(document).once('rewpro-donation-ack-ece').on('rovasRewproDonationAckChanged', function () {
+        if (isRewproOrderFirstContext()) {
+          return;
+        }
+        toggleECEVisibility();
       });
 
       // Initial visibility check.

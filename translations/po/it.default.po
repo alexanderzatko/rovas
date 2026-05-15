@@ -54330,3 +54330,19 @@ msgstr "Simbolo variabile: @vs"
 #: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module
 msgid "BIC"
 msgstr "BIC"
+
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:1518
+msgid "This payment is !not_payment for premium function this project offers"
+msgstr "Questo pagamento !not_payment per la funzione premium offerta da questo progetto"
+
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:1519
+msgid "not a payment or subscription"
+msgstr "non è un pagamento o un abbonamento"
+
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:1528
+msgid "To buy the premium function you must follow the instructions given in red above this checkbox"
+msgstr "Per acquistare la funzione premium devi seguire le istruzioni indicate in rosso sopra questa casella di controllo"
+
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:2086
+msgid "Please confirm that you understand this payment does not activate Premium access."
+msgstr "Conferma di aver compreso che questo pagamento non attiva l'accesso premium."

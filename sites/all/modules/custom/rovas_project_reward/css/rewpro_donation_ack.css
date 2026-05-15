@@ -1,0 +1,36 @@
+.rewpro-donation-ack-wrapper {
+  margin: 1em 0 1.25em;
+  padding: 12px 14px;
+  border: 1px solid #c9a227;
+  border-radius: 8px;
+  background: #fffbea;
+}
+
+.rewpro-donation-ack-wrapper .form-item-donation-ack {
+  margin: 0;
+}
+
+.rewpro-donation-ack-wrapper .form-item-donation-ack label {
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.rewpro-donation-ack-wrapper .rewpro-donation-ack-help {
+  margin: 0.75em 0 0;
+  font-size: 0.95em;
+  line-height: 1.45;
+  color: #444;
+}
+
+form.rewpro-payments-blocked #payment-wrapper,
+form.rewpro-payments-blocked #express-checkout-container,
+form.rewpro-payments-blocked #submit-buttons,
+form.rewpro-payments-blocked .form-item-payment-currency {
+  opacity: 0.45;
+  pointer-events: none;
+}
+
+form.rewpro-payments-blocked .rewpro-donation-ack-wrapper {
+  opacity: 1;
+  pointer-events: auto;
+}

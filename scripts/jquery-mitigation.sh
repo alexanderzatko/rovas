@@ -37,7 +37,8 @@ show_status() {
 
 stage_1_10() {
   echo "Applying staging hardening: jquery_update default -> 1.10"
-  run_drush vset jquery_update_jquery_version 1.10 -y
+  # IMPORTANT: must be stored as the string "1.10" (not float 1.1).
+  run_drush vset --exact jquery_update_jquery_version "1.10" -y
   run_drush vset jquery_update_jquery_admin_version default -y
   run_drush cc all
   show_status
