@@ -696,7 +696,7 @@ function rovas_project_reward_donation_ack_help_markup($chrons, $euros, $website
       $site_label = substr($site_label, 4);
     }
     $site_html = '<strong>' . l(check_plain($site_label), $website, array(
-      'attributes' => array('target' => '_blank', 'rel' => 'noopener noreferrer'),
+      'external' => TRUE,
       'html' => TRUE,
     )) . '</strong>';
   }
