@@ -1,25 +1,33 @@
+.rewpro-donation-ack-sep {
+  margin: 1.25em 0;
+  border: 0;
+  border-top: 1px solid #ccc;
+}
+
 .rewpro-donation-ack-wrapper {
-  margin: 1em 0 1.25em;
-  padding: 12px 14px;
-  border: 1px solid #c9a227;
-  border-radius: 8px;
-  background: #fffbea;
+  margin: 0 0 1em;
+  padding: 0;
 }
 
 .rewpro-donation-ack-wrapper .form-item-donation-ack {
-  margin: 0;
+  margin: 0 0 0.5em;
 }
 
 .rewpro-donation-ack-wrapper .form-item-donation-ack label {
   font-weight: 600;
-  line-height: 1.4;
+  line-height: 1.45;
 }
 
 .rewpro-donation-ack-wrapper .rewpro-donation-ack-help {
-  margin: 0.75em 0 0;
+  margin: 0;
   font-size: 0.95em;
-  line-height: 1.45;
-  color: #444;
+  line-height: 1.5;
+  color: #333;
+}
+
+.rewpro-donation-ack-wrapper .rewpro-donation-ack-help a {
+  font-weight: 700;
+  text-decoration: underline;
 }
 
 form.rewpro-payments-blocked #payment-wrapper,
@@ -30,7 +38,8 @@ form.rewpro-payments-blocked .form-item-payment-currency {
   pointer-events: none;
 }
 
-form.rewpro-payments-blocked .rewpro-donation-ack-wrapper {
+form.rewpro-payments-blocked .rewpro-donation-ack-wrapper,
+form.rewpro-payments-blocked .rewpro-donation-ack-sep {
   opacity: 1;
   pointer-events: auto;
 }
