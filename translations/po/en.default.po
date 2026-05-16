@@ -51515,16 +51515,16 @@ msgstr ""
 msgid "I understand that this payment is not a subscription for premium features."
 msgstr ""
 
-#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:664
-msgid "Premium access for this project is not activated through this form."
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:686
+msgid "Premium access is not activated when you start payment from this project page in Rovas. Start your order from the project's own application."
 msgstr ""
 
-#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:684
-msgid "You can only get the premium feature if you pay !thresholds directly via !site — not through this form."
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:708
+msgid "Premium access is granted only when you start your order on !site and pay at least !thresholds (payment still takes place here on Rovas). Starting payment from this project page in Rovas does not activate premium."
 msgstr ""
 
-#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:690
-msgid "You can only get the premium feature if you pay !thresholds — not through this form."
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:714
+msgid "Premium access is granted only when you start your order from the project's own application and pay at least !thresholds (payment still takes place here on Rovas). Starting payment from this project page in Rovas does not activate premium."
 msgstr ""
 
 #: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:2145

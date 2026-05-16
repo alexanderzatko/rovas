@@ -53822,17 +53822,17 @@ msgstr "BIC"
 msgid "I understand that this payment is not a subscription for premium features."
 msgstr "Rozumiem, že táto platba nie je predplatné prémiových funkcií."
 
-#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:664
-msgid "Premium access for this project is not activated through this form."
-msgstr "Prémiový prístup k tomuto projektu sa cez tento formulár neaktivuje."
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:686
+msgid "Premium access is not activated when you start payment from this project page in Rovas. Start your order from the project's own application."
+msgstr "Prémiový prístup sa neaktivuje, ak platbu začnete z tejto stránky projektu v Rováši. Objednávku musíte začať v aplikácii projektu."
 
-#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:684
-msgid "You can only get the premium feature if you pay !thresholds directly via !site — not through this form."
-msgstr "Prémiovú funkciu získate len ak zaplatíte !thresholds priamo cez !site — nie cez tento formulár."
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:708
+msgid "Premium access is granted only when you start your order on !site and pay at least !thresholds (payment still takes place here on Rovas). Starting payment from this project page in Rovas does not activate premium."
+msgstr "Prémiový prístup získate len ak objednávku začnete na !site a zaplatíte aspoň !thresholds (platba prebehne tu v Rováši). Platba začatá z tejto stránky projektu v Rováši prémiu neaktivuje."
 
-#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:690
-msgid "You can only get the premium feature if you pay !thresholds — not through this form."
-msgstr "Prémiovú funkciu získate len ak zaplatíte !thresholds — nie cez tento formulár."
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:714
+msgid "Premium access is granted only when you start your order from the project's own application and pay at least !thresholds (payment still takes place here on Rovas). Starting payment from this project page in Rovas does not activate premium."
+msgstr "Prémiový prístup získate len ak objednávku začnete v aplikácii projektu a zaplatíte aspoň !thresholds (platba prebehne tu v Rováši). Platba začatá z tejto stránky projektu v Rováši prémiu neaktivuje."
 
 #: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:2145
 msgid "Please confirm that you understand this payment is not a subscription for premium features."
