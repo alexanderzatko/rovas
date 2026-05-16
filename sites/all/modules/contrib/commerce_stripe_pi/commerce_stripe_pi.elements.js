@@ -103,7 +103,7 @@
                 var submitButton$ = $('.checkout-buttons #edit-continue');
                 var submit_text = submitButton$.val();
 
-                submitButton$.text('Please wait...');
+                submitButton$.text(Drupal.t('Please wait...'));
                 submitButton$.attr("disabled", "disabled");
                 submitButton$.addClass('disabled');
                 submitButton$.addClass('auth-processing');
@@ -189,7 +189,7 @@
 
             var submitButton$ = $('#edit-submit');
             // console.log('Initiating Checkout.');
-            submitButton$.text('Please wait...');
+            submitButton$.text(Drupal.t('Please wait...'));
             submitButton$.attr("disabled", "disabled");
             submitButton$.addClass('disabled');
             submitButton$.addClass('auth-processing');
