@@ -643,10 +643,32 @@ function rovas_project_reward_rewpro_has_partner_callback_context($callback_url 
 }
 
 /**
- * Direct rewpro visits need an explicit ack before payment controls unlock.
+ * Whether rewpro was opened from the project site (not a 3rd-party callback URL).
  */
-function rovas_project_reward_rewpro_requires_donation_ack($callback_url = NULL, array $parameters = array(), array $form_state = array()) {
+function rovas_project_reward_rewpro_is_direct_visit($callback_url = NULL, array $parameters = array(), array $form_state = array()) {
   return !rovas_project_reward_rewpro_has_partner_callback_context($callback_url, $parameters, $form_state);
+}
+
+/**
+ * Whether a project sells premium access via its own site (price tiers + web address).
+ */
+function rovas_project_reward_project_offers_premium_features($chrons, $euros, $website) {
+  $has_threshold = (is_numeric($chrons) && (float) $chrons > 0)
+    || (is_numeric($euros) && (float) $euros > 0);
+  if (!$has_threshold) {
+    return FALSE;
+  }
+  return trim((string) $website) !== '';
+}
+
+/**
+ * Direct rewpro visits to premium projects need an explicit ack before paying.
+ */
+function rovas_project_reward_rewpro_requires_donation_ack($callback_url = NULL, array $parameters = array(), array $form_state = array(), $chrons = NULL, $euros = NULL, $website = '') {
+  if (!rovas_project_reward_rewpro_is_direct_visit($callback_url, $parameters, $form_state)) {
+    return FALSE;
+  }
+  return rovas_project_reward_project_offers_premium_features($chrons, $euros, $website);
 }
 
 /**
@@ -995,14 +1017,9 @@ function rovas_project_reward_form ($form, &$form_state) {
 		$callback_url = '';
 	}
 
-	$requires_donation_ack = rovas_project_reward_rewpro_requires_donation_ack($callback_url, $parameters, $form_state);
-	$form_state['rewpro_requires_donation_ack'] = $requires_donation_ack;
+	$is_direct_rewpro = rovas_project_reward_rewpro_is_direct_visit($callback_url, $parameters, $form_state);
+	$requires_donation_ack = FALSE;
 	$donation_ack_default = 0;
-	if ($requires_donation_ack) {
-		if (!empty($form_state['values']['donation_ack']) || !empty($form_state['input']['donation_ack'])) {
-			$donation_ack_default = 1;
-		}
-	}
 	// Payment gating is client-side (rewpro_donation_ack.js); do not use #disabled here
 	// or AJAX rebuilds (e.g. currency switch) will re-lock card/bank/ECE after the user checks the box.
 
@@ -1178,15 +1195,6 @@ function rovas_project_reward_form ($form, &$form_state) {
 					$text .= t(' You can pay with Euros, or with Chrons, that can be earned for volunteer work (see below).');
 					$text .= '';
 					
-					if ((is_numeric($chrons) || is_numeric($euros)) && !$requires_donation_ack) {
-						$text .= '<div class="premium-note">';
-						$text .= t('Please note: this project offers premium features to users who pay @fee or more chrons or @eurofee or more euros.', array('@fee' => $chrons, '@eurofee' => $euros));
-						$text .= '<span class="benefits-inst">';
-						$text .= t('To claim these benefits, you have to initiate the order from the project web site: <a href="@url" target="_blank">@url</a>', array('@url' => $website));
-						$text .= '</span>';
-						$text .= '</div>';
-						$text .= '<br/>';
-					}
 					$weight_text2 = 9;
 					$payment_field_weight = 2;
 				}
@@ -1384,14 +1392,6 @@ function rovas_project_reward_form ($form, &$form_state) {
 					$text = '<strong>';
 					$text .= t('The project does not have a firm price. You can pay any amount of your choosing.');
 					$text .= '</strong>';
-					if (is_numeric($chrons) && !$requires_donation_ack) {
-						$text .= '<div class="premium-note">';
-						$text .= t('Please note: this project offers premium features to users who pay @fee or more chrons or @eurofee or more euros.', array('@fee' => $chrons, '@eurofee' => $euros));
-						$text .= '<span class="benefits-inst">';
-						$text .= t('To claim these benefits, you have to initiate the order from the project web site: <a href="@url" target="_blank">@url</a>', array('@url' => $website));
-						$text .= '</span>';
-						$text .= '</div>';
-					}
 					$text .= '<br/>';
 
 					if($chrons > $available_chrons[0]) {
@@ -1555,6 +1555,20 @@ function rovas_project_reward_form ($form, &$form_state) {
 		'#markup' => $chrnote,
 		'#weight' => $chrnote_weight,
 	);
+
+	if ($paytype === 'project' && !empty($test)) {
+		$requires_donation_ack = $is_direct_rewpro && rovas_project_reward_project_offers_premium_features(
+			isset($chrons) ? $chrons : NULL,
+			isset($euros) ? $euros : NULL,
+			isset($website) ? $website : ''
+		);
+	}
+	$form_state['rewpro_requires_donation_ack'] = $requires_donation_ack;
+	if ($requires_donation_ack) {
+		if (!empty($form_state['values']['donation_ack']) || !empty($form_state['input']['donation_ack'])) {
+			$donation_ack_default = 1;
+		}
+	}
 
 	if ($requires_donation_ack) {
 		$form['donation_ack_wrapper'] = array(
