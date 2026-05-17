@@ -24,8 +24,8 @@ function rovas_forex_form_views_exposed_form_alter(&$form, &$form_state) {
   }
 
   array_unshift($form['#validate'], 'rovas_forex_forex_purchases_exposed_validate');
-  _rovas_forex_date_popup_bound_element($form['created']['min'], t('From'));
-  _rovas_forex_date_popup_bound_element($form['created']['max'], t('To'));
+  _rovas_forex_date_popup_bound_element($form['created']['min']);
+  _rovas_forex_date_popup_bound_element($form['created']['max']);
 }
 
 /**
@@ -55,7 +55,7 @@ function _rovas_forex_normalize_created_exposed_input(array &$input) {
 /**
  * Replaces a Views exposed date textfield with a Date module pop-up calendar.
  */
-function _rovas_forex_date_popup_bound_element(&$element, $title) {
+function _rovas_forex_date_popup_bound_element(&$element) {
   if (empty($element['#type']) || $element['#type'] != 'textfield') {
     return;
   }
@@ -72,7 +72,9 @@ function _rovas_forex_date_popup_bound_element(&$element, $title) {
 
   $element = array(
     '#type' => 'date_popup',
-    '#title' => $title,
+    '#title' => '',
+    '#title_display' => 'invisible',
+    '#date_label_position' => 'invisible',
     '#default_value' => $default,
     '#date_format' => 'Y-m-d',
     '#date_year_range' => '-10:+0',
