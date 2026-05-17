@@ -4,6 +4,7 @@ core = 7.x
 package = Rovas
 
 dependencies[] = commerce
+dependencies[] = date
 dependencies[] = views
 dependencies[] = views_data_export
 dependencies[] = views_php

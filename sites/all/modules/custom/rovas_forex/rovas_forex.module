@@ -8,6 +8,66 @@
 include_once 'rovas_forex.inc';
 
 /**
+ * Implements hook_form_FORM_ID_alter() for views_exposed_form.
+ */
+function rovas_forex_form_views_exposed_form_alter(&$form, &$form_state) {
+  if (empty($form_state['view']) || $form_state['view']->name != 'forex_purchases') {
+    return;
+  }
+  if (!module_exists('date_popup') || empty($form['created']['min']) || empty($form['created']['max'])) {
+    return;
+  }
+
+  array_unshift($form['#validate'], 'rovas_forex_forex_purchases_exposed_validate');
+  _rovas_forex_date_popup_bound_element($form['created']['min'], t('From'));
+  _rovas_forex_date_popup_bound_element($form['created']['max'], t('To'));
+}
+
+/**
+ * Replaces a Views exposed date textfield with a Date module pop-up calendar.
+ */
+function _rovas_forex_date_popup_bound_element(&$element, $title) {
+  if (empty($element['#type']) || $element['#type'] != 'textfield') {
+    return;
+  }
+
+  $default = '';
+  if (!empty($element['#default_value'])) {
+    $timestamp = is_numeric($element['#default_value'])
+      ? $element['#default_value']
+      : strtotime($element['#default_value']);
+    if ($timestamp) {
+      $default = date('Y-m-d H:i:s', $timestamp);
+    }
+  }
+
+  $element = array(
+    '#type' => 'date_popup',
+    '#title' => $title,
+    '#default_value' => $default,
+    '#date_format' => 'Y-m-d',
+    '#date_year_range' => '-10:+0',
+    '#weight' => isset($element['#weight']) ? $element['#weight'] : 0,
+  );
+}
+
+/**
+ * Ensures Views receives flat date strings for the created between filter.
+ */
+function rovas_forex_forex_purchases_exposed_validate($form, &$form_state) {
+  foreach (array('min', 'max') as $bound) {
+    if (!isset($form_state['values']['created'][$bound])) {
+      continue;
+    }
+    $value = $form_state['values']['created'][$bound];
+    if (!is_array($value)) {
+      continue;
+    }
+    $form_state['values']['created'][$bound] = !empty($value['date']) ? $value['date'] : '';
+  }
+}
+
+/**
  * Implementations of hook_menu().
  */
 function rovas_forex_menu() {
