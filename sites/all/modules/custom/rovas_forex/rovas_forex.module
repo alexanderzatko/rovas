@@ -1,8 +1,15 @@
 <?php
 
 /**
-* Implementations of hook_menu().
-*/
+ * @file
+ * Forex exchange functionality.
+ */
+
+include_once 'rovas_forex.inc';
+
+/**
+ * Implementations of hook_menu().
+ */
 function rovas_forex_menu() {
   $items = array();
 
