@@ -18,9 +18,38 @@ function rovas_forex_form_views_exposed_form_alter(&$form, &$form_state) {
     return;
   }
 
+  // Views exposes created[min]/[max] as strings; date_popup expects arrays.
+  if (!empty($form_state['input'])) {
+    _rovas_forex_normalize_created_exposed_input($form_state['input']);
+  }
+
   array_unshift($form['#validate'], 'rovas_forex_forex_purchases_exposed_validate');
   _rovas_forex_date_popup_bound_element($form['created']['min'], t('From'));
   _rovas_forex_date_popup_bound_element($form['created']['max'], t('To'));
+}
+
+/**
+ * Converts Views date filter strings to the structure date_popup expects.
+ */
+function _rovas_forex_normalize_created_exposed_input(array &$input) {
+  if (empty($input['created']) || !is_array($input['created'])) {
+    return;
+  }
+
+  foreach (array('min', 'max') as $bound) {
+    if (!isset($input['created'][$bound]) || is_array($input['created'][$bound])) {
+      continue;
+    }
+    $raw = $input['created'][$bound];
+    if ($raw === '' || $raw === NULL) {
+      $input['created'][$bound] = array('date' => '');
+      continue;
+    }
+    $timestamp = is_numeric($raw) ? $raw : strtotime($raw);
+    $input['created'][$bound] = array(
+      'date' => $timestamp ? date('Y-m-d', $timestamp) : $raw,
+    );
+  }
 }
 
 /**
@@ -60,10 +89,9 @@ function rovas_forex_forex_purchases_exposed_validate($form, &$form_state) {
       continue;
     }
     $value = $form_state['values']['created'][$bound];
-    if (!is_array($value)) {
-      continue;
+    if (is_array($value)) {
+      $form_state['values']['created'][$bound] = !empty($value['date']) ? $value['date'] : '';
     }
-    $form_state['values']['created'][$bound] = !empty($value['date']) ? $value['date'] : '';
   }
 }
 
