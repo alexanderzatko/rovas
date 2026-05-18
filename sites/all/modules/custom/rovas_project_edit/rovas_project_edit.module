@@ -175,9 +175,9 @@ function rovas_project_edit_form_project_node_form_alter(&$form, &$form_state, $
 
 	unset($form['field_reward_target'][LANGUAGE_NONE]['#options']['_none']);
 
-	if (!in_array('_rpe_timeshare_rate_fields_after_build', $form['#after_build'], TRUE)) {
-		$form['#after_build'][] = '_rpe_timeshare_rate_fields_after_build';
-	}
+	// Must run in form_alter, not #after_build: ajax_process_form() on textfields
+	// runs during #process, before #after_build, so #ajax must exist earlier.
+	_rpe_timeshare_rate_fields_configure($form, $form_state);
 
 	//format the minimum time widget to a more human-friendly shape
 	$lang = $form['field_minimum_time']['#language'];
@@ -415,14 +415,6 @@ function _rpe_timeshare_render_field($form, $field_name) {
 		return '';
 	}
 	return render($field);
-}
-
-/**
- * After build: attach AJAX and sync rate fields once the form tree is complete.
- */
-function _rpe_timeshare_rate_fields_after_build($form, &$form_state) {
-	_rpe_timeshare_rate_fields_configure($form, $form_state);
-	return $form;
 }
 
 /**
