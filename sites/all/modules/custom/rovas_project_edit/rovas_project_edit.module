@@ -401,7 +401,10 @@ function &_rpe_timeshare_field_element(&$form, $field_name) {
 		return $form[$field_name];
 	}
 	$found = &_rpe_timeshare_field_element_find($form, $field_name);
-	return ($found !== NULL) ? $found : $null;
+	if ($found !== NULL) {
+		return $found;
+	}
+	return $null;
 }
 
 /**
