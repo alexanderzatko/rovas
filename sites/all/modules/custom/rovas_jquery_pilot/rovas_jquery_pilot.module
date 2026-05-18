@@ -117,10 +117,14 @@ function rovas_jquery_pilot_js_alter(&$javascript) {
   $javascript['rovas_jquery_pilot_migrate'] = array(
     'data' => $migrate_url,
     'type' => 'external',
+    'scope' => 'header',
     'group' => JS_LIBRARY,
     'weight' => -19,
     'every_page' => TRUE,
+    'requires_jquery' => TRUE,
+    'cache' => FALSE,
     'preprocess' => FALSE,
+    'defer' => FALSE,
   );
 }
 
