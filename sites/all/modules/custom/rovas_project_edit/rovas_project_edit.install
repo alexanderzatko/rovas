@@ -29,3 +29,19 @@ function rovas_project_edit_update_7102() {
   $instance['settings']['max'] = '100';
   field_update_instance($instance);
 }
+
+/**
+ * Fixed allocation must be editable on new projects (same as variable allocation).
+ *
+ * field_preferred_allocation_thres used custom field permissions; authenticated
+ * users only had "edit own" but new nodes require "create field_*", so the
+ * field was omitted from the project form for non-administrators.
+ */
+function rovas_project_edit_update_7103() {
+  $field = field_info_field('field_preferred_allocation_thres');
+  if (!$field) {
+    return;
+  }
+  $field['field_permissions']['type'] = 0;
+  field_write_field($field);
+}

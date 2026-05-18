@@ -232,7 +232,9 @@ function rovas_project_edit_form_project_node_form_alter(&$form, &$form_state, $
 			':input[name="field_reward_target[und]"]' => array('value' => '1'),
 		),
 	);
-	$form['field_preferred_allocation_thres']['#states'] = $allocation_invisible;
+	if (isset($form['field_preferred_allocation_thres'])) {
+		$form['field_preferred_allocation_thres']['#states'] = $allocation_invisible;
+	}
 	if (isset($form['field_variable_allocation'])) {
 		$form['field_variable_allocation']['#states'] = $allocation_invisible;
 	}
