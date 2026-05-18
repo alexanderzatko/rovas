@@ -326,9 +326,13 @@ function rovas_project_edit_form_project_node_form_alter(&$form, &$form_state, $
 	//make field time share costs required
 	$allowed = isset($form_state['values']['field_allow_purchasing_shares']) ? $form_state['values']['field_allow_purchasing_shares'] : $form['field_allow_purchasing_shares'][LANGUAGE_NONE]['#default_value'] ;
 	if ($allowed) {
-		$form['field_rate'][LANGUAGE_NONE][0]['value']['#required'] = 1;
-		if (isset($form['field_time_share_cost_euros'][LANGUAGE_NONE][0]['value'])) {
-			$form['field_time_share_cost_euros'][LANGUAGE_NONE][0]['value']['#required'] = 1;
+		$chr_widget = &_rpe_timeshare_value_widget($form, 'field_rate');
+		if ($chr_widget !== NULL) {
+			$chr_widget['#required'] = TRUE;
+		}
+		$eur_widget = &_rpe_timeshare_value_widget($form, 'field_time_share_cost_euros');
+		if ($eur_widget !== NULL) {
+			$eur_widget['#required'] = TRUE;
 		}
 	}
 	
@@ -338,22 +342,74 @@ function rovas_project_edit_form_project_node_form_alter(&$form, &$form_state, $
 
 
 /**
+ * Language code for a field widget on the node form (und, sk, …).
+ */
+function _rpe_timeshare_field_lang($form, $field_name) {
+	if (!isset($form[$field_name]) || !is_array($form[$field_name])) {
+		return LANGUAGE_NONE;
+	}
+	if (!empty($form[$field_name]['#language'])) {
+		return $form[$field_name]['#language'];
+	}
+	foreach (element_children($form[$field_name]) as $key) {
+		if (isset($form[$field_name][$key][0]['value'])) {
+			return $key;
+		}
+	}
+	return LANGUAGE_NONE;
+}
+
+/**
+ * Returns a reference to the value widget element, or NULL.
+ */
+function &_rpe_timeshare_value_widget(&$form, $field_name) {
+	$null = NULL;
+	if (!isset($form[$field_name]) || !is_array($form[$field_name])) {
+		return $null;
+	}
+	$lang = _rpe_timeshare_field_lang($form, $field_name);
+	if (isset($form[$field_name][$lang][0]['value'])) {
+		return $form[$field_name][$lang][0]['value'];
+	}
+	foreach (element_children($form[$field_name]) as $key) {
+		if (isset($form[$field_name][$key][0]['value'])) {
+			return $form[$field_name][$key][0]['value'];
+		}
+	}
+	return $null;
+}
+
+/**
+ * Reads the first non-empty widget value from form input or values.
+ */
+function _rpe_timeshare_value_from_state($form_state, $field_name, $source = 'input') {
+	$bucket = ($source === 'values') ? 'values' : 'input';
+	if (empty($form_state[$bucket][$field_name]) || !is_array($form_state[$bucket][$field_name])) {
+		return NULL;
+	}
+	foreach ($form_state[$bucket][$field_name] as $lang_items) {
+		if (is_array($lang_items) && isset($lang_items[0]['value']) && $lang_items[0]['value'] !== '') {
+			return $lang_items[0]['value'];
+		}
+	}
+	return NULL;
+}
+
+/**
  * AJAX + layout for Chrons and euro timeshare rate fields.
  */
 function _rpe_timeshare_rate_fields_configure(&$form, $form_state) {
-	if (!isset($form['field_rate'][LANGUAGE_NONE][0]['value'])) {
+	$chr_widget = &_rpe_timeshare_value_widget($form, 'field_rate');
+	if ($chr_widget === NULL) {
 		return;
 	}
 
-	$ajax_base = array(
-		'effect' => 'fade',
-		'limit_validation_errors' => array(),
-		'progress' => array('type' => 'throbber'),
-	);
-
-	$form['field_rate'][LANGUAGE_NONE][0]['value']['#ajax'] = $ajax_base + array(
+	$chr_widget['#limit_validation_errors'] = array();
+	$chr_widget['#ajax'] = array(
 		'callback' => '_rpe_sync_timeshare_euro_from_chr',
 		'event' => 'change',
+		'effect' => 'fade',
+		'progress' => array('type' => 'throbber'),
 	);
 
 	if (isset($form['field_rate']['#attributes']['class'])) {
@@ -363,14 +419,17 @@ function _rpe_timeshare_rate_fields_configure(&$form, $form_state) {
 		$form['field_rate']['#attributes']['class'] = array('timeshare-rate-chr');
 	}
 
-	if (isset($form['field_time_share_cost_euros'][LANGUAGE_NONE][0]['value'])) {
-		$form['field_time_share_cost_euros'][LANGUAGE_NONE][0]['value']['#ajax'] = $ajax_base + array(
+	$eur_widget = &_rpe_timeshare_value_widget($form, 'field_time_share_cost_euros');
+	if ($eur_widget !== NULL) {
+		$eur_widget['#limit_validation_errors'] = array();
+		$eur_widget['#ajax'] = array(
 			'callback' => '_rpe_sync_timeshare_chr_from_euro',
 			'event' => 'change',
+			'effect' => 'fade',
+			'progress' => array('type' => 'throbber'),
 		);
-		if (!isset($form['field_time_share_cost_euros'][LANGUAGE_NONE][0]['value']['#description'])
-			|| $form['field_time_share_cost_euros'][LANGUAGE_NONE][0]['value']['#description'] === '') {
-			$form['field_time_share_cost_euros'][LANGUAGE_NONE][0]['value']['#description'] = t('Euro cost per hour share at the current exchange rate. Changing this value updates the Chrons field.');
+		if (empty($eur_widget['#description'])) {
+			$eur_widget['#description'] = t('Euro cost per hour share at the current exchange rate. Changing this value updates the Chrons field.');
 		}
 		if (isset($form['field_time_share_cost_euros']['#attributes']['class'])) {
 			$form['field_time_share_cost_euros']['#attributes']['class'][] = 'timeshare-rate-eur';
@@ -408,25 +467,18 @@ function _rpe_timeshare_rate_fields_configure(&$form, $form_state) {
  * Chrons/hour from form input, values, or defaults.
  */
 function _rpe_field_rate_chr_amount($form, $form_state) {
-	$chr = NULL;
-	if (isset($form_state['input']['field_rate'][LANGUAGE_NONE][0]['value'])
-		&& $form_state['input']['field_rate'][LANGUAGE_NONE][0]['value'] !== '') {
-		$chr = $form_state['input']['field_rate'][LANGUAGE_NONE][0]['value'];
+	$chr = _rpe_timeshare_value_from_state($form_state, 'field_rate', 'input');
+	if ($chr === NULL) {
+		$chr = _rpe_timeshare_value_from_state($form_state, 'field_rate', 'values');
 	}
-	elseif (isset($form_state['input']['field_rate']['und'][0]['value'])
-		&& $form_state['input']['field_rate']['und'][0]['value'] !== '') {
-		$chr = $form_state['input']['field_rate']['und'][0]['value'];
-	}
-	elseif (isset($form_state['values']['field_rate'][LANGUAGE_NONE][0]['value'])
-		&& $form_state['values']['field_rate'][LANGUAGE_NONE][0]['value'] !== '') {
-		$chr = $form_state['values']['field_rate'][LANGUAGE_NONE][0]['value'];
-	}
-	elseif (isset($form['field_rate'][LANGUAGE_NONE][0]['value']['#value'])
-		&& $form['field_rate'][LANGUAGE_NONE][0]['value']['#value'] !== '') {
-		$chr = $form['field_rate'][LANGUAGE_NONE][0]['value']['#value'];
-	}
-	elseif (isset($form['field_rate'][LANGUAGE_NONE][0]['value']['#default_value'])) {
-		$chr = $form['field_rate'][LANGUAGE_NONE][0]['value']['#default_value'];
+	$widget = _rpe_timeshare_value_widget($form, 'field_rate');
+	if ($chr === NULL && $widget !== NULL) {
+		if (isset($widget['#value']) && $widget['#value'] !== '') {
+			$chr = $widget['#value'];
+		}
+		elseif (isset($widget['#default_value'])) {
+			$chr = $widget['#default_value'];
+		}
 	}
 	return (isset($chr) && is_numeric($chr)) ? (float) $chr : 0.0;
 }
@@ -435,26 +487,19 @@ function _rpe_field_rate_chr_amount($form, $form_state) {
  * €/hour from form input, values, or defaults.
  */
 function _rpe_field_rate_euro_amount($form, $form_state) {
-	$euro = NULL;
 	$field = 'field_time_share_cost_euros';
-	if (isset($form_state['input'][$field][LANGUAGE_NONE][0]['value'])
-		&& $form_state['input'][$field][LANGUAGE_NONE][0]['value'] !== '') {
-		$euro = $form_state['input'][$field][LANGUAGE_NONE][0]['value'];
+	$euro = _rpe_timeshare_value_from_state($form_state, $field, 'input');
+	if ($euro === NULL) {
+		$euro = _rpe_timeshare_value_from_state($form_state, $field, 'values');
 	}
-	elseif (isset($form_state['input'][$field]['und'][0]['value'])
-		&& $form_state['input'][$field]['und'][0]['value'] !== '') {
-		$euro = $form_state['input'][$field]['und'][0]['value'];
-	}
-	elseif (isset($form_state['values'][$field][LANGUAGE_NONE][0]['value'])
-		&& $form_state['values'][$field][LANGUAGE_NONE][0]['value'] !== '') {
-		$euro = $form_state['values'][$field][LANGUAGE_NONE][0]['value'];
-	}
-	elseif (isset($form[$field][LANGUAGE_NONE][0]['value']['#value'])
-		&& $form[$field][LANGUAGE_NONE][0]['value']['#value'] !== '') {
-		$euro = $form[$field][LANGUAGE_NONE][0]['value']['#value'];
-	}
-	elseif (isset($form[$field][LANGUAGE_NONE][0]['value']['#default_value'])) {
-		$euro = $form[$field][LANGUAGE_NONE][0]['value']['#default_value'];
+	$widget = _rpe_timeshare_value_widget($form, $field);
+	if ($euro === NULL && $widget !== NULL) {
+		if (isset($widget['#value']) && $widget['#value'] !== '') {
+			$euro = $widget['#value'];
+		}
+		elseif (isset($widget['#default_value'])) {
+			$euro = $widget['#default_value'];
+		}
 	}
 	return (isset($euro) && is_numeric($euro)) ? (float) $euro : 0.0;
 }
@@ -490,19 +535,21 @@ function _rpe_field_rate_chr_from_euro($euro) {
 }
 
 function _rpe_set_form_timeshare_chr_value(&$form, $chr) {
-	if (!isset($form['field_rate'][LANGUAGE_NONE][0]['value'])) {
+	$widget = &_rpe_timeshare_value_widget($form, 'field_rate');
+	if ($widget === NULL) {
 		return;
 	}
-	$form['field_rate'][LANGUAGE_NONE][0]['value']['#default_value'] = $chr;
-	$form['field_rate'][LANGUAGE_NONE][0]['value']['#value'] = $chr;
+	$widget['#default_value'] = $chr;
+	$widget['#value'] = $chr;
 }
 
 function _rpe_set_form_timeshare_euro_value(&$form, $euro) {
-	if (!isset($form['field_time_share_cost_euros'][LANGUAGE_NONE][0]['value'])) {
+	$widget = &_rpe_timeshare_value_widget($form, 'field_time_share_cost_euros');
+	if ($widget === NULL) {
 		return;
 	}
-	$form['field_time_share_cost_euros'][LANGUAGE_NONE][0]['value']['#default_value'] = $euro;
-	$form['field_time_share_cost_euros'][LANGUAGE_NONE][0]['value']['#value'] = $euro;
+	$widget['#default_value'] = $euro;
+	$widget['#value'] = $euro;
 }
 
 function _rpe_timeshare_sync_is_chr_trigger($form_state) {
@@ -640,11 +687,13 @@ function _rve_modify_submitted($form, &$form_state) {
 	if ($allow_shares) {
 		$chr = _rpe_field_rate_chr_amount($form, $form_state);
 		$euro = _rpe_field_rate_euro_amount($form, $form_state);
-		if ($chr > 0 && $euro <= 0 && isset($form_state['values']['field_time_share_cost_euros'][LANGUAGE_NONE][0]['value'])) {
-			$form_state['values']['field_time_share_cost_euros'][LANGUAGE_NONE][0]['value'] = _rpe_field_rate_euro_from_chr($chr);
+		$eur_lang = _rpe_timeshare_field_lang($form, 'field_time_share_cost_euros');
+		$chr_lang = _rpe_timeshare_field_lang($form, 'field_rate');
+		if ($chr > 0 && $euro <= 0) {
+			$form_state['values']['field_time_share_cost_euros'][$eur_lang][0]['value'] = _rpe_field_rate_euro_from_chr($chr);
 		}
-		elseif ($euro > 0 && $chr <= 0 && isset($form_state['values']['field_rate'][LANGUAGE_NONE][0]['value'])) {
-			$form_state['values']['field_rate'][LANGUAGE_NONE][0]['value'] = _rpe_field_rate_chr_from_euro($euro);
+		elseif ($euro > 0 && $chr <= 0) {
+			$form_state['values']['field_rate'][$chr_lang][0]['value'] = _rpe_field_rate_chr_from_euro($euro);
 		}
 	}
 
