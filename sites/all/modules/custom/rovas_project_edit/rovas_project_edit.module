@@ -32,10 +32,18 @@ function rovas_project_edit_field_group_pre_render_alter(&$element, $group, &$fo
 
 
 /**
+ * Implements hook_module_implements_alter().
+ */
+function rovas_project_edit_module_implements_alter(&$implementations, $hook) {
+	if ($hook === 'field_widget_form_alter' && isset($implementations['rovas_project_edit'])) {
+		$group = $implementations['rovas_project_edit'];
+		unset($implementations['rovas_project_edit']);
+		$implementations['rovas_project_edit'] = $group;
+	}
+}
+
+/**
  * Implements hook_field_widget_form_alter().
- *
- * Attach #ajax on the value textfield while the widget is built (before
- * ajax_process_form runs). form_alter is too late for FAPI AJAX registration.
  */
 function rovas_project_edit_field_widget_form_alter(&$element, &$form_state, $context) {
 	if (empty($context['instance']['bundle']) || $context['instance']['bundle'] !== 'project') {
@@ -46,47 +54,23 @@ function rovas_project_edit_field_widget_form_alter(&$element, &$form_state, $co
 	}
 
 	$field_name = $context['instance']['field_name'];
-	if ($field_name === 'field_rate') {
-		$element['value']['#limit_validation_errors'] = array();
-		$element['value']['#ajax'] = array(
-			'callback' => '_rpe_sync_timeshare_euro_from_chr',
-			'event' => 'change',
-			'effect' => 'fade',
-			'progress' => array('type' => 'throbber'),
-		);
-		if (isset($element['value']['#attributes']['class'])) {
-			$element['value']['#attributes']['class'][] = 'timeshare-rate-chr';
-		}
-		else {
-			$element['value']['#attributes']['class'] = array('timeshare-rate-chr');
-		}
+	if (!in_array($field_name, array('field_rate', 'field_time_share_cost_euros'), TRUE)) {
+		return;
 	}
-	elseif ($field_name === 'field_time_share_cost_euros') {
-		$element['value']['#limit_validation_errors'] = array();
-		$element['value']['#ajax'] = array(
-			'callback' => '_rpe_sync_timeshare_chr_from_euro',
-			'event' => 'change',
-			'effect' => 'fade',
-			'progress' => array('type' => 'throbber'),
-		);
-		if (empty($element['value']['#description'])) {
-			$element['value']['#description'] = t('Euro cost per hour share at the current exchange rate. Changing this value updates the Chrons field.');
+
+	_rpe_timeshare_attach_ajax_to_widget($element['value'], $field_name);
+
+	if ($field_name === 'field_time_share_cost_euros' && empty($element['value']['#description'])) {
+		$element['value']['#description'] = t('Euro cost per hour share at the current exchange rate. Changing this value updates the Chrons field.');
+	}
+	if ($field_name === 'field_time_share_cost_euros' && !empty($context['form'])) {
+		$chr = _rpe_field_rate_chr_amount($context['form'], $form_state);
+		$euro = isset($element['value']['#value']) ? $element['value']['#value'] : NULL;
+		if ($euro === NULL || $euro === '') {
+			$euro = isset($element['value']['#default_value']) ? $element['value']['#default_value'] : NULL;
 		}
-		if (isset($element['value']['#attributes']['class'])) {
-			$element['value']['#attributes']['class'][] = 'timeshare-rate-eur';
-		}
-		else {
-			$element['value']['#attributes']['class'] = array('timeshare-rate-eur');
-		}
-		if (!empty($context['form'])) {
-			$chr = _rpe_field_rate_chr_amount($context['form'], $form_state);
-			$euro = isset($element['value']['#value']) ? $element['value']['#value'] : NULL;
-			if ($euro === NULL || $euro === '') {
-				$euro = isset($element['value']['#default_value']) ? $element['value']['#default_value'] : NULL;
-			}
-			if ($chr > 0 && ($euro === NULL || $euro === '' || (float) $euro <= 0)) {
-				$element['value']['#default_value'] = _rpe_field_rate_euro_from_chr($chr);
-			}
+		if ($chr > 0 && ($euro === NULL || $euro === '' || (float) $euro <= 0)) {
+			$element['value']['#default_value'] = _rpe_field_rate_euro_from_chr($chr);
 		}
 	}
 }
@@ -236,9 +220,10 @@ function rovas_project_edit_form_project_node_form_alter(&$form, &$form_state, $
 
 	unset($form['field_reward_target'][LANGUAGE_NONE]['#options']['_none']);
 
-	// Must run in form_alter, not #after_build: ajax_process_form() on textfields
-	// runs during #process, before #after_build, so #ajax must exist earlier.
+	_rpe_timeshare_attach_ajax_widgets($form);
 	_rpe_timeshare_rate_fields_configure($form, $form_state);
+
+	drupal_add_js(drupal_get_path('module', 'rovas_project_edit') . '/js/timeshare_rates.js');
 
 	//format the minimum time widget to a more human-friendly shape
 	$lang = $form['field_minimum_time']['#language'];
@@ -408,22 +393,89 @@ function rovas_project_edit_form_project_node_form_alter(&$form, &$form_state, $
  * Returns a reference to a timeshare rate field element on the form, or NULL.
  *
  * Fields live at the form root until field_group pre_render; on AJAX rebuild
- * they may only exist under group_purchasing_shares.
+ * they may only exist under group_purchasing_shares (or nested field groups).
  */
 function &_rpe_timeshare_field_element(&$form, $field_name) {
 	$null = NULL;
 	if (isset($form[$field_name]) && is_array($form[$field_name])) {
 		return $form[$field_name];
 	}
+	$found = &_rpe_timeshare_field_element_find($form, $field_name);
+	return ($found !== NULL) ? $found : $null;
+}
+
+/**
+ * Recursively searches the form tree for a field element.
+ */
+function &_rpe_timeshare_field_element_find(&$form, $field_name) {
+	$null = NULL;
 	foreach (element_children($form) as $child_key) {
 		if (!isset($form[$child_key]) || !is_array($form[$child_key])) {
 			continue;
 		}
+		if (isset($form[$child_key]['#field_name']) && $form[$child_key]['#field_name'] === $field_name) {
+			return $form[$child_key];
+		}
 		if (isset($form[$child_key][$field_name]) && is_array($form[$child_key][$field_name])) {
 			return $form[$child_key][$field_name];
 		}
+		$nested = &_rpe_timeshare_field_element_find($form[$child_key], $field_name);
+		if ($nested !== NULL) {
+			return $nested;
+		}
 	}
 	return $null;
+}
+
+/**
+ * Attach #ajax and CSS classes to a timeshare rate value widget.
+ */
+function _rpe_timeshare_attach_ajax_to_widget(&$widget, $field_name) {
+	if ($field_name === 'field_rate') {
+		$widget['#ajax'] = array(
+			'callback' => '_rpe_sync_timeshare_euro_from_chr',
+			'event' => 'change',
+			'effect' => 'fade',
+			'progress' => array('type' => 'throbber'),
+		);
+		_rpe_timeshare_add_class($widget, 'timeshare-rate-chr');
+	}
+	elseif ($field_name === 'field_time_share_cost_euros') {
+		$widget['#ajax'] = array(
+			'callback' => '_rpe_sync_timeshare_chr_from_euro',
+			'event' => 'change',
+			'effect' => 'fade',
+			'progress' => array('type' => 'throbber'),
+		);
+		_rpe_timeshare_add_class($widget, 'timeshare-rate-eur');
+	}
+	$widget['#limit_validation_errors'] = array();
+}
+
+/**
+ * Attach AJAX handlers on the built project node form (all language keys).
+ */
+function _rpe_timeshare_attach_ajax_widgets(&$form) {
+	foreach (array('field_rate', 'field_time_share_cost_euros') as $field_name) {
+		$widget = &_rpe_timeshare_value_widget($form, $field_name);
+		if ($widget !== NULL) {
+			_rpe_timeshare_attach_ajax_to_widget($widget, $field_name);
+		}
+	}
+}
+
+/**
+ * Append a CSS class to a form element's attributes.
+ */
+function _rpe_timeshare_add_class(&$element, $class) {
+	if (isset($element['#attributes']['class'])) {
+		if (!in_array($class, $element['#attributes']['class'], TRUE)) {
+			$element['#attributes']['class'][] = $class;
+		}
+	}
+	else {
+		$element['#attributes']['class'] = array($class);
+	}
 }
 
 /**
