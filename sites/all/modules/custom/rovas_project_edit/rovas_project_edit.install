@@ -43,5 +43,5 @@ function rovas_project_edit_update_7103() {
     return;
   }
   $field['field_permissions']['type'] = 0;
-  field_write_field($field);
+  field_update_field($field);
 }
