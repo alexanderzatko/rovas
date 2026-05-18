@@ -28,10 +28,8 @@
       return;
     }
     $input.data('rpeTimeshareBound', 1);
-    $input.on('change.rpeTimeshare', function () {
-      if (!$input.hasClass('ajax-processed')) {
-        fireTimeshareAjax(input);
-      }
+    $input.on('change.rpeTimeshare blur.rpeTimeshare', function () {
+      fireTimeshareAjax(input);
     });
   }
 

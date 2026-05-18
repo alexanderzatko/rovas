@@ -1,5 +1,7 @@
 <?php
 
+require_once dirname(__FILE__) . '/rovas_project_edit.timeshare_ajax.inc';
+
 
 /**
 * Implements hook_field_group_pre_render_alter.
@@ -59,6 +61,7 @@ function rovas_project_edit_field_widget_form_alter(&$element, &$form_state, $co
 	}
 
 	_rpe_timeshare_attach_ajax_to_widget($element['value'], $field_name);
+	_rpe_timeshare_ensure_ajax_process($element['value'], $field_name);
 
 	if ($field_name === 'field_time_share_cost_euros' && empty($element['value']['#description'])) {
 		$element['value']['#description'] = t('Euro cost per hour share at the current exchange rate. Changing this value updates the Chrons field.');
@@ -222,6 +225,10 @@ function rovas_project_edit_form_project_node_form_alter(&$form, &$form_state, $
 
 	_rpe_timeshare_attach_ajax_widgets($form);
 	_rpe_timeshare_rate_fields_configure($form, $form_state);
+
+	if (!in_array('_rpe_timeshare_register_ajax_after_build', $form['#after_build'], TRUE)) {
+		$form['#after_build'][] = '_rpe_timeshare_register_ajax_after_build';
+	}
 
 	drupal_add_js(drupal_get_path('module', 'rovas_project_edit') . '/js/timeshare_rates.js');
 
@@ -463,6 +470,7 @@ function _rpe_timeshare_attach_ajax_widgets(&$form) {
 		$widget = &_rpe_timeshare_value_widget($form, $field_name);
 		if ($widget !== NULL) {
 			_rpe_timeshare_attach_ajax_to_widget($widget, $field_name);
+			_rpe_timeshare_ensure_ajax_process($widget, $field_name);
 		}
 	}
 }
