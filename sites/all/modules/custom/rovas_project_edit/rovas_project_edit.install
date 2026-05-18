@@ -13,7 +13,10 @@ function rovas_project_edit_update_7101() {
 }
 
 /**
- * Variable allocation is a percentage (0–100), not a euro amount.
+ * Variable allocation is a percentage (0–100); fixed threshold stays in euros.
+ *
+ * Reward processing uses field_preferred_allocation_thres (€) and/or
+ * field_variable_allocation (%); see process_preferred_allocation_payment().
  */
 function rovas_project_edit_update_7102() {
   $instance = field_info_instance('node', 'field_variable_allocation', 'project');

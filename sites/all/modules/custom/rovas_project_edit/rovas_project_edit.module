@@ -162,13 +162,18 @@ function rovas_project_edit_form_project_node_form_alter(&$form, &$form_state, $
 				var updateVisibility = function() {
 					var thresholdField = $('input[name=\"field_preferred_allocation_thres[und][0][value]\"]');
 					var thresholdValue = parseFloat(thresholdField.val()) || 0;
+					var variableField = $('input[name=\"field_variable_allocation[und][0][value]\"]');
+					var variableValue = parseFloat(variableField.val()) || 0;
 					var rewardTarget = $('input[name=\"field_reward_target[und]\"]:checked').val();
 					var beneficiaryField = $('#edit-field-chron-beneficiary');
 					var beneficiaryInput = beneficiaryField.find('.form-item');
+					var fixedAllocationField = $('#edit-field-preferred-allocation-thres');
+					var fixedAllocationInput = fixedAllocationField.find('.form-item');
 					var variableAllocationField = $('#edit-field-variable-allocation');
 					var variableAllocationInput = variableAllocationField.find('.form-item');
+					var hasAllocation = (thresholdValue > 0) || (variableValue > 0);
 					
-					if (rewardTarget == '1' || (thresholdValue > 0)) {
+					if (rewardTarget == '1' || hasAllocation) {
 						beneficiaryField.show();
 						beneficiaryInput.show();
 					} else {
@@ -176,12 +181,15 @@ function rovas_project_edit_form_project_node_form_alter(&$form, &$form_state, $
 						beneficiaryInput.hide();
 					}
 					
-					// field_variable_allocation follows field_preferred_allocation_thres visibility
-					// (hidden when reward target is 'Individual' (1), visible otherwise)
+					// Fixed (€) and variable (%) allocation: hidden for Individual reward target.
 					if (rewardTarget == '1') {
+						fixedAllocationField.hide();
+						fixedAllocationInput.hide();
 						variableAllocationField.hide();
 						variableAllocationInput.hide();
 					} else {
+						fixedAllocationField.show();
+						fixedAllocationInput.show();
 						variableAllocationField.show();
 						variableAllocationInput.show();
 					}
@@ -194,6 +202,7 @@ function rovas_project_edit_form_project_node_form_alter(&$form, &$form_state, $
 				
 				// On change
 				$('input[name=\"field_preferred_allocation_thres[und][0][value]\"]', context).on('change keyup', updateVisibility);
+				$('input[name=\"field_variable_allocation[und][0][value]\"]', context).on('change keyup', updateVisibility);
 				$('input[name=\"field_reward_target[und]\"]', context).on('change', updateVisibility);
 			}
 		};
@@ -217,12 +226,16 @@ function rovas_project_edit_form_project_node_form_alter(&$form, &$form_state, $
 		),
 	);
 	
-	// Hide the field_preferred_allocation_thres when reward target is set to "Individual" (1)
-	$form['field_preferred_allocation_thres']['#states'] = array(
+	// Fixed (€) and variable (%) allocation apply only when reward target is not Individual (1).
+	$allocation_invisible = array(
 		'invisible' => array(
-		':input[name="field_reward_target[und]"]' => array('value' => '1'),
+			':input[name="field_reward_target[und]"]' => array('value' => '1'),
 		),
 	);
+	$form['field_preferred_allocation_thres']['#states'] = $allocation_invisible;
+	if (isset($form['field_variable_allocation'])) {
+		$form['field_variable_allocation']['#states'] = $allocation_invisible;
+	}
 	
 	$allocation = $form['field_reward_merit_allocation'][LANGUAGE_NONE]['value']['#default_value'];
 	$recipient = $form['field_reward_target'][LANGUAGE_NONE]['#default_value'];
@@ -756,40 +769,57 @@ function _rpe_meritsh_choice_callback ($form, $form_state) {
 	);  
 }
 
+/**
+ * Whether fixed (€) or variable (%) payment allocation is configured on the form.
+ */
+function _rpe_payment_allocation_configured(array $values) {
+	$fixed = !empty($values['field_preferred_allocation_thres'][LANGUAGE_NONE][0]['value'])
+		? (float) $values['field_preferred_allocation_thres'][LANGUAGE_NONE][0]['value']
+		: 0;
+	$variable = !empty($values['field_variable_allocation'][LANGUAGE_NONE][0]['value'])
+		? (float) $values['field_variable_allocation'][LANGUAGE_NONE][0]['value']
+		: 0;
+	return ($fixed > 0 || $variable > 0);
+}
+
 //manipulate the submitted values before the main submission function kicks in
 function _rve_modify_submitted($form, &$form_state) {
 
 //	dsm($form_state['values'],'1');
 
-	// Get the value of the preferred allocation threshold field
-	$preferred_threshold_value = !empty($form_state['values']['field_preferred_allocation_thres'][LANGUAGE_NONE][0]['value']) 
-															? $form_state['values']['field_preferred_allocation_thres'][LANGUAGE_NONE][0]['value'] 
-															: NULL;
+	$values = &$form_state['values'];
+	$has_allocation = _rpe_payment_allocation_configured($values);
+	$reward_target = !empty($values['field_reward_target'][LANGUAGE_NONE][0]['value'])
+		? $values['field_reward_target'][LANGUAGE_NONE][0]['value']
+		: NULL;
 
 	// Check if we should reset fields based on conditions
-	if ($form_state['values']['field_reward_merit_allocation'][LANGUAGE_NONE]['item']['value'] == 100) {
+	if ($values['field_reward_merit_allocation'][LANGUAGE_NONE]['item']['value'] == 100) {
 		// If merit allocation is 100%, reset all fields regardless of threshold value
-		$form_state['values']['field_reward_target'][LANGUAGE_NONE][0]['value'] = '';
-		$form_state['values']['field_chron_beneficiary'][LANGUAGE_NONE][0]['target_id'] = NULL;
-		$form_state['values']['field_get_euros'][LANGUAGE_NONE][0]['value'] = 0;
+		$values['field_reward_target'][LANGUAGE_NONE][0]['value'] = '';
+		$values['field_chron_beneficiary'][LANGUAGE_NONE][0]['target_id'] = NULL;
+		$values['field_get_euros'][LANGUAGE_NONE][0]['value'] = 0;
 	}
-	else if ($form_state['values']['field_reward_target'][LANGUAGE_NONE][0]['value'] == 2) {
+	else if ($reward_target == 2) {
 		// If reward target is "This project" (2), reset beneficiary fields
-		// But only clear the chron_beneficiary if there's no preferred threshold value
-		if (empty($preferred_threshold_value) || $preferred_threshold_value <= 0) {
-			$form_state['values']['field_chron_beneficiary'][LANGUAGE_NONE][0]['target_id'] = NULL;
+		// unless fixed or variable allocation requires a payment beneficiary
+		if (!$has_allocation) {
+			$values['field_chron_beneficiary'][LANGUAGE_NONE][0]['target_id'] = NULL;
 		}
-		$form_state['values']['field_get_euros'][LANGUAGE_NONE][0]['value'] = 0;
+		$values['field_get_euros'][LANGUAGE_NONE][0]['value'] = 0;
 	}
-	else if ($form_state['values']['field_reward_target'][LANGUAGE_NONE][0]['value'] == 1) {
-		// If reward target is "Individual" (1), reset maximum hourly rate
-		$form_state['values']['field_maximum_hourly_rate'][LANGUAGE_NONE][0]['value'] = NULL;
+	else if ($reward_target == 1) {
+		// Individual reward target: allocation fields do not apply (see process_preferred_allocation_payment).
+		$values['field_maximum_hourly_rate'][LANGUAGE_NONE][0]['value'] = NULL;
+		$values['field_preferred_allocation_thres'][LANGUAGE_NONE][0]['value'] = NULL;
+		if (isset($values['field_variable_allocation'][LANGUAGE_NONE][0]['value'])) {
+			$values['field_variable_allocation'][LANGUAGE_NONE][0]['value'] = NULL;
+		}
 	}
-	
-	// If preferred threshold has no value or is 0 or less, clear the chron_beneficiary field
-	if ((empty($preferred_threshold_value) || $preferred_threshold_value <= 0) && 
-			$form_state['values']['field_reward_target'][LANGUAGE_NONE][0]['value'] != 1) {
-		$form_state['values']['field_chron_beneficiary'][LANGUAGE_NONE][0]['target_id'] = NULL;
+
+	// No fixed or variable allocation: clear payment beneficiary (except Individual target).
+	if (!$has_allocation && $reward_target != 1) {
+		$values['field_chron_beneficiary'][LANGUAGE_NONE][0]['target_id'] = NULL;
 	}
 	
 	//change the project owner if a new one is set
