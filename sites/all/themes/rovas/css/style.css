@@ -111,19 +111,14 @@ input.sliderfield-field-adjust-field-minimum {
     display: inline;
 }
 
-div.field-name-field-rate div {
+div.field-name-field-rate div,
+div.field-name-field-time-share-cost-euros div {
     display: inline-block;
     margin-right: 5px;
 }
 
-button.recalc-button {
-    margin-right: 5px;
-    border: solid thin #ccc;
-    position: relative;
-    top: -2px;
-}
-
-.field-name-field-rate div.ajax-progress-throbber {
+.field-name-field-rate div.ajax-progress-throbber,
+.field-name-field-time-share-cost-euros div.ajax-progress-throbber {
     position: absolute;
     top:-1px;
     left:-2px;

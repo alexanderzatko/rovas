@@ -26,7 +26,8 @@ function rovas_purchase_shares_field_group_info() {
     'children' => array(
       0 => 'field_allow_purchasing_shares',
       1 => 'field_rate',
-      2 => 'field_minimum_time',
+      2 => 'field_time_share_cost_euros',
+      3 => 'field_minimum_time',
     ),
     'format_type' => 'fieldset',
     'format_settings' => array(

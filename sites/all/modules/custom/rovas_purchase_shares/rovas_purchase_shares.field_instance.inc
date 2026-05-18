@@ -772,7 +772,7 @@ function rovas_purchase_shares_field_default_field_instances() {
     'bundle' => 'project',
     'default_value' => NULL,
     'deleted' => 0,
-    'description' => 'Enter the number of Chrons the buyer will have to pay to receive one hour share. The number in parentheses shows the cost in euros, using the current exchange rate.',
+    'description' => 'Enter the number of Chrons the buyer will have to pay to receive one hour share. The euro field updates from the current exchange rate when you change this value.',
     'display' => array(
       'default' => array(
         'label' => 'inline',
