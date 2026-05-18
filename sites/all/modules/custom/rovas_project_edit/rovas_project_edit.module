@@ -56,6 +56,12 @@ function rovas_project_edit_field_widget_form_alter(&$element, &$form_state, $co
 	}
 
 	$field_name = $context['instance']['field_name'];
+
+	if ($field_name === 'field_variable_allocation' && isset($element['value'])) {
+		$element['value']['#field_suffix'] = ' %';
+		return;
+	}
+
 	if (!in_array($field_name, array('field_rate', 'field_time_share_cost_euros'), TRUE)) {
 		return;
 	}

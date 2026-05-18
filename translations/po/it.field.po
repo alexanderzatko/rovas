@@ -818,17 +818,17 @@ msgstr ""
 #: field:field_variable_allocation:project:description
 msgctxt "field_variable_allocation:project:description"
 msgid "The percent of the total monthly income allocated for the beneficiary"
-msgstr ""
+msgstr "La percentuale del reddito mensile totale assegnata al beneficiario"
 
 #: field:field_variable_allocation:project:label
 msgctxt "field_variable_allocation:project:label"
 msgid "Variable allocation"
-msgstr ""
+msgstr "Detrazione variabile"
 
 #: field:field_variable_allocation:project:suffix
 msgctxt "field_variable_allocation:project:suffix"
-msgid " €"
-msgstr ""
+msgid " %"
+msgstr " %"
 
 #: field:field_verification_reminders:user:label
 msgctxt "field_verification_reminders:user:label"

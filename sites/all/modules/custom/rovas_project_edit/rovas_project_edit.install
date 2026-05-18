@@ -11,3 +11,18 @@ function rovas_project_edit_update_7101() {
 
   drupal_set_message('Set rovas_project_edit module weight to 51.');
 }
+
+/**
+ * Variable allocation is a percentage (0–100), not a euro amount.
+ */
+function rovas_project_edit_update_7102() {
+  $instance = field_info_instance('node', 'field_variable_allocation', 'project');
+  if (!$instance) {
+    return;
+  }
+  $instance['settings']['suffix'] = ' %';
+  $instance['settings']['prefix'] = '';
+  $instance['settings']['min'] = '0';
+  $instance['settings']['max'] = '100';
+  field_update_instance($instance);
+}

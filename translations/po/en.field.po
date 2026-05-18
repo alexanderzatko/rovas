@@ -1904,8 +1904,8 @@ msgstr ""
 
 #: field:field_variable_allocation:project:suffix
 msgctxt "field_variable_allocation:project:suffix"
-msgid " €"
-msgstr ""
+msgid " %"
+msgstr " %"
 
 #: field:field_verdict:#allowed_values:0
 msgctxt "field_verdict:#allowed_values:0"
