@@ -175,7 +175,9 @@ function rovas_project_edit_form_project_node_form_alter(&$form, &$form_state, $
 
 	unset($form['field_reward_target'][LANGUAGE_NONE]['#options']['_none']);
 
-	_rpe_timeshare_rate_fields_configure($form, $form_state);
+	if (!in_array('_rpe_timeshare_rate_fields_after_build', $form['#after_build'], TRUE)) {
+		$form['#after_build'][] = '_rpe_timeshare_rate_fields_after_build';
+	}
 
 	//format the minimum time widget to a more human-friendly shape
 	$lang = $form['field_minimum_time']['#language'];
@@ -342,17 +344,41 @@ function rovas_project_edit_form_project_node_form_alter(&$form, &$form_state, $
 
 
 /**
+ * Field group that holds the timeshare rate fields on the project form.
+ */
+define('_RPE_TIMESHARE_FIELD_GROUP', 'group_purchasing_shares');
+
+/**
+ * Returns a reference to a timeshare rate field element on the form, or NULL.
+ *
+ * Fields live at the form root until field_group pre_render; on AJAX rebuild
+ * they may only exist under group_purchasing_shares.
+ */
+function &_rpe_timeshare_field_element(&$form, $field_name) {
+	$null = NULL;
+	if (isset($form[$field_name]) && is_array($form[$field_name])) {
+		return $form[$field_name];
+	}
+	if (isset($form[_RPE_TIMESHARE_FIELD_GROUP][$field_name])
+		&& is_array($form[_RPE_TIMESHARE_FIELD_GROUP][$field_name])) {
+		return $form[_RPE_TIMESHARE_FIELD_GROUP][$field_name];
+	}
+	return $null;
+}
+
+/**
  * Language code for a field widget on the node form (und, sk, …).
  */
 function _rpe_timeshare_field_lang($form, $field_name) {
-	if (!isset($form[$field_name]) || !is_array($form[$field_name])) {
+	$field = _rpe_timeshare_field_element($form, $field_name);
+	if ($field === NULL) {
 		return LANGUAGE_NONE;
 	}
-	if (!empty($form[$field_name]['#language'])) {
-		return $form[$field_name]['#language'];
+	if (!empty($field['#language'])) {
+		return $field['#language'];
 	}
-	foreach (element_children($form[$field_name]) as $key) {
-		if (isset($form[$field_name][$key][0]['value'])) {
+	foreach (element_children($field) as $key) {
+		if (isset($field[$key][0]['value'])) {
 			return $key;
 		}
 	}
@@ -364,19 +390,39 @@ function _rpe_timeshare_field_lang($form, $field_name) {
  */
 function &_rpe_timeshare_value_widget(&$form, $field_name) {
 	$null = NULL;
-	if (!isset($form[$field_name]) || !is_array($form[$field_name])) {
+	$field = &_rpe_timeshare_field_element($form, $field_name);
+	if ($field === NULL) {
 		return $null;
 	}
 	$lang = _rpe_timeshare_field_lang($form, $field_name);
-	if (isset($form[$field_name][$lang][0]['value'])) {
-		return $form[$field_name][$lang][0]['value'];
+	if (isset($field[$lang][0]['value'])) {
+		return $field[$lang][0]['value'];
 	}
-	foreach (element_children($form[$field_name]) as $key) {
-		if (isset($form[$field_name][$key][0]['value'])) {
-			return $form[$field_name][$key][0]['value'];
+	foreach (element_children($field) as $key) {
+		if (isset($field[$key][0]['value'])) {
+			return $field[$key][0]['value'];
 		}
 	}
 	return $null;
+}
+
+/**
+ * Renders a timeshare rate field wherever it sits on the form.
+ */
+function _rpe_timeshare_render_field($form, $field_name) {
+	$field = _rpe_timeshare_field_element($form, $field_name);
+	if ($field === NULL) {
+		return '';
+	}
+	return render($field);
+}
+
+/**
+ * After build: attach AJAX and sync rate fields once the form tree is complete.
+ */
+function _rpe_timeshare_rate_fields_after_build($form, &$form_state) {
+	_rpe_timeshare_rate_fields_configure($form, $form_state);
+	return $form;
 }
 
 /**
@@ -400,23 +446,23 @@ function _rpe_timeshare_value_from_state($form_state, $field_name, $source = 'in
  */
 function _rpe_timeshare_rate_fields_configure(&$form, $form_state) {
 	$chr_widget = &_rpe_timeshare_value_widget($form, 'field_rate');
-	if ($chr_widget === NULL) {
-		return;
-	}
-
-	$chr_widget['#limit_validation_errors'] = array();
-	$chr_widget['#ajax'] = array(
-		'callback' => '_rpe_sync_timeshare_euro_from_chr',
-		'event' => 'change',
-		'effect' => 'fade',
-		'progress' => array('type' => 'throbber'),
-	);
-
-	if (isset($form['field_rate']['#attributes']['class'])) {
-		$form['field_rate']['#attributes']['class'][] = 'timeshare-rate-chr';
-	}
-	else {
-		$form['field_rate']['#attributes']['class'] = array('timeshare-rate-chr');
+	if ($chr_widget !== NULL) {
+		$chr_widget['#limit_validation_errors'] = array();
+		$chr_widget['#ajax'] = array(
+			'callback' => '_rpe_sync_timeshare_euro_from_chr',
+			'event' => 'change',
+			'effect' => 'fade',
+			'progress' => array('type' => 'throbber'),
+		);
+		$chr_field = &_rpe_timeshare_field_element($form, 'field_rate');
+		if ($chr_field !== NULL) {
+			if (isset($chr_field['#attributes']['class'])) {
+				$chr_field['#attributes']['class'][] = 'timeshare-rate-chr';
+			}
+			else {
+				$chr_field['#attributes']['class'] = array('timeshare-rate-chr');
+			}
+		}
 	}
 
 	$eur_widget = &_rpe_timeshare_value_widget($form, 'field_time_share_cost_euros');
@@ -431,12 +477,19 @@ function _rpe_timeshare_rate_fields_configure(&$form, $form_state) {
 		if (empty($eur_widget['#description'])) {
 			$eur_widget['#description'] = t('Euro cost per hour share at the current exchange rate. Changing this value updates the Chrons field.');
 		}
-		if (isset($form['field_time_share_cost_euros']['#attributes']['class'])) {
-			$form['field_time_share_cost_euros']['#attributes']['class'][] = 'timeshare-rate-eur';
+		$eur_field = &_rpe_timeshare_field_element($form, 'field_time_share_cost_euros');
+		if ($eur_field !== NULL) {
+			if (isset($eur_field['#attributes']['class'])) {
+				$eur_field['#attributes']['class'][] = 'timeshare-rate-eur';
+			}
+			else {
+				$eur_field['#attributes']['class'] = array('timeshare-rate-eur');
+			}
 		}
-		else {
-			$form['field_time_share_cost_euros']['#attributes']['class'] = array('timeshare-rate-eur');
-		}
+	}
+
+	if ($chr_widget === NULL && $eur_widget === NULL) {
+		return;
 	}
 
 	if (_rpe_timeshare_sync_is_chr_trigger($form_state)) {
@@ -572,7 +625,7 @@ function _rpe_sync_timeshare_euro_from_chr($form, $form_state) {
 		'#commands' => array(
 			ajax_command_replace(
 				'.field-name-field-time-share-cost-euros',
-				render($form['field_time_share_cost_euros'])
+				_rpe_timeshare_render_field($form, 'field_time_share_cost_euros')
 			),
 		),
 	);
@@ -584,7 +637,7 @@ function _rpe_sync_timeshare_chr_from_euro($form, $form_state) {
 		'#commands' => array(
 			ajax_command_replace(
 				'.field-name-field-rate',
-				render($form['field_rate'])
+				_rpe_timeshare_render_field($form, 'field_rate')
 			),
 		),
 	);
