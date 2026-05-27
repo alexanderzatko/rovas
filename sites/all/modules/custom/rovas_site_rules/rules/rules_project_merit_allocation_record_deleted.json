@@ -47,7 +47,7 @@
                   "PROVIDE" : { "total_project_shares" : { "total_project_shares" : "Total project shares" } }
                 }
               },
-              { "php_eval" : { "code" : "watchdog(\u0027debug\u0027,\u0027total_project_shares is \u0027 . $total_project_shares);\r\n\r\nif (is_numeric($deleted_share))\r\n$ds = $deleted_share;\r\nelse\r\n$ds = 0;\r\n\r\n$newshares = $total_project_shares - $ds;\r\n\r\n$prnode = node_load($project_id);\r\n$wrapper = entity_metadata_wrapper(\u0027node\u0027, $prnode);\r\n$wrapper-\u003Efield_total_shares = $newshares;\r\n\/\/reset field \u0022status\u0022 to \u0022not ready for purchase\u0022\r\nif($total_project_shares \u003E 100) {\r\n$wrapper-\u003Efield_status = 0;\r\n}\r\n$wrapper-\u003Esave(); " } }
+              { "php_eval" : { "code" : "watchdog(\u0027debug\u0027,\u0027total_project_shares is \u0027 . $total_project_shares);\r\n\r\nif (!isset($deleted_share) || !is_numeric($deleted_share)) {\r\n  $deleted_share = 0;\r\n}\r\n$ds = $deleted_share;\r\n\r\n$newshares = $total_project_shares - $ds;\r\n\r\n$prnode = node_load($project_id);\r\nif (!$prnode) {\r\n  return;\r\n}\r\n$wrapper = entity_metadata_wrapper(\u0027node\u0027, $prnode);\r\n$wrapper-\u003Efield_total_shares = $newshares;\r\n\/\/reset field \u0022status\u0022 to \u0022not ready for purchase\u0022\r\nif($total_project_shares \u003E 100) {\r\n$wrapper-\u003Efield_status = 0;\r\n}\r\n$wrapper-\u003Esave(); " } }
             ]
           }
         ]

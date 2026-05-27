@@ -51,14 +51,64 @@ function rovas_site_rules_hybridauth_provider_is_allowed($provider) {
 /**
  * Implements hook_module_implements_alter().
  *
- * Run before Node module so system projects are removed via Rules before core
- * reassigns or deletes the user's nodes.
+ * - Run before Node on user cancel/delete so system project cleanup happens first.
+ * - Run before Rules on page_build so deferred Rules redirects can be suppressed
+ *   during account cancellation (hook_user_cancel runs before the cancel batch).
  */
 function rovas_site_rules_module_implements_alter(&$implementations, $hook) {
-  if (in_array($hook, array('user_cancel', 'user_delete'), TRUE) && isset($implementations['rovas_site_rules'])) {
+  $run_first = array(
+    'user_cancel' => TRUE,
+    'user_delete' => TRUE,
+    'page_build' => TRUE,
+    'mail_alter' => FALSE,
+  );
+  if (!empty($run_first[$hook]) && isset($implementations['rovas_site_rules'])) {
     $group = $implementations['rovas_site_rules'];
     unset($implementations['rovas_site_rules']);
     $implementations = array_merge(array('rovas_site_rules' => $group), $implementations);
+  }
+}
+
+/**
+ * TRUE while a user account is being canceled or deleted.
+ *
+ * Used to suppress UI-oriented Rules actions (redirects) that assume a project
+ * delete form at node/N/delete, not the account cancel confirmation URL.
+ */
+function rovas_site_rules_in_account_deletion() {
+  return (bool) drupal_static(__FUNCTION__, FALSE);
+}
+
+/**
+ * Marks the start of account-deletion work (nested calls supported).
+ */
+function rovas_site_rules_account_deletion_begin() {
+  $depth = &drupal_static(__FUNCTION__, 0);
+  $depth++;
+  drupal_static('rovas_site_rules_in_account_deletion', TRUE);
+}
+
+/**
+ * Marks the end of account-deletion work.
+ */
+function rovas_site_rules_account_deletion_end() {
+  $depth = &drupal_static('rovas_site_rules_account_deletion_begin', 0);
+  $depth--;
+  if ($depth <= 0) {
+    drupal_static_reset('rovas_site_rules_account_deletion_begin');
+    drupal_static_reset('rovas_site_rules_in_account_deletion');
+  }
+}
+
+/**
+ * Implements hook_page_build().
+ *
+ * Rules queues redirects in $GLOBALS during hook_user_cancel(); clear them
+ * while account deletion is in progress so batch cancellation can finish.
+ */
+function rovas_site_rules_page_build(&$page) {
+  if (rovas_site_rules_in_account_deletion() && isset($GLOBALS['_rules_action_drupal_goto_do'])) {
+    unset($GLOBALS['_rules_action_drupal_goto_do']);
   }
 }
 
@@ -71,7 +121,9 @@ function rovas_site_rules_module_implements_alter(&$implementations, $hook) {
  */
 function rovas_site_rules_user_cancel($edit, $account, $method) {
   if ($method === 'user_cancel_reassign') {
+    rovas_site_rules_account_deletion_begin();
     _rovas_site_rules_delete_user_system_project($account);
+    rovas_site_rules_account_deletion_end();
   }
 }
 
@@ -82,7 +134,9 @@ function rovas_site_rules_user_cancel($edit, $account, $method) {
  * covers user_cancel_delete, where hook_user_cancel() is not invoked.
  */
 function rovas_site_rules_user_delete($account) {
+  rovas_site_rules_account_deletion_begin();
   _rovas_site_rules_delete_user_system_project($account);
+  rovas_site_rules_account_deletion_end();
 }
 
 /**
