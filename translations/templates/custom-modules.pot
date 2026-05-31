@@ -1466,7 +1466,11 @@ msgstr ""
 msgid "<strong>Chron</strong> is the currency of the economic system NEO. It is granted for work on any volunteer, crowdsourced or FOSS project that already exist, or a new one you conceive yourself."
 msgstr ""
 
-#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:443
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:1144
+msgid "Work on the <strong>@this</strong>, <strong>Openstreetmap</strong>, <strong>Wikipedia</strong>, any <strong>FOSS project</strong> and a number of others, all qualify for the chron reward."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:1147
 msgid "Work on the <strong>Openstreetmap</strong>, <strong>Wikipedia</strong>, any <strong>FOSS project</strong> and a number of others, all qualify for the chron reward."
 msgstr ""
 

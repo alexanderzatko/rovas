@@ -1140,7 +1140,12 @@ function rovas_project_reward_form ($form, &$form_state) {
 		$neo_how .= '<div class="body">';
 		$neo_how .= t('<strong>Chron</strong> is the currency of the economic system NEO. It is granted for work on any volunteer, crowdsourced or FOSS project that already exist, or a new one you conceive yourself.');
 		$neo_how .= ' ';
-		$neo_how .= t('Work on the <strong>Openstreetmap</strong>, <strong>Wikipedia</strong>, any <strong>FOSS project</strong> and a number of others, all qualify for the chron reward.',array('@this' => $obj->label()));
+		if ($paytype == 'project') {
+			$neo_how .= t('Work on the <strong>@this</strong>, <strong>Openstreetmap</strong>, <strong>Wikipedia</strong>, any <strong>FOSS project</strong> and a number of others, all qualify for the chron reward.', array('@this' => $obj->label()));
+		}
+		else {
+			$neo_how .= t('Work on the <strong>Openstreetmap</strong>, <strong>Wikipedia</strong>, any <strong>FOSS project</strong> and a number of others, all qualify for the chron reward.');
+		}
 		$neo_how .= '<div style="margin-top: 5px;">';
 		$neo_how .= t('Read the <strong><a href="@rulesurl" target="_blank">NEO rules <span class="glyphicon glyphicon-new-window"></span></a></strong> to find out more.',array('@rulesurl' => '/rules'));
 

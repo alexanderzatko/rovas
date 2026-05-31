@@ -52636,9 +52636,9 @@ msgid ""
 "<strong>FOSS project</strong> and a number of others, all qualify for the "
 "chron reward."
 msgstr ""
-"Práce na <strong>@this</strong>, <strong>Openstreetmap</strong>, "
-"<strong>Wikipédia</strong>, akomkoľvek <strong>projekte FOSS</strong> a "
-"mnohých ďalších, môžu byť odmenené chronmi."
+"Práce na <strong>Openstreetmap</strong>, <strong>Wikipédia</strong>, "
+"akomkoľvek <strong>projekte FOSS</strong> a mnohých ďalších, môžu byť "
+"odmenené chronmi."
 
 #: /node/add/verification?wrnid=106280
 msgid "Optional note for the decision"
