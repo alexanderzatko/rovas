@@ -1,0 +1,650 @@
+<?php
+
+/**
+ * @file
+ * Rovas Merit Distribution.
+ *
+ * Generates an SVG histogram of all active users' merit scores split into
+ * 10 equal-width bins on a log10 axis, optionally highlighting one user's
+ * bin with a triangle pointer and their username (matching the screenshot
+ * provided in the design discussion).
+ *
+ * Surfaces:
+ *   - Services resource `rovas_merit_distribution` (operation `index`) on
+ *     the existing `rovas_endpoint`, returning JSON `{status, svg, meta}`.
+ *   - Admin preview at admin/reports/merit-distribution for sanity checks.
+ *   - Public render helper rovas_merit_distribution_render() for other modules.
+ */
+
+/**
+ * Default chart geometry / colors. Override via $opts to the render helper.
+ */
+define('ROVAS_MERIT_DISTRIBUTION_DEFAULT_WIDTH', 720);
+define('ROVAS_MERIT_DISTRIBUTION_DEFAULT_HEIGHT', 360);
+define('ROVAS_MERIT_DISTRIBUTION_BIN_COUNT', 10);
+define('ROVAS_MERIT_DISTRIBUTION_CACHE_TTL', 3600);
+define('ROVAS_MERIT_DISTRIBUTION_CACHE_KEY', 'rovas_merit_distribution:merits');
+
+/* ===========================================================================
+ * 1. Drupal hooks
+ * ========================================================================= */
+
+/**
+ * Implements hook_menu().
+ */
+function rovas_merit_distribution_menu() {
+  $items = array();
+
+  $items['admin/reports/merit-distribution'] = array(
+    'title' => 'Merit distribution',
+    'description' => 'Preview the log-binned merit distribution chart.',
+    'page callback' => 'rovas_merit_distribution_preview_page',
+    'access arguments' => array('access site reports'),
+    'type' => MENU_NORMAL_ITEM,
+    'file' => FALSE,
+  );
+
+  return $items;
+}
+
+/**
+ * Implements hook_services_resources().
+ *
+ * Adds a `rovas_merit_distribution` resource to whichever endpoint(s) opt
+ * in to it via the Services admin UI. Access is gated by the same callback
+ * already used by rovas_api_endpoints (API key + token via
+ * services_auth_apikeys).
+ */
+function rovas_merit_distribution_services_resources() {
+  return array(
+    'rovas_merit_distribution' => array(
+      'operations' => array(
+        'index' => array(
+          'help' => 'Returns an SVG merit distribution chart by deciles (log10-binned). Optional query parameters: uid (highlight this user, defaults to the authenticated caller), width, height.',
+          'callback' => 'rovas_merit_distribution_endpoint_index',
+          'access callback' => 'rovas_api_endpoints_access_callback',
+          'access arguments' => array('access'),
+          'access arguments append' => FALSE,
+          'args' => array(
+            array(
+              'name' => 'uid',
+              'type' => 'int',
+              'description' => 'User ID to highlight in the chart. Defaults to the authenticated user.',
+              'source' => array('param' => 'uid'),
+              'optional' => TRUE,
+            ),
+            array(
+              'name' => 'width',
+              'type' => 'int',
+              'description' => 'SVG width in pixels (default 720).',
+              'source' => array('param' => 'width'),
+              'optional' => TRUE,
+            ),
+            array(
+              'name' => 'height',
+              'type' => 'int',
+              'description' => 'SVG height in pixels (default 360).',
+              'source' => array('param' => 'height'),
+              'optional' => TRUE,
+            ),
+          ),
+        ),
+      ),
+    ),
+  );
+}
+
+/* ===========================================================================
+ * 2. Data layer
+ * ========================================================================= */
+
+/**
+ * Collects every active non-anonymous user's total merit score.
+ *
+ * Mirrors the query used by _base_user_me_rank() in rovas_base so the
+ * distribution stays consistent with the user-rank popover.
+ *
+ * @param bool $reset
+ *   TRUE to bypass and rebuild the cache.
+ *
+ * @return array
+ *   Indexed array of stdClass with ->uid (int) and ->merits (float).
+ */
+function _rovas_merit_distribution_collect_merits($reset = FALSE) {
+  if (!$reset) {
+    $cached = cache_get(ROVAS_MERIT_DISTRIBUTION_CACHE_KEY);
+    if ($cached && isset($cached->data) && is_array($cached->data)) {
+      return $cached->data;
+    }
+  }
+
+  $result = db_query("
+    SELECT u.uid AS uid,
+           (IFNULL(pt.points, 0) + IFNULL(d.field_merit_decimal_part_value, 0)) AS merits
+    FROM {users} u
+    LEFT JOIN {userpoints_total} pt ON u.uid = pt.uid
+    LEFT JOIN {field_data_field_merit_decimal_part} d
+      ON u.uid = d.entity_id
+      AND d.entity_type = 'user'
+      AND d.deleted = 0
+    WHERE u.status <> 0
+      AND u.uid > 1
+  ");
+
+  $rows = array();
+  foreach ($result as $row) {
+    $rows[] = (object) array(
+      'uid' => (int) $row->uid,
+      'merits' => (float) $row->merits,
+    );
+  }
+
+  cache_set(
+    ROVAS_MERIT_DISTRIBUTION_CACHE_KEY,
+    $rows,
+    'cache',
+    REQUEST_TIME + ROVAS_MERIT_DISTRIBUTION_CACHE_TTL
+  );
+
+  return $rows;
+}
+
+/**
+ * Looks up a single user's total merit (whole + decimal part).
+ *
+ * @param int $uid
+ *   User ID.
+ *
+ * @return float|null
+ *   Merit value, or NULL if the user is unknown / blocked.
+ */
+function _rovas_merit_distribution_user_merits($uid) {
+  $uid = (int) $uid;
+  if ($uid <= 1) {
+    return NULL;
+  }
+
+  $row = db_query("
+    SELECT (IFNULL(pt.points, 0) + IFNULL(d.field_merit_decimal_part_value, 0)) AS merits
+    FROM {users} u
+    LEFT JOIN {userpoints_total} pt ON u.uid = pt.uid
+    LEFT JOIN {field_data_field_merit_decimal_part} d
+      ON u.uid = d.entity_id
+      AND d.entity_type = 'user'
+      AND d.deleted = 0
+    WHERE u.uid = :uid AND u.status <> 0
+  ", array(':uid' => $uid))->fetchObject();
+
+  return $row ? (float) $row->merits : NULL;
+}
+
+/* ===========================================================================
+ * 3. Binning (log10 scale)
+ * ========================================================================= */
+
+/**
+ * Builds the 10 log10 bins and per-bin counts.
+ *
+ * Users with merits <= 0 cannot live on a log axis, so they are excluded
+ * from the bins and their count is reported separately in `excluded_zero`.
+ *
+ * @param array $merits
+ *   Indexed array of stdClass rows with ->merits.
+ * @param int $bin_count
+ *   Number of bins (default 10).
+ *
+ * @return array
+ *   Associative array with keys:
+ *     - edges:         array of $bin_count + 1 log10 boundaries
+ *     - counts:        array of $bin_count integer counts
+ *     - min_log:       float, log10 lower bound
+ *     - max_log:       float, log10 upper bound
+ *     - min_merits:    float, smallest positive merit included
+ *     - max_merits:    float, largest merit included
+ *     - total_users:   int, total rows seen
+ *     - excluded_zero: int, count of rows with merits <= 0
+ *     - degenerate:    bool, TRUE when there is no usable range
+ */
+function _rovas_merit_distribution_compute_bins($merits, $bin_count = ROVAS_MERIT_DISTRIBUTION_BIN_COUNT) {
+  $bin_count = max(2, (int) $bin_count);
+
+  $positive = array();
+  $excluded_zero = 0;
+  foreach ($merits as $row) {
+    if ($row->merits > 0) {
+      $positive[] = (float) $row->merits;
+    }
+    else {
+      $excluded_zero++;
+    }
+  }
+
+  $total = count($merits);
+
+  if (count($positive) < 2) {
+    return array(
+      'edges' => array_fill(0, $bin_count + 1, 0.0),
+      'counts' => array_fill(0, $bin_count, 0),
+      'min_log' => 0.0,
+      'max_log' => 0.0,
+      'min_merits' => count($positive) ? min($positive) : 0.0,
+      'max_merits' => count($positive) ? max($positive) : 0.0,
+      'total_users' => $total,
+      'excluded_zero' => $excluded_zero,
+      'degenerate' => TRUE,
+    );
+  }
+
+  $min_merits = min($positive);
+  $max_merits = max($positive);
+
+  $min_log_raw = log10($min_merits);
+  $max_log_raw = log10($max_merits);
+
+  $min_log = floor($min_log_raw);
+  $max_log = ceil($max_log_raw);
+  if ($max_log <= $min_log) {
+    $max_log = $min_log + 1.0;
+  }
+
+  $step = ($max_log - $min_log) / $bin_count;
+  $edges = array();
+  for ($i = 0; $i <= $bin_count; $i++) {
+    $edges[] = $min_log + $i * $step;
+  }
+
+  $counts = array_fill(0, $bin_count, 0);
+  foreach ($positive as $value) {
+    $idx = (int) floor((log10($value) - $min_log) / $step);
+    if ($idx < 0) {
+      $idx = 0;
+    }
+    elseif ($idx >= $bin_count) {
+      $idx = $bin_count - 1;
+    }
+    $counts[$idx]++;
+  }
+
+  return array(
+    'edges' => $edges,
+    'counts' => $counts,
+    'min_log' => $min_log,
+    'max_log' => $max_log,
+    'min_merits' => $min_merits,
+    'max_merits' => $max_merits,
+    'total_users' => $total,
+    'excluded_zero' => $excluded_zero,
+    'degenerate' => FALSE,
+  );
+}
+
+/**
+ * Resolves which bin a user's merit value falls into.
+ *
+ * @param array $bins
+ *   The structure returned by _rovas_merit_distribution_compute_bins().
+ * @param float|null $user_merits
+ *   The user's merit value, or NULL if unknown.
+ *
+ * @return int|null
+ *   0-based bin index, or NULL if the user has no usable merit value.
+ */
+function _rovas_merit_distribution_user_bin($bins, $user_merits) {
+  if ($user_merits === NULL || $user_merits <= 0 || !empty($bins['degenerate'])) {
+    return NULL;
+  }
+
+  $bin_count = count($bins['counts']);
+  $step = ($bins['max_log'] - $bins['min_log']) / $bin_count;
+  if ($step <= 0) {
+    return NULL;
+  }
+
+  $idx = (int) floor((log10((float) $user_merits) - $bins['min_log']) / $step);
+  if ($idx < 0) {
+    $idx = 0;
+  }
+  elseif ($idx >= $bin_count) {
+    $idx = $bin_count - 1;
+  }
+
+  return $idx;
+}
+
+/* ===========================================================================
+ * 4. SVG renderer
+ * ========================================================================= */
+
+/**
+ * Renders the merit distribution chart as a self-contained SVG string.
+ *
+ * @param array $opts
+ *   Options:
+ *     - uid             int|null  User to highlight (default: NULL).
+ *     - width           int       SVG width in px (default 720).
+ *     - height          int       SVG height in px (default 360).
+ *     - bar_color       string    Hex/CSS color for non-highlighted bars.
+ *     - highlight_color string    Hex/CSS color for the highlighted bar.
+ *     - border_color    string    Hex/CSS color for the outer frame.
+ *     - title           string    Accessible <title> text. Defaults via t().
+ *     - id_prefix       string    Unique prefix for element IDs.
+ *
+ * @return array
+ *   Associative array `['svg' => string, 'meta' => array]` so callers can
+ *   forward the meta to JSON consumers without re-binning.
+ */
+function rovas_merit_distribution_render($opts = array()) {
+  $opts += array(
+    'uid' => NULL,
+    'width' => ROVAS_MERIT_DISTRIBUTION_DEFAULT_WIDTH,
+    'height' => ROVAS_MERIT_DISTRIBUTION_DEFAULT_HEIGHT,
+    'bar_color' => '#A8A8A8',
+    'highlight_color' => '#3D5A99',
+    'border_color' => '#9E9E9E',
+    'triangle_color' => '#3D5A99',
+    'label_color' => '#3D5A99',
+    'title' => NULL,
+    'id_prefix' => 'rmd-' . substr(md5(microtime(TRUE) . mt_rand()), 0, 8),
+  );
+
+  $width = max(200, (int) $opts['width']);
+  $height = max(120, (int) $opts['height']);
+  $title = $opts['title'] !== NULL ? (string) $opts['title'] : t('Merit distribution by deciles');
+
+  $merits_rows = _rovas_merit_distribution_collect_merits();
+  $bins = _rovas_merit_distribution_compute_bins($merits_rows, ROVAS_MERIT_DISTRIBUTION_BIN_COUNT);
+
+  $user_merits = NULL;
+  $user_name = NULL;
+  if (!empty($opts['uid'])) {
+    $user_merits = _rovas_merit_distribution_user_merits($opts['uid']);
+    $account = user_load((int) $opts['uid']);
+    if ($account && !empty($account->name)) {
+      $user_name = $account->name;
+    }
+  }
+  $user_bin = _rovas_merit_distribution_user_bin($bins, $user_merits);
+
+  $svg = _rovas_merit_distribution_build_svg(
+    $width,
+    $height,
+    $bins,
+    $user_bin,
+    $user_name,
+    $user_merits,
+    $title,
+    $opts
+  );
+
+  $meta = array(
+    'bin_edges_log10' => $bins['edges'],
+    'bin_counts' => $bins['counts'],
+    'min_merits' => $bins['min_merits'],
+    'max_merits' => $bins['max_merits'],
+    'user_bin' => $user_bin,
+    'user_merits' => $user_merits,
+    'user_name' => $user_name,
+    'total_users' => $bins['total_users'],
+    'excluded_zero' => $bins['excluded_zero'],
+    'degenerate' => !empty($bins['degenerate']),
+  );
+
+  return array(
+    'svg' => $svg,
+    'meta' => $meta,
+  );
+}
+
+/**
+ * Internal: produce the SVG markup from already-computed bins.
+ *
+ * Kept separate from rovas_merit_distribution_render() so unit-style tests
+ * or alternative data sources can feed in synthetic bins.
+ *
+ * @param int $width
+ * @param int $height
+ * @param array $bins
+ *   Output of _rovas_merit_distribution_compute_bins().
+ * @param int|null $user_bin
+ *   Highlighted bin index or NULL.
+ * @param string|null $user_name
+ *   Username for the pointer label (raw, will be escaped).
+ * @param float|null $user_merits
+ *   Highlighted user's merit value (for title tooltip).
+ * @param string $title
+ *   Accessible title.
+ * @param array $opts
+ *   Style options (bar_color, highlight_color, border_color, triangle_color,
+ *   label_color, id_prefix).
+ *
+ * @return string
+ *   SVG XML.
+ */
+function _rovas_merit_distribution_build_svg($width, $height, $bins, $user_bin, $user_name, $user_merits, $title, $opts) {
+  $bin_count = count($bins['counts']);
+  $max_count = $bin_count > 0 ? max($bins['counts']) : 0;
+
+  // Layout: leave room for the triangle pointer and username label below.
+  $pad_top = 18;
+  $pad_bottom = ($user_bin !== NULL) ? 56 : 24;
+  $pad_left = 24;
+  $pad_right = 24;
+
+  $plot_w = max(50, $width - $pad_left - $pad_right);
+  $plot_h = max(40, $height - $pad_top - $pad_bottom);
+
+  $slot_w = $plot_w / $bin_count;
+  $gap = $slot_w * 0.18;
+  $bar_w = max(1.0, $slot_w - $gap);
+
+  $baseline_y = $pad_top + $plot_h;
+
+  $border_color = check_plain($opts['border_color']);
+  $bar_color = check_plain($opts['bar_color']);
+  $hi_color = check_plain($opts['highlight_color']);
+  $tri_color = check_plain($opts['triangle_color']);
+  $lbl_color = check_plain($opts['label_color']);
+  $id_prefix = preg_replace('/[^A-Za-z0-9_-]/', '', (string) $opts['id_prefix']);
+  if ($id_prefix === '') {
+    $id_prefix = 'rmd';
+  }
+
+  $title_escaped = check_plain($title);
+  $desc_escaped = check_plain(t(
+    'Histogram of @total users across @bins log-scaled merit bins.',
+    array('@total' => $bins['total_users'], '@bins' => $bin_count)
+  ));
+
+  $svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ' . $width . ' ' . $height . '"'
+       . ' width="' . $width . '" height="' . $height . '"'
+       . ' role="img"'
+       . ' aria-labelledby="' . $id_prefix . '-title ' . $id_prefix . '-desc"'
+       . ' preserveAspectRatio="xMidYMid meet">';
+
+  $svg .= '<title id="' . $id_prefix . '-title">' . $title_escaped . '</title>';
+  $svg .= '<desc id="' . $id_prefix . '-desc">' . $desc_escaped . '</desc>';
+
+  $svg .= '<defs><style type="text/css">'
+        . '.' . $id_prefix . '-lbl{font-family:Roboto,Arial,sans-serif;font-size:13px;fill:' . $lbl_color . ';}'
+        . '</style></defs>';
+
+  // Outer frame, matching the screenshot.
+  $svg .= '<rect x="1" y="1" width="' . ($width - 2) . '" height="' . ($height - 2) . '"'
+        . ' fill="white" stroke="' . $border_color . '" stroke-width="1" rx="2" ry="2" />';
+
+  // Bars.
+  for ($i = 0; $i < $bin_count; $i++) {
+    $count = $bins['counts'][$i];
+    $bar_h = ($max_count > 0) ? ($count / $max_count) * $plot_h : 0;
+    if ($count > 0 && $bar_h < 2) {
+      $bar_h = 2;
+    }
+    $x = $pad_left + $i * $slot_w + $gap / 2;
+    $y = $baseline_y - $bar_h;
+    $fill = ($user_bin !== NULL && $i === $user_bin) ? $hi_color : $bar_color;
+
+    $low = $bins['edges'][$i];
+    $high = $bins['edges'][$i + 1];
+    $tooltip = t('Bin @n: 10^@a..10^@b ME, @c users', array(
+      '@n' => $i + 1,
+      '@a' => number_format($low, 2),
+      '@b' => number_format($high, 2),
+      '@c' => $count,
+    ));
+
+    $svg .= '<g><title>' . check_plain($tooltip) . '</title>'
+          . '<rect x="' . _rovas_merit_distribution_fmt($x) . '"'
+          . ' y="' . _rovas_merit_distribution_fmt($y) . '"'
+          . ' width="' . _rovas_merit_distribution_fmt($bar_w) . '"'
+          . ' height="' . _rovas_merit_distribution_fmt($bar_h) . '"'
+          . ' fill="' . $fill . '" />'
+          . '</g>';
+  }
+
+  // Pointer + username when a user is highlighted.
+  if ($user_bin !== NULL) {
+    $bar_center_x = $pad_left + $user_bin * $slot_w + $slot_w / 2;
+    $tri_top_y = $baseline_y + 4;
+    $tri_h = 12;
+    $tri_half_w = 8;
+
+    $svg .= '<polygon points="'
+          . _rovas_merit_distribution_fmt($bar_center_x) . ',' . _rovas_merit_distribution_fmt($tri_top_y) . ' '
+          . _rovas_merit_distribution_fmt($bar_center_x - $tri_half_w) . ',' . _rovas_merit_distribution_fmt($tri_top_y + $tri_h) . ' '
+          . _rovas_merit_distribution_fmt($bar_center_x + $tri_half_w) . ',' . _rovas_merit_distribution_fmt($tri_top_y + $tri_h)
+          . '" fill="' . $tri_color . '" />';
+
+    $label = $user_name !== NULL ? $user_name : t('You');
+    $label_tooltip = $user_merits !== NULL
+      ? t('@name: @m ME', array('@name' => $label, '@m' => number_format((float) $user_merits, 2)))
+      : (string) $label;
+
+    $text_y = $tri_top_y + $tri_h + 16;
+    $svg .= '<text class="' . $id_prefix . '-lbl"'
+          . ' x="' . _rovas_merit_distribution_fmt($bar_center_x) . '"'
+          . ' y="' . _rovas_merit_distribution_fmt($text_y) . '"'
+          . ' text-anchor="middle">'
+          . '<title>' . check_plain($label_tooltip) . '</title>'
+          . check_plain($label)
+          . '</text>';
+  }
+
+  $svg .= '</svg>';
+  return $svg;
+}
+
+/**
+ * Internal: format a float for SVG output (3 decimals, no thousand sep).
+ */
+function _rovas_merit_distribution_fmt($v) {
+  return number_format((float) $v, 3, '.', '');
+}
+
+/* ===========================================================================
+ * 5. Services endpoint callback
+ * ========================================================================= */
+
+/**
+ * Services callback: GET rovas_endpoint/rovas_merit_distribution.
+ *
+ * @param int|null $uid
+ *   Optional user ID to highlight; defaults to the authenticated caller.
+ * @param int|null $width
+ *   Optional SVG width.
+ * @param int|null $height
+ *   Optional SVG height.
+ *
+ * @return array
+ *   Associative result for Services to JSON-encode.
+ */
+function rovas_merit_distribution_endpoint_index($uid = NULL, $width = NULL, $height = NULL) {
+  global $user;
+
+  if (empty($user->uid)) {
+    return services_error(t('User not authenticated'), 401);
+  }
+
+  $effective_uid = ($uid !== NULL && (int) $uid > 0) ? (int) $uid : (int) $user->uid;
+
+  $opts = array('uid' => $effective_uid);
+  if ($width !== NULL && (int) $width > 0) {
+    $opts['width'] = (int) $width;
+  }
+  if ($height !== NULL && (int) $height > 0) {
+    $opts['height'] = (int) $height;
+  }
+
+  try {
+    $rendered = rovas_merit_distribution_render($opts);
+  }
+  catch (Exception $e) {
+    watchdog(
+      'rovas_merit_distribution',
+      'Endpoint render failed: @msg',
+      array('@msg' => $e->getMessage()),
+      WATCHDOG_ERROR
+    );
+    return services_error(t('Unable to generate merit distribution chart'), 500);
+  }
+
+  return array(
+    'status' => 'success',
+    'svg' => $rendered['svg'],
+    'meta' => $rendered['meta'],
+  );
+}
+
+/* ===========================================================================
+ * 6. Admin preview page
+ * ========================================================================= */
+
+/**
+ * Page callback: admin/reports/merit-distribution.
+ *
+ * Renders the chart inline so admins can sanity-check the output without
+ * making an authenticated API call. Accepts ?uid=N (defaults to the current
+ * admin) and ?reset=1 to bust the merit cache.
+ */
+function rovas_merit_distribution_preview_page() {
+  global $user;
+
+  if (!empty($_GET['reset'])) {
+    cache_clear_all(ROVAS_MERIT_DISTRIBUTION_CACHE_KEY, 'cache');
+    drupal_set_message(t('Merit distribution cache cleared.'));
+  }
+
+  $uid_param = isset($_GET['uid']) ? (int) $_GET['uid'] : (int) $user->uid;
+  $width = isset($_GET['width']) ? max(200, (int) $_GET['width']) : ROVAS_MERIT_DISTRIBUTION_DEFAULT_WIDTH;
+  $height = isset($_GET['height']) ? max(120, (int) $_GET['height']) : ROVAS_MERIT_DISTRIBUTION_DEFAULT_HEIGHT;
+
+  $rendered = rovas_merit_distribution_render(array(
+    'uid' => $uid_param,
+    'width' => $width,
+    'height' => $height,
+  ));
+
+  $form_html = '<div class="rovas-merit-distribution-form">'
+    . '<form method="get" action="' . url(current_path()) . '">'
+    . '<label>' . t('Highlight UID') . ': '
+    . '<input type="number" name="uid" min="2" value="' . check_plain($uid_param) . '" /></label> '
+    . '<label>' . t('Width') . ': '
+    . '<input type="number" name="width" min="200" value="' . check_plain($width) . '" /></label> '
+    . '<label>' . t('Height') . ': '
+    . '<input type="number" name="height" min="120" value="' . check_plain($height) . '" /></label> '
+    . '<button type="submit">' . t('Update') . '</button> '
+    . '<a href="' . url(current_path(), array('query' => array('reset' => 1, 'uid' => $uid_param))) . '">' . t('Bust cache') . '</a>'
+    . '</form>'
+    . '</div>';
+
+  $meta_html = '<pre class="rovas-merit-distribution-meta">'
+    . check_plain(json_encode($rendered['meta'], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES))
+    . '</pre>';
+
+  $output = '<div class="rovas-merit-distribution-preview">'
+    . $form_html
+    . $rendered['svg']
+    . $meta_html
+    . '</div>';
+
+  return $output;
+}

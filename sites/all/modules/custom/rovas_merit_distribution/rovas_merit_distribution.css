@@ -1,0 +1,28 @@
+/**
+ * Styles for the Rovas Merit Distribution admin preview page.
+ * The SVG itself is fully self-contained; this file only wraps the preview.
+ */
+
+.rovas-merit-distribution-preview {
+  max-width: 820px;
+  margin: 1em 0;
+}
+
+.rovas-merit-distribution-preview .rovas-merit-distribution-meta {
+  margin-top: 1em;
+  font-family: monospace;
+  font-size: 0.85em;
+  background: #f5f5f5;
+  padding: 0.75em 1em;
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
+  overflow-x: auto;
+}
+
+.rovas-merit-distribution-preview .rovas-merit-distribution-form {
+  margin-bottom: 1em;
+  padding: 0.5em 1em;
+  background: #fafafa;
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
+}

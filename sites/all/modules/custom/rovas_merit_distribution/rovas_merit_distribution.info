@@ -1,0 +1,14 @@
+name = Rovas Merit Distribution
+description = SVG histogram of all users' merit scores split into 10 log-scaled bins, with optional per-user highlight. Exposes a Services resource on rovas_endpoint and an admin preview page.
+core = 7.x
+package = Rovas
+
+dependencies[] = services
+dependencies[] = services_auth_apikeys
+dependencies[] = rovas_base
+dependencies[] = rovas_api_endpoints
+dependencies[] = userpoints
+
+files[] = rovas_merit_distribution.module
+
+stylesheets[all][] = rovas_merit_distribution.css
