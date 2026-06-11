@@ -60,13 +60,22 @@ serve it (typically `rovas_endpoint`):
 
 ```
 GET /<endpoint-base>/rovas_merit_distribution
-    ?uid=<int>        # optional, defaults to authenticated user
-    &width=<int>      # optional, default 720
-    &height=<int>     # optional, default 360
+    ?uid=<int>          # optional, defaults to authenticated user
+    &width=<int>        # optional, default 720
+    &height=<int>       # optional, default 360
+    &x_labels=1         # optional, show rounded merit values under bin edges
+    &count_labels=1     # optional, show rounded user counts above each bar
 Headers:
     X-API-Key: <api key>
     X-Token:   <token>
 ```
+
+Both `x_labels` and `count_labels` default to off. Pass `1` (truthy) to
+enable. Labels are rendered with a "reasonable" rounding scheme: integers
+below 1000 (e.g. `316`), `k` suffix for thousands (`32k`), `M` for
+millions, `B` for billions, `T` for trillions. The render helper
+`rovas_merit_distribution_render($opts)` accepts the same flags as boolean
+keys `x_labels` and `count_labels`.
 
 ## Response
 

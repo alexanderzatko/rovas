@@ -87,6 +87,20 @@ function rovas_merit_distribution_services_resources() {
               'source' => array('param' => 'height'),
               'optional' => TRUE,
             ),
+            array(
+              'name' => 'x_labels',
+              'type' => 'int',
+              'description' => 'Set to 1 to show rounded merit values under each bin edge.',
+              'source' => array('param' => 'x_labels'),
+              'optional' => TRUE,
+            ),
+            array(
+              'name' => 'count_labels',
+              'type' => 'int',
+              'description' => 'Set to 1 to show rounded user-count labels above each bar.',
+              'source' => array('param' => 'count_labels'),
+              'optional' => TRUE,
+            ),
           ),
         ),
       ),
@@ -328,6 +342,12 @@ function _rovas_merit_distribution_user_bin($bins, $user_merits) {
  *     - border_color    string    Hex/CSS color for the outer frame.
  *     - title           string    Accessible <title> text. Defaults via t().
  *     - id_prefix       string    Unique prefix for element IDs.
+ *     - x_labels        bool      Show rounded merit values under the bin
+ *                                 edges (default FALSE).
+ *     - count_labels    bool      Show rounded user-count labels above each
+ *                                 bar (default FALSE).
+ *     - axis_label_color string   Color for the axis/count labels (defaults
+ *                                 to a dark grey).
  *
  * @return array
  *   Associative array `['svg' => string, 'meta' => array]` so callers can
@@ -343,9 +363,14 @@ function rovas_merit_distribution_render($opts = array()) {
     'border_color' => '#9E9E9E',
     'triangle_color' => '#3D5A99',
     'label_color' => '#3D5A99',
+    'axis_label_color' => '#555555',
     'title' => NULL,
     'id_prefix' => 'rmd-' . substr(md5(microtime(TRUE) . mt_rand()), 0, 8),
+    'x_labels' => FALSE,
+    'count_labels' => FALSE,
   );
+  $opts['x_labels'] = (bool) $opts['x_labels'];
+  $opts['count_labels'] = (bool) $opts['count_labels'];
 
   $width = max(200, (int) $opts['width']);
   $height = max(120, (int) $opts['height']);
@@ -424,9 +449,19 @@ function _rovas_merit_distribution_build_svg($width, $height, $bins, $user_bin, 
   $bin_count = count($bins['counts']);
   $max_count = $bin_count > 0 ? max($bins['counts']) : 0;
 
-  // Layout: leave room for the triangle pointer and username label below.
-  $pad_top = 18;
-  $pad_bottom = ($user_bin !== NULL) ? 56 : 24;
+  $show_x_labels = !empty($opts['x_labels']) && !empty($bins) && empty($bins['degenerate']);
+  $show_count_labels = !empty($opts['count_labels']);
+
+  // Heights for label rows.
+  $x_label_h = $show_x_labels ? 16 : 0;
+  $count_label_h = $show_count_labels ? 14 : 0;
+
+  // Layout: top padding grows when count labels are on so the largest bar can
+  // still fit a value above it; bottom padding grows for x-axis labels and
+  // for the highlight (triangle + username).
+  $pad_top = 8 + $count_label_h;
+  $pad_bottom_base = ($user_bin !== NULL) ? 56 : 16;
+  $pad_bottom = $pad_bottom_base + $x_label_h;
   $pad_left = 24;
   $pad_right = 24;
 
@@ -444,6 +479,7 @@ function _rovas_merit_distribution_build_svg($width, $height, $bins, $user_bin, 
   $hi_color = check_plain($opts['highlight_color']);
   $tri_color = check_plain($opts['triangle_color']);
   $lbl_color = check_plain($opts['label_color']);
+  $axis_color = check_plain(isset($opts['axis_label_color']) ? $opts['axis_label_color'] : '#555555');
   $id_prefix = preg_replace('/[^A-Za-z0-9_-]/', '', (string) $opts['id_prefix']);
   if ($id_prefix === '') {
     $id_prefix = 'rmd';
@@ -466,13 +502,15 @@ function _rovas_merit_distribution_build_svg($width, $height, $bins, $user_bin, 
 
   $svg .= '<defs><style type="text/css">'
         . '.' . $id_prefix . '-lbl{font-family:Roboto,Arial,sans-serif;font-size:13px;fill:' . $lbl_color . ';}'
+        . '.' . $id_prefix . '-xlbl{font-family:Roboto,Arial,sans-serif;font-size:10px;fill:' . $axis_color . ';}'
+        . '.' . $id_prefix . '-clbl{font-family:Roboto,Arial,sans-serif;font-size:10px;fill:' . $axis_color . ';}'
         . '</style></defs>';
 
   // Outer frame, matching the screenshot.
   $svg .= '<rect x="1" y="1" width="' . ($width - 2) . '" height="' . ($height - 2) . '"'
         . ' fill="white" stroke="' . $border_color . '" stroke-width="1" rx="2" ry="2" />';
 
-  // Bars.
+  // Bars (and per-bar count labels above them).
   for ($i = 0; $i < $bin_count; $i++) {
     $count = $bins['counts'][$i];
     $bar_h = ($max_count > 0) ? ($count / $max_count) * $plot_h : 0;
@@ -499,12 +537,53 @@ function _rovas_merit_distribution_build_svg($width, $height, $bins, $user_bin, 
           . ' height="' . _rovas_merit_distribution_fmt($bar_h) . '"'
           . ' fill="' . $fill . '" />'
           . '</g>';
+
+    if ($show_count_labels) {
+      $count_text = _rovas_merit_distribution_format_value($count);
+      $count_x = $x + $bar_w / 2;
+      $count_y = ($bar_h > 0) ? ($y - 3) : ($baseline_y - 3);
+      $svg .= '<text class="' . $id_prefix . '-clbl"'
+            . ' x="' . _rovas_merit_distribution_fmt($count_x) . '"'
+            . ' y="' . _rovas_merit_distribution_fmt($count_y) . '"'
+            . ' text-anchor="middle">'
+            . check_plain($count_text)
+            . '</text>';
+    }
+  }
+
+  // X-axis labels: rounded merit value at each of the 11 bin edges.
+  if ($show_x_labels) {
+    $xlbl_y = $baseline_y + 12;
+    for ($i = 0; $i <= $bin_count; $i++) {
+      $edge_x = $pad_left + $i * $slot_w;
+      $edge_log = $bins['edges'][$i];
+      $edge_value = pow(10, $edge_log);
+      $edge_text = _rovas_merit_distribution_format_value($edge_value);
+
+      // Anchor first/last labels so they stay inside the frame.
+      if ($i === 0) {
+        $anchor = 'start';
+      }
+      elseif ($i === $bin_count) {
+        $anchor = 'end';
+      }
+      else {
+        $anchor = 'middle';
+      }
+
+      $svg .= '<text class="' . $id_prefix . '-xlbl"'
+            . ' x="' . _rovas_merit_distribution_fmt($edge_x) . '"'
+            . ' y="' . _rovas_merit_distribution_fmt($xlbl_y) . '"'
+            . ' text-anchor="' . $anchor . '">'
+            . check_plain($edge_text)
+            . '</text>';
+    }
   }
 
   // Pointer + username when a user is highlighted.
   if ($user_bin !== NULL) {
     $bar_center_x = $pad_left + $user_bin * $slot_w + $slot_w / 2;
-    $tri_top_y = $baseline_y + 4;
+    $tri_top_y = $baseline_y + 4 + $x_label_h;
     $tri_h = 12;
     $tri_half_w = 8;
 
@@ -540,6 +619,51 @@ function _rovas_merit_distribution_fmt($v) {
   return number_format((float) $v, 3, '.', '');
 }
 
+/**
+ * Internal: format a merit value as a short, rounded, human-readable label.
+ *
+ * Examples:
+ *   0.31     → "0.3"
+ *   3.16     → "3"
+ *   31.6     → "32"
+ *   316      → "316"
+ *   3162     → "3k"
+ *   31623    → "32k"
+ *   316228   → "316k"
+ *   1500000  → "2M"
+ *   2.5e9    → "3B"
+ *
+ * Used for x-axis bin-edge labels and bar count labels.
+ *
+ * @param float $v
+ *   The value to format (assumed non-negative).
+ *
+ * @return string
+ *   Short rounded label.
+ */
+function _rovas_merit_distribution_format_value($v) {
+  $v = (float) $v;
+  if ($v <= 0) {
+    return '0';
+  }
+  if ($v < 1) {
+    return number_format($v, 1, '.', '');
+  }
+  if ($v < 1000) {
+    return (string) (int) round($v);
+  }
+  if ($v < 1e6) {
+    return ((int) round($v / 1000)) . 'k';
+  }
+  if ($v < 1e9) {
+    return ((int) round($v / 1e6)) . 'M';
+  }
+  if ($v < 1e12) {
+    return ((int) round($v / 1e9)) . 'B';
+  }
+  return ((int) round($v / 1e12)) . 'T';
+}
+
 /* ===========================================================================
  * 5. Services endpoint callback
  * ========================================================================= */
@@ -553,11 +677,15 @@ function _rovas_merit_distribution_fmt($v) {
  *   Optional SVG width.
  * @param int|null $height
  *   Optional SVG height.
+ * @param int|null $x_labels
+ *   Set to 1 to render rounded merit-value labels under each bin edge.
+ * @param int|null $count_labels
+ *   Set to 1 to render rounded user-count labels above each bar.
  *
  * @return array
  *   Associative result for Services to JSON-encode.
  */
-function rovas_merit_distribution_endpoint_index($uid = NULL, $width = NULL, $height = NULL) {
+function rovas_merit_distribution_endpoint_index($uid = NULL, $width = NULL, $height = NULL, $x_labels = NULL, $count_labels = NULL) {
   global $user;
 
   if (empty($user->uid)) {
@@ -572,6 +700,12 @@ function rovas_merit_distribution_endpoint_index($uid = NULL, $width = NULL, $he
   }
   if ($height !== NULL && (int) $height > 0) {
     $opts['height'] = (int) $height;
+  }
+  if ($x_labels !== NULL) {
+    $opts['x_labels'] = (bool) (int) $x_labels;
+  }
+  if ($count_labels !== NULL) {
+    $opts['count_labels'] = (bool) (int) $count_labels;
   }
 
   try {
@@ -616,12 +750,19 @@ function rovas_merit_distribution_preview_page() {
   $uid_param = isset($_GET['uid']) ? (int) $_GET['uid'] : (int) $user->uid;
   $width = isset($_GET['width']) ? max(200, (int) $_GET['width']) : ROVAS_MERIT_DISTRIBUTION_DEFAULT_WIDTH;
   $height = isset($_GET['height']) ? max(120, (int) $_GET['height']) : ROVAS_MERIT_DISTRIBUTION_DEFAULT_HEIGHT;
+  $x_labels = !empty($_GET['x_labels']);
+  $count_labels = !empty($_GET['count_labels']);
 
   $rendered = rovas_merit_distribution_render(array(
     'uid' => $uid_param,
     'width' => $width,
     'height' => $height,
+    'x_labels' => $x_labels,
+    'count_labels' => $count_labels,
   ));
+
+  $x_labels_checked = $x_labels ? ' checked="checked"' : '';
+  $count_labels_checked = $count_labels ? ' checked="checked"' : '';
 
   $form_html = '<div class="rovas-merit-distribution-form">'
     . '<form method="get" action="' . url(current_path()) . '">'
@@ -631,6 +772,8 @@ function rovas_merit_distribution_preview_page() {
     . '<input type="number" name="width" min="200" value="' . check_plain($width) . '" /></label> '
     . '<label>' . t('Height') . ': '
     . '<input type="number" name="height" min="120" value="' . check_plain($height) . '" /></label> '
+    . '<label><input type="checkbox" name="x_labels" value="1"' . $x_labels_checked . ' /> ' . t('X-axis labels') . '</label> '
+    . '<label><input type="checkbox" name="count_labels" value="1"' . $count_labels_checked . ' /> ' . t('Count labels') . '</label> '
     . '<button type="submit">' . t('Update') . '</button> '
     . '<a href="' . url(current_path(), array('query' => array('reset' => 1, 'uid' => $uid_param))) . '">' . t('Bust cache') . '</a>'
     . '</form>'
