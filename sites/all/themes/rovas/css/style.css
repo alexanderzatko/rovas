@@ -34,6 +34,12 @@ a span.glyphicon.glyphicon-list-alt {
     margin-left: 10px;
 }
 
+/* Hide the Bootstrap focus ring on links for mouse/touch focus,
+   but keep it for keyboard navigation (accessibility). */
+a:focus:not(:focus-visible) {
+    outline: none;
+}
+
 span.wreport-type {
     color: #007bfe;
     font-weight: bold;
