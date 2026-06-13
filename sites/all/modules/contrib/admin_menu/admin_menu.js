@@ -369,11 +369,11 @@ Drupal.admin.behaviors.search = function (context, settings, $adminMenu) {
   }
 
   // Attach showPath/hidePath handler to search result entries.
-  $results.delegate('li', 'mouseenter mouseleave focus blur', resultsHandler);
+  $results.on('mouseenter mouseleave focus blur', 'li', resultsHandler);
   // Hide the result list after a link has been clicked, useful for overlay.
-  $results.delegate('li', 'click', resultsClickHandler);
+  $results.on('click', 'li', resultsClickHandler);
   // Attach hover/active highlight behavior to search result entries.
-  $adminMenu.delegate('.admin-menu-search-results li', 'showPath hidePath', highlightPathHandler);
+  $adminMenu.on('showPath hidePath', '.admin-menu-search-results li', highlightPathHandler);
   // Attach the search input event handler.
   $input.bind('keyup search', keyupHandler);
 };

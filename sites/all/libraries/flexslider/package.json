@@ -22,8 +22,5 @@
   "bugs": {
     "url": "https://github.com/woothemes/FlexSlider/issues"
   },
-  "homepage": "https://github.com/woothemes/FlexSlider#readme",
-  "dependencies": {
-    "jquery": ">=1.11.3"
-  }
+  "homepage": "https://github.com/woothemes/FlexSlider#readme"
 }

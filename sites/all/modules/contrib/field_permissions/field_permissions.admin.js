@@ -29,7 +29,7 @@
       // Show a warning if there's no available permissions matrix.
       $('#edit-field-field-permissions-permission-warning').toggle(!$('#permissions').length);
 
-      $('[name="field[field_permissions][type]"]').bind('change', function(option) {
+      $('[name="field[field_permissions][type]"]').on('change', function(option) {
         $('#edit-field-field-permissions-permission-warning').toggle(!$('#permissions').length);
       });
     }
@@ -52,8 +52,8 @@
     this.setCreatePermissionVisibility();
     // Set the row's visibility again whenever the user registration checkbox
     // changes, or when the required field checkbox (which controls it) changes.
-    $user_register_form_checkbox.bind('change', $.proxy(this.setCreatePermissionVisibility, this));
-    $required_field_checkbox.bind('change', $.proxy(this.setCreatePermissionVisibility, this));
+    $user_register_form_checkbox.on('change', $.proxy(this.setCreatePermissionVisibility, this));
+    $required_field_checkbox.on('change', $.proxy(this.setCreatePermissionVisibility, this));
   };
 
   /**

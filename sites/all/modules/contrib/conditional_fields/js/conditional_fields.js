@@ -41,10 +41,10 @@ Drupal.states.Dependent.comparisons['Object'] = function (reference, value) {
  * Focused condition.
  */
 Drupal.states.Trigger.states.focused = function(element) {
-  element.bind('focus', function () {
+  element.on('focus', function () {
     element.trigger({ type: 'state:focused', value: true });
   })
-  .bind('blur', function () {
+  .on('blur', function () {
     element.trigger({ type: 'state:focused', value: false });
   });
 
@@ -69,19 +69,19 @@ Drupal.states.Trigger.states.touched = {
  */
 
 // Visible/Invisible.
-$(document).bind('state:visible-fade', function(e) {
+$(document).on('state:visible-fade', function(e) {
   if (e.trigger) {
     $(e.target).closest('.form-item, .form-submit, .form-wrapper')[e.value ? 'fadeIn' : 'fadeOut'](e.effect.speed);
   }
 })
-.bind('state:visible-slide', function(e) {
+.on('state:visible-slide', function(e) {
   if (e.trigger) {
     $(e.target).closest('.form-item, .form-submit, .form-wrapper')[e.value ? 'slideDown' : 'slideUp'](e.effect.speed);
   }
 })
 // Empty/Filled.
-.bind('state:empty', function() {})
-.bind('state:empty-empty', function(e) {
+.on('state:empty', function() {})
+.on('state:empty-empty', function(e) {
   if (e.trigger) {
     var field = $(e.target).find('input, select, textarea');
     if (e.effect.reset) {
@@ -95,7 +95,7 @@ $(document).bind('state:visible-fade', function(e) {
     }
   }
 })
-.bind('state:empty-fill', function(e) {
+.on('state:empty-fill', function(e) {
   if (e.trigger) {
     var field = $(e.target).find('input, select, textarea');
     if (e.effect.reset) {
@@ -110,7 +110,7 @@ $(document).bind('state:visible-fade', function(e) {
   }
 })
 // Unchanged state. Do nothing.
-.bind('state:unchanged', function() {});
+.on('state:unchanged', function() {});
 
 Drupal.behaviors.conditionalFields = {
   attach: function (context, settings) {

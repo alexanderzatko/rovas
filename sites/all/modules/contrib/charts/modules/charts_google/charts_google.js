@@ -29,7 +29,7 @@ Drupal.behaviors.chartsGoogle.attach = function(context, settings) {
   function renderCharts() {
     $('.charts-google', context).once('charts-google', function() {
       if ($(this).attr('data-chart')) {
-        var config = $.parseJSON($(this).attr('data-chart'));
+        var config = JSON.parse($(this).attr('data-chart'));
         var wrap = new google.visualization.ChartWrapper();
         wrap.setChartType(config.visualization);
         wrap.setDataTable(config.data);

@@ -339,7 +339,7 @@
     $('.decline-button').click(Drupal.eu_cookie_compliance.declineAction);
 
     if (clickingConfirms) {
-      $('a, input[type=submit], button[type=submit]').not('.popup-content *').bind('click.euCookieCompliance', Drupal.eu_cookie_compliance.acceptAction);
+      $('a, input[type=submit], button[type=submit]').not('.popup-content *').on('click.euCookieCompliance', Drupal.eu_cookie_compliance.acceptAction);
     }
 
     if (scrollConfirms) {
@@ -354,7 +354,7 @@
         }
       };
 
-      $(window).bind('scroll', scrollHandler);
+      $(window).on('scroll', scrollHandler);
     }
 
     $('.find-more-button').not('.find-more-button-processed').addClass('find-more-button-processed').click(Drupal.eu_cookie_compliance.moreInfoAction);
@@ -372,11 +372,11 @@
     }
     );
     if (clickingConfirms) {
-      $('a, input[type=submit], button[type=submit]').unbind('click.euCookieCompliance');
+      $('a, input[type=submit], button[type=submit]').off('click.euCookieCompliance');
     }
 
     if (popupHideAgreed) {
-      $('a, input[type=submit], button[type=submit]').bind('click.euCookieComplianceHideAgreed', function () {
+      $('a, input[type=submit], button[type=submit]').on('click.euCookieComplianceHideAgreed', function () {
         Drupal.eu_cookie_compliance.changeStatus(2);
       });
     }

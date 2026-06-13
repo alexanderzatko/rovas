@@ -170,7 +170,7 @@ OpenLayers.Control.GeofieldEditingToolbar = OpenLayers.Class(
             'control': geofieldControl,
             'dataLayer': dataLayer
           };
-          $(context).parents('form').bind('submit', formData, function(e) {
+          $(context).parents('form').on('submit', null, formData, function(e) {
             $.map(e.data.control.controls, function(c) { c.deactivate(); });
             dataLayer.events.triggerEvent('afterfeaturemodified');
           });

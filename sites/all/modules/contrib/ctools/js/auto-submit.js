@@ -81,7 +81,7 @@ Drupal.behaviors.CToolsAutoSubmit = {
         // each textinput element has his own timeout
         var timeoutID = 0;
         $(this)
-          .bind('keydown keyup', function (e) {
+          .on('keydown keyup', function (e) {
             if ($.inArray(e.keyCode, discardKeyCode) === -1) {
               timeoutID && clearTimeout(timeoutID);
             }
@@ -91,7 +91,7 @@ Drupal.behaviors.CToolsAutoSubmit = {
               timeoutID = setTimeout($.proxy(triggerSubmit, this.form), 500);
             }
           })
-          .bind('change', function (e) {
+          .on('change', function (e) {
             if ($.inArray(e.keyCode, discardKeyCode) === -1) {
               timeoutID = setTimeout($.proxy(triggerSubmit, this.form), 500);
             }

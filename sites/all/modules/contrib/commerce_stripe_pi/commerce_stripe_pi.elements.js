@@ -64,9 +64,9 @@
           }
 
           // Remove previous attached events.
-          $('body').undelegate('.checkout-buttons #edit-continue', 'click');
+          $('body').off('click', '.checkout-buttons #edit-continue');
           // Attach the JS behaviors just once to the available card element.
-          $('body').delegate('.checkout-buttons #edit-continue', 'click', function(event) {
+          $('body').on('click', '.checkout-buttons #edit-continue', function(event) {
             // Prevent the Stripe actions from being triggered if Stripe is not the selected payment method.
             if ($("input[value*='commerce_stripe_pi|']").is(':checked')) {
               // Do not fetch the token if cardonfile is enabled and the customer has selected an existing card.
@@ -174,7 +174,7 @@
             }
           });
 
-          $('#commerce-stripe-pi-cardonfile-create-form').delegate('#edit-submit', 'click', function (event) {
+          $('#commerce-stripe-pi-cardonfile-create-form').on('click', '#edit-submit', function (event) {
 
             var form$ = $(this).closest("form", context);
             var submitButton$ = $('#edit-submit');
@@ -283,7 +283,7 @@
 
           });
 
-          $('.page-admin-commerce-orders-payment').delegate('#edit-submit', 'click', function(event) {
+          $('.page-admin-commerce-orders-payment').on('click', '#edit-submit', function(event) {
             // Prevent the Stripe actions to be triggered if hidden field hasn't been set
             var cs_terminal = $('input[name=commerce_stripe_pi_terminal]').val();
             if ( cs_terminal > 0) {

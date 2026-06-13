@@ -260,7 +260,7 @@ Drupal.behaviors.viewsUiRenderAddViewButton.attach = function (context, settings
   // We use the 'li.add' selector because the open class on this item will be
   // toggled on and off and we want the handler to take effect in the cases
   // that the class is present, but not when it isn't.
-  $menu.delegate('li.add', 'mouseleave', function (event) {
+  $menu.on('mouseleave', 'li.add', function (event) {
     var $this = $(this);
     var $trigger = $this.children('a[href="#"]');
     if ($this.children('.action-list').is(':visible')) {

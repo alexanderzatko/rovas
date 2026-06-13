@@ -62,7 +62,7 @@
         $("<ul id='sa_admin_menu'><div class='sa_title'>Search Aucomplete</div><li class='sa_add'>" + Drupal.t('add autocompletion') + "</li></ul>").appendTo($('body'));
       });
 
-      $("body").delegate(input_selector, "mouseover", function (event) {
+      $("body").on("mouseover", input_selector, function (event) {
         var offset = $(this).offset();
 
         // display the context menu
@@ -78,23 +78,23 @@
       });
 
       // hide the menu when out or used
-      $("body").delegate(input_selector, "click", function () {
+      $("body").on("click", input_selector, function () {
         $("#sa_admin_menu").hide();
       });
-      $("body").delegate(input_selector, "mouseout", function () {
+      $("body").on("mouseout", input_selector, function () {
         $("#sa_admin_menu").hide();
       });
 
       // hide the menu when out
-      $("body").delegate("#sa_admin_menu", "mouseover", function(){
+      $("body").on("mouseover", "#sa_admin_menu", function(){
         $(this).show();
       });
-      $("body").delegate("#sa_admin_menu", "mouseout", function(){
+      $("body").on("mouseout", "#sa_admin_menu", function(){
         $(this).hide();
       });
 
       // add a new autocompletion
-      $("body").delegate(".sa_add", "click", function () {
+      $("body").on("click", ".sa_add", function () {
         window.location = 'index.php?q=admin/config/search/search_autocomplete/add&selector=' + encodeURI(selector.replace('#', '%23'));
       });
 

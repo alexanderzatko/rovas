@@ -125,7 +125,7 @@
             }
           },
           complete: function () {
-            $preview.parent().find('select[name="bootstrap_cdn_jsdelivr_theme"]').bind('change', function () {
+            $preview.parent().find('select[name="bootstrap_cdn_jsdelivr_theme"]').on('change', function () {
               $preview.find('.bootswatch-preview').addClass('element-invisible');
               if ($(this).val().length) {
                 $preview.find('#bootstrap-theme-preview-' + $(this).val()).removeClass('element-invisible');
@@ -147,7 +147,7 @@
       $preview.once('navbar', function () {
         var $body = $context.find('body');
         var $navbar = $context.find('#navbar.navbar');
-        $preview.find('select[name="bootstrap_navbar_position"]').bind('change', function () {
+        $preview.find('select[name="bootstrap_navbar_position"]').on('change', function () {
           var $position = $(this).find(':selected').val();
           $navbar.removeClass('navbar-fixed-bottom navbar-fixed-top navbar-static-top container');
           if ($position.length) {
@@ -172,7 +172,7 @@
               break;
           }
         });
-        $preview.find('input[name="bootstrap_navbar_inverse"]').bind('change', function () {
+        $preview.find('input[name="bootstrap_navbar_inverse"]').on('change', function () {
           $navbar.toggleClass('navbar-inverse navbar-default');
         });
       });

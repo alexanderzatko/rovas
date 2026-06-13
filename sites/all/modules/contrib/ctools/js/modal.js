@@ -102,7 +102,7 @@
     $('#modalContent .modal-content').html(Drupal.theme(settings.throbberTheme)).addClass('ctools-modal-loading');
 
     // Position autocomplete results based on the scroll position of the modal.
-    $('#modalContent .modal-content').delegate('input.form-autocomplete', 'keyup', function() {
+    $('#modalContent .modal-content').on('keyup', 'input.form-autocomplete', function() {
       $('#autocomplete').css('top', $(this).position().top + $(this).outerHeight() + $(this).offsetParent().filter('#modal-content').scrollTop());
     });
   };

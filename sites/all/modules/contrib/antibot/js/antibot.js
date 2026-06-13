@@ -18,7 +18,7 @@
       });
 
       // Wait for a touch move event, indicating that they are human.
-      $('body').bind('touchmove', function() {
+      $('body').on('touchmove', function() {
         // Unlock the forms.
         Drupal.antibot.unlockForms();
       });
