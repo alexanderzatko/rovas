@@ -15,6 +15,11 @@
  * This software consists of voluntary contributions made by many individuals
  * and is licensed under the MIT license. For more information, see
  * <http://www.doctrine-project.org>.
+ *
+ * Local patch (rovas): PHP 8.x signature compatibility.
+ * Added #[\ReturnTypeWillChange] to every override so PHP 8.1+ does not
+ * emit return-type deprecation warnings (and PHP 8.0 ignores the attribute).
+ * Behavior unchanged: all overrides still throw ReflectionException.
  */
 
 namespace Doctrine\Common\Reflection;
@@ -51,6 +56,7 @@ class StaticReflectionProperty extends ReflectionProperty
     /**
      * {@inheritDoc}
      */
+    #[\ReturnTypeWillChange]
     public function getName()
     {
         return $this->propertyName;
@@ -67,6 +73,7 @@ class StaticReflectionProperty extends ReflectionProperty
     /**
      * {@inheritDoc}
      */
+    #[\ReturnTypeWillChange]
     public function getDeclaringClass()
     {
         return $this->getStaticReflectionParser()->getReflectionClass();
@@ -75,6 +82,7 @@ class StaticReflectionProperty extends ReflectionProperty
     /**
      * {@inheritDoc}
      */
+    #[\ReturnTypeWillChange]
     public function getDocComment()
     {
         return $this->getStaticReflectionParser()->getDocComment('property', $this->propertyName);
@@ -91,6 +99,7 @@ class StaticReflectionProperty extends ReflectionProperty
     /**
      * {@inheritDoc}
      */
+    #[\ReturnTypeWillChange]
     public static function export ($class, $name, $return = false)
     {
         throw new ReflectionException('Method not implemented');
@@ -99,6 +108,7 @@ class StaticReflectionProperty extends ReflectionProperty
     /**
      * {@inheritDoc}
      */
+    #[\ReturnTypeWillChange]
     public function getModifiers()
     {
         throw new ReflectionException('Method not implemented');
@@ -107,6 +117,7 @@ class StaticReflectionProperty extends ReflectionProperty
     /**
      * {@inheritDoc}
      */
+    #[\ReturnTypeWillChange]
     public function getValue($object = null)
     {
         throw new ReflectionException('Method not implemented');
@@ -115,6 +126,7 @@ class StaticReflectionProperty extends ReflectionProperty
     /**
      * {@inheritDoc}
      */
+    #[\ReturnTypeWillChange]
     public function isDefault()
     {
         throw new ReflectionException('Method not implemented');
@@ -123,6 +135,7 @@ class StaticReflectionProperty extends ReflectionProperty
     /**
      * {@inheritDoc}
      */
+    #[\ReturnTypeWillChange]
     public function isPrivate()
     {
         throw new ReflectionException('Method not implemented');
@@ -131,6 +144,7 @@ class StaticReflectionProperty extends ReflectionProperty
     /**
      * {@inheritDoc}
      */
+    #[\ReturnTypeWillChange]
     public function isProtected()
     {
         throw new ReflectionException('Method not implemented');
@@ -139,6 +153,7 @@ class StaticReflectionProperty extends ReflectionProperty
     /**
      * {@inheritDoc}
      */
+    #[\ReturnTypeWillChange]
     public function isPublic()
     {
         throw new ReflectionException('Method not implemented');
@@ -147,6 +162,7 @@ class StaticReflectionProperty extends ReflectionProperty
     /**
      * {@inheritDoc}
      */
+    #[\ReturnTypeWillChange]
     public function isStatic()
     {
         throw new ReflectionException('Method not implemented');
@@ -155,6 +171,7 @@ class StaticReflectionProperty extends ReflectionProperty
     /**
      * {@inheritDoc}
      */
+    #[\ReturnTypeWillChange]
     public function setAccessible ($accessible)
     {
         throw new ReflectionException('Method not implemented');
@@ -163,6 +180,7 @@ class StaticReflectionProperty extends ReflectionProperty
     /**
      * {@inheritDoc}
      */
+    #[\ReturnTypeWillChange]
     public function setValue ($object, $value = null)
     {
         throw new ReflectionException('Method not implemented');
@@ -171,6 +189,7 @@ class StaticReflectionProperty extends ReflectionProperty
     /**
      * {@inheritDoc}
      */
+    #[\ReturnTypeWillChange]
     public function __toString()
     {
         throw new ReflectionException('Method not implemented');
