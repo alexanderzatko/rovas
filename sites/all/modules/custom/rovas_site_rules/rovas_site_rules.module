@@ -117,12 +117,15 @@ function rovas_site_rules_page_build(&$page) {
  *
  * For user_cancel_reassign, Node reassigns all content to Anonymous in its own
  * hook_user_cancel(). Delete the system project first so it is fully cleaned up
- * instead of becoming an orphaned Anonymous-owned project.
+ * instead of becoming an orphaned Anonymous-owned project, and drop any
+ * co_worker_merit_allocation nodes that reference the canceled user so the
+ * Anonymous user does not silently inherit their project shares.
  */
 function rovas_site_rules_user_cancel($edit, $account, $method) {
   if ($method === 'user_cancel_reassign') {
     rovas_site_rules_account_deletion_begin();
     _rovas_site_rules_delete_user_system_project($account);
+    _rovas_site_rules_delete_user_shareholder_records($account);
     rovas_site_rules_account_deletion_end();
   }
 }
@@ -131,11 +134,14 @@ function rovas_site_rules_user_cancel($edit, $account, $method) {
  * Implements hook_user_delete().
  *
  * Delete the user's system project before core removes the user record. Also
- * covers user_cancel_delete, where hook_user_cancel() is not invoked.
+ * covers user_cancel_delete, where hook_user_cancel() is not invoked. Drop
+ * shareholder records referencing the deleted user so they do not leave
+ * dangling field_coworker references pointing at a removed uid.
  */
 function rovas_site_rules_user_delete($account) {
   rovas_site_rules_account_deletion_begin();
   _rovas_site_rules_delete_user_system_project($account);
+  _rovas_site_rules_delete_user_shareholder_records($account);
   rovas_site_rules_account_deletion_end();
 }
 
@@ -192,4 +198,62 @@ function _rovas_site_rules_delete_user_system_project($account) {
   // Use the existing Rules action set for full project cleanup. Pass "REST api"
   // to avoid UI redirects in this non-interactive context.
   rules_invoke_component('rules_delete_project', $project, 'REST api');
+}
+
+/**
+ * Delete every co_worker_merit_allocation node where the canceled user is the
+ * referenced coworker, so they cannot remain as a "shareholder" after their
+ * account is gone.
+ *
+ * When a user is canceled with user_cancel_reassign, Drupal core only
+ * reassigns node.uid to the Anonymous user; entityreference fields such as
+ * field_coworker keep pointing at the (now removed) uid. With the original
+ * dropdown query in rovas_project_edit this produced empty " ()" / " (0)"
+ * options in the "Select new project owner" widget on node/N/edit, and
+ * left Anonymous showing up as a shareholder in Views and shareholder
+ * lookups.
+ *
+ * node_delete_multiple() is used (rather than a raw DELETE) so the existing
+ * reaction rule rules_merit_allocation_redirect fires for each row,
+ * recalculating field_total_shares on the parent project and emailing the
+ * allocation's author (the project owner). The reaction rule's own redirect
+ * is gated by arg(2) == 'delete', so it does not interfere with the
+ * /user/N/cancel batch we run inside, and any stray Rules drupal_goto is
+ * stripped by rovas_site_rules_page_build() while account deletion is in
+ * progress.
+ *
+ * @param object $account
+ *   The user account being canceled or deleted.
+ */
+function _rovas_site_rules_delete_user_shareholder_records($account) {
+  if (empty($account->uid) || !is_numeric($account->uid)) {
+    return;
+  }
+  if (!db_table_exists('field_data_field_coworker')) {
+    return;
+  }
+
+  $nids = db_query(
+    "SELECT DISTINCT n.nid
+     FROM {node} n
+     INNER JOIN {field_data_field_coworker} c
+       ON c.entity_id = n.nid
+       AND c.entity_type = 'node'
+       AND c.deleted = 0
+     WHERE n.type = 'co_worker_merit_allocation'
+       AND c.field_coworker_target_id = :uid",
+    array(':uid' => (int) $account->uid)
+  )->fetchCol();
+
+  if (empty($nids)) {
+    return;
+  }
+
+  watchdog('rovas_site_rules', 'Deleting @count co_worker_merit_allocation node(s) referencing uid @uid: @nids.', array(
+    '@count' => count($nids),
+    '@uid' => $account->uid,
+    '@nids' => implode(',', $nids),
+  ));
+
+  node_delete_multiple(array_map('intval', $nids));
 }

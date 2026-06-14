@@ -315,16 +315,29 @@ function rovas_project_edit_form_project_node_form_alter(&$form, &$form_state, $
 	
 	//widgets for changing project ownership
 
-	$sql = "SELECT node.nid AS nid, user.uid AS uid, user.name AS name
-	FROM {node} node
-	LEFT JOIN {field_data_field_project} proj ON node.nid = proj.entity_id AND (proj.entity_type = 'node' AND proj.deleted = '0')
-	LEFT JOIN {field_data_field_coworker} worker ON node.nid = worker.entity_id AND (worker.entity_type = 'node' AND worker.deleted = '0')
-	LEFT JOIN {users} user ON worker.field_coworker_target_id = user.uid
-	WHERE proj.field_project_target_id = :projnid
-	AND worker.field_coworker_target_id != :excluid OR worker.field_coworker_target_id IS NULL
-	AND node.status = '1'
-	AND node.type = 'co_worker_merit_allocation'
-	ORDER BY user.name ASC";
+	// Shareholders of this project: authors of published co_worker_merit_allocation
+	// nodes that point at the current project via field_project, joined to the user
+	// referenced by field_coworker. Exclude the current owner and the anonymous
+	// user, and skip rows where the coworker reference is missing/invalid so the
+	// dropdown never shows empty " ()" / " (0)" entries.
+	$sql = "SELECT DISTINCT u.uid AS uid, u.name AS name
+	FROM {node} n
+	INNER JOIN {field_data_field_project} proj
+		ON proj.entity_id = n.nid
+		AND proj.entity_type = 'node'
+		AND proj.deleted = 0
+	INNER JOIN {field_data_field_coworker} worker
+		ON worker.entity_id = n.nid
+		AND worker.entity_type = 'node'
+		AND worker.deleted = 0
+	INNER JOIN {users} u
+		ON u.uid = worker.field_coworker_target_id
+	WHERE n.type = 'co_worker_merit_allocation'
+		AND n.status = 1
+		AND proj.field_project_target_id = :projnid
+		AND u.uid > 0
+		AND u.uid <> :excluid
+	ORDER BY u.name ASC";
 
 	$result = db_query($sql, array(':projnid' => $projnid, ':excluid' => $projowner));
 	$shareholders = [];
@@ -351,6 +364,8 @@ function rovas_project_edit_form_project_node_form_alter(&$form, &$form_state, $
 			'#type' => 'select',
 			'#title' => t('Select a new project owner'),
 			'#options' => $shareholders,
+			'#empty_value' => '',
+			'#empty_option' => t('- Select -'),
 			'#states' => [
 					'visible' => [
 							':input[id="edit-change-owner"]' => ['checked' => TRUE]
