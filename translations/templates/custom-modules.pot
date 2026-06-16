@@ -3837,19 +3837,25 @@ msgid ""
 "payments are blocked."
 msgstr ""
 
-#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:1256
-msgid "Please !login or !register to pay with Chrons."
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:1253
+msgctxt "reward project"
+msgid ""
+"Please <a href=\"@login\">log in</a> or <a href=\"@register\">register</a> to "
+"pay with Chrons."
 msgstr ""
 
-#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:2248
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:2247
+msgctxt "reward project"
 msgid "Only Chron payments are accepted right now."
 msgstr ""
 
-#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:2252
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:2251
+msgctxt "reward project"
 msgid "Please log in to pay with Chrons."
 msgstr ""
 
 #: sites/all/modules/custom/rovas_stripe_express_checkout/includes/init.inc:49
+msgctxt "reward project"
 msgid "Card payments are disabled."
 msgstr ""
 

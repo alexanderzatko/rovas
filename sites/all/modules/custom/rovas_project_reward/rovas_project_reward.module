@@ -1250,13 +1250,10 @@ function rovas_project_reward_form ($form, &$form_state) {
 					$rewpro_query['description'] = $parameters['description'];
 				}
 				$destination = url('rewpro', array('query' => $rewpro_query));
-				$login_link = l(t('log in'), 'user', array('query' => array('destination' => $destination)));
-				$register_link = l(t('register'), 'user/register', array('query' => array('destination' => $destination)));
-
-				$text = t('Please !login or !register to pay with Chrons.', array(
-					'!login' => $login_link,
-					'!register' => $register_link,
-				));
+				$text = t('Please <a href="@login">log in</a> or <a href="@register">register</a> to pay with Chrons.', array(
+					'@login' => url('user', array('query' => array('destination' => $destination))),
+					'@register' => url('user/register', array('query' => array('destination' => $destination))),
+				), array('context' => 'reward project'));
 				$text .= '<br/>';
 				$disbld = TRUE;
 				$show_pay_field = FALSE;
@@ -2244,11 +2241,11 @@ function rovas_project_reward_form_validate($form, &$form_state) {
   // validation. Mirrors the UI gates so a tampered POST cannot bypass them.
   if ($is_payment_submit && rovas_project_reward_fiat_disabled()) {
     if ($currency !== 'CHR') {
-      form_set_error('payment-currency', t('Only Chron payments are accepted right now.'));
+      form_set_error('payment-currency', t('Only Chron payments are accepted right now.', array(), array('context' => 'reward project')));
       return;
     }
     if ($user->uid == 0) {
-      form_set_error('', t('Please log in to pay with Chrons.'));
+      form_set_error('', t('Please log in to pay with Chrons.', array(), array('context' => 'reward project')));
       return;
     }
   }
@@ -2362,7 +2359,7 @@ function rovas_project_reward_form_submit($form, &$form_state) {
   // disabled, refuse to create EUR orders or process anon submissions.
   if (rovas_project_reward_fiat_disabled()) {
     if ($currency !== 'CHR') {
-      drupal_set_message(t('Only Chron payments are accepted right now.'), 'error');
+      drupal_set_message(t('Only Chron payments are accepted right now.', array(), array('context' => 'reward project')), 'error');
       watchdog('rovas_project_reward', 'Rejected non-CHR rewpro submit while fiat is disabled (uid=@u, paytype=@p, currency=@c).', array(
         '@u' => $uid,
         '@p' => $paytype,
@@ -2371,7 +2368,7 @@ function rovas_project_reward_form_submit($form, &$form_state) {
       return;
     }
     if ($uid == 0) {
-      drupal_set_message(t('Please log in to pay with Chrons.'), 'error');
+      drupal_set_message(t('Please log in to pay with Chrons.', array(), array('context' => 'reward project')), 'error');
       return;
     }
   }

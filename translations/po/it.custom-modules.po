@@ -53,18 +53,26 @@ msgstr ""
 "ordini già in checkout non sono interessati; vengono bloccati solo i nuovi "
 "pagamenti."
 
-#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:1256
-msgid "Please !login or !register to pay with Chrons."
-msgstr "Per pagare con i chron, !login oppure !register."
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:1253
+msgctxt "reward project"
+msgid ""
+"Please <a href=\"@login\">log in</a> or <a href=\"@register\">register</a> to "
+"pay with Chrons."
+msgstr ""
+"Per pagare con i chron, <a href=\"@login\">accedi</a> o <a "
+"href=\"@register\">registrati</a>."
 
-#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:2248
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:2247
+msgctxt "reward project"
 msgid "Only Chron payments are accepted right now."
 msgstr "Al momento sono accettati solo pagamenti in chron."
 
-#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:2252
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:2251
+msgctxt "reward project"
 msgid "Please log in to pay with Chrons."
 msgstr "Accedi per pagare con i chron."
 
 #: sites/all/modules/custom/rovas_stripe_express_checkout/includes/init.inc:49
+msgctxt "reward project"
 msgid "Card payments are disabled."
 msgstr "I pagamenti con carta sono disabilitati."
