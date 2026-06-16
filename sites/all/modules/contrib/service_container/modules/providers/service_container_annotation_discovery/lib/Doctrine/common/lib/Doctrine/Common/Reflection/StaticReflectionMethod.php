@@ -16,21 +16,25 @@
  * and is licensed under the MIT license. For more information, see
  * <http://www.doctrine-project.org>.
  *
- * Local patch (rovas): PHP 8.x signature compatibility.
+ * Local patch (rovas): PHP 7/8 signature compatibility.
  * - Added #[\ReturnTypeWillChange] to every override so PHP 8.1+ does not
  *   emit return-type deprecation warnings (and 8.0 ignores the attribute).
- * - invoke() made variadic to match
- *   ReflectionMethod::invoke(?object $object, mixed ...$args) in PHP 8.0+.
+ * - Version-specific invoke() moved into Compatibility traits (see
+ *   doctrine/reflection 1.2.3) so PHP 7 and PHP 8 both load without LSP
+ *   warnings.
  * All methods still throw ReflectionException as before; behavior unchanged.
  */
 
 namespace Doctrine\Common\Reflection;
 
+use Doctrine\Common\Reflection\Compatibility\ReflectionMethod as CompatibilityReflectionMethod;
 use ReflectionMethod;
 use ReflectionException;
 
 class StaticReflectionMethod extends ReflectionMethod
 {
+    use CompatibilityReflectionMethod;
+
     /**
      * The PSR-0 parser object.
      *
@@ -139,15 +143,6 @@ class StaticReflectionMethod extends ReflectionMethod
      */
     #[\ReturnTypeWillChange]
     public function getPrototype()
-    {
-        throw new ReflectionException('Method not implemented');
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    #[\ReturnTypeWillChange]
-    public function invoke($object = null, ...$args)
     {
         throw new ReflectionException('Method not implemented');
     }

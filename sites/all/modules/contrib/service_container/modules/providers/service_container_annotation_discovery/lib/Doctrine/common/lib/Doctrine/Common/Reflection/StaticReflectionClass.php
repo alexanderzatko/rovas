@@ -16,23 +16,25 @@
  * and is licensed under the MIT license. For more information, see
  * <http://www.doctrine-project.org>.
  *
- * Local patch (rovas): PHP 8.x signature compatibility.
+ * Local patch (rovas): PHP 7/8 signature compatibility.
  * - Added #[\ReturnTypeWillChange] to every override so PHP 8.1+ does not
  *   emit return-type deprecation warnings (and 8.0 ignores the attribute).
- * - getConstants() given an optional $filter parameter to match
- *   ReflectionClass::getConstants(?int $filter = null) in PHP 8.0+.
- * - newInstance() made variadic to match
- *   ReflectionClass::newInstance(mixed ...$args) in PHP 8.0+.
+ * - Version-specific getConstants()/newInstance() moved into Compatibility
+ *   traits (see doctrine/reflection 1.2.3) so PHP 7 and PHP 8 both load
+ *   without LSP warnings.
  * All methods still throw ReflectionException as before; behavior unchanged.
  */
 
 namespace Doctrine\Common\Reflection;
 
+use Doctrine\Common\Reflection\Compatibility\ReflectionClass as CompatibilityReflectionClass;
 use ReflectionClass;
 use ReflectionException;
 
 class StaticReflectionClass extends ReflectionClass
 {
+    use CompatibilityReflectionClass;
+
     /**
      * The static reflection parser object.
      *
@@ -115,15 +117,6 @@ class StaticReflectionClass extends ReflectionClass
      */
     #[\ReturnTypeWillChange]
     public function getConstant($name)
-    {
-        throw new ReflectionException('Method not implemented');
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    #[\ReturnTypeWillChange]
-    public function getConstants($filter = null)
     {
         throw new ReflectionException('Method not implemented');
     }
@@ -439,15 +432,6 @@ class StaticReflectionClass extends ReflectionClass
      */
     #[\ReturnTypeWillChange]
     public function isUserDefined()
-    {
-        throw new ReflectionException('Method not implemented');
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    #[\ReturnTypeWillChange]
-    public function newInstance(...$args)
     {
         throw new ReflectionException('Method not implemented');
     }
