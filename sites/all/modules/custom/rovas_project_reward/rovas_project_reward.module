@@ -1663,7 +1663,7 @@ function rovas_project_reward_form ($form, &$form_state) {
 		'#weight' => $chrnote_weight,
 	);
 
-	if ($paytype === 'project' && !empty($test)) {
+	if ($paytype === 'project' && !empty($test) && !($fiat_disabled && !$user->uid)) {
 		$requires_donation_ack = $is_direct_rewpro && rovas_project_reward_project_offers_premium_features(
 			isset($chrons) ? $chrons : NULL,
 			isset($euros) ? $euros : NULL,
