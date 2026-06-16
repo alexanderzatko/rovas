@@ -59,8 +59,8 @@ msgid ""
 "Please <a href=\"@login\">log in</a> or <a href=\"@register\">register</a> to "
 "pay with Chrons."
 msgstr ""
-"Pro platbu chrony se prosím <a href=\"@login\">přihlaste</a> nebo <a "
-"href=\"@register\">zaregistrujte</a>."
+"Pro platbu chrony se musíte <a href=\"@login\">přihlásit</a> nebo <a "
+"href=\"@register\">zaregistrovat</a>."
 
 #: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:2247
 msgctxt "reward project"
@@ -70,7 +70,7 @@ msgstr "Momentálně jsou přijímány pouze platby chrony."
 #: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:2251
 msgctxt "reward project"
 msgid "Please log in to pay with Chrons."
-msgstr "Pro platbu chrony se prosím přihlaste."
+msgstr "Pro platbu chrony se musíte přihlásit."
 
 #: sites/all/modules/custom/rovas_stripe_express_checkout/includes/init.inc:49
 msgctxt "reward project"
