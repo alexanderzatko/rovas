@@ -2059,12 +2059,18 @@ JS;
 		$access_bank = FALSE;
 	}
 
+	$access_card = TRUE;
+
 	// When non-Chron rails are off, force-hide the bank button regardless of
 	// currency. The "card" submit doubles as the "Confirm" button for CHR
-	// payments (label already swapped above) so we keep it accessible.
+	// payments (label already swapped above). Anonymous visitors cannot pay
+	// here at all, so hide the whole submit row for them.
 	if ($fiat_disabled) {
 		$access_bank = FALSE;
 		$disbld_bank = TRUE;
+		if (!$user->uid) {
+			$access_card = FALSE;
+		}
 	}
 
 	$form['submit'] = [
@@ -2072,6 +2078,7 @@ JS;
 		'#suffix' => '</div>',
 		'#type' => 'container',
 		'#weight' => 10,
+		'#access' => $access_card || $access_bank,
 	];
 	
 	$form['submit']['card'] = [
@@ -2082,7 +2089,7 @@ JS;
 			'class' => ['btn', 'btn-primary', 'btn-credit-card', 'icon-before'],
 			'role' => ['button'],
 		],
-		'#access' => TRUE,
+		'#access' => $access_card,
 		'#weight' => 10,
 		'#disabled' => $disbld,
 		'#html' => TRUE,
