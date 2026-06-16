@@ -1744,7 +1744,7 @@ function rovas_project_reward_form ($form, &$form_state) {
 			'#weight' => -10,
 	];
 
-	if (!$user->uid) {
+	if (!$user->uid && !$fiat_disabled) {
 
 		//set defualt value for email if known
 		if (isset($parameters['email']) && !empty($parameters['email'])) {
