@@ -13,6 +13,14 @@ require_once DRUPAL_ROOT . '/sites/all/libraries/stripe-php/init.php';
 function _rovas_stripe_express_checkout_init_buymerits() {
   global $user;
 
+  // Refuse to start a PaymentIntent when the site has fiat rails off; only
+  // CHR payments are accepted in that mode (see admin/config/rovas/payment-methods).
+  if (function_exists('rovas_project_reward_fiat_disabled') && rovas_project_reward_fiat_disabled()) {
+    watchdog('rovas_stripe_express', 'buymerits init refused: fiat payments disabled.', array(), WATCHDOG_WARNING);
+    drupal_json_output(array('error' => t('Card payments are disabled.')));
+    drupal_exit();
+  }
+
   if (!$user->uid) {
     drupal_json_output(array('error' => 'Authentication required.'));
     drupal_exit();

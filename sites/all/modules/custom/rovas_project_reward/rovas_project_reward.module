@@ -23,7 +23,48 @@ function rovas_project_reward_menu() {
     'weight' => 50,
   );
 
+  // Admin: toggle Stripe card / Express Checkout / bank transfer.
+  // Lives under admin/config/rovas (declared by rovas_fio_reconcile_menu()).
+  $items['admin/config/rovas/payment-methods'] = array(
+    'title' => 'Rewpro payment methods',
+    'description' => 'Turn off Stripe card, Express Checkout and bank transfer to leave only Chron payments on /rewpro.',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('rovas_project_reward_payment_methods_admin_form'),
+    'access arguments' => array('administer site configuration'),
+    'type' => MENU_NORMAL_ITEM,
+  );
+
   return $items;
+}
+
+/**
+ * Whether non-Chron payment methods are turned off site-wide for /rewpro.
+ *
+ * When TRUE, Stripe card ("Pay by card"), Stripe Express Checkout
+ * (Apple/Google Pay, Link, etc.) and bank transfer are all hidden and
+ * rejected by the rewpro form. Only Chron (CHR) payments are accepted, so
+ * direct project-page rewards and 3rd-party app orders that land on /rewpro
+ * with a callback_url can still complete - as long as the buyer is logged in
+ * and has a Chron balance.
+ */
+function rovas_project_reward_fiat_disabled() {
+  return (bool) variable_get('rovas_disable_fiat_payments', FALSE);
+}
+
+/**
+ * Admin form to enable/disable non-Chron payments on /rewpro.
+ *
+ * @see rovas_project_reward_fiat_disabled()
+ */
+function rovas_project_reward_payment_methods_admin_form($form, &$form_state) {
+  $form['rovas_disable_fiat_payments'] = array(
+    '#type' => 'checkbox',
+    '#title' => t('Disable Stripe card, Express Checkout and bank transfer'),
+    '#default_value' => variable_get('rovas_disable_fiat_payments', FALSE),
+    '#description' => t('When checked, the /rewpro form hides "Pay by card", "Pay with bank transfer" and the Express Checkout (Apple/Google Pay, Link, etc.) section. Only Chron payments are accepted, both for direct project-page rewards and for 3rd-party app orders that land on /rewpro. Anonymous visitors are asked to log in. Existing orders already in checkout are not affected; only new payments are blocked.'),
+  );
+
+  return system_settings_form($form);
 }
 
 /**
@@ -828,6 +869,18 @@ function rovas_project_reward_form ($form, &$form_state) {
 		$currency_raw = $form_state['input']['payment-currency'];
 	}
 	$currency = in_array($currency_raw, array('CHR', 'EUR'), TRUE) ? $currency_raw : 'CHR';
+
+	// When the site-wide flag is on, hard-pin currency to CHR before any of the
+	// EUR-only branches below run; the currency switcher and EUR-only buttons
+	// are hidden further down.
+	$fiat_disabled = rovas_project_reward_fiat_disabled();
+	if ($fiat_disabled) {
+		$currency = 'CHR';
+		$form_state['values']['payment-currency'] = 'CHR';
+		$form_state['input']['payment-currency'] = 'CHR';
+		$show_currency_switch = FALSE;
+	}
+
 //	$payment_suffix = $currency == 'EUR' ? ' €' : ' ' . t('Chrons');
 	$payment_suffix = $currency == 'EUR' ? ' €' : ' ' . t('Chrons',[],['context' => 'reward project']);
 
@@ -1184,10 +1237,39 @@ function rovas_project_reward_form ($form, &$form_state) {
 			$neo_how .= '</div></div>';
 			$neo_how .= '</div>';
 
-			$currency = 'EUR';
-			$payment_suffix = ' €';
+			// Fiat disabled: anonymous users have no Chron balance and the EUR
+			// rails are off, so route them to log in / register with a destination
+			// back here. We still render the recipient label via the prodinfo
+			// block, but no payment widgets.
+			if ($fiat_disabled) {
+				$rewpro_query = array('paytype' => $paytype, 'recipient' => $recipient);
+				if (!empty($parameters['name'])) {
+					$rewpro_query['name'] = $parameters['name'];
+				}
+				if (!empty($parameters['description'])) {
+					$rewpro_query['description'] = $parameters['description'];
+				}
+				$destination = url('rewpro', array('query' => $rewpro_query));
+				$login_link = l(t('log in'), 'user', array('query' => array('destination' => $destination)));
+				$register_link = l(t('register'), 'user/register', array('query' => array('destination' => $destination)));
 
-			if ($paytype == 'project') {
+				$text = t('Please !login or !register to pay with Chrons.', array(
+					'!login' => $login_link,
+					'!register' => $register_link,
+				));
+				$text .= '<br/>';
+				$disbld = TRUE;
+				$show_pay_field = FALSE;
+				$show_currency_switch = FALSE;
+				$access_neo_how = TRUE;
+				$weight_neohow = 30;
+				$payment_amount = 0;
+				$chrnote = '';
+			}
+			elseif ($paytype == 'project') {
+
+				$currency = 'EUR';
+				$payment_suffix = ' €';
 				$text = '<strong>';
 				$text .= t('Project') . ': ';
 				$text .= '</strong>';
@@ -1980,6 +2062,14 @@ JS;
 		$access_bank = FALSE;
 	}
 
+	// When non-Chron rails are off, force-hide the bank button regardless of
+	// currency. The "card" submit doubles as the "Confirm" button for CHR
+	// payments (label already swapped above) so we keep it accessible.
+	if ($fiat_disabled) {
+		$access_bank = FALSE;
+		$disbld_bank = TRUE;
+	}
+
 	$form['submit'] = [
 		'#prefix' => '<div id="submit-buttons">',
 		'#suffix' => '</div>',
@@ -2035,7 +2125,7 @@ JS;
 		), 'setting');
 	}
 
-	if ($expiration >= $curtime) {
+	if ($expiration >= $curtime && !$fiat_disabled) {
 		$stripe_pub_key = check_plain(variable_get('stripe_publishable_key', 'pk_test_default'));
 	
 		$express_text = '<div class="express-checkout">';
@@ -2150,6 +2240,19 @@ function rovas_project_reward_form_validate($form, &$form_state) {
   
 	$callback_url = isset($form_state['rovas_session_data']['callback_url']) ? $form_state['rovas_session_data']['callback_url'] : NULL;
 
+  // Site-wide fiat-off guard: reject EUR or anonymous submits before any other
+  // validation. Mirrors the UI gates so a tampered POST cannot bypass them.
+  if ($is_payment_submit && rovas_project_reward_fiat_disabled()) {
+    if ($currency !== 'CHR') {
+      form_set_error('payment-currency', t('Only Chron payments are accepted right now.'));
+      return;
+    }
+    if ($user->uid == 0) {
+      form_set_error('', t('Please log in to pay with Chrons.'));
+      return;
+    }
+  }
+
   // Validate payment amount only on an intentional pay submit (not currency AJAX, etc.).
   if ($is_payment_submit && ($paid_amt === '' || !is_numeric($paid_amt) || (float) $paid_amt <= 0)) {
     form_set_error('payment', t('Please enter amount greater than 0'));
@@ -2253,6 +2356,25 @@ function rovas_project_reward_form_submit($form, &$form_state) {
   $currency = isset($values['payment-currency']) ? $values['payment-currency'] : 'CHR';
   $email = isset($values['email']) ? $values['email'] : '';
   $uid = $user->uid;
+
+  // Belt-and-braces: form_validate already blocks this, but if anything (a
+  // misbuilt form, a custom alter, a tampered POST) makes it here with fiat
+  // disabled, refuse to create EUR orders or process anon submissions.
+  if (rovas_project_reward_fiat_disabled()) {
+    if ($currency !== 'CHR') {
+      drupal_set_message(t('Only Chron payments are accepted right now.'), 'error');
+      watchdog('rovas_project_reward', 'Rejected non-CHR rewpro submit while fiat is disabled (uid=@u, paytype=@p, currency=@c).', array(
+        '@u' => $uid,
+        '@p' => $paytype,
+        '@c' => $currency,
+      ), WATCHDOG_WARNING);
+      return;
+    }
+    if ($uid == 0) {
+      drupal_set_message(t('Please log in to pay with Chrons.'), 'error');
+      return;
+    }
+  }
   
   // Get session data
   $sessary = rovas_project_reward_session_get('rovas_project_reward', array());

@@ -3823,3 +3823,33 @@ msgstr ""
 msgid "Please confirm that you understand this payment is not a subscription for premium features."
 msgstr ""
 
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:62
+msgid "Disable Stripe card, Express Checkout and bank transfer"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:64
+msgid ""
+"When checked, the /rewpro form hides \"Pay by card\", \"Pay with bank "
+"transfer\" and the Express Checkout (Apple/Google Pay, Link, etc.) section. "
+"Only Chron payments are accepted, both for direct project-page rewards and "
+"for 3rd-party app orders that land on /rewpro. Anonymous visitors are asked "
+"to log in. Existing orders already in checkout are not affected; only new "
+"payments are blocked."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:1256
+msgid "Please !login or !register to pay with Chrons."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:2248
+msgid "Only Chron payments are accepted right now."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:2252
+msgid "Please log in to pay with Chrons."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_stripe_express_checkout/includes/init.inc:49
+msgid "Card payments are disabled."
+msgstr ""
+

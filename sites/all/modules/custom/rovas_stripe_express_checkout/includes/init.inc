@@ -42,6 +42,14 @@ function _rovas_stripe_express_checkout_init_language_metadata() {
 }
 
 function _rovas_stripe_express_checkout_init() {
+  // Refuse to start a PaymentIntent when the site has fiat rails off; only
+  // CHR payments are accepted in that mode (see admin/config/rovas/payment-methods).
+  if (function_exists('rovas_project_reward_fiat_disabled') && rovas_project_reward_fiat_disabled()) {
+    watchdog('rovas_stripe_express', 'Express init refused: fiat payments disabled.', array(), WATCHDOG_WARNING);
+    drupal_json_output(array('error' => t('Card payments are disabled.')));
+    drupal_exit();
+  }
+
   $secret_key = variable_get('stripe_secret_key', '');
 
 	$sessary = rovas_project_reward_session_get('rovas_project_reward', array());

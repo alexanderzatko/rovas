@@ -32,3 +32,39 @@ msgstr "Prémiový přístup získáte pouze pokud objednávku zahájíte v apli
 #: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:2145
 msgid "Please confirm that you understand this payment is not a subscription for premium features."
 msgstr "Potvrďte, že rozumíte, že tato platba není předplatné prémiových funkcí."
+
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:62
+msgid "Disable Stripe card, Express Checkout and bank transfer"
+msgstr "Vypnout platbu kartou (Stripe), Express Checkout a bankovní převod"
+
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:64
+msgid ""
+"When checked, the /rewpro form hides \"Pay by card\", \"Pay with bank "
+"transfer\" and the Express Checkout (Apple/Google Pay, Link, etc.) section. "
+"Only Chron payments are accepted, both for direct project-page rewards and "
+"for 3rd-party app orders that land on /rewpro. Anonymous visitors are asked "
+"to log in. Existing orders already in checkout are not affected; only new "
+"payments are blocked."
+msgstr ""
+"Po zaškrtnutí formulář /rewpro skryje tlačítka „Zaplatit kartou“ a „Zaplatit "
+"bankovním převodem“ a sekci Express Checkout (Apple/Google Pay, Link atd.). "
+"Přijímány jsou pouze platby chrony, a to jak z přímého odměňování projektu, "
+"tak z objednávek třetích stran na /rewpro. Nepřihlášení návštěvníci jsou "
+"vyzváni k přihlášení. Existující objednávky v procesu platby nejsou "
+"ovlivněny; blokovány jsou pouze nové platby."
+
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:1256
+msgid "Please !login or !register to pay with Chrons."
+msgstr "Pro platbu chrony se prosím !login nebo !register."
+
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:2248
+msgid "Only Chron payments are accepted right now."
+msgstr "Momentálně jsou přijímány pouze platby chrony."
+
+#: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:2252
+msgid "Please log in to pay with Chrons."
+msgstr "Pro platbu chrony se prosím přihlaste."
+
+#: sites/all/modules/custom/rovas_stripe_express_checkout/includes/init.inc:49
+msgid "Card payments are disabled."
+msgstr "Platby kartou jsou vypnuté."
