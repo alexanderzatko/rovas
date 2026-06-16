@@ -53,7 +53,7 @@ msgstr ""
 
 #: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:1256
 msgid "Please !login or !register to pay with Chrons."
-msgstr "Na zaplatenie chronmi sa prosím !login alebo !register."
+msgstr "Na zaplatenie chronmi sa musíte !login alebo !register."
 
 #: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:2248
 msgid "Only Chron payments are accepted right now."
@@ -61,7 +61,7 @@ msgstr "Momentálne sú prijímané len platby chronmi."
 
 #: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:2252
 msgid "Please log in to pay with Chrons."
-msgstr "Na platbu chronmi sa prosím prihláste."
+msgstr "Na platbu chronmi sa musíte prihlásiť."
 
 #: sites/all/modules/custom/rovas_stripe_express_checkout/includes/init.inc:49
 msgid "Card payments are disabled."
