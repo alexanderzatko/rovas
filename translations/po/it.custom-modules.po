@@ -76,3 +76,7 @@ msgstr "Accedi per pagare con i chron."
 msgctxt "reward project"
 msgid "Card payments are disabled."
 msgstr "I pagamenti con carta sono disabilitati."
+
+#: sites/all/modules/custom/rovas_forex/rovas_forex.module:502;1080
+msgid "Chrons to Euros exchanges are temporarily suspended"
+msgstr "Gli scambi da Chron a euro sono temporaneamente sospesi."

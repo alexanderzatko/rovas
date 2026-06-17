@@ -74,3 +74,7 @@ msgstr "Na zaplatenie chronmi sa musíte prihlásiť."
 msgctxt "reward project"
 msgid "Card payments are disabled."
 msgstr "Platby kartou sú vypnuté."
+
+#: sites/all/modules/custom/rovas_forex/rovas_forex.module:502;1080
+msgid "Chrons to Euros exchanges are temporarily suspended"
+msgstr "Výmeny chronov za eurá sú dočasne pozastavené."

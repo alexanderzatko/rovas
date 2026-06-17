@@ -7,6 +7,8 @@
 
 include_once 'rovas_forex.inc';
 
+define('ROVAS_FOREX_CHR_TO_EUR_SUSPENDED', TRUE);
+
 /**
  * Implements hook_form_FORM_ID_alter() for views_exposed_form.
  */
@@ -490,12 +492,21 @@ function rovas_forex_form($form, &$form_state) {
 	$eur_basket = $forex_baskets['eur_basket'];
 */
 
+/* Buy Euros */
+
+	if (ROVAS_FOREX_CHR_TO_EUR_SUSPENDED) {
+		$form['eu-ch'] = array(
+			'#type' => 'markup',
+			'#prefix' => '<div class="eu-ch-wrapper">',
+			'#suffix' => '</div>',
+			'#markup' => '<div class="forex subhead">' . t('Chrons to Euros exchanges are temporarily suspended') . '</div>',
+		);
+	}
+	else {
 	$forex_params = calculate_forex_transaction_params('chr_to_eur',1);
 	$eur_basket = $forex_params['eur_basket'];
 	$ch_basket = $forex_params['chr_basket'];
 	$buy_eur_fee = $forex_params['xfee'];
-
-/* Buy Euros */
 
 	$fx_sandbox_projects = rules_invoke_component('rules_worker_merit_shares_for_fx_sandbox_projects',$user);
 
@@ -726,6 +737,8 @@ function rovas_forex_form($form, &$form_state) {
 		'#prefix' => '<div id="eu-ch-subbutton">',
 		'#suffix' => '</div>',
 	);
+
+	}
 
 
 /* Buy Merits */
@@ -1063,6 +1076,11 @@ function rovas_forex_form_submit($form, &$form_state) {
 		// preview_eu_ch -> converting CH to EUR
 		// preview_ch_eu -> converting EUR to CH 
 		case ($form_state['clicked_button']['#name'] == 'preview_eu_ch' || $form_state['clicked_button']['#name'] == 'preview_ch_eu'):
+			if (ROVAS_FOREX_CHR_TO_EUR_SUSPENDED && $form_state['clicked_button']['#name'] == 'preview_eu_ch') {
+				drupal_set_message(t('Chrons to Euros exchanges are temporarily suspended'), 'warning');
+				$form_state['rebuild'] = TRUE;
+				break;
+			}
 			//if another user has a lock already, we need to refresh the form instead of proceeding
 			$lock_ts = variable_get('forex_lock') ? variable_get('forex_lock') : array('uid' => -1,'time' => 0);
 			$time_remaining = $lock_ts['time'] - (time() - 5*60);
