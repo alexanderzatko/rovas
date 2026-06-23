@@ -111,7 +111,9 @@ function rovas_project_edit_form_project_node_form_alter(&$form, &$form_state, $
     'effect' => 'fade',
   ];
 
-  // --- HIDE other reward fields if slider == 100% ---
+  // --- HIDE euro-reward fields if slider == 100% (all payment goes to merits).
+  // Webhook url stays visible: 3rd-party apps can sell premium features and
+  // receive payment-completed callbacks while converting 100% to project merits.
   $slider_selector = ':input[name="field_reward_merit_allocation[und][value][value]"]';
 
   $form['field_reward_target'][LANGUAGE_NONE]['#states'] = [
@@ -135,11 +137,6 @@ function rovas_project_edit_form_project_node_form_alter(&$form, &$form_state, $
     ],
   ];
   $form['field_euro_basket'][LANGUAGE_NONE][0]['value']['#states'] = [
-    'invisible' => [
-      $slider_selector => ['value' => '100'],
-    ],
-  ];
-  $form['field_webhook_url'][LANGUAGE_NONE][0]['value']['#states'] = [
     'invisible' => [
       $slider_selector => ['value' => '100'],
     ],
