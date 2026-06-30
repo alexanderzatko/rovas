@@ -4073,12 +4073,10 @@ function _rovas_cleanup_order_and_get_redirect_url($order) {
 function rovas_project_reward_forex_convert($input) {
 
 	$result = calculate_forex_transaction_params('eur_to_chr',$input);
-	$eur_basket = $result['eur_basket'];
-	$ch_basket = $result['chr_basket'];
-	$buy_ch_fee = $result['xfee'];
-	$buy_ch_fixed_fee = $result['fixed_fee'];
-
-	return forex($input,$eur_basket,$ch_basket,$buy_ch_fee,$buy_ch_fixed_fee);
+ 	return array(
+		'output' => isset($result['output']) ? $result['output'] : 0,
+		'fee' => isset($result['fee']) ? $result['fee'] : 0,
+	);
 }
 
 /**
@@ -4738,8 +4736,9 @@ function _rovas_process_stripe_fees_for_order($order, $payment_intent_id, $fee_a
   $forex_params = rovas_forex_transaction_params('eur_to_chr', $merit_fee, $fee_amount, $charge_fees);
   $eur_basket = $forex_params['eur_basket'];
   $chr_basket = $forex_params['chr_basket'];
-  $output_amount = $forex_params['output_amount'];
   $use_temp_baskets = $forex_params['use_temp_baskets'];
+  $trade = rovas_forex_settle_trade('eur_to_chr', $merit_fee, $chr_basket, $eur_basket, $forex_params['variable_fee'], $forex_params['fixed_fee_amount'], FALSE, $charge_fees, $use_temp_baskets);
+  $output_amount = isset($trade['output']) ? (float) $trade['output'] : 0.0;
 
   // Invoke Rules component for recipient order processing if it exists.
   if (module_exists('rules')) {
@@ -4750,22 +4749,6 @@ function _rovas_process_stripe_fees_for_order($order, $payment_intent_id, $fee_a
     elseif (!$config) {
       watchdog('rovas_project_reward', 'rules_process_recipient_order_core component not found in database (order @oid).', array('@oid' => $order->order_id), WATCHDOG_ERROR);
     }
-  }
-
-  // Update forex baskets.
-  $new_universal_forex_baskets = array(
-    'ch_basket' => $chr_basket - $output_amount,
-    'eur_basket' => $eur_basket + $merit_fee,
-  );
-
-  if (!empty($use_temp_baskets)) {
-    variable_set('forex_baskets_temp', $new_universal_forex_baskets);
-  }
-  else {
-    if (variable_get('forex_baskets_temp')) {
-      variable_del('forex_baskets_temp');
-    }
-    variable_set('forex_baskets', $new_universal_forex_baskets);
   }
 
   // Update forex node fields. Setting field_payment_status=1 is the commit
@@ -6307,8 +6290,9 @@ function rovas_project_reward_process_bank_order_reward($order) {
   $forex_params = rovas_forex_transaction_params('eur_to_chr', $merit_fee_eur, 0, FALSE);
   $eur_basket = $forex_params['eur_basket'];
   $chr_basket = $forex_params['chr_basket'];
-  $merit_chr_output = $forex_params['output_amount'];
   $use_temp_baskets = $forex_params['use_temp_baskets'];
+  $trade = rovas_forex_settle_trade('eur_to_chr', $merit_fee_eur, $chr_basket, $eur_basket, 0, 0, FALSE, FALSE, $use_temp_baskets);
+  $merit_chr_output = isset($trade['output']) ? (float) $trade['output'] : 0.0;
 
   if (module_exists('rules') && function_exists('rules_invoke_component')) {
     $config = rules_config_load('rules_process_recipient_order_core');
@@ -6320,21 +6304,6 @@ function rovas_project_reward_process_bank_order_reward($order) {
       watchdog('rovas_project_reward', 'bank_order_reward: rules_process_recipient_order_core not found/active for order @oid.', array('@oid' => $order->order_id), WATCHDOG_ERROR);
       return FALSE;
     }
-  }
-
-  $new_universal_forex_baskets = array(
-    'ch_basket' => $chr_basket - $merit_chr_output,
-    'eur_basket' => $eur_basket + $merit_fee_eur,
-  );
-
-  if (!empty($use_temp_baskets)) {
-    variable_set('forex_baskets_temp', $new_universal_forex_baskets);
-  }
-  else {
-    if (variable_get('forex_baskets_temp')) {
-      variable_del('forex_baskets_temp');
-    }
-    variable_set('forex_baskets', $new_universal_forex_baskets);
   }
 
   // Commit the forex node. field_payment_status=1 is the idempotency marker.

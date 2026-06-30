@@ -207,7 +207,7 @@
                                           "param_language" : [ "rewarded-project:language" ]
                                         }
                                       },
-                                      { "php_eval" : { "code" : "\/\/update regular forex baskets\r\n\/\/we are in effect transferring euros from the regular basket where they were temporarily deposited, to the project basket\r\n\r\n$new_ch_value = $chrons_to_pay + $chr_basket;\r\n$new_eur_value = $eur_basket - $euros;\r\n\r\n$new_baskets = array(\u0027ch_basket\u0027 =\u003E $new_ch_value, \u0027eur_basket\u0027 =\u003E $new_eur_value);\r\nwatchdog(\u0027rules_process_purchase_core\u0027,\u0027project update baskets \u003Cpre\u003E\u0027 . print_r($new_baskets,1) . \u0027\u003C\/pre\u003E\u0027);\r\n\r\nvariable_set(\u0027forex_baskets\u0027,$new_baskets);" } }
+                                      { "php_eval" : { "code" : "$buy_eur_fee = variable_get(\u0027buy_eur_fee\u0027);\r\n$trade = rovas_forex_settle_trade(\u0027chr_to_eur\u0027, $chrons_to_pay, $ch_basket, $eur_basket, $buy_eur_fee, 0, TRUE, TRUE, FALSE);\r\nwatchdog(\u0027rules_process_purchase_core\u0027,\u0027project update baskets \u003Cpre\u003E\u0027 . print_r(array(\u0027ch_basket\u0027 =\u003E $trade[\u0027new_ch_basket\u0027], \u0027eur_basket\u0027 =\u003E $trade[\u0027new_eur_basket\u0027]), 1) . \u0027\u003C\/pre\u003E\u0027);" } }
                                     ]
                                   },
                                   { "ELSE" : [
@@ -308,7 +308,7 @@
                                                   "param_language" : [ "rewarded-project:language" ]
                                                 }
                                               },
-                                              { "php_eval" : { "code" : "\/\/update forex baskets\r\n\r\n$new_ch_value = $chrons_to_pay + $chr_basket;\r\n$new_eur_value = $eur_basket - $euros;\r\n\r\n$new_baskets = array(\u0027ch_basket\u0027 =\u003E $new_ch_value, \u0027eur_basket\u0027 =\u003E $new_eur_value);\r\nwatchdog(\u0027rules_process_purchase_core\u0027,\u0027user pay updated baskets \u003Cpre\u003E\u0027 . print_r($new_baskets,1) . \u0027\u003C\/pre\u003E\u0027);\r\n\r\nvariable_set(\u0027forex_baskets\u0027,$new_baskets);" } }
+                                              { "php_eval" : { "code" : "$buy_eur_fee = variable_get(\u0027buy_eur_fee\u0027);\r\n$trade = rovas_forex_settle_trade(\u0027chr_to_eur\u0027, $chrons_to_pay, $ch_basket, $eur_basket, $buy_eur_fee, 0, TRUE, TRUE, FALSE);\r\nwatchdog(\u0027rules_process_purchase_core\u0027,\u0027user pay updated baskets \u003Cpre\u003E\u0027 . print_r(array(\u0027ch_basket\u0027 =\u003E $trade[\u0027new_ch_basket\u0027], \u0027eur_basket\u0027 =\u003E $trade[\u0027new_eur_basket\u0027]), 1) . \u0027\u003C\/pre\u003E\u0027);" } }
                                             ]
                                           },
                                           { "ELSE" : [

@@ -926,23 +926,11 @@ function rovas_purchase_shares_finalize_bank_paid_time_share_if_applicable($orde
 
   rules_invoke_component('rules_process_time_share_order', $order);
 
-  $partial_fee = $variable_fee * $order_total;
-  $new_universal_forex_baskets = array(
-    'ch_basket' => $chr_basket - $output_amount,
-    'eur_basket' => $eur_basket + $order_total - ($fixed_fee_amount + $partial_fee),
-  );
-  if ($use_temp_baskets) {
-    variable_set('forex_baskets_temp', $new_universal_forex_baskets);
-  }
-  else {
-    if (variable_get('forex_baskets_temp')) {
-      variable_del('forex_baskets_temp');
-    }
-    variable_set('forex_baskets', $new_universal_forex_baskets);
-  }
+  rovas_forex_settle_trade('eur_to_chr', $order_total, $chr_basket, $eur_basket, $variable_fee, $fixed_fee_amount, FALSE, TRUE, $use_temp_baskets);
 
   rules_invoke_component('rules_process_recipient_order_core', $output_amount, 1, $order);
 
+  $partial_fee = $variable_fee * $order_total;
   $conversion_fee_eur = $fixed_fee_amount + $partial_fee;
   _rovas_purchase_shares_commit_forex_transaction_for_bank_time_share_order(
     $order->order_id,

@@ -219,6 +219,18 @@ function forex_admin_form($form, &$form_state) {
 		'#required' => TRUE,
 	);
 
+	$forex_min_r = forex_min_r_get();
+
+	$form['forex_min_r'] = array(
+		'#type' => 'textfield',
+		'#title' => 'Initial minR (EUR per reported hour)',
+		'#description' => 'Floor hourly rate for worker CHR→EUR redemptions (10 CHR = 1 hour). Ratchets up on worker trades only; never decreases.',
+		'#default_value' => $forex_min_r,
+		'#size' => 60,
+		'#maxlength' => 128,
+		'#required' => TRUE,
+	);
+
 	$buy_eur_fee = variable_get('buy_eur_fee') ? variable_get('buy_eur_fee') : 0;
 
 	$form['buy_eur_fee'] = array(
@@ -334,6 +346,11 @@ function forex_admin_form($form, &$form_state) {
 		'#markup' => '<div style="font-weight:bold;" class="baskets label eu">Eur: </div><div class="baskets eu">' . $eu_current . '</div>',
 		);
 
+	$form['min_r_current'] = array(
+		'#type' => 'markup',
+		'#markup' => '<div style="font-weight:bold;" class="baskets label eu">minR (EUR/hour): </div><div class="baskets minr">' . forex_min_r_get() . '</div>',
+	);
+
 	$form['submit'] = array(
 		'#type' => 'submit',
 		'#value' => 'Save',
@@ -350,6 +367,9 @@ function forex_admin_form_submit($form, &$form_state) {
 	variable_set('minimum_eur',$form_state['values']['minimum_eur']);
 	variable_set('ch_basket_init',$form_state['values']['ch_basket_init']);
 	variable_set('eu_basket_init',$form_state['values']['eu_basket_init']);
+	if (is_numeric($form_state['values']['forex_min_r'])) {
+		forex_min_r_set($form_state['values']['forex_min_r']);
+	}
 	variable_set('buy_ch_fee',$form_state['values']['buy_ch_fee']);
 	variable_set('base_buy_ch_fee',$form_state['values']['base_buy_ch_fee']);
 	variable_set('buy_ch_fixed_fee',$form_state['values']['buy_ch_fixed_fee']);
@@ -437,11 +457,11 @@ function _validate_admin($form, &$form_state) {
 	
 	$forex_baskets = variable_get('forex_baskets');
 
-  if ($forex_baskets['ch_basket'] + $form_state['values']['adjust_chrons'] < 0) {
-    form_set_error('adjust_chrons', 'Error: the amout subtracted must be higher than the Chrons in the basket.');
-  }
-  else if ($form_state['values']['adjust_chrons'] > $ch_available[0]) {
+  if ($form_state['values']['adjust_chrons'] > 0 && $form_state['values']['adjust_chrons'] > $ch_available[0]) {
     form_set_error('adjust_chrons', 'Error: the amout must be lower than the Chrons available.');
+  }
+  if (!is_numeric($form_state['values']['forex_min_r']) || $form_state['values']['forex_min_r'] < 0) {
+    form_set_error('forex_min_r', 'Error: minR must be a non-negative number.');
   }
 
 }
@@ -645,7 +665,11 @@ function rovas_forex_form($form, &$form_state) {
 		$eur_result_ary = project_forex ($amount,$ch_basket,$eur_basket,$buy_eur_fee);
 	}
 	else {
-		$eur_result_ary = forex($amount,$ch_basket,$eur_basket,$buy_eur_fee);
+		$chr_quote = forex_price_chr_to_eur($amount, $ch_basket, $eur_basket, $buy_eur_fee, 0.0);
+		$eur_result_ary = array(
+			'output' => isset($chr_quote['output']) ? $chr_quote['output'] : 0.0,
+			'fee' => isset($chr_quote['fee']) ? $chr_quote['fee'] : 0.0,
+		);
 	}
 
 	$eur_result = $eur_result_ary['output'];
@@ -922,7 +946,11 @@ function rovas_preview_form($form, &$form_state) {
 			$curr2convert = $page_one_vals['eu-ch_value'];
 
 			if($form_state['values']['forex-rate'] === '0') {
-				$to_receive_ary = forex($curr2convert,$ch_basket,$eur_basket,$buy_eur_fee);
+				$chr_quote = forex_price_chr_to_eur($curr2convert, $ch_basket, $eur_basket, $buy_eur_fee, 0.0);
+				$to_receive_ary = array(
+					'output' => isset($chr_quote['output']) ? $chr_quote['output'] : 0.0,
+					'fee' => isset($chr_quote['fee']) ? $chr_quote['fee'] : 0.0,
+				);
 			}
 			else {
 				$to_receive_ary = project_forex($curr2convert,$ch_basket,$eur_basket,$buy_eur_fee);
@@ -942,7 +970,11 @@ function rovas_preview_form($form, &$form_state) {
 			$buy_ch_fixed_fee = variable_get('buy_ch_fixed_fee');
 			
 			$curr2convert = $page_one_vals['ch-eu_value'];
-			$to_receive_ary = forex($curr2convert,$eur_basket,$ch_basket,$buy_ch_fee,$buy_ch_fixed_fee);
+			$eur_quote = forex_price_eur_to_chr($curr2convert, $ch_basket, $eur_basket, $buy_ch_fee, $buy_ch_fixed_fee);
+			$to_receive_ary = array(
+				'output' => isset($eur_quote['output']) ? $eur_quote['output'] : 0.0,
+				'fee' => isset($eur_quote['fee']) ? $eur_quote['fee'] : 0.0,
+			);
 			//rounding the chron amount down to whole numbers
 			$amnt_to_get = round($to_receive_ary['output']); //whole Chrons
 			$fee_to_pay = $to_receive_ary['fee']; //the euro value of the fee
@@ -1105,9 +1137,12 @@ function rovas_forex_form_submit($form, &$form_state) {
 
 			if ($form_state['clicked_button']['#name'] == 'preview_eu_ch') {
 				if ($form_state['values']['forex-rate'] === '0') {
+					$buy_eur_fee = variable_get('buy_eur_fee');
+					$chr_in = $form_state['values']['eu-ch_value'];
+					$trade = forex_apply_trade('chr_to_eur', $chr_in, $old_basket['ch_basket'], $old_basket['eur_basket'], $buy_eur_fee, 0.0, TRUE, TRUE, FALSE);
 					$new_basket = array(
-					'ch_basket' => $old_basket['ch_basket'] + ($form_state['values']['eu-ch_value'] - $form_state['values']['eu-ch-fee']),
-					'eur_basket' => $old_basket['eur_basket'] - $form_state['values']['eu-ch-converted-value']
+						'ch_basket' => $trade['new_ch_basket'],
+						'eur_basket' => $trade['new_eur_basket'],
 					);
 				}
 				else {
@@ -1118,9 +1153,13 @@ function rovas_forex_form_submit($form, &$form_state) {
 				}
 			}
 			else {
+				$buy_ch_fee = variable_get('buy_ch_fee');
+				$buy_ch_fixed_fee = variable_get('buy_ch_fixed_fee');
+				$eur_in = $form_state['values']['ch-eu_value'];
+				$trade = forex_apply_trade('eur_to_chr', $eur_in, $old_basket['ch_basket'], $old_basket['eur_basket'], $buy_ch_fee, $buy_ch_fixed_fee, FALSE, TRUE, FALSE);
 				$new_basket = array(
-				'ch_basket' => $old_basket['ch_basket'] - $form_state['values']['ch-eu-converted-value'],
-				'eur_basket' => $old_basket['eur_basket'] + $form_state['values']['ch-eu_value'] - $form_state['values']['ch-eu-fee']
+					'ch_basket' => $trade['new_ch_basket'],
+					'eur_basket' => $trade['new_eur_basket'],
 				);
 			}
 			variable_set('forex_lock',array('uid' => $uid, 'time' => time()));
@@ -1377,6 +1416,464 @@ function forex_complete_order_fxs ($message = NULL, $path=NULL,$project_nid) {
 	if ($path) {drupal_goto($path);}
 }
 
+/**
+ * Read the minR floor (EUR per reported hour; 10 CHR = 1 hour).
+ */
+function forex_min_r_get() {
+  $min_r = variable_get('forex_min_r');
+  return is_numeric($min_r) ? (float) $min_r : 0.0;
+}
+
+/**
+ * Persist minR (admin initial value or ratcheted floor).
+ */
+function forex_min_r_set($min_r) {
+  variable_set('forex_min_r', max(0.0, (float) $min_r));
+}
+
+/**
+ * Ratchet minR up on worker CHR→EUR trades only.
+ */
+function forex_min_r_ratchet($eur_out, $chr_in) {
+  if ($chr_in <= 0) {
+    return forex_min_r_get();
+  }
+  $computed = 10.0 * (float) $eur_out / (float) $chr_in;
+  $new_min_r = max(forex_min_r_get(), $computed);
+  forex_min_r_set($new_min_r);
+  return $new_min_r;
+}
+
+/**
+ * Synthetic CHR pool depth for liability-side Bancor (donor EUR→CHR).
+ */
+function forex_synthetic_chr_depth($ch_basket) {
+  return abs((float) $ch_basket) + 1.0;
+}
+
+/**
+ * Synthetic CHR depth when a worker CHR→EUR trade stays in liability.
+ */
+function forex_synthetic_worker_chr_depth($ch_basket, $chr_in) {
+  return abs((float) $ch_basket + (float) $chr_in) + 1.0;
+}
+
+/**
+ * Whether universal baskets are at the 0/0 bootstrap point.
+ */
+function forex_is_bootstrap_state($ch_basket, $eur_basket) {
+  return ((float) $ch_basket == 0.0) && ((float) $eur_basket == 0.0);
+}
+
+/**
+ * Effective hourly rate: EUR per reported hour (10 CHR = 1 hour).
+ */
+function forex_effective_hourly_rate($eur_amount, $chr_amount) {
+  if ($chr_amount <= 0) {
+    return NULL;
+  }
+  return (float) $eur_amount / ((float) $chr_amount / 10.0);
+}
+
+/**
+ * EUR remaining after variable and fixed fees (donor leg).
+ */
+function forex_eur_net_after_fees($eur_in, $variable_fee, $fixed_fee) {
+  $eur_in = (float) $eur_in;
+  if ($eur_in <= 0) {
+    return 0.0;
+  }
+  $fx = forex($eur_in, max($eur_in, 1e-9), 1.0, $variable_fee, $fixed_fee);
+  $fee = isset($fx['fee']) ? (float) $fx['fee'] : 0.0;
+  return $eur_in - $fee;
+}
+
+/**
+ * Load current universal basket balances, respecting forex lock temp baskets.
+ *
+ * @return array
+ *   Keys: ch_basket, eur_basket, use_temp_baskets.
+ */
+function forex_load_basket_balances($respect_lock = TRUE) {
+  $forex_baskets = variable_get('forex_baskets');
+  if (empty($forex_baskets) || !is_array($forex_baskets)) {
+    $forex_baskets = array(
+      'ch_basket' => (float) variable_get('ch_basket_init'),
+      'eur_basket' => (float) variable_get('eu_basket_init'),
+    );
+    variable_set('forex_baskets', $forex_baskets);
+  }
+
+  $use_temp = 0;
+  if ($respect_lock) {
+    $forex_baskets_temp = (array) variable_get('forex_baskets_temp');
+    $lock_ts = (array) variable_get('forex_lock');
+    $lock_time_remaining = isset($lock_ts['time']) ? ((int) $lock_ts['time']) - (time() - 5 * 60) : -1;
+    $lock_user_id = isset($lock_ts['uid']) ? $lock_ts['uid'] : NULL;
+    global $user;
+    $use_temp = ($lock_time_remaining > 0) && ($lock_user_id != $user->uid) ? 1 : 0;
+
+    if ($use_temp) {
+      $ch_basket = isset($forex_baskets_temp['ch_basket'])
+        ? (float) $forex_baskets_temp['ch_basket']
+        : (isset($forex_baskets['ch_basket']) ? (float) $forex_baskets['ch_basket'] : 0.0);
+      $eur_basket = isset($forex_baskets_temp['eur_basket'])
+        ? (float) $forex_baskets_temp['eur_basket']
+        : (isset($forex_baskets['eur_basket']) ? (float) $forex_baskets['eur_basket'] : 0.0);
+      return array(
+        'ch_basket' => $ch_basket,
+        'eur_basket' => $eur_basket,
+        'use_temp_baskets' => $use_temp,
+      );
+    }
+  }
+
+  return array(
+    'ch_basket' => isset($forex_baskets['ch_basket']) ? (float) $forex_baskets['ch_basket'] : 0.0,
+    'eur_basket' => isset($forex_baskets['eur_basket']) ? (float) $forex_baskets['eur_basket'] : 0.0,
+    'use_temp_baskets' => $use_temp,
+  );
+}
+
+/**
+ * Commit basket balances to forex_baskets or forex_baskets_temp.
+ */
+function forex_commit_baskets(array $new_baskets, $use_temp = FALSE) {
+  $payload = array(
+    'ch_basket' => (float) $new_baskets['ch_basket'],
+    'eur_basket' => (float) $new_baskets['eur_basket'],
+  );
+  if ($use_temp) {
+    variable_set('forex_baskets_temp', $payload);
+  }
+  else {
+    if (variable_get('forex_baskets_temp')) {
+      variable_del('forex_baskets_temp');
+    }
+    variable_set('forex_baskets', $payload);
+  }
+}
+
+/**
+ * Regime-aware EUR→CHR quote (does not mutate baskets or minR).
+ */
+function forex_price_eur_to_chr($eur_in, $ch_basket, $eur_basket, $variable_fee = 0.0, $fixed_fee = 0.0) {
+  $eur_in = (float) $eur_in;
+  $ch_basket = (float) $ch_basket;
+  $eur_basket = (float) $eur_basket;
+  $variable_fee = (float) $variable_fee;
+  $fixed_fee = (float) $fixed_fee;
+  $min_r = forex_min_r_get();
+  $eur_net = forex_eur_net_after_fees($eur_in, $variable_fee, $fixed_fee);
+  $fee = $eur_in - $eur_net;
+
+  $result = array(
+    'output' => 0.0,
+    'fee' => $fee,
+    'eur_net' => $eur_net,
+    'regime' => 'positive',
+    'rejected' => FALSE,
+    'reject_reason' => NULL,
+    'chr_depth' => NULL,
+    'effective_rate' => NULL,
+    'min_r' => $min_r,
+  );
+
+  if ($eur_in <= 0 || $eur_net <= 0) {
+    $result['rejected'] = TRUE;
+    $result['reject_reason'] = 'invalid_input';
+    return $result;
+  }
+
+  if (forex_is_bootstrap_state($ch_basket, $eur_basket)) {
+    if ($min_r <= 0) {
+      $result['rejected'] = TRUE;
+      $result['reject_reason'] = 'min_r_not_set';
+      return $result;
+    }
+    $chr_out = 10.0 * $eur_net / $min_r;
+    $result['output'] = $chr_out;
+    $result['regime'] = 'bootstrap';
+    $result['effective_rate'] = forex_effective_hourly_rate($eur_net, $chr_out);
+    return $result;
+  }
+
+  if ($ch_basket <= 0) {
+    $chr_depth = forex_synthetic_chr_depth($ch_basket);
+    $fx = forex($eur_in, $eur_basket + $eur_in, $chr_depth, $variable_fee, $fixed_fee);
+    $chr_out = isset($fx['output']) ? (float) $fx['output'] : 0.0;
+    $result['output'] = $chr_out;
+    $result['regime'] = 'liability_symmetric';
+    $result['chr_depth'] = $chr_depth;
+    $result['effective_rate'] = $chr_out > 0 ? forex_effective_hourly_rate($eur_net, $chr_out) : NULL;
+    return $result;
+  }
+
+  $fx = forex($eur_in, $eur_basket + $eur_in, $ch_basket, $variable_fee, $fixed_fee);
+  $chr_out = isset($fx['output']) ? (float) $fx['output'] : 0.0;
+  $result['output'] = $chr_out;
+  $result['regime'] = 'positive';
+  $result['effective_rate'] = $chr_out > 0 ? forex_effective_hourly_rate($eur_net, $chr_out) : NULL;
+  return $result;
+}
+
+/**
+ * Regime-aware CHR→EUR quote (does not mutate baskets or minR).
+ */
+function forex_price_chr_to_eur($chr_in, $ch_basket, $eur_basket, $variable_fee = 0.0, $fixed_fee = 0.0) {
+  $chr_in = (float) $chr_in;
+  $ch_basket = (float) $ch_basket;
+  $eur_basket = (float) $eur_basket;
+  $variable_fee = (float) $variable_fee;
+  $fixed_fee = (float) $fixed_fee;
+  $min_r = forex_min_r_get();
+
+  $result = array(
+    'output' => 0.0,
+    'fee' => 0.0,
+    'regime' => 'blocked',
+    'rejected' => FALSE,
+    'reject_reason' => NULL,
+    'chr_depth' => NULL,
+    'effective_rate' => NULL,
+    'min_r' => $min_r,
+  );
+
+  if ($chr_in <= 0) {
+    $result['rejected'] = TRUE;
+    $result['reject_reason'] = 'invalid_input';
+    return $result;
+  }
+
+  if ($eur_basket <= 0) {
+    $result['rejected'] = TRUE;
+    $result['reject_reason'] = 'eur_basket_empty';
+    return $result;
+  }
+
+  if ($ch_basket + $chr_in > 0) {
+    $fx = forex($chr_in, $ch_basket + $chr_in, $eur_basket, $variable_fee, $fixed_fee);
+    $eur_out = isset($fx['output']) ? (float) $fx['output'] : 0.0;
+    $result['output'] = $eur_out;
+    $result['fee'] = isset($fx['fee']) ? (float) $fx['fee'] : 0.0;
+    $result['regime'] = 'positive';
+    $result['effective_rate'] = forex_effective_hourly_rate($eur_out, $chr_in);
+    if ($eur_out <= 0) {
+      $result['rejected'] = TRUE;
+      $result['reject_reason'] = 'zero_payout';
+    }
+    elseif ($eur_out > $eur_basket) {
+      $result['rejected'] = TRUE;
+      $result['reject_reason'] = 'insufficient_eur_liquidity';
+    }
+    return $result;
+  }
+
+  $chr_depth = forex_synthetic_worker_chr_depth($ch_basket, $chr_in);
+  $fx = forex($chr_in, $chr_depth, $eur_basket, $variable_fee, $fixed_fee);
+  $eur_raw = isset($fx['output']) ? (float) $fx['output'] : 0.0;
+  $floor = ($chr_in / 10.0) * $min_r;
+  $eur_out = max($eur_raw, $floor);
+  $result['output'] = $eur_out;
+  $result['fee'] = isset($fx['fee']) ? (float) $fx['fee'] : 0.0;
+  $result['regime'] = 'liability_symmetric';
+  $result['chr_depth'] = $chr_depth;
+  $result['effective_rate'] = forex_effective_hourly_rate($eur_out, $chr_in);
+
+  if ($eur_out <= 0) {
+    $result['rejected'] = TRUE;
+    $result['reject_reason'] = 'zero_payout';
+  }
+  elseif ($eur_out > $eur_basket) {
+    $result['rejected'] = TRUE;
+    $result['reject_reason'] = 'insufficient_eur_liquidity';
+  }
+  return $result;
+}
+
+/**
+ * Binary-search inverse: EUR input needed for a target CHR output.
+ */
+function forex_price_eur_to_chr_reverse($target_chr, $ch_basket, $eur_basket, $variable_fee = 0.0, $fixed_fee = 0.0) {
+  $target_chr = (float) $target_chr;
+  if ($target_chr <= 0) {
+    return array('output' => 0.0, 'fee' => 0.0, 'rejected' => TRUE, 'reject_reason' => 'invalid_input');
+  }
+
+  $quote = forex_price_eur_to_chr(0.01, $ch_basket, $eur_basket, $variable_fee, $fixed_fee);
+  if (!empty($quote['rejected']) && $quote['reject_reason'] === 'min_r_not_set' && forex_is_bootstrap_state($ch_basket, $eur_basket)) {
+    return array('output' => 0.0, 'fee' => 0.0, 'rejected' => TRUE, 'reject_reason' => 'min_r_not_set');
+  }
+
+  $lo = 0.01;
+  $hi = max(1.0, (float) $eur_basket + $target_chr);
+  for ($i = 0; $i < 60; $i++) {
+    $mid = ($lo + $hi) / 2.0;
+    $fwd = forex_price_eur_to_chr($mid, $ch_basket, $eur_basket, $variable_fee, $fixed_fee);
+    $out = isset($fwd['output']) ? (float) $fwd['output'] : 0.0;
+    if ($out >= $target_chr) {
+      $hi = $mid;
+    }
+    else {
+      $lo = $mid;
+    }
+  }
+
+  $fwd = forex_price_eur_to_chr($hi, $ch_basket, $eur_basket, $variable_fee, $fixed_fee);
+  return array(
+    'output' => $hi,
+    'fee' => isset($fwd['fee']) ? (float) $fwd['fee'] : 0.0,
+    'eur_net' => isset($fwd['eur_net']) ? (float) $fwd['eur_net'] : 0.0,
+    'rejected' => !empty($fwd['rejected']),
+    'reject_reason' => isset($fwd['reject_reason']) ? $fwd['reject_reason'] : NULL,
+    'regime' => isset($fwd['regime']) ? $fwd['regime'] : NULL,
+  );
+}
+
+/**
+ * Binary-search inverse: CHR input needed for a target EUR output.
+ */
+function forex_price_chr_to_eur_reverse($target_eur, $ch_basket, $eur_basket, $variable_fee = 0.0, $fixed_fee = 0.0) {
+  $target_eur = (float) $target_eur;
+  if ($target_eur <= 0) {
+    return array('output' => 0.0, 'fee' => 0.0, 'rejected' => TRUE, 'reject_reason' => 'invalid_input');
+  }
+
+  if ($eur_basket <= 0) {
+    return array('output' => 0.0, 'fee' => 0.0, 'rejected' => TRUE, 'reject_reason' => 'eur_basket_empty');
+  }
+
+  $lo = 0.01;
+  $hi = max(10.0, abs($ch_basket) + $target_eur * 100.0);
+  for ($i = 0; $i < 60; $i++) {
+    $mid = ($lo + $hi) / 2.0;
+    $fwd = forex_price_chr_to_eur($mid, $ch_basket, $eur_basket, $variable_fee, $fixed_fee);
+    $out = isset($fwd['output']) ? (float) $fwd['output'] : 0.0;
+    if ($out >= $target_eur) {
+      $hi = $mid;
+    }
+    else {
+      $lo = $mid;
+    }
+  }
+
+  $fwd = forex_price_chr_to_eur($hi, $ch_basket, $eur_basket, $variable_fee, $fixed_fee);
+  return array(
+    'output' => $hi,
+    'fee' => isset($fwd['fee']) ? (float) $fwd['fee'] : 0.0,
+    'rejected' => !empty($fwd['rejected']),
+    'reject_reason' => isset($fwd['reject_reason']) ? $fwd['reject_reason'] : NULL,
+    'regime' => isset($fwd['regime']) ? $fwd['regime'] : NULL,
+  );
+}
+
+/**
+ * Apply a trade and return pricing plus post-trade basket state.
+ *
+ * @param bool $ratchet_min_r
+ *   TRUE for worker CHR→EUR trades (ratchets minR); FALSE for donor EUR→CHR.
+ * @param bool $persist_min_r
+ *   When TRUE and $ratchet_min_r, write ratcheted minR to variable storage.
+ */
+function forex_apply_trade($transact_type, $input, $ch_basket, $eur_basket, $variable_fee = 0.0, $fixed_fee = 0.0, $ratchet_min_r = FALSE, $charge_fees = TRUE, $persist_min_r = TRUE) {
+  $type = (strtolower($transact_type) === 'chr_to_eur') ? 'chr_to_eur' : 'eur_to_chr';
+  $ch_basket = (float) $ch_basket;
+  $eur_basket = (float) $eur_basket;
+  $input = (float) $input;
+
+  if (!$charge_fees) {
+    $variable_fee = 0.0;
+    $fixed_fee = 0.0;
+  }
+
+  $min_r_before = forex_min_r_get();
+  $result = array(
+    'output' => 0.0,
+    'fee' => 0.0,
+    'eur_net' => 0.0,
+    'new_ch_basket' => $ch_basket,
+    'new_eur_basket' => $eur_basket,
+    'min_r_before' => $min_r_before,
+    'min_r_after' => $min_r_before,
+    'regime' => 'blocked',
+    'rejected' => TRUE,
+    'reject_reason' => 'invalid_type',
+    'effective_rate' => NULL,
+    'chr_fee' => 0.0,
+  );
+
+  if ($type === 'eur_to_chr') {
+    $quote = forex_price_eur_to_chr($input, $ch_basket, $eur_basket, $variable_fee, $fixed_fee);
+    $result['output'] = isset($quote['output']) ? (float) $quote['output'] : 0.0;
+    $result['fee'] = isset($quote['fee']) ? (float) $quote['fee'] : 0.0;
+    $result['eur_net'] = isset($quote['eur_net']) ? (float) $quote['eur_net'] : 0.0;
+    $result['regime'] = $quote['regime'];
+    $result['rejected'] = !empty($quote['rejected']);
+    $result['reject_reason'] = isset($quote['reject_reason']) ? $quote['reject_reason'] : NULL;
+    $result['effective_rate'] = isset($quote['effective_rate']) ? $quote['effective_rate'] : NULL;
+
+    if (!$result['rejected'] && $result['output'] > 0 && $result['eur_net'] > 0) {
+      $chr_out = $result['output'];
+      $eur_net = $result['eur_net'];
+      if ($quote['regime'] === 'bootstrap') {
+        $result['new_ch_basket'] = -$chr_out;
+      }
+      else {
+        $result['new_ch_basket'] = $ch_basket - $chr_out;
+      }
+      $result['new_eur_basket'] = $eur_basket + $eur_net;
+    }
+    return $result;
+  }
+
+  $quote = forex_price_chr_to_eur($input, $ch_basket, $eur_basket, $variable_fee, $fixed_fee);
+  $result['output'] = isset($quote['output']) ? (float) $quote['output'] : 0.0;
+  $result['fee'] = isset($quote['fee']) ? (float) $quote['fee'] : 0.0;
+  $result['chr_fee'] = $result['fee'];
+  $result['regime'] = $quote['regime'];
+  $result['rejected'] = !empty($quote['rejected']);
+  $result['reject_reason'] = isset($quote['reject_reason']) ? $quote['reject_reason'] : NULL;
+  $result['effective_rate'] = isset($quote['effective_rate']) ? $quote['effective_rate'] : NULL;
+
+  if ($result['rejected'] || $result['output'] <= 0) {
+    return $result;
+  }
+
+  $eur_out = $result['output'];
+  if ($quote['regime'] === 'liability_symmetric') {
+    $result['new_ch_basket'] = $ch_basket + $input;
+  }
+  else {
+    $result['new_ch_basket'] = $ch_basket + $input - $result['chr_fee'];
+  }
+  $result['new_eur_basket'] = $eur_basket - $eur_out;
+
+  if ($ratchet_min_r) {
+    if ($persist_min_r) {
+      $result['min_r_after'] = forex_min_r_ratchet($eur_out, $input);
+    }
+    else {
+      $result['min_r_after'] = max($min_r_before, 10.0 * $eur_out / $input);
+    }
+  }
+
+  return $result;
+}
+
+/**
+ * Apply a trade and commit basket balances (used by Rules and checkout flows).
+ */
+function rovas_forex_settle_trade($transact_type, $input, $ch_basket, $eur_basket, $variable_fee = 0.0, $fixed_fee = 0.0, $ratchet_min_r = FALSE, $charge_fees = TRUE, $use_temp_baskets = FALSE) {
+  $trade = forex_apply_trade($transact_type, $input, $ch_basket, $eur_basket, $variable_fee, $fixed_fee, $ratchet_min_r, $charge_fees, TRUE);
+  if (empty($trade['rejected'])) {
+    forex_commit_baskets(array(
+      'ch_basket' => $trade['new_ch_basket'],
+      'eur_basket' => $trade['new_eur_basket'],
+    ), $use_temp_baskets);
+  }
+  return $trade;
+}
+
 /*
 * the forex core function for converting one currency to another
 * derived from the bancor formula
@@ -1533,16 +2030,15 @@ function _process_fee_update_baskets ($conversion_fee) {
 		variable_set('forex_baskets',$forex_basket);
 		variable_del('forex_baskets_temp');
 	}
-	$buy_ch_fee = variable_get('buy_ch_fee') ? variable_get('buy_ch_fee') : 0;
-	$buy_ch_fixed_fee = variable_get('buy_ch_fixed_fee') ? variable_get('buy_ch_fixed_fee') : 0;
+	$buy_eur_fee = variable_get('buy_eur_fee') ? variable_get('buy_eur_fee') : 0;
 
-	$to_receive_ary = forex($conversion_fee,$forex_basket['ch_basket'],$forex_basket['eur_basket'],$buy_ch_fee,$buy_ch_fixed_fee);
-	$amnt_to_get = $to_receive_ary['output'];
-	$fee_to_pay = $to_receive_ary['fee']; //in EUR
+	$fee_trade = forex_apply_trade('chr_to_eur', $conversion_fee, $forex_basket['ch_basket'], $forex_basket['eur_basket'], $buy_eur_fee, 0.0, TRUE, TRUE, FALSE);
+	$amnt_to_get = $fee_trade['output'];
+	$fee_to_pay = $fee_trade['fee'];
 
 	$new_basket = array(
-	'ch_basket' => $forex_basket['ch_basket'] + $conversion_fee,
-	'eur_basket' => $forex_basket['eur_basket'] - $amnt_to_get - $fee_to_pay
+	'ch_basket' => $fee_trade['new_ch_basket'],
+	'eur_basket' => $fee_trade['new_eur_basket'],
 	);
 	$forex_basket_temp = variable_set('forex_baskets_temp',$new_basket);
 
@@ -1602,40 +2098,11 @@ function accessProtected($obj, $prop) {
 */
 function calculate_forex_transaction_params ($transactType, $input, $processor_fee = null, $charge_fees = TRUE) {
 
-    $forexBaskets    = variable_get('forex_baskets');
     $base_buy_ch_fee = variable_get('base_buy_ch_fee');
-
-		//very unlikely - we do not have forex baskets
-    if (empty($forexBaskets) || !is_array($forexBaskets)) {
-			$chInit  = (float) variable_get('ch_basket_init');
-			$eurInit = (float) variable_get('eu_basket_init');
-			$forexBaskets = array(
-					'ch_basket'  => $chInit,
-					'eur_basket' => $eurInit,
-			);
-			variable_set('forex_baskets', $forexBaskets);
-    }
-
-    // use temp baskets if lock is set
-    $forexBasketsTemp  = (array) variable_get('forex_baskets_temp');
-    $lockTs            = (array) variable_get('forex_lock');
-    $lockTimeRemaining = isset($lockTs['time']) ? ((int)$lockTs['time']) - (time() - 5 * 60) : -1;
-    $lockUserId        = isset($lockTs['uid']) ? $lockTs['uid'] : null;
-
-    global $user;
-
-    $useTempBaskets = ($lockTimeRemaining > 0) && ($lockUserId != $user->uid) ? 1 : 0;
-
-    if ($useTempBaskets) {
-			$chBasket  = isset($forexBasketsTemp['ch_basket'])  ? (float)$forexBasketsTemp['ch_basket']
-								 : (isset($forexBaskets['ch_basket'])     ? (float)$forexBaskets['ch_basket'] : 0.0);
-			$eurBasket = isset($forexBasketsTemp['eur_basket']) ? (float)$forexBasketsTemp['eur_basket']
-								 : (isset($forexBaskets['eur_basket'])    ? (float)$forexBaskets['eur_basket'] : 0.0);
-    }
-    else {
-			$chBasket  = isset($forexBaskets['ch_basket'])  ? (float)$forexBaskets['ch_basket']  : 0.0;
-			$eurBasket = isset($forexBaskets['eur_basket']) ? (float)$forexBaskets['eur_basket'] : 0.0;
-    }
+    $baskets = forex_load_basket_balances(TRUE);
+    $chBasket = $baskets['ch_basket'];
+    $eurBasket = $baskets['eur_basket'];
+    $useTempBaskets = $baskets['use_temp_baskets'];
 
     $type = strtolower($transactType);
     $type = ($type === 'chr_to_eur') ? 'chr_to_eur' : 'eur_to_chr';
@@ -1643,37 +2110,43 @@ function calculate_forex_transaction_params ($transactType, $input, $processor_f
     $variableFee = 0.0;
     $fixedFee    = 0.0;
     $output      = 0.0;
+    $regime = 'blocked';
+    $rejected = FALSE;
+    $reject_reason = NULL;
+    $effective_rate = NULL;
+    $fee_amount = 0.0;
 
     if ($type === 'chr_to_eur') {
     	if ($charge_fees) {
 				$variableFee = (float) variable_get('buy_eur_fee');
 				$fixedFee    = 0.0;	
 			}
-			else {
-				$variableFee = 0.0;
-				$fixedFee    = 0.0;
-			}
-			$res    = forex($input, $chBasket, $eurBasket, $variableFee, $fixedFee);
-			$output = isset($res['output']) ? (float) $res['output'] : 0.0;
+			$quote = forex_price_chr_to_eur($input, $chBasket, $eurBasket, $variableFee, $fixedFee);
+			$output = isset($quote['output']) ? (float) $quote['output'] : 0.0;
+			$fee_amount = isset($quote['fee']) ? (float) $quote['fee'] : 0.0;
+			$regime = isset($quote['regime']) ? $quote['regime'] : 'blocked';
+			$rejected = !empty($quote['rejected']);
+			$reject_reason = isset($quote['reject_reason']) ? $quote['reject_reason'] : NULL;
+			$effective_rate = isset($quote['effective_rate']) ? $quote['effective_rate'] : NULL;
     }
     else {
     	if ($charge_fees) {
 				if ($processor_fee) {
 					$variableFee = $base_buy_ch_fee;
-					$fixedFee    = $processor_fee < 0 ? 0 : $processor_fee; //negative values (like -1) indicate payment methods that do not charge fees (like bank transfer)
+					$fixedFee    = $processor_fee < 0 ? 0 : $processor_fee;
 				}
 				else {
 					$variableFee = (float) variable_get('buy_ch_fee');
 					$fixedFee    = (float) variable_get('buy_ch_fixed_fee');
 				}
 			}
-			else {
-				$variableFee = 0.0;
-				$fixedFee    = 0.0;
-			}
-
-			$res    = forex($input, $eurBasket, $chBasket, $variableFee, $fixedFee);
-			$output = isset($res['output']) ? (float) $res['output'] : 0.0;
+			$quote = forex_price_eur_to_chr($input, $chBasket, $eurBasket, $variableFee, $fixedFee);
+			$output = isset($quote['output']) ? (float) $quote['output'] : 0.0;
+			$fee_amount = isset($quote['fee']) ? (float) $quote['fee'] : 0.0;
+			$regime = isset($quote['regime']) ? $quote['regime'] : 'blocked';
+			$rejected = !empty($quote['rejected']);
+			$reject_reason = isset($quote['reject_reason']) ? $quote['reject_reason'] : NULL;
+			$effective_rate = isset($quote['effective_rate']) ? $quote['effective_rate'] : NULL;
     }
 
     return array(
@@ -1682,7 +2155,13 @@ function calculate_forex_transaction_params ($transactType, $input, $processor_f
 			'xfee'             => (float) $variableFee,
 			'output'           => (float) $output,
 			'fixed_fee'        => (float) $fixedFee,
+			'fee'              => (float) $fee_amount,
 			'use_temp_baskets' => $useTempBaskets,
+			'regime'           => $regime,
+			'rejected'         => $rejected,
+			'reject_reason'    => $reject_reason,
+			'min_r'            => forex_min_r_get(),
+			'effective_rate'   => $effective_rate,
     );
 }
 
@@ -1790,6 +2269,85 @@ function rovas_forex_rules_action_info() {
           'type' => 'boolean',
           'label' => t('Using temporary baskets'),
         ),
+        'regime' => array(
+          'type' => 'text',
+          'label' => t('Pricing regime'),
+        ),
+        'rejected' => array(
+          'type' => 'boolean',
+          'label' => t('Quote rejected'),
+        ),
+        'min_r' => array(
+          'type' => 'decimal',
+          'label' => t('Current minR'),
+        ),
+        'effective_rate' => array(
+          'type' => 'decimal',
+          'label' => t('Effective hourly rate'),
+          'optional' => TRUE,
+        ),
+      ),
+    ),
+    'rovas_forex_apply_trade' => array(
+      'label' => t('Apply forex trade and commit baskets'),
+      'group' => t('Rovas'),
+      'parameter' => array(
+        'transact_type' => array(
+          'type' => 'text',
+          'label' => t('Transaction type'),
+          'description' => t('Transaction type: "chr_to_eur" or "eur_to_chr".'),
+          'default value' => 'eur_to_chr',
+          'options list' => 'rovas_forex_transaction_types_options',
+        ),
+        'input' => array(
+          'type' => 'decimal',
+          'label' => t('Input amount'),
+        ),
+        'ch_basket' => array(
+          'type' => 'decimal',
+          'label' => t('CHR basket before trade'),
+        ),
+        'eur_basket' => array(
+          'type' => 'decimal',
+          'label' => t('EUR basket before trade'),
+        ),
+        'variable_fee' => array(
+          'type' => 'decimal',
+          'label' => t('Variable fee'),
+          'default value' => 0,
+          'optional' => TRUE,
+        ),
+        'fixed_fee' => array(
+          'type' => 'decimal',
+          'label' => t('Fixed fee'),
+          'default value' => 0,
+          'optional' => TRUE,
+        ),
+        'ratchet_min_r' => array(
+          'type' => 'boolean',
+          'label' => t('Ratchet minR'),
+          'default value' => FALSE,
+          'optional' => TRUE,
+        ),
+        'charge_fees' => array(
+          'type' => 'boolean',
+          'label' => t('Charge fees'),
+          'default value' => TRUE,
+          'optional' => TRUE,
+        ),
+        'use_temp_baskets' => array(
+          'type' => 'boolean',
+          'label' => t('Use temporary baskets'),
+          'default value' => FALSE,
+          'optional' => TRUE,
+        ),
+      ),
+      'provides' => array(
+        'output_amount' => array('type' => 'decimal', 'label' => t('Output amount')),
+        'new_ch_basket' => array('type' => 'decimal', 'label' => t('CHR basket after trade')),
+        'new_eur_basket' => array('type' => 'decimal', 'label' => t('EUR basket after trade')),
+        'trade_rejected' => array('type' => 'boolean', 'label' => t('Trade rejected')),
+        'trade_regime' => array('type' => 'text', 'label' => t('Pricing regime')),
       ),
     ),
     'rovas_forex_rules_action_calculate_merits_execute' => array(
@@ -1858,6 +2416,24 @@ function rovas_forex_transaction_params($transact_type, $input, $processor_fee =
     'output_amount' => $result['output'],
     'fixed_fee_amount' => $result['fixed_fee'],
     'use_temp_baskets' => $result['use_temp_baskets'],
+    'regime' => isset($result['regime']) ? $result['regime'] : NULL,
+    'rejected' => !empty($result['rejected']),
+    'min_r' => isset($result['min_r']) ? $result['min_r'] : forex_min_r_get(),
+    'effective_rate' => isset($result['effective_rate']) ? $result['effective_rate'] : NULL,
+  );
+}
+
+/**
+ * Rules action: apply trade and commit universal basket balances.
+ */
+function rovas_forex_apply_trade($transact_type, $input, $ch_basket, $eur_basket, $variable_fee = 0, $fixed_fee = 0, $ratchet_min_r = FALSE, $charge_fees = TRUE, $use_temp_baskets = FALSE) {
+  $trade = rovas_forex_settle_trade($transact_type, $input, $ch_basket, $eur_basket, $variable_fee, $fixed_fee, $ratchet_min_r, $charge_fees, $use_temp_baskets);
+  return array(
+    'output_amount' => isset($trade['output']) ? $trade['output'] : 0,
+    'new_ch_basket' => isset($trade['new_ch_basket']) ? $trade['new_ch_basket'] : $ch_basket,
+    'new_eur_basket' => isset($trade['new_eur_basket']) ? $trade['new_eur_basket'] : $eur_basket,
+    'trade_rejected' => !empty($trade['rejected']),
+    'trade_regime' => isset($trade['regime']) ? $trade['regime'] : NULL,
   );
 }
 

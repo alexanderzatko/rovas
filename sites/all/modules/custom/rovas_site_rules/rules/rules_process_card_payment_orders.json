@@ -112,7 +112,7 @@
             },
             "DO" : [
               { "component_rules_process_time_share_order" : { "order" : [ "commerce-order" ] } },
-              { "php_eval" : { "code" : "$new_universal_forex_baskets = [\r\n    \u0027ch_basket\u0027 =\u003E $chr_basket - $output_amount,\r\n    \u0027eur_basket\u0027 =\u003E $eur_basket + $order_total - ($fixed_fee_amount + $partial_fee)\r\n];\r\n\r\n$use_temp_baskets = !empty($use_temp_baskets) ? $use_temp_baskets : FALSE;\r\n\r\nif ($use_temp_baskets) {\r\n    variable_set(\u0027forex_baskets_temp\u0027, $new_universal_forex_baskets);\r\n}\r\nelse {\r\n    if (variable_get(\u0027forex_baskets_temp\u0027)) {\r\n        variable_del(\u0027forex_baskets_temp\u0027);\r\n    }\r\n    variable_set(\u0027forex_baskets\u0027, $new_universal_forex_baskets);\r\n}" } },
+              { "php_eval" : { "code" : "$use_temp_baskets = !empty($use_temp_baskets) ? $use_temp_baskets : FALSE;\r\nrovas_forex_settle_trade(\u0027eur_to_chr\u0027, $order_total, $chr_basket, $eur_basket, $variable_fee, $fixed_fee_amount, FALSE, TRUE, $use_temp_baskets);" } },
               { "component_rules_process_recipient_order_core" : {
                   "converted_chrons_paid" : [ "output-amount" ],
                   "payment_status" : "1",
@@ -194,7 +194,7 @@
                               "repeat" : "0"
                             }
                           },
-                          { "php_eval" : { "code" : "$new_universal_forex_baskets = [\r\n    \u0027ch_basket\u0027 =\u003E $chr_basket - $output_amount,\r\n    \u0027eur_basket\u0027 =\u003E $eur_basket + $order_total - ($order_total * $variable_fee + $fixed_fee_amount)\r\n];\r\n\r\n$use_temp_baskets = !empty($use_temp_baskets) ? $use_temp_baskets : FALSE;\r\n\r\nif ($use_temp_baskets) {\r\n    variable_set(\u0027forex_baskets_temp\u0027, $new_universal_forex_baskets);\r\n}\r\nelse {\r\n    if (variable_get(\u0027forex_baskets_temp\u0027)) {\r\n        variable_del(\u0027forex_baskets_temp\u0027);\r\n    }\r\n    variable_set(\u0027forex_baskets\u0027, $new_universal_forex_baskets);\r\n}" } },
+                          { "php_eval" : { "code" : "$use_temp_baskets = !empty($use_temp_baskets) ? $use_temp_baskets : FALSE;\r\nrovas_forex_settle_trade(\u0027eur_to_chr\u0027, $order_total, $chr_basket, $eur_basket, $variable_fee, $fixed_fee_amount, FALSE, TRUE, $use_temp_baskets);" } },
                           { "component_rules_process_recipient_order_core" : {
                               "converted_chrons_paid" : [ "output-amount" ],
                               "payment_status" : "1",
