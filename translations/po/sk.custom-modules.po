@@ -20,12 +20,12 @@ msgid "Premium access is not activated when you start payment from this project 
 msgstr "Prémiový prístup sa neaktivuje, ak platbu začnete z tejto stránky projektu v Rováši. Objednávku musíte začať v aplikácii projektu."
 
 #: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:708
-msgid "Premium access is granted only when you start your order on !site and pay at least !thresholds (payment still takes place here on Rovas). Starting payment from this project page in Rovas does not activate premium."
-msgstr "Prémiový prístup získate len ak objednávku začnete na !site a zaplatíte aspoň !thresholds (platba prebehne tu v Rováši). Platba začatá z tejto stránky projektu v Rováši prémiu neaktivuje."
+msgid "Premium access is granted only when you start your order on !site and pay at least !thresholds. Starting payment from this project page in Rovas does not activate premium."
+msgstr "Prémiový prístup získate len ak objednávku začnete na !site a zaplatíte aspoň !thresholds. Platba začatá z tejto stránky projektu v Rováši prémiu neaktivuje."
 
 #: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:714
-msgid "Premium access is granted only when you start your order from the project's own application and pay at least !thresholds (payment still takes place here on Rovas). Starting payment from this project page in Rovas does not activate premium."
-msgstr "Prémiový prístup získate len ak objednávku začnete v aplikácii projektu a zaplatíte aspoň !thresholds (platba prebehne tu v Rováši). Platba začatá z tejto stránky projektu v Rováši prémiu neaktivuje."
+msgid "Premium access is granted only when you start your order from the project's own application and pay at least !thresholds. Starting payment from this project page in Rovas does not activate premium."
+msgstr "Prémiový prístup získate len ak objednávku začnete v aplikácii projektu a zaplatíte aspoň !thresholds. Platba začatá z tejto stránky projektu v Rováši prémiu neaktivuje."
 
 #: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:2145
 msgid "Please confirm that you understand this payment is not a subscription for premium features."

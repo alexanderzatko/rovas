@@ -3812,11 +3812,11 @@ msgid "Premium access is not activated when you start payment from this project 
 msgstr ""
 
 #: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:708
-msgid "Premium access is granted only when you start your order on !site and pay at least !thresholds (payment still takes place here on Rovas). Starting payment from this project page in Rovas does not activate premium."
+msgid "Premium access is granted only when you start your order on !site and pay at least !thresholds. Starting payment from this project page in Rovas does not activate premium."
 msgstr ""
 
 #: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:714
-msgid "Premium access is granted only when you start your order from the project's own application and pay at least !thresholds (payment still takes place here on Rovas). Starting payment from this project page in Rovas does not activate premium."
+msgid "Premium access is granted only when you start your order from the project's own application and pay at least !thresholds. Starting payment from this project page in Rovas does not activate premium."
 msgstr ""
 
 #: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:2145

@@ -53664,12 +53664,12 @@ msgid "Premium access is not activated when you start payment from this project 
 msgstr "Prémiový přístup se neaktivuje, pokud platbu zahájíte z této stránky projektu v Rováši. Objednávku musíte zahájit v aplikaci projektu."
 
 #: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:708
-msgid "Premium access is granted only when you start your order on !site and pay at least !thresholds (payment still takes place here on Rovas). Starting payment from this project page in Rovas does not activate premium."
-msgstr "Prémiový přístup získáte pouze pokud objednávku zahájíte na !site a zaplatíte alespoň !thresholds (platba proběhne zde v Rováši). Platba zahájená z této stránky projektu v Rováši premium neaktivuje."
+msgid "Premium access is granted only when you start your order on !site and pay at least !thresholds. Starting payment from this project page in Rovas does not activate premium."
+msgstr "Prémiový přístup získáte pouze pokud objednávku zahájíte na !site a zaplatíte alespoň !thresholds. Platba zahájená z této stránky projektu v Rováši premium neaktivuje."
 
 #: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:714
-msgid "Premium access is granted only when you start your order from the project's own application and pay at least !thresholds (payment still takes place here on Rovas). Starting payment from this project page in Rovas does not activate premium."
-msgstr "Prémiový přístup získáte pouze pokud objednávku zahájíte v aplikaci projektu a zaplatíte alespoň !thresholds (platba proběhne zde v Rováši). Platba zahájená z této stránky projektu v Rováši premium neaktivuje."
+msgid "Premium access is granted only when you start your order from the project's own application and pay at least !thresholds. Starting payment from this project page in Rovas does not activate premium."
+msgstr "Prémiový přístup získáte pouze pokud objednávku zahájíte v aplikaci projektu a zaplatíte alespoň !thresholds. Platba zahájená z této stránky projektu v Rováši premium neaktivuje."
 
 #: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:2145
 msgid "Please confirm that you understand this payment is not a subscription for premium features."

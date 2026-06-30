@@ -54340,12 +54340,12 @@ msgid "Premium access is not activated when you start payment from this project 
 msgstr "L'accesso premium non si attiva se avvii il pagamento da questa pagina del progetto in Rovas. Avvia l'ordine dall'applicazione del progetto."
 
 #: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:708
-msgid "Premium access is granted only when you start your order on !site and pay at least !thresholds (payment still takes place here on Rovas). Starting payment from this project page in Rovas does not activate premium."
-msgstr "L'accesso premium si ottiene solo se avvii l'ordine su !site e paghi almeno !thresholds (il pagamento avviene comunque qui su Rovas). Un pagamento avviato da questa pagina del progetto in Rovas non attiva il premium."
+msgid "Premium access is granted only when you start your order on !site and pay at least !thresholds. Starting payment from this project page in Rovas does not activate premium."
+msgstr "L'accesso premium si ottiene solo se avvii l'ordine su !site e paghi almeno !thresholds. Un pagamento avviato da questa pagina del progetto in Rovas non attiva il premium."
 
 #: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:714
-msgid "Premium access is granted only when you start your order from the project's own application and pay at least !thresholds (payment still takes place here on Rovas). Starting payment from this project page in Rovas does not activate premium."
-msgstr "L'accesso premium si ottiene solo se avvii l'ordine dall'applicazione del progetto e paghi almeno !thresholds (il pagamento avviene comunque qui su Rovas). Un pagamento avviato da questa pagina del progetto in Rovas non attiva il premium."
+msgid "Premium access is granted only when you start your order from the project's own application and pay at least !thresholds. Starting payment from this project page in Rovas does not activate premium."
+msgstr "L'accesso premium si ottiene solo se avvii l'ordine dall'applicazione del progetto e paghi almeno !thresholds. Un pagamento avviato da questa pagina del progetto in Rovas non attiva il premium."
 
 #: sites/all/modules/custom/rovas_project_reward/rovas_project_reward.module:2145
 msgid "Please confirm that you understand this payment is not a subscription for premium features."
