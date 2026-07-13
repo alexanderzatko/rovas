@@ -1323,7 +1323,7 @@ msgid ""
 "Rovas will be accepted."
 msgstr ""
 "Zadajte dátum začatia práce. Upozorňujeme, že podľa pravidiel "
-"NEO budú akceptované iba práce vykonané po registrácii v Rovasi."
+"NEO budú akceptované iba práce vykonané po registrácii v Rováši."
 
 #: field:field_date:work_report:label
 msgctxt "field_date:work_report:label"
@@ -1495,11 +1495,11 @@ msgid ""
 "the report and 3rd the content from the new report. All arguments are "
 "strings and max. length of the field value is 500 characters."
 msgstr ""
-"Ak má toto pole hodnotu, Rovas ju použije na zlúčenie hodnôt "
+"Ak má toto pole hodnotu, Rováš ju použije na zlúčenie hodnôt "
 "polí v pracovných výkazoch zaslaných do tohoto projektu. Nahradí "
 "hodnotu daného poľa kombináciou starej hodnoty poľa novou hodnotou "
 "zlúčeného výkazu. Hodnota ktorú treba vpísať vyššie, je "
-"názov lokálnej Rovas funkcie alebo adresa URL, na ktorej je možné "
+"názov lokálnej Rováš funkcie alebo adresa URL, na ktorej je možné "
 "nájsť zlučovaciu funkciu (adresa URL musí začínať https). "
 "Skontaktujte nás, ak chcete túto funkciu využiť."
 
@@ -2013,7 +2013,7 @@ msgstr ""
 #: field:field_rovas_report:work_report:label
 msgctxt "field_rovas_report:work_report:label"
 msgid "Rovas report"
-msgstr "Výkaz v Rovasi"
+msgstr "Výkaz v Rováši"
 
 #: field:field_shareholder_project:project_merit_allocation:label
 msgctxt "field_shareholder_project:project_merit_allocation:label"
@@ -2324,7 +2324,7 @@ msgstr "Fotografia"
 #: field:field_work_evidence:#allowed_values:5
 msgctxt "field_work_evidence:#allowed_values:5"
 msgid "Rovas report"
-msgstr "Výkaz v Rovasi"
+msgstr "Výkaz v Rováši"
 
 #: field:field_work_evidence:work_report:description
 msgctxt "field_work_evidence:work_report:description"

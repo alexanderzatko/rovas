@@ -52020,7 +52020,7 @@ msgid ""
 " connector plugin for JOSM</a>"
 msgstr ""
 "Tento výkaz byl vytvořen z dat zaslaných <a "
-"href=\"https://wiki.openstreetmap.org/wiki/JOSM/Plugins/RovasConnector\"> "
+"href=\"https://wiki.openstreetmap.org/wiki/JOSM/Plugins/RovášConnector\"> "
 "doplňkem Rováš connector pro JOSM </a>"
 
 #: /checkout/195

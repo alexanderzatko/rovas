@@ -52169,7 +52169,7 @@ msgid ""
 " connector plugin for JOSM</a>"
 msgstr ""
 "Tento výkaz bol vytvorený z dát zaslaných <a "
-"href=\"https://wiki.openstreetmap.org/wiki/JOSM/Plugins/RovasConnector\"> "
+"href=\"https://wiki.openstreetmap.org/wiki/JOSM/Plugins/RovášConnector\"> "
 "doplnkom Rováš connector pre JOSM </a>"
 
 #: /checkout/195

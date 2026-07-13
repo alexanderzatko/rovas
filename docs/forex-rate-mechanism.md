@@ -4,18 +4,24 @@ overview: Basket-based CHR/EUR exchange. Liability regime (ch_basket <= 0) uses 
 todos:
   - id: liability-symmetric-bancor
     content: Implement symmetric synthetic-depth Bancor for both directions when ch_basket <= 0 (bootstrap donor flat minR).
-    status: pending
+    status: completed
   - id: minr-ratchet
     content: Worker CHR→EUR updates minR = max(previous_minR, computed_newR).
-    status: pending
+    status: completed
   - id: integrate-forex-call-sites
     content: Route calculate_forex_transaction_params and UI previews through regime-aware pricing and settlement.
-    status: pending
+    status: completed
   - id: forex-reverse-consistency
     content: Add matching inverse/preview helpers for each regime so project pricing and checkout match settlement.
-    status: pending
+    status: completed
   - id: admin-minr
     content: Add initial minR admin setting.
+    status: completed
+  - id: project-pool-forex-audit
+    content: Align or document project sandbox forex (project_forex) vs base-pool liability regime.
+    status: pending
+  - id: neofund-a2-settlement
+    content: Wire discretionary-support approvals to rovas_forex_settle_trade chr_to_eur with worker ratchet.
     status: pending
 isProject: false
 ---
@@ -203,6 +209,18 @@ As EUR accumulates and workers redeem CHR, CHR→EUR rates rise and EUR→CHR ra
 
 - Scale `minR` with cumulative EUR inflow and/or participant counts.
 - Optional minimum `eur_basket` before CHR→EUR.
+- **Project-pool forex audit** — sandbox/project paths may still use legacy `project_forex()` linear pricing; align or document separately (see NeoFund [`rovas-app-agent-brief.md`](../../../Business/NeoFund_NP/rovas-app-agent-brief.md) A5).
+
+## NeoFund Path 1 integration
+
+Under NeoFund Path 1 ([`HANDOFF.md`](../../../Business/NeoFund_NP/HANDOFF.md) §3.5):
+
+- Users do **not** execute CHR→EUR at the displayed rate. The forex UI is replaced by a **discretionary-support application** flow; approved payouts settle via `rovas_forex_settle_trade('chr_to_eur', …)` with worker `minR` ratchet.
+- The computed **`effective_rate`** may be **published as an indicative support reference** (EUR per reported hour) to help users decide whether to report work — with explicit disclaimer that the governing body decides each payment per case.
+- **A6** (Chron→Merit election) debits only the user's CHR balance; it does not update pool baskets.
+- The **správna rada** may manually adjust `minR` and basket balances via the forex admin UI.
+
+Glossary cross-reference: NeoFund [`glossary.md`](../../../Business/NeoFund_NP/glossary.md) — **Indicative support reference rate**, **minR**, **Pool rate**.
 
 ## Implementation touchpoints
 
