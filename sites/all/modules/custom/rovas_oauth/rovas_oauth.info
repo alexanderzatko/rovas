@@ -1,0 +1,11 @@
+name = Rovas OAuth
+description = Thin wrapper around oauth2_server for Civic: HybridAuth-aware authorize UX, default Civic client bootstrap, Bearer → uid helpers.
+core = 7.x
+package = Rovas
+
+dependencies[] = oauth2_server
+dependencies[] = hybridauth
+dependencies[] = entity
+dependencies[] = xautoload
+
+configure = admin/config/services/rovas-oauth

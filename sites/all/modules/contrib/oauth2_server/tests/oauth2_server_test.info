@@ -1,0 +1,6 @@
+name = OAuth2 Server test module
+description = Support module for OAuth2 Server testing.
+package = Testing
+version = VERSION
+core = 7.x
+hidden = TRUE

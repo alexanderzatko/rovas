@@ -1,0 +1,138 @@
+diff --git a/includes/oauth2_server.authorization_code.inc b/includes/oauth2_server.authorization_code.inc
+index 9136639..4449bf3 100644
+--- a/includes/oauth2_server.authorization_code.inc
++++ b/includes/oauth2_server.authorization_code.inc
+@@ -47,6 +47,20 @@ class OAuth2ServerAuthorizationCode extends Entity {
+    */
+   public $id_token;
+ 
++  /**
++   * The code_challenge, if PKCE was used.
++   *
++   * @var string|NULL
++   */
++  public $challenge;
++
++  /**
++   * The code_challenge_method, if PKCE was used.
++   *
++   * @var string|NULL
++   */
++  public $challenge_method;
++
+   public function __construct($values = array()) {
+     parent::__construct($values, 'oauth2_server_authorization_code');
+   }
+diff --git a/includes/oauth2_server.server.inc b/includes/oauth2_server.server.inc
+index b705b1c..2c2ff27 100644
+--- a/includes/oauth2_server.server.inc
++++ b/includes/oauth2_server.server.inc
+@@ -28,6 +28,7 @@ class OAuth2Server extends Entity {
+     'default_scope' => '',
+     'enforce_state' => TRUE,
+     'allow_implicit' => FALSE,
++    'enforce_pkce' => FALSE,
+     'use_openid_connect' => FALSE,
+     'use_crypto_tokens' => FALSE,
+     'store_encrypted_token_string' => FALSE,
+diff --git a/includes/oauth2_server.server_admin.inc b/includes/oauth2_server.server_admin.inc
+index 61cac4c..30c8d4c 100644
+--- a/includes/oauth2_server.server_admin.inc
++++ b/includes/oauth2_server.server_admin.inc
+@@ -130,6 +130,12 @@ function oauth2_server_form($form, &$form_state, $server, $op = 'edit') {
+     '#description' => t('Allows clients to receive an access token without the need for an authorization request token.'),
+     '#default_value' => !empty($server->settings['allow_implicit']),
+   );
++  $form['settings']['enforce_pkce'] = array(
++    '#type' => 'checkbox',
++    '#title' => t('Enforce PKCE'),
++    '#description' => t('Forces clients to use PKCE when performing authorization requests.'),
++    '#default_value' => !empty($server->settings['enforce_pkce']),
++  );
+   $form['settings']['use_openid_connect'] = array(
+     '#type' => 'checkbox',
+     '#title' => t('Use OpenID Connect'),
+diff --git a/lib/Drupal/oauth2_server/Storage.php b/lib/Drupal/oauth2_server/Storage.php
+index 598a084..d48c4b1 100644
+--- a/lib/Drupal/oauth2_server/Storage.php
++++ b/lib/Drupal/oauth2_server/Storage.php
+@@ -178,6 +178,8 @@ class Storage implements AuthorizationCodeInterface,
+         'expires' => (int) $code_wrapper->expires->value(),
+         'scope' => implode(' ', $scopes),
+         'id_token' => $code_wrapper->id_token->value(),
++        'code_challenge' => $code->challenge,
++        'code_challenge_method' => $code->challenge_method,
+       );
+       if (module_exists('uuid')) {
+         $code['user_uuid'] = $code_wrapper->user->uuid->value();
+@@ -204,7 +206,7 @@ class Storage implements AuthorizationCodeInterface,
+     return $code;
+   }
+ 
+-  public function setAuthorizationCode($code, $client_key, $uid, $redirect_uri, $expires, $scope = null, $id_token = null) {
++  public function setAuthorizationCode($code, $client_key, $uid, $redirect_uri, $expires, $scope = null, $id_token = null, $code_challenge = null, $code_challenge_method = null) {
+     $client = oauth2_server_client_load($client_key);
+     if (!$client) {
+       throw new \InvalidArgumentException("The supplied client couldn't be loaded.");
+@@ -223,6 +225,8 @@ class Storage implements AuthorizationCodeInterface,
+       $authorization_code->uid = $uid;
+       $authorization_code->code = $code;
+       $authorization_code->id_token = $id_token;
++      $authorization_code->challenge = $code_challenge;
++      $authorization_code->challenge_method = $code_challenge_method;
+     }
+ 
+     $authorization_code->redirect_uri = $redirect_uri;
+diff --git a/oauth2_server.install b/oauth2_server.install
+index 4863af3..5965128 100644
+--- a/oauth2_server.install
++++ b/oauth2_server.install
+@@ -248,6 +248,18 @@ function oauth2_server_schema() {
+         'description' => 'The id token, if OpenID Connect was used.',
+         'type' => 'text',
+       ),
++      'challenge' => array(
++        'description' => 'The PCKE code_challenge parameter.',
++        'type' => 'varchar',
++        'length' => 128,
++        'not null' => FALSE,
++      ),
++      'challenge_method' => array(
++        'description' => 'The PCKE code_challenge_method parameter, if used, e.g. S256 or plain.',
++        'type' => 'varchar',
++        'length' => 255,
++        'not null' => FALSE,
++      ),
+     ),
+     'primary key' => array('code_id'),
+     'unique keys' => array(
+@@ -499,3 +511,29 @@ function oauth2_server_update_7107() {
+   );
+   db_add_field('oauth2_server_token', 'created', $spec);
+ }
++
++/**
++ * Adds the {oauth2_server_authorization_code} challenge and challenge_method fields.
++ */
++function oauth2_server_update_7108() {
++  $specs = array(
++    'challenge' => array(
++      'description' => 'The PCKE code_challenge parameter.',
++      'type' => 'varchar',
++      'length' => 128,
++      'not null' => FALSE,
++    ),
++    'challenge_method' => array(
++      'description' => 'The PCKE code_challenge_method parameter, if used, e.g. S256 or plain.',
++      'type' => 'varchar',
++      'length' => 255,
++      'not null' => FALSE,
++    ),
++  );
++  $table = 'oauth2_server_authorization_code';
++  foreach ($specs as $column => $spec) {
++    if (!db_field_exists($table, $column)) {
++      db_add_field($table, $column, $spec);
++    }
++  }
++}

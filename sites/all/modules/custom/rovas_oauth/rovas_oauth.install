@@ -1,0 +1,38 @@
+<?php
+
+/**
+ * @file
+ * Install / update hooks for Rovas OAuth.
+ */
+
+/**
+ * Implements hook_install().
+ */
+function rovas_oauth_install() {
+  // Defer entity create until oauth2_server schema is present; bootstrap is
+  // also available from admin/config/services/rovas-oauth.
+  if (module_exists('oauth2_server') && function_exists('rovas_oauth_ensure_client')) {
+    try {
+      rovas_oauth_ensure_server();
+      rovas_oauth_ensure_client();
+    }
+    catch (Exception $e) {
+      watchdog_exception('rovas_oauth', $e);
+    }
+  }
+}
+
+/**
+ * Implements hook_enable().
+ */
+function rovas_oauth_enable() {
+  if (function_exists('rovas_oauth_ensure_client')) {
+    try {
+      rovas_oauth_ensure_server();
+      rovas_oauth_ensure_client();
+    }
+    catch (Exception $e) {
+      watchdog_exception('rovas_oauth', $e);
+    }
+  }
+}

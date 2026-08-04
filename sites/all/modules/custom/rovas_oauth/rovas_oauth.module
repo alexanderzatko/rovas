@@ -1,0 +1,232 @@
+<?php
+
+/**
+ * @file
+ * Civic / mobile OAuth glue on top of oauth2_server + HybridAuth.
+ *
+ * Responsibilities (see civic docs/plan.md §8a):
+ * - Ensure a default OAuth2 server ("civic") exists with PKCE enforced.
+ * - Ensure the public "civic" mobile client exists (no client secret).
+ * - Improve the login page when arriving from /oauth2/authorize.
+ * - Helpers to resolve a Bearer access token to a Drupal uid.
+ *
+ * oauth2_server already provides Services authentication; enable it on the
+ * Rovas Services endpoint once the Civic server is configured.
+ */
+
+/**
+ * Machine name of the OAuth2 server entity used by Civic.
+ */
+define('ROVAS_OAUTH_SERVER', 'civic');
+
+/**
+ * Client key (OAuth client_id) for the Civic Expo app.
+ */
+define('ROVAS_OAUTH_CLIENT_KEY', 'civic');
+
+/**
+ * Production redirect URI for Expo (custom scheme).
+ */
+define('ROVAS_OAUTH_REDIRECT_PROD', 'civic://oauth/callback');
+
+/**
+ * Implements hook_permission().
+ */
+function rovas_oauth_permission() {
+  return array(
+    'administer rovas oauth' => array(
+      'title' => t('Administer Rovas OAuth (Civic)'),
+      'description' => t('Bootstrap and inspect the Civic OAuth2 server and client.'),
+      'restrict access' => TRUE,
+    ),
+  );
+}
+
+/**
+ * Implements hook_menu().
+ */
+function rovas_oauth_menu() {
+  $items = array();
+  $items['admin/config/services/rovas-oauth'] = array(
+    'title' => 'Rovas OAuth (Civic)',
+    'description' => 'Bootstrap the Civic OAuth2 server and mobile client.',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('rovas_oauth_admin_form'),
+    'access arguments' => array('administer rovas oauth'),
+    'file' => 'rovas_oauth.admin.inc',
+  );
+  return $items;
+}
+
+/**
+ * Implements hook_form_FORM_ID_alter() for user_login.
+ *
+ * When the user lands here from /oauth2/authorize (destination query), show a
+ * short Civic-oriented intro. HybridAuth already injects its widget onto the
+ * standard login forms.
+ */
+function rovas_oauth_form_user_login_alter(&$form, &$form_state) {
+  rovas_oauth_annotate_login_form($form);
+}
+
+/**
+ * Implements hook_form_FORM_ID_alter() for user_login_block.
+ */
+function rovas_oauth_form_user_login_block_alter(&$form, &$form_state) {
+  rovas_oauth_annotate_login_form($form);
+}
+
+/**
+ * Add Civic context to the login form when authorizing an OAuth client.
+ */
+function rovas_oauth_annotate_login_form(&$form) {
+  $destination = isset($_GET['destination']) ? $_GET['destination'] : '';
+  $from_authorize = (strpos($destination, 'oauth2/authorize') === 0)
+    || !empty($_SESSION['oauth2_server_authorize']);
+  if (!$from_authorize) {
+    return;
+  }
+
+  $client_label = 'Civic';
+  if (!empty($_SESSION['oauth2_server_authorize']['client_id'])) {
+    $client = oauth2_server_client_load($_SESSION['oauth2_server_authorize']['client_id']);
+    if ($client && !empty($client->label)) {
+      $client_label = $client->label;
+    }
+  }
+
+  $form['rovas_oauth_intro'] = array(
+    '#type' => 'item',
+    '#markup' => '<p class="rovas-oauth-intro">' . t(
+      'Sign in to authorize <strong>@app</strong>. Use Google, Facebook, or your Rovas account. Civic does not store a separate password.',
+      array('@app' => $client_label)
+    ) . '</p>',
+    '#weight' => -100,
+  );
+}
+
+/**
+ * Ensure the Civic OAuth2 server entity exists (idempotent).
+ *
+ * @return \OAuth2Server
+ *   The server entity.
+ */
+function rovas_oauth_ensure_server() {
+  $server = oauth2_server_load(ROVAS_OAUTH_SERVER);
+  if ($server) {
+    // Keep PKCE enforced if an older export lacked it.
+    if (empty($server->settings['enforce_pkce'])) {
+      $server->settings['enforce_pkce'] = TRUE;
+      $server->save();
+    }
+    return $server;
+  }
+
+  $server = entity_create('oauth2_server', array(
+    'name' => ROVAS_OAUTH_SERVER,
+    'label' => 'Civic',
+    'status' => 1,
+    'settings' => array(
+      'default_scope' => 'user_profile',
+      'enforce_state' => TRUE,
+      'allow_implicit' => FALSE,
+      'enforce_pkce' => TRUE,
+      'use_openid_connect' => FALSE,
+      'use_crypto_tokens' => FALSE,
+      'require_exact_redirect_uri' => TRUE,
+      'grant_types' => array(
+        'authorization_code' => 'authorization_code',
+        'refresh_token' => 'refresh_token',
+      ),
+      'access_lifetime' => 3600,
+      'refresh_token_lifetime' => 1209600,
+    ),
+  ));
+  $server->save();
+
+  // Default scope used by the Civic mobile client.
+  if (!oauth2_server_scope_load(ROVAS_OAUTH_SERVER, 'user_profile')) {
+    $scope = entity_create('oauth2_server_scope', array(
+      'server' => ROVAS_OAUTH_SERVER,
+      'name' => 'user_profile',
+      'description' => 'Read your Rovas username and grant Merits on your behalf.',
+    ));
+    $scope->save();
+  }
+
+  return $server;
+}
+
+/**
+ * Ensure the Civic public OAuth client exists (idempotent).
+ *
+ * Redirect URIs are newline-separated. Expo Go / dev client URIs can be added
+ * later via the admin UI without code changes.
+ *
+ * @param string|null $extra_redirect
+ *   Optional additional redirect URI (e.g. Expo auth proxy).
+ *
+ * @return \OAuth2ServerClient
+ *   The client entity.
+ */
+function rovas_oauth_ensure_client($extra_redirect = NULL) {
+  rovas_oauth_ensure_server();
+
+  $redirects = array(ROVAS_OAUTH_REDIRECT_PROD);
+  if ($extra_redirect) {
+    $redirects[] = $extra_redirect;
+  }
+
+  $client = oauth2_server_client_load(ROVAS_OAUTH_CLIENT_KEY);
+  if ($client) {
+    // Merge redirect URIs if missing.
+    $existing = preg_split('/\s+/', trim($client->redirect_uri));
+    $merged = array_unique(array_filter(array_merge($existing, $redirects)));
+    $new_uri = implode("\n", $merged);
+    if ($new_uri !== $client->redirect_uri || !empty($client->client_secret)) {
+      $client->redirect_uri = $new_uri;
+      // Public native client — no secret.
+      $client->client_secret = '';
+      $client->save();
+    }
+    return $client;
+  }
+
+  $client = entity_create('oauth2_server_client', array(
+    'server' => ROVAS_OAUTH_SERVER,
+    'label' => 'Civic mobile',
+    'client_key' => ROVAS_OAUTH_CLIENT_KEY,
+    'client_secret' => '',
+    'redirect_uri' => implode("\n", $redirects),
+    'automatic_authorization' => FALSE,
+    'settings' => array(
+      'override_grant_types' => FALSE,
+      'grant_types' => array(
+        'authorization_code' => 'authorization_code',
+        'refresh_token' => 'refresh_token',
+      ),
+    ),
+  ));
+  $client->save();
+  return $client;
+}
+
+/**
+ * Resolve the current request's OAuth2 Bearer token to a Drupal user id.
+ *
+ * Relies on oauth2_server_check_access(), which reads Authorization from the
+ * incoming request (Authorization: Bearer …).
+ *
+ * @param string|null $scope
+ *   Optional space-separated required scopes.
+ *
+ * @return int|false
+ *   Drupal uid, or FALSE if invalid / expired / missing.
+ */
+function rovas_oauth_uid_from_bearer($scope = NULL) {
+  $result = oauth2_server_check_access(ROVAS_OAUTH_SERVER, $scope);
+  if (is_array($result) && !empty($result['user_id'])) {
+    return (int) $result['user_id'];
+  }
+  return FALSE;
+}
