@@ -12,6 +12,8 @@
  * Surfaces:
  *   - Services resource `rovas_merit_distribution` (operation `index`) on
  *     the existing `rovas_endpoint`, returning JSON `{status, svg, meta}`.
+ *   - Services resource `merit_distribution` (JSON buckets only; Bearer
+ *     optional for user_* fields) for Civic home.
  *   - Admin preview at admin/reports/merit-distribution for sanity checks.
  *   - Public render helper rovas_merit_distribution_render() for other modules.
  */
@@ -102,6 +104,16 @@ function rovas_merit_distribution_services_resources() {
               'optional' => TRUE,
             ),
           ),
+        ),
+      ),
+    ),
+    'merit_distribution' => array(
+      'operations' => array(
+        'index' => array(
+          'help' => 'JSON Merit histogram buckets (no SVG). Optional Bearer fills user_bucket_index / user_merits / username.',
+          'callback' => 'rovas_merit_distribution_json_index',
+          'access callback' => 'services_access_menu',
+          'args' => array(),
         ),
       ),
     ),
@@ -726,6 +738,96 @@ function rovas_merit_distribution_endpoint_index($uid = NULL, $width = NULL, $he
     'svg' => $rendered['svg'],
     'meta' => $rendered['meta'],
   );
+}
+
+/**
+ * Services callback: GET /rovas/merit_distribution (JSON buckets only).
+ *
+ * Public when anonymous. With Bearer (or any authenticated $user), includes
+ * user_bucket_index, user_merits, username.
+ *
+ * @return array
+ */
+function rovas_merit_distribution_json_index() {
+  global $user;
+
+  try {
+    $merits_rows = _rovas_merit_distribution_collect_merits();
+    $bins = _rovas_merit_distribution_compute_bins($merits_rows, ROVAS_MERIT_DISTRIBUTION_BIN_COUNT);
+  }
+  catch (Exception $e) {
+    watchdog(
+      'rovas_merit_distribution',
+      'JSON endpoint failed: @msg',
+      array('@msg' => $e->getMessage()),
+      WATCHDOG_ERROR
+    );
+    return services_error(t('Unable to compute merit distribution'), 500);
+  }
+
+  $buckets = array();
+  $counts = $bins['counts'];
+  $edges = $bins['edges'];
+  $n = count($counts);
+  for ($i = 0; $i < $n; $i++) {
+    $buckets[] = array(
+      'label' => _rovas_merit_distribution_bucket_label($edges[$i], $edges[$i + 1]),
+      'count' => (int) $counts[$i],
+    );
+  }
+
+  $out = array(
+    'buckets' => $buckets,
+    'total_users' => (int) $bins['total_users'],
+    'bin_edges_log10' => array_map('floatval', $edges),
+  );
+
+  $uid = !empty($user->uid) ? (int) $user->uid : FALSE;
+  if (!$uid && function_exists('rovas_oauth_uid_from_bearer')) {
+    $uid = rovas_oauth_uid_from_bearer();
+  }
+
+  if ($uid) {
+    $user_merits = _rovas_merit_distribution_user_merits($uid);
+    $account = user_load($uid);
+    $out['user_bucket_index'] = _rovas_merit_distribution_user_bin($bins, $user_merits);
+    $out['user_merits'] = $user_merits !== NULL ? (float) $user_merits : NULL;
+    $out['username'] = ($account && !empty($account->name)) ? $account->name : NULL;
+  }
+
+  return $out;
+}
+
+/**
+ * Human-readable bucket label from two log10 edges (e.g. "1–10").
+ */
+function _rovas_merit_distribution_bucket_label($lo_log, $hi_log) {
+  return _rovas_merit_distribution_format_merit_edge($lo_log)
+    . "\xE2\x80\x93"
+    . _rovas_merit_distribution_format_merit_edge($hi_log);
+}
+
+/**
+ * Format a log10 edge as a compact merit number for labels.
+ */
+function _rovas_merit_distribution_format_merit_edge($log) {
+  $log = (float) $log;
+  $v = pow(10, $log);
+  if ($v >= 100) {
+    return (string) (int) round($v);
+  }
+  if ($v >= 1) {
+    $rounded = round($v, 1);
+    if (abs($rounded - round($rounded)) < 0.05) {
+      return (string) (int) round($rounded);
+    }
+    return rtrim(rtrim(number_format($rounded, 1, '.', ''), '0'), '.');
+  }
+  // Sub-1 edges: prefer 10^n when the log is (near) an integer.
+  if (abs($log - round($log)) < 1e-6) {
+    return '10^' . (int) round($log);
+  }
+  return rtrim(rtrim(sprintf('%.6f', $v), '0'), '.');
 }
 
 /* ===========================================================================

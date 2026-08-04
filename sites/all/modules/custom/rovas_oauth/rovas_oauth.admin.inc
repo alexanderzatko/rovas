@@ -62,18 +62,41 @@ function rovas_oauth_admin_form($form, &$form_state) {
   $form['actions']['bootstrap'] = array(
     '#type' => 'submit',
     '#value' => t('Bootstrap Civic OAuth server + client'),
+    '#submit' => array('rovas_oauth_admin_form_submit'),
+  );
+  $form['actions']['resources'] = array(
+    '#type' => 'submit',
+    '#value' => t('Enable Civic home API resources'),
+    '#submit' => array('rovas_oauth_admin_form_resources_submit'),
   );
 
   return $form;
 }
 
 /**
- * Submit handler for rovas_oauth_admin_form.
+ * Submit handler for rovas_oauth_admin_form (OAuth bootstrap).
  */
 function rovas_oauth_admin_form_submit($form, &$form_state) {
   $extra = trim($form_state['values']['expo_redirect']);
   variable_set('rovas_oauth_expo_redirect', $extra);
   rovas_oauth_ensure_server();
   rovas_oauth_ensure_client($extra !== '' ? $extra : NULL);
-  drupal_set_message(t('Civic OAuth server and client are ready. Enable OAuth2 authentication on the Services endpoint when wiring Bearer access for rules.'));
+  drupal_set_message(t('Civic OAuth server and client are ready.'));
+}
+
+/**
+ * Submit handler: wire OAuth2 + enable /me, aggregate, merit_distribution.
+ */
+function rovas_oauth_admin_form_resources_submit($form, &$form_state) {
+  if (rovas_oauth_ensure_civic_resources()) {
+    drupal_set_message(t('Civic home API resources enabled on @endpoint (OAuth2 server=@server).', array(
+      '@endpoint' => ROVAS_OAUTH_SERVICES_ENDPOINT,
+      '@server' => ROVAS_OAUTH_SERVER,
+    )));
+  }
+  else {
+    drupal_set_message(t('Could not update Services endpoint @endpoint.', array(
+      '@endpoint' => ROVAS_OAUTH_SERVICES_ENDPOINT,
+    )), 'error');
+  }
 }

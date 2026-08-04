@@ -7,5 +7,6 @@ dependencies[] = oauth2_server
 dependencies[] = hybridauth
 dependencies[] = entity
 dependencies[] = xautoload
+dependencies[] = services
 
 configure = admin/config/services/rovas-oauth
