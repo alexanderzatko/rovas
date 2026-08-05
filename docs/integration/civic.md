@@ -7,9 +7,9 @@ live at `~/Documents/homeProjects/civic/docs/rovas-integration.md` (Expo +
 Civic API); keep both in sync when contracts change.
 
 **Agents working in this repo:** implement / maintain work under
-[Next work: solo VAT claim](#next-work-solo-vat-claim) and the Path-1 donor
-Merit notes therein. Do not rely on reading the Civic tree unless you need
-Expo/API details.
+[Next work: solo VAT claim](#next-work-solo-vat-claim) and
+[Next work: Civic claim reads + SoT](#next-work-civic-claim-reads--sot).
+Do not rely on reading the Civic tree unless you need Expo/API details.
 
 **Dev target (until told otherwise):** all Civic integration work targets
 **`/var/www/rovdev`** (`https://dev.rovas.app`). Do **not** change prod
@@ -33,6 +33,7 @@ not run deploys on their own.
 | Home Merits reads | `/rovas/me`, `/rovas/contributions/aggregate`, `/rovas/merit_distribution` | Implemented |
 | `rovas_civic` | `sites/all/modules/custom/rovas_civic` | National rates, donor Merit issuance, State Treasury, VAT claim |
 | Claim rule + split claims | `POST /rovas/rules/rules_proxy_claim_vat_receipt` | Implemented in `rovas_civic` (enable via updb / admin) |
+| Claim reads + summary | `GET /rovas/civic/claims`, `…/summary` | Implemented in `rovas_civic` (`rovas_civic_update_7002`) |
 
 ## OAuth endpoints (live on dev)
 
@@ -160,8 +161,8 @@ Expect JSON with `access_token` / `refresh_token`. A missing or wrong
 
 Civic’s home mockup needs live Merits data. The mobile app already has a Rovas
 **Bearer** access token. Civic API can introspect it to a Drupal **uid**.
-Home-read endpoints below are **implemented**; the active next task is
-[Next work: solo VAT claim](#next-work-solo-vat-claim).
+Home-read endpoints below are **implemented**; claim reads are under
+[Next work: Civic claim reads + SoT](#next-work-civic-claim-reads--sot).
 
 ### Why existing endpoints are not enough
 
@@ -377,9 +378,151 @@ curl -sS https://dev.rovas.app/rovas/merit_distribution \
 - Charity pass-through using national rates (A11)
 - Ensure multi-beneficiary shares are exercised end-to-end from Civic
 
+## Next work: Civic claim reads + SoT
+
+**Implemented in `rovas_civic`** (enable on rovdev: `drush74 updb -y`, or admin
+**Enable Civic VAT claim + claim-read APIs**). Civic is dropping its local
+SQLite claim registry (`receipt_claims` / `receipt_claim_shares`). Rovas
+`{civic_claims}` / `{civic_claim_shares}` is the **sole** claim source of
+truth (`receipt_uid` UNIQUE, VAT, merchant, shares, Merits). Civic keeps
+only `claim_attempts` for fraud/ops (GPS, rate limits, strikes) — that is
+an audit log, not a second claim registry.
+
+**Why Rovas must own this:** Merits are granted here; without
+`receipt_uid` on Rovas, wiping Civic (or bypassing it) could double-pay.
+Dev reset of “already scanned QRs” is manual (truncate claim tables in
+phpMyAdmin + `drush74 cc all`); Merit balances are **not** reversed.
+
+Civic will proxy these reads into `GET /receipts` and
+`GET /me/contributions/summary` once they exist.
+
+### Decisions (locked)
+
+- Summary is standalone: `GET /rovas/civic/claims/summary` (not fields on `/me`)
+- Summary metrics are **received**-based (shares credited to the caller)
+- No built-in clear API/drush — human clears tables when re-testing
+
+### Checklist
+
+1. [x] `GET /rovas/civic/claims?view=submitted` — Bearer; claims where caller
+   is the scanner
+2. [x] `GET /rovas/civic/claims?view=received` — Bearer; share rows where
+   caller is a beneficiary
+3. [x] Pagination: `limit` / `offset` (default 50, max 100)
+4. [x] `GET /rovas/civic/claims/summary` — `receipt_count`, `total_vat_eur`,
+   `taxes_me` (all **received**)
+5. [x] Services + OAuth2 (`civic` / `user_profile`); reject anonymous
+6. [x] Enable / register resources (`rovas_civic_update_7002` / admin)
+7. [x] Dev clear: out of band (phpMyAdmin) — Merits not reversed
+8. [ ] Smoke-test curls below after deploy
+
+### Endpoints
+
+| Method | URL | Auth |
+|--------|-----|------|
+| `GET` | `https://dev.rovas.app/rovas/civic/claims?view=submitted` | Bearer required |
+| `GET` | `https://dev.rovas.app/rovas/civic/claims?view=received` | Bearer required |
+| `GET` | `https://dev.rovas.app/rovas/civic/claims/summary` | Bearer required |
+
+### Response shapes
+
+**`view=submitted`** — successful claims the caller scanned (not every QR
+attempt; failures stay in Civic `claim_attempts`):
+
+```json
+{
+  "items": [
+    {
+      "receipt_uid": "O-0123456789abcdef0123456789abcdef",
+      "vat_eur": 4.82,
+      "total_merits_awarded": 6.43,
+      "merchant_name": "Tesco Bratislava",
+      "purchase_at": "2026-06-11T14:22:00+02:00",
+      "created_at": "2026-06-11T15:01:00+02:00",
+      "shares": [
+        {
+          "beneficiary_rovas_uid": "42",
+          "share_pct": 100,
+          "merits_awarded": 6.43
+        }
+      ]
+    }
+  ],
+  "total": 1,
+  "limit": 50,
+  "offset": 0,
+  "view": "submitted"
+}
+```
+
+**`view=received`** — shares credited to the caller (may include claims
+scanned by someone else):
+
+```json
+{
+  "items": [
+    {
+      "receipt_uid": "O-…",
+      "merchant_name": "Tesco Bratislava",
+      "purchase_at": "2026-06-11T14:22:00+02:00",
+      "scanner_rovas_uid": "7",
+      "share_pct": 50,
+      "merits_awarded": 3.21,
+      "created_at": "2026-06-11T15:01:00+02:00"
+    }
+  ],
+  "total": 1,
+  "limit": 50,
+  "offset": 0,
+  "view": "received"
+}
+```
+
+**`GET …/summary`** (received-based — matches Civic home “taxes”):
+
+```json
+{
+  "receipt_count": 12,
+  "total_vat_eur": 48.2,
+  "taxes_me": 64.3
+}
+```
+
+| Field | Meaning |
+|-------|---------|
+| `receipt_count` | Distinct claims where caller is a beneficiary |
+| `total_vat_eur` | Sum of caller’s `vat_slice` |
+| `taxes_me` | Sum of caller’s `merits_awarded` from VAT shares |
+
+### Out of scope for this Rovas slice
+
+- Civic SQLite / `claim_attempts` / GPS fraud (Civic repo)
+- Built-in truncate / Merit reversal for re-claim testing
+- Prod `/var/www/rovas` until explicitly requested
+- `GET /rovas/users/search` (still under Later)
+
+### Smoke test (after deploy + enable)
+
+```bash
+# After deploy: drush74 updb -y && drush74 cc all -y
+# or admin: Enable Civic VAT claim + claim-read APIs
+
+curl -sS "https://dev.rovas.app/rovas/civic/claims?view=submitted" \
+  -H "Authorization: Bearer $ACCESS_TOKEN" \
+  -H "Accept: application/json"
+
+curl -sS "https://dev.rovas.app/rovas/civic/claims?view=received" \
+  -H "Authorization: Bearer $ACCESS_TOKEN" \
+  -H "Accept: application/json"
+
+curl -sS "https://dev.rovas.app/rovas/civic/claims/summary" \
+  -H "Authorization: Bearer $ACCESS_TOKEN" \
+  -H "Accept: application/json"
+```
+
 ## Related Civic docs
 
-- Plan: `~/Documents/homeProjects/civic/docs/plan.md` (§7 split claims, §8b claim rule, §15 phases)
+- Plan: `~/Documents/homeProjects/civic/docs/plan.md` (§6 claim SoT, §7 split claims, §8b claim rule, §15 phases)
 - NeoFund: `~/Documents/Business/NeoFund_NP/` (State Treasury, Path-1 donor Merit, A12)
 - Civic API/Expo: `~/Documents/homeProjects/civic/docs/rovas-integration.md`
 - Mockup (home UX): `~/Documents/homeProjects/civic/mocs/civic-mockup.canvas.tsx`

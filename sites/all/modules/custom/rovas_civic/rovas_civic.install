@@ -305,3 +305,13 @@ function rovas_civic_update_7001() {
   }
   return t('Civic VAT claim resources and State Treasury bootstrap applied.');
 }
+
+/**
+ * Enable Civic claim-read Services resources (list + summary).
+ */
+function rovas_civic_update_7002() {
+  if (function_exists('rovas_civic_ensure_services_resources')) {
+    rovas_civic_ensure_services_resources();
+  }
+  return t('Civic claim-read APIs (GET /rovas/civic/claims, /summary) enabled on rovas_endpoint.');
+}

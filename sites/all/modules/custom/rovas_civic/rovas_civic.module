@@ -11,6 +11,8 @@ define('ROVAS_CIVIC_STATE_TREASURY_VAR', 'rovas_civic_state_treasury_nid');
 define('ROVAS_CIVIC_DEFAULT_COUNTRY', 'SK');
 define('ROVAS_CIVIC_ME_PER_HOUR', 10.0);
 define('ROVAS_CIVIC_SHARE_PCT_TOLERANCE', 0.01);
+define('ROVAS_CIVIC_CLAIMS_DEFAULT_LIMIT', 50);
+define('ROVAS_CIVIC_CLAIMS_MAX_LIMIT', 100);
 
 /**
  * Implements hook_permission().
@@ -59,10 +61,17 @@ function rovas_civic_menu() {
 /**
  * Implements hook_services_resources().
  *
- * Merges into the Services `rules` resource so the URL matches Civic:
- * POST /rovas/rules/rules_proxy_claim_vat_receipt
+ * - POST /rovas/rules/rules_proxy_claim_vat_receipt (VAT claim)
+ * - GET  /rovas/civic/claims?view=… (alias civic_claims → civic/claims)
+ * - GET  /rovas/civic/claims/summary
  */
 function rovas_civic_services_resources() {
+  $bearer_auth = array(
+    'access callback' => 'rovas_civic_claim_access',
+    'access arguments' => array(),
+    'access arguments append' => FALSE,
+  );
+
   return array(
     'rules' => array(
       'actions' => array(
@@ -133,6 +142,59 @@ function rovas_civic_services_resources() {
         ),
       ),
     ),
+    'civic_claims' => array(
+      'operations' => array(
+        'index' => array(
+          'help' => 'List Civic VAT claims. ?view=submitted|received; ?limit&offset. Bearer required.',
+          'callback' => 'rovas_civic_services_claims_index',
+          'access callback' => $bearer_auth['access callback'],
+          'access arguments' => $bearer_auth['access arguments'],
+          'access arguments append' => $bearer_auth['access arguments append'],
+          'args' => array(
+            array(
+              'name' => 'view',
+              'type' => 'string',
+              'description' => 'submitted (scanner) or received (beneficiary shares).',
+              'source' => array('param' => 'view'),
+              'optional' => TRUE,
+              'default value' => 'submitted',
+            ),
+            array(
+              'name' => 'limit',
+              'type' => 'int',
+              'description' => 'Page size (default 50, max 100).',
+              'source' => array('param' => 'limit'),
+              'optional' => TRUE,
+              'default value' => ROVAS_CIVIC_CLAIMS_DEFAULT_LIMIT,
+            ),
+            array(
+              'name' => 'offset',
+              'type' => 'int',
+              'description' => 'Row offset for pagination.',
+              'source' => array('param' => 'offset'),
+              'optional' => TRUE,
+              'default value' => 0,
+            ),
+          ),
+        ),
+        'retrieve' => array(
+          'help' => 'Civic claims summary for the Bearer user. Path id must be "summary". Received-based totals.',
+          'callback' => 'rovas_civic_services_claims_retrieve',
+          'access callback' => $bearer_auth['access callback'],
+          'access arguments' => $bearer_auth['access arguments'],
+          'access arguments append' => $bearer_auth['access arguments append'],
+          'args' => array(
+            array(
+              'name' => 'id',
+              'type' => 'string',
+              'description' => 'Use "summary".',
+              'source' => array('path' => 0),
+              'optional' => FALSE,
+            ),
+          ),
+        ),
+      ),
+    ),
   );
 }
 
@@ -148,6 +210,55 @@ function rovas_civic_claim_access() {
     return (bool) rovas_oauth_uid_from_bearer('user_profile');
   }
   return FALSE;
+}
+
+/**
+ * Resolve Drupal uid for Civic Services callbacks.
+ *
+ * @return int
+ *   uid or 0.
+ */
+function rovas_civic_request_uid() {
+  global $user;
+  if (!empty($user->uid)) {
+    return (int) $user->uid;
+  }
+  if (function_exists('rovas_oauth_uid_from_bearer')) {
+    return (int) rovas_oauth_uid_from_bearer('user_profile');
+  }
+  return 0;
+}
+
+/**
+ * Normalize limit/offset query params.
+ *
+ * @return array
+ *   keys: limit, offset.
+ */
+function rovas_civic_normalize_pager($limit, $offset) {
+  $limit = (int) $limit;
+  $offset = (int) $offset;
+  if ($limit < 1) {
+    $limit = ROVAS_CIVIC_CLAIMS_DEFAULT_LIMIT;
+  }
+  if ($limit > ROVAS_CIVIC_CLAIMS_MAX_LIMIT) {
+    $limit = ROVAS_CIVIC_CLAIMS_MAX_LIMIT;
+  }
+  if ($offset < 0) {
+    $offset = 0;
+  }
+  return array('limit' => $limit, 'offset' => $offset);
+}
+
+/**
+ * Format claim created unix timestamp as ISO-8601.
+ */
+function rovas_civic_format_created($timestamp) {
+  $timestamp = (int) $timestamp;
+  if ($timestamp < 1) {
+    return NULL;
+  }
+  return format_date($timestamp, 'custom', 'c');
 }
 
 /* ===========================================================================
@@ -544,7 +655,7 @@ function rovas_civic_ensure_state_treasury() {
 }
 
 /**
- * Enable VAT claim action on rovas_endpoint (Bearer, no API keys).
+ * Enable VAT claim action + claim-read resources on rovas_endpoint (Bearer, no API keys).
  *
  * @return bool
  */
@@ -569,7 +680,7 @@ function rovas_civic_ensure_services_resources() {
     $changed = TRUE;
   }
 
-  $action = array(
+  $bearer_op = array(
     'enabled' => 1,
     'settings' => array(
       'services_auth_apikeys' => array(
@@ -582,20 +693,30 @@ function rovas_civic_ensure_services_resources() {
     ),
   );
 
+  // POST /rovas/rules/rules_proxy_claim_vat_receipt
   if (empty($endpoint->resources['rules']['actions']['rules_proxy_claim_vat_receipt'])
-    || $endpoint->resources['rules']['actions']['rules_proxy_claim_vat_receipt'] != $action) {
+    || $endpoint->resources['rules']['actions']['rules_proxy_claim_vat_receipt'] != $bearer_op) {
     if (!isset($endpoint->resources['rules'])) {
       $endpoint->resources['rules'] = array();
     }
     if (!isset($endpoint->resources['rules']['actions'])) {
       $endpoint->resources['rules']['actions'] = array();
     }
-    // Preserve other enabled rules actions; only set this action's flags.
-    $endpoint->resources['rules']['actions']['rules_proxy_claim_vat_receipt'] = $action;
-    // Ensure rules resource itself is enabled if endpoint uses that pattern.
-    if (!isset($endpoint->resources['rules']['alias'])) {
-      // no-op; many installs just list actions under rules.
-    }
+    $endpoint->resources['rules']['actions']['rules_proxy_claim_vat_receipt'] = $bearer_op;
+    $changed = TRUE;
+  }
+
+  // GET /rovas/civic/claims[+ /summary] via alias civic/claims.
+  $claims_resource = array(
+    'alias' => 'civic/claims',
+    'operations' => array(
+      'index' => $bearer_op,
+      'retrieve' => $bearer_op,
+    ),
+  );
+  if (empty($endpoint->resources['civic_claims'])
+    || $endpoint->resources['civic_claims'] != $claims_resource) {
+    $endpoint->resources['civic_claims'] = $claims_resource;
     $changed = TRUE;
   }
 
@@ -603,6 +724,189 @@ function rovas_civic_ensure_services_resources() {
     services_endpoint_save($endpoint);
   }
   return TRUE;
+}
+
+/* ===========================================================================
+ * Claim reads (SoT list + summary)
+ * ========================================================================= */
+
+/**
+ * Services callback: GET /rovas/civic/claims?view=&limit=&offset=
+ */
+function rovas_civic_services_claims_index($view = 'submitted', $limit = ROVAS_CIVIC_CLAIMS_DEFAULT_LIMIT, $offset = 0) {
+  $uid = rovas_civic_request_uid();
+  if ($uid < 1) {
+    return services_error(t('Authentication required'), 401);
+  }
+
+  $view = drupal_strtolower(trim((string) $view));
+  if ($view === '') {
+    $view = 'submitted';
+  }
+  if ($view !== 'submitted' && $view !== 'received') {
+    return services_error(t('Invalid view; use submitted or received'), 400);
+  }
+
+  $pager = rovas_civic_normalize_pager($limit, $offset);
+  if ($view === 'submitted') {
+    return rovas_civic_claims_list_submitted($uid, $pager['limit'], $pager['offset']);
+  }
+  return rovas_civic_claims_list_received($uid, $pager['limit'], $pager['offset']);
+}
+
+/**
+ * Services callback: GET /rovas/civic/claims/{id}
+ *
+ * Only id=summary is supported.
+ */
+function rovas_civic_services_claims_retrieve($id) {
+  $uid = rovas_civic_request_uid();
+  if ($uid < 1) {
+    return services_error(t('Authentication required'), 401);
+  }
+  if ($id !== 'summary') {
+    return services_error(t('Unknown claims resource'), 404);
+  }
+  return rovas_civic_claims_summary_received($uid);
+}
+
+/**
+ * Claims the caller scanned (submitted), with nested shares.
+ *
+ * @return array
+ *   keys: items, total, limit, offset, view
+ */
+function rovas_civic_claims_list_submitted($uid, $limit, $offset) {
+  $uid = (int) $uid;
+  $total = (int) db_query("SELECT COUNT(*) FROM {civic_claims} WHERE scanner_uid = :u", array(
+    ':u' => $uid,
+  ))->fetchField();
+
+  $claim_rows = db_select('civic_claims', 'c')
+    ->fields('c')
+    ->condition('scanner_uid', $uid)
+    ->orderBy('created', 'DESC')
+    ->orderBy('id', 'DESC')
+    ->range($offset, $limit)
+    ->execute()
+    ->fetchAll();
+
+  $claim_ids = array();
+  foreach ($claim_rows as $row) {
+    $claim_ids[] = (int) $row->id;
+  }
+
+  $shares_by_claim = array();
+  if ($claim_ids) {
+    $share_rows = db_select('civic_claim_shares', 's')
+      ->fields('s')
+      ->condition('claim_id', $claim_ids, 'IN')
+      ->orderBy('id', 'ASC')
+      ->execute();
+    foreach ($share_rows as $s) {
+      $cid = (int) $s->claim_id;
+      if (!isset($shares_by_claim[$cid])) {
+        $shares_by_claim[$cid] = array();
+      }
+      $shares_by_claim[$cid][] = array(
+        'beneficiary_rovas_uid' => (string) (int) $s->beneficiary_uid,
+        'share_pct' => (float) $s->share_pct,
+        'merits_awarded' => (float) $s->merits_awarded,
+      );
+    }
+  }
+
+  $items = array();
+  foreach ($claim_rows as $row) {
+    $cid = (int) $row->id;
+    $items[] = array(
+      'receipt_uid' => $row->receipt_uid,
+      'vat_eur' => (float) $row->vat_eur,
+      'total_merits_awarded' => (float) $row->total_merits,
+      'merchant_name' => $row->merchant_name,
+      'purchase_at' => $row->purchase_at,
+      'created_at' => rovas_civic_format_created($row->created),
+      'shares' => isset($shares_by_claim[$cid]) ? $shares_by_claim[$cid] : array(),
+    );
+  }
+
+  return array(
+    'items' => $items,
+    'total' => $total,
+    'limit' => (int) $limit,
+    'offset' => (int) $offset,
+    'view' => 'submitted',
+  );
+}
+
+/**
+ * Share rows credited to the caller (received), incl. others' scans.
+ *
+ * @return array
+ *   keys: items, total, limit, offset, view
+ */
+function rovas_civic_claims_list_received($uid, $limit, $offset) {
+  $uid = (int) $uid;
+  $total = (int) db_query("SELECT COUNT(*) FROM {civic_claim_shares} WHERE beneficiary_uid = :u", array(
+    ':u' => $uid,
+  ))->fetchField();
+
+  $query = db_select('civic_claim_shares', 's');
+  $query->join('civic_claims', 'c', 'c.id = s.claim_id');
+  $query->fields('s', array('share_pct', 'merits_awarded', 'created', 'id'));
+  $query->fields('c', array('receipt_uid', 'merchant_name', 'purchase_at', 'scanner_uid'));
+  $query->condition('s.beneficiary_uid', $uid);
+  $query->orderBy('s.created', 'DESC');
+  $query->orderBy('s.id', 'DESC');
+  $query->range($offset, $limit);
+  $rows = $query->execute();
+
+  $items = array();
+  foreach ($rows as $row) {
+    $items[] = array(
+      'receipt_uid' => $row->receipt_uid,
+      'merchant_name' => $row->merchant_name,
+      'purchase_at' => $row->purchase_at,
+      'scanner_rovas_uid' => (string) (int) $row->scanner_uid,
+      'share_pct' => (float) $row->share_pct,
+      'merits_awarded' => (float) $row->merits_awarded,
+      'created_at' => rovas_civic_format_created($row->created),
+    );
+  }
+
+  return array(
+    'items' => $items,
+    'total' => $total,
+    'limit' => (int) $limit,
+    'offset' => (int) $offset,
+    'view' => 'received',
+  );
+}
+
+/**
+ * Received-based summary for Civic home taxes stats.
+ *
+ * - receipt_count: distinct claims where caller is a beneficiary
+ * - total_vat_eur: sum of caller's vat_slice
+ * - taxes_me: sum of caller's merits_awarded
+ *
+ * @return array
+ */
+function rovas_civic_claims_summary_received($uid) {
+  $uid = (int) $uid;
+  $row = db_query("SELECT COUNT(DISTINCT claim_id) AS receipt_count,
+      COALESCE(SUM(vat_slice), 0) AS total_vat_eur,
+      COALESCE(SUM(merits_awarded), 0) AS taxes_me
+    FROM {civic_claim_shares}
+    WHERE beneficiary_uid = :u", array(
+    ':u' => $uid,
+  ))->fetchObject();
+
+  return array(
+    'receipt_count' => (int) $row->receipt_count,
+    'total_vat_eur' => round((float) $row->total_vat_eur, 4),
+    'taxes_me' => round((float) $row->taxes_me, 6),
+  );
 }
 
 /* ===========================================================================

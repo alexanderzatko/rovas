@@ -79,7 +79,7 @@ function rovas_civic_admin_form($form, &$form_state) {
   );
   $form['actions']['resources'] = array(
     '#type' => 'submit',
-    '#value' => t('Enable Civic VAT claim API'),
+    '#value' => t('Enable Civic VAT claim + claim-read APIs'),
     '#submit' => array('rovas_civic_admin_resources_submit'),
   );
 
@@ -120,11 +120,11 @@ function rovas_civic_admin_bootstrap_treasury_submit($form, &$form_state) {
 }
 
 /**
- * Enable Services VAT claim action.
+ * Enable Services VAT claim + claim-read resources.
  */
 function rovas_civic_admin_resources_submit($form, &$form_state) {
   if (rovas_civic_ensure_services_resources()) {
-    drupal_set_message(t('Civic VAT claim action enabled on rovas_endpoint.'));
+    drupal_set_message(t('Civic VAT claim and claim-read APIs enabled on rovas_endpoint.'));
   }
   else {
     drupal_set_message(t('Could not update Services endpoint.'), 'error');
