@@ -4751,6 +4751,11 @@ function _rovas_process_stripe_fees_for_order($order, $payment_intent_id, $fee_a
     }
   }
 
+  // Path-1 donor Merit: issue ME to the payer (NeoFund donor recognition).
+  if ($payer_type === 'project' && $rewarded_project && function_exists('rovas_civic_issue_donor_merit_for_order')) {
+    rovas_civic_issue_donor_merit_for_order($order, $rewarded_project, $net_amount, 'stripe');
+  }
+
   // Update forex node fields. Setting field_payment_status=1 is the commit
   // point; any concurrent process that acquired the lock after us will see
   // status=1 and skip processing.
@@ -6304,6 +6309,11 @@ function rovas_project_reward_process_bank_order_reward($order) {
       watchdog('rovas_project_reward', 'bank_order_reward: rules_process_recipient_order_core not found/active for order @oid.', array('@oid' => $order->order_id), WATCHDOG_ERROR);
       return FALSE;
     }
+  }
+
+  // Path-1 donor Merit: issue ME to the payer (NeoFund donor recognition).
+  if ($payer_type === 'project' && $rewarded_project && function_exists('rovas_civic_issue_donor_merit_for_order')) {
+    rovas_civic_issue_donor_merit_for_order($order, $rewarded_project, $order_total, 'bank');
   }
 
   // Commit the forex node. field_payment_status=1 is the idempotency marker.

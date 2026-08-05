@@ -6,9 +6,10 @@ source of truth** for OAuth and the APIs Civic needs next. Civic-side notes
 live at `~/Documents/homeProjects/civic/docs/rovas-integration.md` (Expo +
 Civic API); keep both in sync when contracts change.
 
-**Agents working in this repo:** implement the work under
-[Next work for Rovas (home + Phase 2)](#next-work-for-rovas-home--phase-2)
-below. Do not rely on reading the Civic tree unless you need Expo/API details.
+**Agents working in this repo:** implement / maintain work under
+[Next work: solo VAT claim](#next-work-solo-vat-claim) and the Path-1 donor
+Merit notes therein. Do not rely on reading the Civic tree unless you need
+Expo/API details.
 
 **Dev target (until told otherwise):** all Civic integration work targets
 **`/var/www/rovdev`** (`https://dev.rovas.app`). Do **not** change prod
@@ -29,8 +30,9 @@ not run deploys on their own.
 | Expo login (PKCE) | Civic mobile | **Done** against `dev.rovas.app` |
 | Civic API Bearer introspect | Civic `GET /oauth2/tokens/{token}` | **Done** — resolves Drupal `user_id` (uid) |
 | Services OAuth2 on `rovas_endpoint` | Admin / `rovas_oauth_ensure_civic_resources()` | Server machine name **`civic`**; API-key auth disabled on Civic resources |
-| Home Merits reads | `/rovas/me`, `/rovas/contributions/aggregate`, `/rovas/merit_distribution` | Implemented in code; enable via updb / admin button on rovdev |
-| Claim rule + split claims | — | Phase 2 (after home reads or in parallel) |
+| Home Merits reads | `/rovas/me`, `/rovas/contributions/aggregate`, `/rovas/merit_distribution` | Implemented |
+| `rovas_civic` | `sites/all/modules/custom/rovas_civic` | National rates, donor Merit issuance, State Treasury, VAT claim |
+| Claim rule + split claims | `POST /rovas/rules/rules_proxy_claim_vat_receipt` | Implemented in `rovas_civic` (enable via updb / admin) |
 
 ## OAuth endpoints (live on dev)
 
@@ -154,10 +156,12 @@ Expect JSON with `access_token` / `refresh_token`. A missing or wrong
 
 ---
 
-## Next work for Rovas (home + Phase 2)
+## Home reads (done) — background for agents
 
 Civic’s home mockup needs live Merits data. The mobile app already has a Rovas
 **Bearer** access token. Civic API can introspect it to a Drupal **uid**.
+Home-read endpoints below are **implemented**; the active next task is
+[Next work: solo VAT claim](#next-work-solo-vat-claim).
 
 ### Why existing endpoints are not enough
 
@@ -233,17 +237,126 @@ Reuses `_rovas_merit_distribution_collect_merits()` /
 
 When **no** Bearer: omit `user_*` fields. When Bearer present: fill them.
 
-### Later (Phase 2 claim path — not blocking home reads)
+## Next work: solo VAT claim
 
-- `POST /rovas/rules/rules_proxy_claim_vat_receipt` — atomic multi-beneficiary
-  Merit grant; Bearer preferred (see Civic `docs/plan.md` §7–§8)
-- `GET /rovas/users/search?q=` — split-claim typeahead
-- Ensure Services OAuth2 covers these when they ship
+**Implemented in `rovas_civic`** (enable on rovdev after deploy). Civic verifies
+eKasa receipts; Rovas grants donor Merits on the **State Treasury of Slovakia**
+project. Split-claim typeahead (`/rovas/users/search`) remains out of scope —
+`shares[]` is already supported (each beneficiary is an individual donor).
 
-### Acceptance checks (dev / rovdev)
+### Checklist
+
+1. [x] Services action `POST /rovas/rules/rules_proxy_claim_vat_receipt`
+2. [x] Auth: OAuth2 Bearer (`civic` / `user_profile`); reject anonymous
+3. [x] Tables `{civic_claims}` + `{civic_claim_shares}` (UNIQUE `receipt_uid`)
+4. [x] Atomic multi-beneficiary grant via `rules_give_merits_to_user` +
+   `{rovas_merit_issuance}` audit (A3); each share = separate donor attribution
+5. [x] Enable: `drush74 en rovas_civic -y && drush74 updb -y`, or admin
+   **Configuration → Rovas Civic → Enable Civic VAT claim API**
+6. [ ] Smoke-test with curl using a Civic OAuth access token (after human deploy)
+
+### Path-1 donor Merit (subtask, also in `rovas_civic`)
+
+- EUR project rewards (`/rewpro` Stripe + bank success paths) now issue **donor
+  Merits** to the payer at the base-fund indicative hourly rate:
+  `ME = (net_eur / rate) × 10`.
+- Admin: **Configuration → Rovas Civic** — national hourly rates (SK seeded)
+  and State Treasury project bootstrap.
+- Formula for VAT claims (decided):  
+  **`ME = (vat_slice_eur / national_hourly_rate_eur) × 10`**  
+  Rovas owns the math; Civic `total_merits` / `hourly_wage_eur` are preview/audit only.
+
+### Endpoint
+
+| Method | URL | Auth |
+|--------|-----|------|
+| `POST` | `https://dev.rovas.app/rovas/rules/rules_proxy_claim_vat_receipt` | Bearer required |
+
+### Request body
+
+```json
+{
+  "receipt_uid": "O-0123456789abcdef0123456789abcdef",
+  "vat_eur": 4.82,
+  "total_merits": 6.43,
+  "merchant_name": "Tesco Bratislava",
+  "purchase_at": "2026-06-11T14:22:00+02:00",
+  "hourly_wage_eur": 7.5,
+  "formula_version": 1,
+  "shares": [
+    { "rovas_uid": "42", "share_pct": 100 }
+  ]
+}
+```
+
+| Field | Notes |
+|-------|--------|
+| `receipt_uid` | eKasa online UID (`O-` + 32 hex); global unique claim key |
+| `vat_eur` | Verified by Civic against Finančná správa; Rovas grant basis |
+| `total_merits` | Civic preview only — **ignored for grant** |
+| `merchant_name` / `purchase_at` | Audit metadata (nullable OK) |
+| `hourly_wage_eur` | Civic preview; grant uses admin **national** rate (SK) |
+| `shares` | ≥1; each entry is a **donor** to State Treasury for their VAT slice; `share_pct` sums to ~100; **scanner must be included** |
+
+### Required logic
+
+1. Resolve **scanner** from Bearer → Drupal uid
+2. **Dedup** on `receipt_uid` → `result` 409 / `duplicate_receipt`
+3. Validate `shares` (distinct uids, sum ≈ 100, users exist, scanner included)
+4. Per share: `vat_slice` + `ME = (vat_slice / national_rate) × 10`; floor 2dp;
+   **residue to scanner**
+5. One Drupal transaction: for each share call donor Merit issuer
+   (`rules_give_merits_to_user` + `{rovas_merit_issuance}`) targeting State
+   Treasury project; persist claim + share rows
+6. Return:
+
+```json
+{
+  "total_merits_awarded": 6.426667,
+  "shares": [
+    { "beneficiary_rovas_uid": "42", "merits_awarded": 6.426667 }
+  ],
+  "result": 0,
+  "result_explain": "ok",
+  "hourly_wage_eur": 7.5,
+  "treasury_nid": 12345
+}
+```
+
+Non-zero `result` + `result_explain` for failures (`duplicate_receipt`,
+`shares_pct_sum`, `national_rate_missing`, …).
+
+### Out of scope for this Rovas slice
+
+- `GET /rovas/users/search` (split typeahead — later)
+- Full A11 charity custody / settlement
+- Volunteer report proxy, charity/invest project lists
+- Civic SQLite / fraud heuristics (Civic repo)
+- Prod `/var/www/rovas` until explicitly requested
+
+### Smoke test (after deploy + enable)
 
 ```bash
-# After deploy + updb (or Enable Civic home API resources):
+# Enable on rovdev (human deploy first):
+#   drush74 en rovas_civic -y && drush74 updb -y && drush74 cc all -y
+
+curl -sS -X POST https://dev.rovas.app/rovas/rules/rules_proxy_claim_vat_receipt \
+  -H "Authorization: Bearer $ACCESS_TOKEN" \
+  -H "Accept: application/json" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "receipt_uid": "O-…",
+    "vat_eur": 1.25,
+    "merchant_name": "Test",
+    "purchase_at": null,
+    "formula_version": 1,
+    "shares": [{ "rovas_uid": "'"$ROVAS_UID"'", "share_pct": 100 }]
+  }'
+```
+
+### Acceptance checks (dev / rovdev) — home reads (still valid)
+
+```bash
 curl -sS https://dev.rovas.app/rovas/me \
   -H "Authorization: Bearer $ACCESS_TOKEN" \
   -H "Accept: application/json"
@@ -255,15 +368,15 @@ curl -sS https://dev.rovas.app/rovas/merit_distribution \
   -H "Accept: application/json"
 ```
 
-### Out of scope for this slice
+### Later (after solo claim ships)
 
-- Changing Expo redirect / client id
-- Civic claim fraud / SQLite (Civic repo)
-- Full category breakdown if Rovas cannot source it yet
-- Prod (`/var/www/rovas`) until explicitly requested
+- `GET /rovas/users/search?q=` — split-claim typeahead
+- Charity pass-through using national rates (A11)
+- Ensure multi-beneficiary shares are exercised end-to-end from Civic
 
 ## Related Civic docs
 
-- Plan: `~/Documents/homeProjects/civic/docs/plan.md` (§8a OAuth, §8c reads, §15 phases)
+- Plan: `~/Documents/homeProjects/civic/docs/plan.md` (§7 split claims, §8b claim rule, §15 phases)
+- NeoFund: `~/Documents/Business/NeoFund_NP/` (State Treasury, Path-1 donor Merit, A12)
 - Civic API/Expo: `~/Documents/homeProjects/civic/docs/rovas-integration.md`
 - Mockup (home UX): `~/Documents/homeProjects/civic/mocs/civic-mockup.canvas.tsx`

@@ -1,0 +1,11 @@
+name = Rovas Civic
+description = NeoFund Path-1 donor Merit, national hourly rates, State Treasury project, and Civic VAT claim API.
+core = 7.x
+package = Rovas
+
+dependencies[] = services
+dependencies[] = oauth2_server
+dependencies[] = rovas_oauth
+dependencies[] = userpoints
+
+configure = admin/config/rovas/civic

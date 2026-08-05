@@ -1,0 +1,811 @@
+<?php
+
+/**
+ * @file
+ * Civic / NeoFund Path-1: donor Merit, national rates, State Treasury, VAT claims.
+ *
+ * See NeoFund_NP charity-opt-in-project-ledger.md and docs/integration/civic.md.
+ */
+
+define('ROVAS_CIVIC_STATE_TREASURY_VAR', 'rovas_civic_state_treasury_nid');
+define('ROVAS_CIVIC_DEFAULT_COUNTRY', 'SK');
+define('ROVAS_CIVIC_ME_PER_HOUR', 10.0);
+define('ROVAS_CIVIC_SHARE_PCT_TOLERANCE', 0.01);
+
+/**
+ * Implements hook_permission().
+ */
+function rovas_civic_permission() {
+  return array(
+    'administer rovas civic' => array(
+      'title' => t('Administer Rovas Civic (rates, State Treasury, VAT API)'),
+      'restrict access' => TRUE,
+    ),
+  );
+}
+
+/**
+ * Implements hook_menu().
+ */
+function rovas_civic_menu() {
+  $items = array();
+  $items['admin/config/rovas/civic'] = array(
+    'title' => 'Rovas Civic',
+    'description' => 'National hourly rates, State Treasury project, VAT claim API.',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('rovas_civic_admin_form'),
+    'access arguments' => array('administer rovas civic'),
+    'file' => 'rovas_civic.admin.inc',
+  );
+  $items['admin/config/rovas/civic/rate/add'] = array(
+    'title' => 'Add national hourly rate',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('rovas_civic_rate_form'),
+    'access arguments' => array('administer rovas civic'),
+    'file' => 'rovas_civic.admin.inc',
+    'type' => MENU_LOCAL_ACTION,
+  );
+  $items['admin/config/rovas/civic/rate/%/edit'] = array(
+    'title' => 'Edit national hourly rate',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('rovas_civic_rate_form', 5),
+    'access arguments' => array('administer rovas civic'),
+    'file' => 'rovas_civic.admin.inc',
+    'type' => MENU_CALLBACK,
+  );
+  return $items;
+}
+
+/**
+ * Implements hook_services_resources().
+ *
+ * Merges into the Services `rules` resource so the URL matches Civic:
+ * POST /rovas/rules/rules_proxy_claim_vat_receipt
+ */
+function rovas_civic_services_resources() {
+  return array(
+    'rules' => array(
+      'actions' => array(
+        'rules_proxy_claim_vat_receipt' => array(
+          'help' => 'Claim eKasa VAT as donor Merits on the State Treasury project. Each shares[] entry is an individual donor. Bearer required.',
+          'callback' => 'rovas_civic_services_claim_vat_receipt',
+          'access callback' => 'rovas_civic_claim_access',
+          'access arguments' => array(),
+          'access arguments append' => FALSE,
+          'args' => array(
+            array(
+              'name' => 'receipt_uid',
+              'type' => 'string',
+              'description' => 'eKasa online UID (O- + 32 hex).',
+              'source' => array('data' => 'receipt_uid'),
+              'optional' => FALSE,
+            ),
+            array(
+              'name' => 'vat_eur',
+              'type' => 'string',
+              'description' => 'Verified VAT amount in EUR.',
+              'source' => array('data' => 'vat_eur'),
+              'optional' => FALSE,
+            ),
+            array(
+              'name' => 'shares',
+              'type' => 'array',
+              'description' => 'Array of {rovas_uid, share_pct}; sum ≈ 100; scanner must be included.',
+              'source' => array('data' => 'shares'),
+              'optional' => FALSE,
+            ),
+            array(
+              'name' => 'merchant_name',
+              'type' => 'string',
+              'description' => 'Merchant name (audit).',
+              'source' => array('data' => 'merchant_name'),
+              'optional' => TRUE,
+            ),
+            array(
+              'name' => 'purchase_at',
+              'type' => 'string',
+              'description' => 'ISO purchase timestamp (audit).',
+              'source' => array('data' => 'purchase_at'),
+              'optional' => TRUE,
+            ),
+            array(
+              'name' => 'hourly_wage_eur',
+              'type' => 'string',
+              'description' => 'Civic preview wage (ignored for grant; Rovas uses admin national rate).',
+              'source' => array('data' => 'hourly_wage_eur'),
+              'optional' => TRUE,
+            ),
+            array(
+              'name' => 'formula_version',
+              'type' => 'int',
+              'description' => 'Client formula version (audit).',
+              'source' => array('data' => 'formula_version'),
+              'optional' => TRUE,
+            ),
+            array(
+              'name' => 'total_merits',
+              'type' => 'string',
+              'description' => 'Civic preview total (ignored; Rovas recomputes).',
+              'source' => array('data' => 'total_merits'),
+              'optional' => TRUE,
+            ),
+          ),
+        ),
+      ),
+    ),
+  );
+}
+
+/**
+ * Access: authenticated after OAuth2 Bearer (or session).
+ */
+function rovas_civic_claim_access() {
+  global $user;
+  if (!empty($user->uid)) {
+    return TRUE;
+  }
+  if (function_exists('rovas_oauth_uid_from_bearer')) {
+    return (bool) rovas_oauth_uid_from_bearer('user_profile');
+  }
+  return FALSE;
+}
+
+/* ===========================================================================
+ * National hourly rate
+ * ========================================================================= */
+
+/**
+ * Load national hourly rate for a country (EUR / hour).
+ *
+ * @param string $country_code
+ *   ISO alpha-2.
+ *
+ * @return float|false
+ */
+function rovas_civic_national_hourly_rate($country_code = ROVAS_CIVIC_DEFAULT_COUNTRY) {
+  $code = drupal_strtoupper($country_code);
+  $rate = db_query("SELECT rate_eur FROM {rovas_national_hourly_rate} WHERE country_code = :c", array(
+    ':c' => $code,
+  ))->fetchField();
+  if ($rate === FALSE || (float) $rate <= 0) {
+    return FALSE;
+  }
+  return (float) $rate;
+}
+
+/**
+ * Compute donor Merits from an EUR slice and hourly rate.
+ *
+ * ME = (eur_slice / hourly_rate_eur) * 10
+ *
+ * @param float $eur_slice
+ * @param float $hourly_rate_eur
+ *
+ * @return float
+ */
+function rovas_civic_merits_from_eur_slice($eur_slice, $hourly_rate_eur) {
+  $eur_slice = (float) $eur_slice;
+  $hourly_rate_eur = (float) $hourly_rate_eur;
+  if ($eur_slice <= 0 || $hourly_rate_eur <= 0) {
+    return 0.0;
+  }
+  return ($eur_slice / $hourly_rate_eur) * ROVAS_CIVIC_ME_PER_HOUR;
+}
+
+/**
+ * Floor to 2 decimal places (for per-share Merits before residue).
+ */
+function rovas_civic_floor2($value) {
+  return floor(((float) $value) * 100) / 100;
+}
+
+/**
+ * Indicative base-fund hourly rate (EUR/hour) from forex quote.
+ *
+ * @param float $eur
+ *   Sample EUR amount (does not settle).
+ *
+ * @return float|false
+ */
+function rovas_civic_base_fund_hourly_rate($eur = 10.0) {
+  if (!function_exists('calculate_forex_transaction_params')) {
+    return FALSE;
+  }
+  $params = calculate_forex_transaction_params('eur_to_chr', max(0.01, (float) $eur), 0, FALSE);
+  if (!empty($params['effective_rate']) && (float) $params['effective_rate'] > 0) {
+    return (float) $params['effective_rate'];
+  }
+  if (function_exists('forex_min_r_get')) {
+    $min_r = forex_min_r_get();
+    if ($min_r > 0) {
+      return (float) $min_r;
+    }
+  }
+  return FALSE;
+}
+
+/* ===========================================================================
+ * Merit issuance (A3) + donor reward
+ * ========================================================================= */
+
+/**
+ * Issue Merits to a donor and write A3 audit row.
+ *
+ * @param object $account
+ *   Drupal user.
+ * @param float $merits
+ * @param int $project_nid
+ * @param string $source_type
+ * @param string $source_id
+ * @param string $description
+ *
+ * @return bool
+ *   TRUE on success.
+ */
+function rovas_civic_issue_donor_merits($account, $merits, $project_nid, $source_type, $source_id, $description) {
+  $merits = (float) $merits;
+  if (empty($account->uid) || $merits <= 0) {
+    return FALSE;
+  }
+
+  // Idempotency for the same source event + uid.
+  $exists = db_query("SELECT 1 FROM {rovas_merit_issuance} WHERE uid = :u AND source_type = :t AND source_id = :s", array(
+    ':u' => (int) $account->uid,
+    ':t' => $source_type,
+    ':s' => (string) $source_id,
+  ))->fetchField();
+  if ($exists) {
+    return TRUE;
+  }
+
+  $project = $project_nid ? node_load($project_nid) : FALSE;
+  $reward_entity = $project ? $project : $account;
+  if (function_exists('entity_metadata_wrapper') && $project) {
+    $reward_entity = entity_metadata_wrapper('node', $project);
+  }
+
+  if (function_exists('rules_invoke_component')) {
+    $config = rules_config_load('rules_give_merits_to_user');
+    if ($config && !empty($config->active)) {
+      rules_invoke_component(
+        'rules_give_merits_to_user',
+        $account,
+        $merits,
+        $reward_entity,
+        $description,
+        'Insert'
+      );
+    }
+    else {
+      // Fallback: integer userpoints only (decimal part skipped).
+      if (function_exists('userpoints_userpointsapi')) {
+        $params = array(
+          'uid' => $account->uid,
+          'points' => (int) floor($merits),
+          'operation' => 'Insert',
+          'description' => $description,
+          'entity_id' => $project_nid,
+          'entity_type' => 'node',
+          'moderate' => FALSE,
+        );
+        userpoints_userpointsapi($params);
+      }
+      else {
+        return FALSE;
+      }
+    }
+  }
+  else {
+    return FALSE;
+  }
+
+  db_insert('rovas_merit_issuance')
+    ->fields(array(
+      'uid' => (int) $account->uid,
+      'amount' => $merits,
+      'project_nid' => (int) $project_nid,
+      'source_type' => $source_type,
+      'source_id' => (string) $source_id,
+      'description' => $description,
+      'created' => REQUEST_TIME,
+    ))
+    ->execute();
+
+  return TRUE;
+}
+
+/**
+ * Path-1: issue donor Merits after a successful EUR project reward.
+ *
+ * Called from rovas_project_reward fee-processing success paths.
+ *
+ * @param object $order
+ *   Commerce order.
+ * @param object|null $project
+ *   Rewarded project node.
+ * @param float $net_eur
+ *   Net EUR after gateway fees (donation basis).
+ * @param string $rail
+ *   'stripe' or 'bank'.
+ *
+ * @return bool
+ */
+function rovas_civic_issue_donor_merit_for_order($order, $project, $net_eur, $rail = 'stripe') {
+  if (empty($order->uid) || empty($project->nid) || (float) $net_eur <= 0) {
+    return FALSE;
+  }
+  // Only project donations (not work-report / buy-merits / user).
+  $payer_type = NULL;
+  if (isset($order->field_payer_type[LANGUAGE_NONE][0]['value'])) {
+    $payer_type = $order->field_payer_type[LANGUAGE_NONE][0]['value'];
+  }
+  elseif (function_exists('entity_metadata_wrapper')) {
+    $payer_type = entity_metadata_wrapper('commerce_order', $order)->field_payer_type->value();
+  }
+  if ($payer_type !== 'project') {
+    return FALSE;
+  }
+
+  $account = user_load($order->uid);
+  if (!$account) {
+    return FALSE;
+  }
+
+  // Ordinary projects: base-fund indicative rate. (Charity national rate later.)
+  $rate = rovas_civic_base_fund_hourly_rate($net_eur);
+  if ($rate === FALSE) {
+    $rate = rovas_civic_national_hourly_rate(ROVAS_CIVIC_DEFAULT_COUNTRY);
+  }
+  if ($rate === FALSE || $rate <= 0) {
+    watchdog('rovas_civic', 'No hourly rate available for donor Merit on order @oid.', array(
+      '@oid' => $order->order_id,
+    ), WATCHDOG_ERROR);
+    return FALSE;
+  }
+
+  $merits = rovas_civic_merits_from_eur_slice($net_eur, $rate);
+  if ($merits <= 0) {
+    return FALSE;
+  }
+
+  $source_id = 'order:' . (int) $order->order_id;
+  $desc = t('Donor Merit for project reward (@rail, @eur EUR @ @rate EUR/h)', array(
+    '@rail' => $rail,
+    '@eur' => number_format((float) $net_eur, 2, '.', ''),
+    '@rate' => number_format($rate, 4, '.', ''),
+  ));
+
+  return rovas_civic_issue_donor_merits(
+    $account,
+    $merits,
+    (int) $project->nid,
+    'project_reward_order',
+    $source_id,
+    $desc
+  );
+}
+
+/* ===========================================================================
+ * State Treasury project
+ * ========================================================================= */
+
+/**
+ * Ensure State Treasury of Slovakia project exists; return nid.
+ *
+ * @return int
+ *   Project nid, or 0 on failure.
+ */
+function rovas_civic_ensure_state_treasury() {
+  $nid = (int) variable_get(ROVAS_CIVIC_STATE_TREASURY_VAR, 0);
+  if ($nid) {
+    $node = node_load($nid);
+    if ($node && $node->type === 'project') {
+      return $nid;
+    }
+  }
+
+  // Look for an existing system project by title.
+  $existing = db_query("SELECT n.nid FROM {node} n WHERE n.type = 'project' AND n.title = :t ORDER BY n.nid ASC LIMIT 1", array(
+    ':t' => 'State Treasury of Slovakia',
+  ))->fetchField();
+  if ($existing) {
+    variable_set(ROVAS_CIVIC_STATE_TREASURY_VAR, (int) $existing);
+    return (int) $existing;
+  }
+
+  global $user;
+  $author_uid = !empty($user->uid) ? (int) $user->uid : 1;
+  $author = user_load($author_uid);
+  if (!$author) {
+    $author = user_load(1);
+  }
+
+  $nid = 0;
+  if (function_exists('rules_invoke_component') && rules_config_load('rules_create_project')) {
+    $result = rules_invoke_component(
+      'rules_create_project',
+      'State Treasury of Slovakia',
+      $author,
+      'https://www.financnasprava.sk/',
+      0,
+      1,
+      1,
+      'Formal attribution target for eKasa VAT Merit claims (Civic). No EUR moves through NeoFund for these claims.',
+      TRUE
+    );
+    if (is_array($result)) {
+      $created = reset($result);
+      if (is_object($created) && !empty($created->nid)) {
+        $nid = (int) $created->nid;
+      }
+    }
+    elseif (is_object($result) && !empty($result->nid)) {
+      $nid = (int) $result->nid;
+    }
+  }
+
+  if (empty($nid)) {
+    $node = new stdClass();
+    $node->type = 'project';
+    $node->title = 'State Treasury of Slovakia';
+    $node->language = LANGUAGE_NONE;
+    $node->uid = $author_uid;
+    $node->status = 1;
+    $node->body[LANGUAGE_NONE][0] = array(
+      'value' => 'Formal attribution target for eKasa VAT Merit claims (Civic). No EUR moves through NeoFund for these claims.',
+      'format' => 'filtered_html',
+    );
+    if (field_info_field('field_system_project')) {
+      $node->field_system_project[LANGUAGE_NONE][0]['value'] = 1;
+    }
+    if (field_info_field('field_participation')) {
+      $node->field_participation[LANGUAGE_NONE][0]['value'] = 1;
+    }
+    node_object_prepare($node);
+    node_save($node);
+    $nid = (int) $node->nid;
+  }
+
+  if ($nid) {
+    variable_set(ROVAS_CIVIC_STATE_TREASURY_VAR, $nid);
+  }
+  return $nid ? $nid : 0;
+}
+
+/**
+ * Enable VAT claim action on rovas_endpoint (Bearer, no API keys).
+ *
+ * @return bool
+ */
+function rovas_civic_ensure_services_resources() {
+  if (!function_exists('services_endpoint_load') || !function_exists('services_endpoint_save')) {
+    return FALSE;
+  }
+  // Ensure OAuth home resources too if available.
+  if (function_exists('rovas_oauth_ensure_civic_resources')) {
+    rovas_oauth_ensure_civic_resources();
+  }
+
+  $endpoint = services_endpoint_load('rovas_endpoint');
+  if (!$endpoint) {
+    return FALSE;
+  }
+
+  $changed = FALSE;
+  if (!is_array($endpoint->authentication['oauth2_server'])
+    || empty($endpoint->authentication['oauth2_server']['server'])) {
+    $endpoint->authentication['oauth2_server'] = array('server' => 'civic');
+    $changed = TRUE;
+  }
+
+  $action = array(
+    'enabled' => 1,
+    'settings' => array(
+      'services_auth_apikeys' => array(
+        'disable_authentication' => 1,
+      ),
+      'oauth2_server' => array(
+        'require_authentication' => 1,
+        'scope' => 'user_profile',
+      ),
+    ),
+  );
+
+  if (empty($endpoint->resources['rules']['actions']['rules_proxy_claim_vat_receipt'])
+    || $endpoint->resources['rules']['actions']['rules_proxy_claim_vat_receipt'] != $action) {
+    if (!isset($endpoint->resources['rules'])) {
+      $endpoint->resources['rules'] = array();
+    }
+    if (!isset($endpoint->resources['rules']['actions'])) {
+      $endpoint->resources['rules']['actions'] = array();
+    }
+    // Preserve other enabled rules actions; only set this action's flags.
+    $endpoint->resources['rules']['actions']['rules_proxy_claim_vat_receipt'] = $action;
+    // Ensure rules resource itself is enabled if endpoint uses that pattern.
+    if (!isset($endpoint->resources['rules']['alias'])) {
+      // no-op; many installs just list actions under rules.
+    }
+    $changed = TRUE;
+  }
+
+  if ($changed) {
+    services_endpoint_save($endpoint);
+  }
+  return TRUE;
+}
+
+/* ===========================================================================
+ * VAT claim
+ * ========================================================================= */
+
+/**
+ * Services callback: POST /rovas/rules/rules_proxy_claim_vat_receipt
+ */
+function rovas_civic_services_claim_vat_receipt($receipt_uid, $vat_eur, $shares, $merchant_name = NULL, $purchase_at = NULL, $hourly_wage_eur = NULL, $formula_version = NULL, $total_merits = NULL) {
+  global $user;
+
+  $scanner_uid = !empty($user->uid) ? (int) $user->uid : 0;
+  if (!$scanner_uid && function_exists('rovas_oauth_uid_from_bearer')) {
+    $scanner_uid = (int) rovas_oauth_uid_from_bearer('user_profile');
+  }
+  if ($scanner_uid < 1) {
+    return array(
+      'result' => 401,
+      'result_explain' => 'authentication_required',
+      'total_merits_awarded' => 0,
+      'shares' => array(),
+    );
+  }
+
+  $result = rovas_civic_claim_vat_receipt(array(
+    'scanner_uid' => $scanner_uid,
+    'receipt_uid' => $receipt_uid,
+    'vat_eur' => $vat_eur,
+    'shares' => $shares,
+    'merchant_name' => $merchant_name,
+    'purchase_at' => $purchase_at,
+    'hourly_wage_eur' => $hourly_wage_eur,
+    'formula_version' => $formula_version,
+  ));
+
+  return $result;
+}
+
+/**
+ * Core VAT claim logic.
+ *
+ * @param array $params
+ *
+ * @return array
+ *   JSON-serializable response with result / result_explain.
+ */
+function rovas_civic_claim_vat_receipt(array $params) {
+  $scanner_uid = (int) $params['scanner_uid'];
+  $receipt_uid = isset($params['receipt_uid']) ? trim($params['receipt_uid']) : '';
+  $vat_eur = isset($params['vat_eur']) ? (float) $params['vat_eur'] : 0.0;
+  $shares_in = isset($params['shares']) ? $params['shares'] : array();
+  $merchant_name = isset($params['merchant_name']) ? $params['merchant_name'] : NULL;
+  $purchase_at = isset($params['purchase_at']) ? $params['purchase_at'] : NULL;
+  $formula_version = isset($params['formula_version']) ? (int) $params['formula_version'] : 1;
+
+  if ($receipt_uid === '' || $vat_eur <= 0) {
+    return rovas_civic_claim_error(1, 'invalid_input');
+  }
+
+  // Dedup.
+  $existing = db_query("SELECT id FROM {civic_claims} WHERE receipt_uid = :r", array(
+    ':r' => $receipt_uid,
+  ))->fetchField();
+  if ($existing) {
+    return rovas_civic_claim_error(409, 'duplicate_receipt');
+  }
+
+  $rate = rovas_civic_national_hourly_rate(ROVAS_CIVIC_DEFAULT_COUNTRY);
+  if ($rate === FALSE) {
+    return rovas_civic_claim_error(500, 'national_rate_missing');
+  }
+
+  $treasury_nid = rovas_civic_ensure_state_treasury();
+  if (!$treasury_nid) {
+    return rovas_civic_claim_error(500, 'state_treasury_missing');
+  }
+
+  $validated = rovas_civic_validate_shares($shares_in, $scanner_uid);
+  if (!empty($validated['error'])) {
+    return rovas_civic_claim_error(2, $validated['error']);
+  }
+  $shares = $validated['shares'];
+
+  // Per-share VAT slices + Merits; residue Merits to scanner.
+  $computed = rovas_civic_compute_share_merits($shares, $vat_eur, $rate, $scanner_uid);
+  $total_me = 0.0;
+  foreach ($computed as $row) {
+    $total_me += $row['merits_awarded'];
+  }
+
+  $txn = db_transaction();
+  try {
+    $claim_id = db_insert('civic_claims')
+      ->fields(array(
+        'receipt_uid' => $receipt_uid,
+        'scanner_uid' => $scanner_uid,
+        'vat_eur' => $vat_eur,
+        'total_merits' => $total_me,
+        'merchant_name' => $merchant_name,
+        'purchase_at' => $purchase_at,
+        'hourly_wage_eur' => $rate,
+        'formula_version' => $formula_version,
+        'treasury_nid' => $treasury_nid,
+        'created' => REQUEST_TIME,
+      ))
+      ->execute();
+
+    $out_shares = array();
+    foreach ($computed as $row) {
+      $account = user_load($row['uid']);
+      if (!$account) {
+        throw new Exception('beneficiary_missing:' . $row['uid']);
+      }
+      $source_id = 'claim:' . $claim_id . ':uid:' . $row['uid'];
+      $desc = t('Civic VAT claim @receipt (@slice EUR VAT → State Treasury)', array(
+        '@receipt' => $receipt_uid,
+        '@slice' => number_format($row['vat_slice'], 4, '.', ''),
+      ));
+      $ok = rovas_civic_issue_donor_merits(
+        $account,
+        $row['merits_awarded'],
+        $treasury_nid,
+        'civic_vat_claim',
+        $source_id,
+        $desc
+      );
+      if (!$ok) {
+        throw new Exception('merit_grant_failed:' . $row['uid']);
+      }
+
+      db_insert('civic_claim_shares')
+        ->fields(array(
+          'claim_id' => $claim_id,
+          'beneficiary_uid' => $row['uid'],
+          'share_pct' => $row['share_pct'],
+          'vat_slice' => $row['vat_slice'],
+          'merits_awarded' => $row['merits_awarded'],
+          'rounding_residue' => $row['rounding_residue'],
+          'created' => REQUEST_TIME,
+        ))
+        ->execute();
+
+      $out_shares[] = array(
+        'beneficiary_rovas_uid' => (string) $row['uid'],
+        'merits_awarded' => $row['merits_awarded'],
+      );
+    }
+  }
+  catch (Exception $e) {
+    $txn->rollback();
+    watchdog('rovas_civic', 'VAT claim failed: @m', array('@m' => $e->getMessage()), WATCHDOG_ERROR);
+    // Unique key race → treat as duplicate.
+    if (strpos($e->getMessage(), 'Duplicate') !== FALSE || strpos($e->getMessage(), '1062') !== FALSE) {
+      return rovas_civic_claim_error(409, 'duplicate_receipt');
+    }
+    return rovas_civic_claim_error(500, 'grant_failed');
+  }
+
+  return array(
+    'result' => 0,
+    'result_explain' => 'ok',
+    'total_merits_awarded' => round($total_me, 6),
+    'shares' => $out_shares,
+    'hourly_wage_eur' => $rate,
+    'treasury_nid' => $treasury_nid,
+  );
+}
+
+/**
+ * @param string $code
+ * @param string $explain
+ *
+ * @return array
+ */
+function rovas_civic_claim_error($code, $explain) {
+  return array(
+    'result' => (int) $code,
+    'result_explain' => $explain,
+    'total_merits_awarded' => 0,
+    'shares' => array(),
+  );
+}
+
+/**
+ * Validate shares array.
+ *
+ * @return array
+ *   keys: error (string) or shares (list of uid+share_pct).
+ */
+function rovas_civic_validate_shares($shares_in, $scanner_uid) {
+  if (!is_array($shares_in) || empty($shares_in)) {
+    return array('error' => 'shares_empty');
+  }
+
+  $shares = array();
+  $seen = array();
+  $sum = 0.0;
+  $scanner_included = FALSE;
+
+  foreach ($shares_in as $item) {
+    if (!is_array($item)) {
+      return array('error' => 'shares_invalid');
+    }
+    $uid = isset($item['rovas_uid']) ? (int) $item['rovas_uid'] : 0;
+    $pct = isset($item['share_pct']) ? (float) $item['share_pct'] : -1;
+    if ($uid < 2 || $pct < 0) {
+      return array('error' => 'shares_invalid');
+    }
+    if (isset($seen[$uid])) {
+      return array('error' => 'shares_duplicate_uid');
+    }
+    $account = user_load($uid);
+    if (!$account || empty($account->status)) {
+      return array('error' => 'beneficiary_not_found');
+    }
+    $seen[$uid] = TRUE;
+    if ($uid === (int) $scanner_uid) {
+      $scanner_included = TRUE;
+    }
+    $sum += $pct;
+    $shares[] = array('uid' => $uid, 'share_pct' => $pct);
+  }
+
+  if (!$scanner_included) {
+    return array('error' => 'scanner_not_in_shares');
+  }
+  if (abs($sum - 100.0) > ROVAS_CIVIC_SHARE_PCT_TOLERANCE) {
+    return array('error' => 'shares_pct_sum');
+  }
+
+  return array('shares' => $shares);
+}
+
+/**
+ * Compute per-share VAT slices and Merits; residue ME to scanner.
+ *
+ * @return array
+ *   List of uid, share_pct, vat_slice, merits_awarded, rounding_residue.
+ */
+function rovas_civic_compute_share_merits(array $shares, $vat_eur, $rate, $scanner_uid) {
+  $total_me_exact = rovas_civic_merits_from_eur_slice($vat_eur, $rate);
+  $rows = array();
+  $floored_sum = 0.0;
+  $vat_sum = 0.0;
+
+  foreach ($shares as $s) {
+    $vat_slice = round($vat_eur * $s['share_pct'] / 100.0, 4);
+    $me_exact = rovas_civic_merits_from_eur_slice($vat_slice, $rate);
+    $me_floor = rovas_civic_floor2($me_exact);
+    $rows[] = array(
+      'uid' => $s['uid'],
+      'share_pct' => $s['share_pct'],
+      'vat_slice' => $vat_slice,
+      'merits_awarded' => $me_floor,
+      'rounding_residue' => 0.0,
+    );
+    $floored_sum += $me_floor;
+    $vat_sum += $vat_slice;
+  }
+
+  // Fix VAT slice residue on scanner (cents).
+  $vat_residue = round($vat_eur - $vat_sum, 4);
+  $me_residue = round($total_me_exact - $floored_sum, 6);
+
+  foreach ($rows as &$row) {
+    if ((int) $row['uid'] === (int) $scanner_uid) {
+      $row['vat_slice'] = round($row['vat_slice'] + $vat_residue, 4);
+      $row['merits_awarded'] = round($row['merits_awarded'] + $me_residue, 6);
+      $row['rounding_residue'] = $me_residue;
+      break;
+    }
+  }
+  unset($row);
+
+  return $rows;
+}

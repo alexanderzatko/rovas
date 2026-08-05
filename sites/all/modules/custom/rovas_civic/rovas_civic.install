@@ -1,0 +1,307 @@
+<?php
+
+/**
+ * @file
+ * Install / update for Rovas Civic (rates, Merit audit, VAT claims).
+ */
+
+/**
+ * Implements hook_schema().
+ */
+function rovas_civic_schema() {
+  $schema = array();
+
+  $schema['rovas_national_hourly_rate'] = array(
+    'description' => 'Per-country national average hourly wage (EUR) for donor Merit sizing.',
+    'fields' => array(
+      'country_code' => array(
+        'description' => 'ISO 3166-1 alpha-2 country code.',
+        'type' => 'varchar',
+        'length' => 2,
+        'not null' => TRUE,
+        'default' => '',
+      ),
+      'rate_eur' => array(
+        'description' => 'National average hourly wage in EUR.',
+        'type' => 'numeric',
+        'precision' => 10,
+        'scale' => 4,
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+      'source' => array(
+        'description' => 'Optional source note (manual, Eurostat, …).',
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => TRUE,
+        'default' => '',
+      ),
+      'updated' => array(
+        'type' => 'int',
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+    ),
+    'primary key' => array('country_code'),
+  );
+
+  $schema['rovas_merit_issuance'] = array(
+    'description' => 'Audit log for every Merit issuance (NeoFund A3).',
+    'fields' => array(
+      'id' => array(
+        'type' => 'serial',
+        'not null' => TRUE,
+      ),
+      'uid' => array(
+        'description' => 'Recipient (donor) uid.',
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+      'amount' => array(
+        'type' => 'numeric',
+        'precision' => 18,
+        'scale' => 6,
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+      'project_nid' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+      'source_type' => array(
+        'type' => 'varchar',
+        'length' => 64,
+        'not null' => TRUE,
+        'default' => '',
+      ),
+      'source_id' => array(
+        'type' => 'varchar',
+        'length' => 128,
+        'not null' => TRUE,
+        'default' => '',
+      ),
+      'description' => array(
+        'type' => 'text',
+        'not null' => FALSE,
+        'size' => 'big',
+      ),
+      'created' => array(
+        'type' => 'int',
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+    ),
+    'primary key' => array('id'),
+    'indexes' => array(
+      'uid' => array('uid'),
+      'project_nid' => array('project_nid'),
+      'source' => array('source_type', 'source_id'),
+    ),
+  );
+
+  $schema['civic_claims'] = array(
+    'description' => 'Civic eKasa VAT claims (one row per receipt_uid).',
+    'fields' => array(
+      'id' => array(
+        'type' => 'serial',
+        'not null' => TRUE,
+      ),
+      'receipt_uid' => array(
+        'type' => 'varchar',
+        'length' => 64,
+        'not null' => TRUE,
+        'default' => '',
+      ),
+      'scanner_uid' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+      'vat_eur' => array(
+        'type' => 'numeric',
+        'precision' => 12,
+        'scale' => 4,
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+      'total_merits' => array(
+        'type' => 'numeric',
+        'precision' => 18,
+        'scale' => 6,
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+      'merchant_name' => array(
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => FALSE,
+      ),
+      'purchase_at' => array(
+        'type' => 'varchar',
+        'length' => 64,
+        'not null' => FALSE,
+      ),
+      'hourly_wage_eur' => array(
+        'type' => 'numeric',
+        'precision' => 10,
+        'scale' => 4,
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+      'formula_version' => array(
+        'type' => 'int',
+        'not null' => TRUE,
+        'default' => 1,
+      ),
+      'treasury_nid' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+      'created' => array(
+        'type' => 'int',
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+    ),
+    'primary key' => array('id'),
+    'unique keys' => array(
+      'receipt_uid' => array('receipt_uid'),
+    ),
+    'indexes' => array(
+      'scanner_uid' => array('scanner_uid'),
+    ),
+  );
+
+  $schema['civic_claim_shares'] = array(
+    'description' => 'Per-donor share of a Civic VAT claim (each beneficiary is a donor).',
+    'fields' => array(
+      'id' => array(
+        'type' => 'serial',
+        'not null' => TRUE,
+      ),
+      'claim_id' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+      'beneficiary_uid' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+      'share_pct' => array(
+        'type' => 'numeric',
+        'precision' => 8,
+        'scale' => 4,
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+      'vat_slice' => array(
+        'type' => 'numeric',
+        'precision' => 12,
+        'scale' => 4,
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+      'merits_awarded' => array(
+        'type' => 'numeric',
+        'precision' => 18,
+        'scale' => 6,
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+      'rounding_residue' => array(
+        'type' => 'numeric',
+        'precision' => 18,
+        'scale' => 6,
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+      'created' => array(
+        'type' => 'int',
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+    ),
+    'primary key' => array('id'),
+    'unique keys' => array(
+      'claim_beneficiary' => array('claim_id', 'beneficiary_uid'),
+    ),
+    'indexes' => array(
+      'beneficiary_uid' => array('beneficiary_uid'),
+    ),
+  );
+
+  return $schema;
+}
+
+/**
+ * Implements hook_install().
+ */
+function rovas_civic_install() {
+  // Seed SK rate placeholder (admin should set real series).
+  db_merge('rovas_national_hourly_rate')
+    ->key(array('country_code' => 'SK'))
+    ->fields(array(
+      'rate_eur' => 7.5,
+      'source' => 'seed (replace with official series)',
+      'updated' => REQUEST_TIME,
+    ))
+    ->execute();
+}
+
+/**
+ * Implements hook_enable().
+ */
+function rovas_civic_enable() {
+  if (function_exists('rovas_civic_ensure_state_treasury')) {
+    try {
+      rovas_civic_ensure_state_treasury();
+    }
+    catch (Exception $e) {
+      watchdog_exception('rovas_civic', $e);
+    }
+  }
+  if (function_exists('rovas_civic_ensure_services_resources')) {
+    try {
+      rovas_civic_ensure_services_resources();
+    }
+    catch (Exception $e) {
+      watchdog_exception('rovas_civic', $e);
+    }
+  }
+}
+
+/**
+ * Enable VAT claim Services action + State Treasury bootstrap.
+ */
+function rovas_civic_update_7001() {
+  if (function_exists('rovas_civic_ensure_state_treasury')) {
+    rovas_civic_ensure_state_treasury();
+  }
+  if (function_exists('rovas_civic_ensure_services_resources')) {
+    rovas_civic_ensure_services_resources();
+  }
+  // Ensure SK seed exists.
+  $exists = db_query("SELECT 1 FROM {rovas_national_hourly_rate} WHERE country_code = :c", array(':c' => 'SK'))->fetchField();
+  if (!$exists) {
+    db_insert('rovas_national_hourly_rate')
+      ->fields(array(
+        'country_code' => 'SK',
+        'rate_eur' => 7.5,
+        'source' => 'seed (replace with official series)',
+        'updated' => REQUEST_TIME,
+      ))
+      ->execute();
+  }
+  return t('Civic VAT claim resources and State Treasury bootstrap applied.');
+}
