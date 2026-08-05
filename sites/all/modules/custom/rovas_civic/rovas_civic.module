@@ -65,9 +65,11 @@ function rovas_civic_menu() {
  * Implements hook_services_resources().
  *
  * - POST /rovas/rules/rules_proxy_claim_vat_receipt (VAT claim)
- * - GET  /rovas/civic/claims?view=… (alias civic_claims → civic/claims)
- * - GET  /rovas/civic/claims/summary
- * - GET  /rovas/civic/national_hourly_rate?country=SK (public)
+ * - GET  /rovas/civic_claims?view=… (+ /summary retrieve)
+ * - GET  /rovas/civic_national_hourly_rate?country=SK (public)
+ *
+ * Note: Services aliases must be slash-free. Do not use aliases like
+ * civic/claims — Services treats the first segment as the resource name.
  */
 function rovas_civic_services_resources() {
   $bearer_auth = array(
@@ -325,7 +327,7 @@ function rovas_civic_national_hourly_rate_row($country_code = ROVAS_CIVIC_DEFAUL
 }
 
 /**
- * Services callback: GET /rovas/civic/national_hourly_rate?country=
+ * Services callback: GET /rovas/civic_national_hourly_rate?country=
  *
  * Public — no Bearer required.
  */
@@ -778,9 +780,8 @@ function rovas_civic_ensure_services_resources() {
     $changed = TRUE;
   }
 
-  // GET /rovas/civic/claims[+ /summary] via alias civic/claims.
+  // GET /rovas/civic_claims[+ /summary] — machine name path (no slash alias).
   $claims_resource = array(
-    'alias' => 'civic/claims',
     'operations' => array(
       'index' => $bearer_op,
       'retrieve' => $bearer_op,
@@ -792,9 +793,8 @@ function rovas_civic_ensure_services_resources() {
     $changed = TRUE;
   }
 
-  // GET /rovas/civic/national_hourly_rate (public).
+  // GET /rovas/civic_national_hourly_rate (public) — machine name path.
   $rate_resource = array(
-    'alias' => 'civic/national_hourly_rate',
     'operations' => array(
       'index' => $public_op,
     ),
@@ -816,7 +816,7 @@ function rovas_civic_ensure_services_resources() {
  * ========================================================================= */
 
 /**
- * Services callback: GET /rovas/civic/claims?view=&limit=&offset=
+ * Services callback: GET /rovas/civic_claims?view=&limit=&offset=
  */
 function rovas_civic_services_claims_index($view = 'submitted', $limit = ROVAS_CIVIC_CLAIMS_DEFAULT_LIMIT, $offset = 0) {
   $uid = rovas_civic_request_uid();
@@ -840,7 +840,7 @@ function rovas_civic_services_claims_index($view = 'submitted', $limit = ROVAS_C
 }
 
 /**
- * Services callback: GET /rovas/civic/claims/{id}
+ * Services callback: GET /rovas/civic_claims/{id}
  *
  * Only id=summary is supported.
  */

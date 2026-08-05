@@ -34,8 +34,8 @@ not run deploys on their own.
 | Home Merits reads | `/rovas/me`, `/rovas/contributions/aggregate`, `/rovas/merit_distribution` | Implemented |
 | `rovas_civic` | `sites/all/modules/custom/rovas_civic` | National rates, donor Merit issuance, State Treasury, VAT claim |
 | Claim rule + split claims | `POST /rovas/rules/rules_proxy_claim_vat_receipt` | Implemented in `rovas_civic` (enable via updb / admin) |
-| Claim reads + summary | `GET /rovas/civic/claims`, `…/summary` | Implemented in `rovas_civic` (`rovas_civic_update_7002`) |
-| National hourly rate read | `GET /rovas/civic/national_hourly_rate` | Implemented in `rovas_civic` (`rovas_civic_update_7003`) |
+| Claim reads + summary | `GET /rovas/civic_claims`, `…/summary` | Implemented in `rovas_civic` (`rovas_civic_update_7002`) |
+| National hourly rate read | `GET /rovas/civic_national_hourly_rate` | Implemented in `rovas_civic` (`rovas_civic_update_7003`) |
 
 ## OAuth endpoints (live on dev)
 
@@ -400,18 +400,18 @@ Civic will proxy these reads into `GET /receipts` and
 
 ### Decisions (locked)
 
-- Summary is standalone: `GET /rovas/civic/claims/summary` (not fields on `/me`)
+- Summary is standalone: `GET /rovas/civic_claims/summary` (not fields on `/me`)
 - Summary metrics are **received**-based (shares credited to the caller)
 - No built-in clear API/drush — human clears tables when re-testing
 
 ### Checklist
 
-1. [x] `GET /rovas/civic/claims?view=submitted` — Bearer; claims where caller
+1. [x] `GET /rovas/civic_claims?view=submitted` — Bearer; claims where caller
    is the scanner
-2. [x] `GET /rovas/civic/claims?view=received` — Bearer; share rows where
+2. [x] `GET /rovas/civic_claims?view=received` — Bearer; share rows where
    caller is a beneficiary
 3. [x] Pagination: `limit` / `offset` (default 50, max 100)
-4. [x] `GET /rovas/civic/claims/summary` — `receipt_count`, `total_vat_eur`,
+4. [x] `GET /rovas/civic_claims/summary` — `receipt_count`, `total_vat_eur`,
    `taxes_me` (all **received**)
 5. [x] Services + OAuth2 (`civic` / `user_profile`); reject anonymous
 6. [x] Enable / register resources (`rovas_civic_update_7002` / admin)
@@ -422,9 +422,9 @@ Civic will proxy these reads into `GET /receipts` and
 
 | Method | URL | Auth |
 |--------|-----|------|
-| `GET` | `https://dev.rovas.app/rovas/civic/claims?view=submitted` | Bearer required |
-| `GET` | `https://dev.rovas.app/rovas/civic/claims?view=received` | Bearer required |
-| `GET` | `https://dev.rovas.app/rovas/civic/claims/summary` | Bearer required |
+| `GET` | `https://dev.rovas.app/rovas/civic_claims?view=submitted` | Bearer required |
+| `GET` | `https://dev.rovas.app/rovas/civic_claims?view=received` | Bearer required |
+| `GET` | `https://dev.rovas.app/rovas/civic_claims/summary` | Bearer required |
 
 ### Response shapes
 
@@ -509,18 +509,24 @@ scanned by someone else):
 # After deploy: drush74 updb -y && drush74 cc all -y
 # or admin: Enable Civic VAT claim + claim-read APIs
 
-curl -sS "https://dev.rovas.app/rovas/civic/claims?view=submitted" \
+curl -sS "https://dev.rovas.app/rovas/civic_claims?view=submitted" \
   -H "Authorization: Bearer $ACCESS_TOKEN" \
   -H "Accept: application/json"
 
-curl -sS "https://dev.rovas.app/rovas/civic/claims?view=received" \
+curl -sS "https://dev.rovas.app/rovas/civic_claims?view=received" \
   -H "Authorization: Bearer $ACCESS_TOKEN" \
   -H "Accept: application/json"
 
-curl -sS "https://dev.rovas.app/rovas/civic/claims/summary" \
+curl -sS "https://dev.rovas.app/rovas/civic_claims/summary" \
   -H "Authorization: Bearer $ACCESS_TOKEN" \
   -H "Accept: application/json"
 ```
+
+## Path note (Services)
+
+Drupal Services resource aliases **cannot contain slashes**. Civic claim and
+rate reads use machine-name paths (`/rovas/civic_claims`,
+`/rovas/civic_national_hourly_rate`), not `/rovas/civic/…`.
 
 ## Next work: public national hourly rate API
 
@@ -538,7 +544,7 @@ verify-preview, home € equivalent, and claim audit fields match the grant.
 
 | Method | URL | Auth |
 |--------|-----|------|
-| `GET` | `https://dev.rovas.app/rovas/civic/national_hourly_rate?country=SK` | **Public** (no Bearer) |
+| `GET` | `https://dev.rovas.app/rovas/civic_national_hourly_rate?country=SK` | **Public** (no Bearer) |
 
 Default `country` = `ROVAS_CIVIC_DEFAULT_COUNTRY` (`SK`). Unknown / missing
 row → **404** with a clear error body.
@@ -565,7 +571,7 @@ row → **404** with a clear error body.
 
 ### Checklist
 
-1. [x] `GET /rovas/civic/national_hourly_rate?country=SK` returns JSON above
+1. [x] `GET /rovas/civic_national_hourly_rate?country=SK` returns JSON above
 2. [x] Default country when `country` omitted
 3. [x] 404 when country has no positive rate
 4. [x] Public (anonymous) access; API keys disabled on the resource
@@ -578,7 +584,7 @@ row → **404** with a clear error body.
 # After deploy: drush74 updb -y && drush74 cc all -y
 # or admin: Enable Civic VAT claim + claim-read + rate APIs
 
-curl -sS "https://dev.rovas.app/rovas/civic/national_hourly_rate?country=SK" \
+curl -sS "https://dev.rovas.app/rovas/civic_national_hourly_rate?country=SK" \
   -H "Accept: application/json"
 
 # Expect hourly_wage_eur > 0 matching admin UI for SK

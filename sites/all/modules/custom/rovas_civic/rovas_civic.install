@@ -313,7 +313,7 @@ function rovas_civic_update_7002() {
   if (function_exists('rovas_civic_ensure_services_resources')) {
     rovas_civic_ensure_services_resources();
   }
-  return t('Civic claim-read APIs (GET /rovas/civic/claims, /summary) enabled on rovas_endpoint.');
+  return t('Civic claim-read APIs (GET /rovas/civic_claims, /summary) enabled on rovas_endpoint.');
 }
 
 /**
@@ -323,5 +323,19 @@ function rovas_civic_update_7003() {
   if (function_exists('rovas_civic_ensure_services_resources')) {
     rovas_civic_ensure_services_resources();
   }
-  return t('Civic national hourly rate API (GET /rovas/civic/national_hourly_rate) enabled on rovas_endpoint.');
+  return t('Civic national hourly rate API (GET /rovas/civic_national_hourly_rate) enabled on rovas_endpoint.');
+}
+
+/**
+ * Drop broken slash aliases (civic/claims, civic/national_hourly_rate).
+ *
+ * Services treats the first path segment as the resource name, so slash
+ * aliases 404. Paths are machine names: /rovas/civic_claims,
+ * /rovas/civic_national_hourly_rate.
+ */
+function rovas_civic_update_7004() {
+  if (function_exists('rovas_civic_ensure_services_resources')) {
+    rovas_civic_ensure_services_resources();
+  }
+  return t('Civic Services resources re-saved without slash aliases.');
 }
