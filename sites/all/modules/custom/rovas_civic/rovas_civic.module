@@ -229,22 +229,36 @@ function rovas_civic_base_fund_hourly_rate($eur = 10.0) {
  * ========================================================================= */
 
 /**
- * Issue Merits to a donor and write A3 audit row.
+ * Issue Merits to a donor with full paper trail + A3 audit row.
+ *
+ * Matches the work-report / project-reward housekeeping used by
+ * /user/<uid>/merits (Views merit_history on merits_disbursement nodes):
+ * purchase_receipt → merits_disbursement → ledger credit → project ME bump
+ * → user_expertise (NACE time-share when the donor has work history).
  *
  * @param object $account
- *   Drupal user.
+ *   Drupal user (donor).
  * @param float $merits
+ *   Merits to issue.
  * @param int $project_nid
+ *   Rewarded project (State Treasury or ordinary project).
  * @param string $source_type
+ *   A3 audit source_type (e.g. civic_vat_claim, project_reward_order).
  * @param string $source_id
+ *   A3 audit source_id (idempotency key with uid).
  * @param string $description
+ *   Human-readable note (receipt field_note + userpoints description).
+ * @param float|null $amount_paid
+ *   Optional EUR basis for purchase_receipt.field_amount_paid (VAT slice or
+ *   net donation). Defaults to $merits when NULL (work-report style).
  *
  * @return bool
  *   TRUE on success.
  */
-function rovas_civic_issue_donor_merits($account, $merits, $project_nid, $source_type, $source_id, $description) {
+function rovas_civic_issue_donor_merits($account, $merits, $project_nid, $source_type, $source_id, $description, $amount_paid = NULL) {
   $merits = (float) $merits;
-  if (empty($account->uid) || $merits <= 0) {
+  $project_nid = (int) $project_nid;
+  if (empty($account->uid) || $merits <= 0 || $project_nid < 1) {
     return FALSE;
   }
 
@@ -258,52 +272,108 @@ function rovas_civic_issue_donor_merits($account, $merits, $project_nid, $source
     return TRUE;
   }
 
-  $project = $project_nid ? node_load($project_nid) : FALSE;
-  $reward_entity = $project ? $project : $account;
-  if (function_exists('entity_metadata_wrapper') && $project) {
+  if (!function_exists('rules_invoke_component')) {
+    return FALSE;
+  }
+
+  $project = node_load($project_nid);
+  if (!$project || $project->type !== 'project') {
+    watchdog('rovas_civic', 'Donor Merit: project @nid missing or not a project.', array(
+      '@nid' => $project_nid,
+    ), WATCHDOG_ERROR);
+    return FALSE;
+  }
+
+  $reward_entity = $project;
+  if (function_exists('entity_metadata_wrapper')) {
     $reward_entity = entity_metadata_wrapper('node', $project);
   }
 
-  if (function_exists('rules_invoke_component')) {
-    $config = rules_config_load('rules_give_merits_to_user');
-    if ($config && !empty($config->active)) {
-      rules_invoke_component(
-        'rules_give_merits_to_user',
-        $account,
-        $merits,
-        $reward_entity,
-        $description,
-        'Insert'
-      );
-    }
-    else {
-      // Fallback: integer userpoints only (decimal part skipped).
-      if (function_exists('userpoints_userpointsapi')) {
-        $params = array(
-          'uid' => $account->uid,
-          'points' => (int) floor($merits),
-          'operation' => 'Insert',
-          'description' => $description,
-          'entity_id' => $project_nid,
-          'entity_type' => 'node',
-          'moderate' => FALSE,
-        );
-        userpoints_userpointsapi($params);
-      }
-      else {
-        return FALSE;
-      }
-    }
+  $paid = $amount_paid !== NULL ? (float) $amount_paid : $merits;
+
+  // 1) Parent purchase_receipt (Source = Project on /user/*/merits).
+  $receipt = rules_invoke_component(
+    'rules_create_purchase_receipt',
+    (int) $account->uid,
+    $project_nid,
+    $paid,
+    $description,
+    0
+  );
+  $receipt_id = is_array($receipt) ? (int) reset($receipt) : (int) $receipt;
+  if ($receipt_id < 1) {
+    watchdog('rovas_civic', 'Donor Merit: failed to create purchase_receipt for uid @u source @s.', array(
+      '@u' => $account->uid,
+      '@s' => $source_id,
+    ), WATCHDOG_ERROR);
+    return FALSE;
+  }
+
+  // 2) merits_disbursement row listed by Views merit_history.
+  rules_invoke_component(
+    'rules_create_merit_disbursement',
+    $receipt_id,
+    (int) $account->uid,
+    $merits
+  );
+
+  // 3) Credit userpoints / decimal Merits ledger.
+  $config = rules_config_load('rules_give_merits_to_user');
+  if ($config && !empty($config->active)) {
+    rules_invoke_component(
+      'rules_give_merits_to_user',
+      $account,
+      $merits,
+      $reward_entity,
+      $description,
+      'Insert'
+    );
+  }
+  elseif (function_exists('userpoints_userpointsapi')) {
+    // Fallback: integer userpoints only (decimal part skipped).
+    userpoints_userpointsapi(array(
+      'uid' => $account->uid,
+      'points' => (int) floor($merits),
+      'operation' => 'Insert',
+      'description' => $description,
+      'entity_id' => $project_nid,
+      'entity_type' => 'node',
+      'moderate' => FALSE,
+    ));
   }
   else {
     return FALSE;
   }
 
+  // 4) Bump project field_merit_reward (same as work-report / mrewarder path).
+  if (function_exists('project_merit_updater')) {
+    project_merit_updater($project_nid, $merits);
+  }
+
+  // 5) user_expertise via NACE time-share (buy-Merits style; no-op if no reports).
+  if (function_exists('_rb_user_time_in_nace_codes')) {
+    $nace_areas = _rb_user_time_in_nace_codes($account->uid);
+    foreach ($nace_areas as $tid => $nace_row) {
+      $time_share = isset($nace_row['percent']) ? (float) $nace_row['percent'] : 0.0;
+      if ($time_share <= 0 || round($merits * $time_share) <= 0) {
+        continue;
+      }
+      rules_invoke_component(
+        'rules_update_user_expertise',
+        $time_share,
+        $merits,
+        (int) $tid,
+        (int) $account->uid
+      );
+    }
+  }
+
+  // 6) A3 audit (NeoFund invariant).
   db_insert('rovas_merit_issuance')
     ->fields(array(
       'uid' => (int) $account->uid,
       'amount' => $merits,
-      'project_nid' => (int) $project_nid,
+      'project_nid' => $project_nid,
       'source_type' => $source_type,
       'source_id' => (string) $source_id,
       'description' => $description,
@@ -381,7 +451,8 @@ function rovas_civic_issue_donor_merit_for_order($order, $project, $net_eur, $ra
     (int) $project->nid,
     'project_reward_order',
     $source_id,
-    $desc
+    $desc,
+    $net_eur
   );
 }
 
@@ -657,7 +728,8 @@ function rovas_civic_claim_vat_receipt(array $params) {
         $treasury_nid,
         'civic_vat_claim',
         $source_id,
-        $desc
+        $desc,
+        $row['vat_slice']
       );
       if (!$ok) {
         throw new Exception('merit_grant_failed:' . $row['uid']);

@@ -249,8 +249,10 @@ project. Split-claim typeahead (`/rovas/users/search`) remains out of scope —
 1. [x] Services action `POST /rovas/rules/rules_proxy_claim_vat_receipt`
 2. [x] Auth: OAuth2 Bearer (`civic` / `user_profile`); reject anonymous
 3. [x] Tables `{civic_claims}` + `{civic_claim_shares}` (UNIQUE `receipt_uid`)
-4. [x] Atomic multi-beneficiary grant via `rules_give_merits_to_user` +
-   `{rovas_merit_issuance}` audit (A3); each share = separate donor attribution
+4. [x] Atomic multi-beneficiary grant via shared donor issuer
+   (`purchase_receipt` + `merits_disbursement` for `/user/*/merits`,
+   `rules_give_merits_to_user`, `project_merit_updater`, expertise NACE
+   share, `{rovas_merit_issuance}` A3); each share = separate donor attribution
 5. [x] Enable: `drush74 en rovas_civic -y && drush74 updb -y`, or admin
    **Configuration → Rovas Civic → Enable Civic VAT claim API**
 6. [ ] Smoke-test with curl using a Civic OAuth access token (after human deploy)
@@ -306,7 +308,8 @@ project. Split-claim typeahead (`/rovas/users/search`) remains out of scope —
 4. Per share: `vat_slice` + `ME = (vat_slice / national_rate) × 10`; floor 2dp;
    **residue to scanner**
 5. One Drupal transaction: for each share call donor Merit issuer
-   (`rules_give_merits_to_user` + `{rovas_merit_issuance}`) targeting State
+   (`purchase_receipt` + `merits_disbursement` + `rules_give_merits_to_user`
+   + project ME bump + expertise + `{rovas_merit_issuance}`) targeting State
    Treasury project; persist claim + share rows
 6. Return:
 
