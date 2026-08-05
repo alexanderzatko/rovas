@@ -315,3 +315,13 @@ function rovas_civic_update_7002() {
   }
   return t('Civic claim-read APIs (GET /rovas/civic/claims, /summary) enabled on rovas_endpoint.');
 }
+
+/**
+ * Enable public national hourly rate Services resource.
+ */
+function rovas_civic_update_7003() {
+  if (function_exists('rovas_civic_ensure_services_resources')) {
+    rovas_civic_ensure_services_resources();
+  }
+  return t('Civic national hourly rate API (GET /rovas/civic/national_hourly_rate) enabled on rovas_endpoint.');
+}

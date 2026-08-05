@@ -7,8 +7,9 @@ live at `~/Documents/homeProjects/civic/docs/rovas-integration.md` (Expo +
 Civic API); keep both in sync when contracts change.
 
 **Agents working in this repo:** implement / maintain work under
-[Next work: solo VAT claim](#next-work-solo-vat-claim) and
-[Next work: Civic claim reads + SoT](#next-work-civic-claim-reads--sot).
+[Next work: solo VAT claim](#next-work-solo-vat-claim),
+[Next work: Civic claim reads + SoT](#next-work-civic-claim-reads--sot), and
+[Next work: public national hourly rate API](#next-work-public-national-hourly-rate-api).
 Do not rely on reading the Civic tree unless you need Expo/API details.
 
 **Dev target (until told otherwise):** all Civic integration work targets
@@ -34,6 +35,7 @@ not run deploys on their own.
 | `rovas_civic` | `sites/all/modules/custom/rovas_civic` | National rates, donor Merit issuance, State Treasury, VAT claim |
 | Claim rule + split claims | `POST /rovas/rules/rules_proxy_claim_vat_receipt` | Implemented in `rovas_civic` (enable via updb / admin) |
 | Claim reads + summary | `GET /rovas/civic/claims`, `…/summary` | Implemented in `rovas_civic` (`rovas_civic_update_7002`) |
+| National hourly rate read | `GET /rovas/civic/national_hourly_rate` | Implemented in `rovas_civic` (`rovas_civic_update_7003`) |
 
 ## OAuth endpoints (live on dev)
 
@@ -519,6 +521,75 @@ curl -sS "https://dev.rovas.app/rovas/civic/claims/summary" \
   -H "Authorization: Bearer $ACCESS_TOKEN" \
   -H "Accept: application/json"
 ```
+
+## Next work: public national hourly rate API
+
+**Implemented in `rovas_civic`.** Civic must stop using its hard-coded / env
+`HOURLY_WAGE_EUR` as the authoritative Merit conversion wage. Rovas admin
+stores the country rate in `{rovas_national_hourly_rate}` (Configuration →
+Rovas Civic) and the VAT claim rule grants at that rate. This read API lets
+verify-preview, home € equivalent, and claim audit fields match the grant.
+
+**Do not** bolt this onto `GET /rovas/me` (user-scoped + Bearer) or
+`/contributions/aggregate` (unrelated). Claim POST already echoes
+`hourly_wage_eur` **after** grant — that does not help pre-claim UX.
+
+### Endpoint
+
+| Method | URL | Auth |
+|--------|-----|------|
+| `GET` | `https://dev.rovas.app/rovas/civic/national_hourly_rate?country=SK` | **Public** (no Bearer) |
+
+Default `country` = `ROVAS_CIVIC_DEFAULT_COUNTRY` (`SK`). Unknown / missing
+row → **404** with a clear error body.
+
+### Response shape
+
+```json
+{
+  "country_code": "SK",
+  "hourly_wage_eur": 7.5,
+  "merits_per_hour": 10,
+  "source": "manual / Eurostat / …",
+  "updated": "2026-08-01T12:00:00+02:00"
+}
+```
+
+| Field | Source |
+|-------|--------|
+| `country_code` | Request / row PK |
+| `hourly_wage_eur` | `{rovas_national_hourly_rate}.rate_eur` |
+| `merits_per_hour` | `ROVAS_CIVIC_ME_PER_HOUR` (10) |
+| `source` | Row `source` (may be empty string) |
+| `updated` | Row `updated` as ISO-8601 (or `null`) |
+
+### Checklist
+
+1. [x] `GET /rovas/civic/national_hourly_rate?country=SK` returns JSON above
+2. [x] Default country when `country` omitted
+3. [x] 404 when country has no positive rate
+4. [x] Public (anonymous) access; API keys disabled on the resource
+5. [x] Enable via updb / ensure helper after deploy (`rovas_civic_update_7003`)
+6. [ ] Smoke-test curl below
+
+### Smoke test (after deploy + enable)
+
+```bash
+# After deploy: drush74 updb -y && drush74 cc all -y
+# or admin: Enable Civic VAT claim + claim-read + rate APIs
+
+curl -sS "https://dev.rovas.app/rovas/civic/national_hourly_rate?country=SK" \
+  -H "Accept: application/json"
+
+# Expect hourly_wage_eur > 0 matching admin UI for SK
+```
+
+### Civic already consumes this
+
+Civic API `resolveMeritRate()` calls the URL above (5‑minute cache) and falls
+back to `HOURLY_WAGE_EUR` if the endpoint 404s / Rovas is down. Proxied as
+`GET /merit-rate` for the Expo client. No Civic changes needed once this
+ships on rovdev — just deploy + enable.
 
 ## Related Civic docs
 

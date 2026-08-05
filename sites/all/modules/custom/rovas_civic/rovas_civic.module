@@ -13,6 +13,9 @@ define('ROVAS_CIVIC_ME_PER_HOUR', 10.0);
 define('ROVAS_CIVIC_SHARE_PCT_TOLERANCE', 0.01);
 define('ROVAS_CIVIC_CLAIMS_DEFAULT_LIMIT', 50);
 define('ROVAS_CIVIC_CLAIMS_MAX_LIMIT', 100);
+// 64.99 Other financial service activities… — same fallback as shares_merit_rewarder
+// (timeshare / non-labor Merit attribution when there is no work-report NACE).
+define('ROVAS_CIVIC_FALLBACK_NACE_TID', 1601);
 
 /**
  * Implements hook_permission().
@@ -64,6 +67,7 @@ function rovas_civic_menu() {
  * - POST /rovas/rules/rules_proxy_claim_vat_receipt (VAT claim)
  * - GET  /rovas/civic/claims?view=… (alias civic_claims → civic/claims)
  * - GET  /rovas/civic/claims/summary
+ * - GET  /rovas/civic/national_hourly_rate?country=SK (public)
  */
 function rovas_civic_services_resources() {
   $bearer_auth = array(
@@ -195,6 +199,25 @@ function rovas_civic_services_resources() {
         ),
       ),
     ),
+    'civic_national_hourly_rate' => array(
+      'operations' => array(
+        'index' => array(
+          'help' => 'Public national hourly wage (EUR/h) used for Civic Merit sizing. ?country=SK (default).',
+          'callback' => 'rovas_civic_services_national_hourly_rate_index',
+          'access callback' => 'services_access_menu',
+          'args' => array(
+            array(
+              'name' => 'country',
+              'type' => 'string',
+              'description' => 'ISO 3166-1 alpha-2 country code (default SK).',
+              'source' => array('param' => 'country'),
+              'optional' => TRUE,
+              'default value' => ROVAS_CIVIC_DEFAULT_COUNTRY,
+            ),
+          ),
+        ),
+      ),
+    ),
   );
 }
 
@@ -274,14 +297,56 @@ function rovas_civic_format_created($timestamp) {
  * @return float|false
  */
 function rovas_civic_national_hourly_rate($country_code = ROVAS_CIVIC_DEFAULT_COUNTRY) {
-  $code = drupal_strtoupper($country_code);
-  $rate = db_query("SELECT rate_eur FROM {rovas_national_hourly_rate} WHERE country_code = :c", array(
-    ':c' => $code,
-  ))->fetchField();
-  if ($rate === FALSE || (float) $rate <= 0) {
+  $row = rovas_civic_national_hourly_rate_row($country_code);
+  return $row ? (float) $row->rate_eur : FALSE;
+}
+
+/**
+ * Load full national hourly rate row.
+ *
+ * @param string $country_code
+ *   ISO alpha-2.
+ *
+ * @return object|false
+ *   Row with country_code, rate_eur, source, updated — or FALSE.
+ */
+function rovas_civic_national_hourly_rate_row($country_code = ROVAS_CIVIC_DEFAULT_COUNTRY) {
+  $code = drupal_strtoupper(trim((string) $country_code));
+  if ($code === '' || !preg_match('/^[A-Z]{2}$/', $code)) {
     return FALSE;
   }
-  return (float) $rate;
+  $row = db_query("SELECT country_code, rate_eur, source, updated FROM {rovas_national_hourly_rate} WHERE country_code = :c", array(
+    ':c' => $code,
+  ))->fetchObject();
+  if (!$row || (float) $row->rate_eur <= 0) {
+    return FALSE;
+  }
+  return $row;
+}
+
+/**
+ * Services callback: GET /rovas/civic/national_hourly_rate?country=
+ *
+ * Public — no Bearer required.
+ */
+function rovas_civic_services_national_hourly_rate_index($country = ROVAS_CIVIC_DEFAULT_COUNTRY) {
+  if ($country === NULL || $country === '') {
+    $country = ROVAS_CIVIC_DEFAULT_COUNTRY;
+  }
+  $row = rovas_civic_national_hourly_rate_row($country);
+  if (!$row) {
+    return services_error(t('National hourly rate not found for country @c.', array(
+      '@c' => drupal_strtoupper(trim((string) $country)),
+    )), 404);
+  }
+
+  return array(
+    'country_code' => $row->country_code,
+    'hourly_wage_eur' => (float) $row->rate_eur,
+    'merits_per_hour' => ROVAS_CIVIC_ME_PER_HOUR,
+    'source' => isset($row->source) ? (string) $row->source : '',
+    'updated' => !empty($row->updated) ? rovas_civic_format_created($row->updated) : NULL,
+  );
 }
 
 /**
@@ -345,7 +410,7 @@ function rovas_civic_base_fund_hourly_rate($eur = 10.0) {
  * Matches the work-report / project-reward housekeeping used by
  * /user/<uid>/merits (Views merit_history on merits_disbursement nodes):
  * purchase_receipt → merits_disbursement → ledger credit → project ME bump
- * → user_expertise (NACE time-share when the donor has work history).
+ * → user_expertise (NACE 64.99 fallback tid — same as shares_merit_rewarder).
  *
  * @param object $account
  *   Drupal user (donor).
@@ -360,8 +425,8 @@ function rovas_civic_base_fund_hourly_rate($eur = 10.0) {
  * @param string $description
  *   Human-readable note (receipt field_note + userpoints description).
  * @param float|null $amount_paid
- *   Optional EUR basis for purchase_receipt.field_amount_paid (VAT slice or
- *   net donation). Defaults to $merits when NULL (work-report style).
+ *   Optional EUR basis for the note only (VAT slice / net donation). Not stored
+ *   on purchase_receipt.field_amount_paid — that field holds Merit units site-wide.
  *
  * @return bool
  *   TRUE on success.
@@ -400,14 +465,16 @@ function rovas_civic_issue_donor_merits($account, $merits, $project_nid, $source
     $reward_entity = entity_metadata_wrapper('node', $project);
   }
 
-  $paid = $amount_paid !== NULL ? (float) $amount_paid : $merits;
+  // field_amount_paid is Merit units everywhere else (work reports, mrewarder).
+  // EUR belongs in the note only — do not put vat_slice / net_eur here.
+  $receipt_me = $merits;
 
   // 1) Parent purchase_receipt (Source = Project on /user/*/merits).
   $receipt = rules_invoke_component(
     'rules_create_purchase_receipt',
     (int) $account->uid,
     $project_nid,
-    $paid,
+    $receipt_me,
     $description,
     0
   );
@@ -461,23 +528,15 @@ function rovas_civic_issue_donor_merits($account, $merits, $project_nid, $source
     project_merit_updater($project_nid, $merits);
   }
 
-  // 5) user_expertise via NACE time-share (buy-Merits style; no-op if no reports).
-  if (function_exists('_rb_user_time_in_nace_codes')) {
-    $nace_areas = _rb_user_time_in_nace_codes($account->uid);
-    foreach ($nace_areas as $tid => $nace_row) {
-      $time_share = isset($nace_row['percent']) ? (float) $nace_row['percent'] : 0.0;
-      if ($time_share <= 0 || round($merits * $time_share) <= 0) {
-        continue;
-      }
-      rules_invoke_component(
-        'rules_update_user_expertise',
-        $time_share,
-        $merits,
-        (int) $tid,
-        (int) $account->uid
-      );
-    }
-  }
+  // 5) user_expertise: non-labor donor ME → 64.99 fallback (shares_merit_rewarder).
+  // Do not spread across the donor's work-report NACE mix (e.g. 62.01).
+  rules_invoke_component(
+    'rules_update_user_expertise',
+    1.0,
+    $merits,
+    ROVAS_CIVIC_FALLBACK_NACE_TID,
+    (int) $account->uid
+  );
 
   // 6) A3 audit (NeoFund invariant).
   db_insert('rovas_merit_issuance')
@@ -655,7 +714,7 @@ function rovas_civic_ensure_state_treasury() {
 }
 
 /**
- * Enable VAT claim action + claim-read resources on rovas_endpoint (Bearer, no API keys).
+ * Enable VAT claim action + claim-read + rate resources on rovas_endpoint.
  *
  * @return bool
  */
@@ -693,6 +752,19 @@ function rovas_civic_ensure_services_resources() {
     ),
   );
 
+  $public_op = array(
+    'enabled' => 1,
+    'settings' => array(
+      'services_auth_apikeys' => array(
+        'disable_authentication' => 1,
+      ),
+      'oauth2_server' => array(
+        'require_authentication' => 0,
+        'scope' => '',
+      ),
+    ),
+  );
+
   // POST /rovas/rules/rules_proxy_claim_vat_receipt
   if (empty($endpoint->resources['rules']['actions']['rules_proxy_claim_vat_receipt'])
     || $endpoint->resources['rules']['actions']['rules_proxy_claim_vat_receipt'] != $bearer_op) {
@@ -717,6 +789,19 @@ function rovas_civic_ensure_services_resources() {
   if (empty($endpoint->resources['civic_claims'])
     || $endpoint->resources['civic_claims'] != $claims_resource) {
     $endpoint->resources['civic_claims'] = $claims_resource;
+    $changed = TRUE;
+  }
+
+  // GET /rovas/civic/national_hourly_rate (public).
+  $rate_resource = array(
+    'alias' => 'civic/national_hourly_rate',
+    'operations' => array(
+      'index' => $public_op,
+    ),
+  );
+  if (empty($endpoint->resources['civic_national_hourly_rate'])
+    || $endpoint->resources['civic_national_hourly_rate'] != $rate_resource) {
+    $endpoint->resources['civic_national_hourly_rate'] = $rate_resource;
     $changed = TRUE;
   }
 
