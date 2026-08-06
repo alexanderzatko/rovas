@@ -36,6 +36,7 @@ not run deploys on their own.
 | `rovas_civic` | `sites/all/modules/custom/rovas_civic` | National rates, donor Merit issuance, State Treasury, VAT claim |
 | Claim rule + split claims | `POST /rovas/rules/rules_proxy_claim_vat_receipt` | Implemented in `rovas_civic` (enable via updb / admin) |
 | Claim reads + summary | `GET /rovas/civic_claims`, `…/summary` | Implemented in `rovas_civic` (`rovas_civic_update_7002`) |
+| Claim status by receipt | `GET /rovas/civic_claims?receipt_uid=` | Implemented — `{ claimed, receipt_uid }` only (no scanner) |
 | National hourly rate read | `GET /rovas/civic_national_hourly_rate` | Implemented in `rovas_civic` (`rovas_civic_update_7003`) |
 | Users search (split typeahead) | `GET /rovas/users_search?query=` | Implemented in `rovas_civic` (`rovas_civic_update_7005`). **Param is `query`, not `q`** — Drupal reserves `$_GET['q']` for the request path. |
 
@@ -503,10 +504,12 @@ Civic will proxy these reads into `GET /receipts` and
 3. [x] Pagination: `limit` / `offset` (default 50, max 100)
 4. [x] `GET /rovas/civic_claims/summary` — `receipt_count`, `total_vat_eur`,
    `taxes_me` (all **received**)
-5. [x] Services + OAuth2 (`civic` / `user_profile`); reject anonymous
-6. [x] Enable / register resources (`rovas_civic_update_7002` / admin)
-7. [x] Dev clear: out of band (phpMyAdmin) — Merits not reversed
-8. [ ] Smoke-test curls below after deploy
+5. [x] `GET /rovas/civic_claims?receipt_uid=` — `{ claimed, receipt_uid }`
+   global SoT lookup (no scanner identity; ignores view/limit/offset)
+6. [x] Services + OAuth2 (`civic` / `user_profile`); reject anonymous
+7. [x] Enable / register resources (`rovas_civic_update_7002` / admin)
+8. [x] Dev clear: out of band (phpMyAdmin) — Merits not reversed
+9. [ ] Smoke-test curls below after deploy
 
 ### Endpoints
 
@@ -514,7 +517,34 @@ Civic will proxy these reads into `GET /receipts` and
 |--------|-----|------|
 | `GET` | `https://dev.rovas.app/rovas/civic_claims?view=submitted` | Bearer required |
 | `GET` | `https://dev.rovas.app/rovas/civic_claims?view=received` | Bearer required |
+| `GET` | `https://dev.rovas.app/rovas/civic_claims?receipt_uid=O-…` | Bearer required — `{ claimed, receipt_uid }` |
 | `GET` | `https://dev.rovas.app/rovas/civic_claims/summary` | Bearer required |
+
+### Claim status (`?receipt_uid=`)
+
+Global UID dedup preview for Civic verify/split UI. When `receipt_uid` is
+non-empty, ignore `view` / `limit` / `offset` and return only:
+
+```json
+{ "claimed": true, "receipt_uid": "O-0123456789abcdef0123456789abcdef" }
+```
+
+Lookup is `{civic_claims}` by UNIQUE `receipt_uid`. No scanner / share data.
+Implemented as `rovas_civic_claim_status_by_receipt_uid()`.
+
+Civic calls this via `fetchClaimStatus` (optional Bearer → `already_claimed`
+locks split UI + claim). Related: `users_search` uses param **`query`**, never
+`q` (Drupal path conflict) — see [users search](#next-work-users-search-split-typeahead).
+
+```bash
+curl -sS "https://dev.rovas.app/rovas/civic_claims?receipt_uid=O-<known-claimed>" \
+  -H "Authorization: Bearer $ACCESS_TOKEN" -H "Accept: application/json"
+# → {"claimed":true,"receipt_uid":"O-…"}
+
+curl -sS "https://dev.rovas.app/rovas/civic_claims?receipt_uid=O-<unknown>" \
+  -H "Authorization: Bearer $ACCESS_TOKEN" -H "Accept: application/json"
+# → {"claimed":false,"receipt_uid":"O-…"}
+```
 
 ### Response shapes
 
@@ -607,6 +637,10 @@ curl -sS "https://dev.rovas.app/rovas/civic_claims?view=received" \
   -H "Accept: application/json"
 
 curl -sS "https://dev.rovas.app/rovas/civic_claims/summary" \
+  -H "Authorization: Bearer $ACCESS_TOKEN" \
+  -H "Accept: application/json"
+
+curl -sS "https://dev.rovas.app/rovas/civic_claims?receipt_uid=O-<known-or-unknown>" \
   -H "Authorization: Bearer $ACCESS_TOKEN" \
   -H "Accept: application/json"
 ```

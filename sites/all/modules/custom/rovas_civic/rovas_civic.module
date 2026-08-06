@@ -154,7 +154,7 @@ function rovas_civic_services_resources() {
     'civic_claims' => array(
       'operations' => array(
         'index' => array(
-          'help' => 'List Civic VAT claims. ?view=submitted|received; ?limit&offset. Bearer required.',
+          'help' => 'List Civic VAT claims (?view=submitted|received) or claim-status lookup (?receipt_uid=). Bearer required.',
           'callback' => 'rovas_civic_services_claims_index',
           'access callback' => $bearer_auth['access callback'],
           'access arguments' => $bearer_auth['access arguments'],
@@ -163,7 +163,7 @@ function rovas_civic_services_resources() {
             array(
               'name' => 'view',
               'type' => 'string',
-              'description' => 'submitted (scanner) or received (beneficiary shares).',
+              'description' => 'submitted (scanner) or received (beneficiary shares). Ignored when receipt_uid is set.',
               'source' => array('param' => 'view'),
               'optional' => TRUE,
               'default value' => 'submitted',
@@ -183,6 +183,14 @@ function rovas_civic_services_resources() {
               'source' => array('param' => 'offset'),
               'optional' => TRUE,
               'default value' => 0,
+            ),
+            array(
+              'name' => 'receipt_uid',
+              'type' => 'string',
+              'description' => 'When set, return {claimed, receipt_uid} for global UID dedup preview (Civic verify). Do not use param name "q".',
+              'source' => array('param' => 'receipt_uid'),
+              'optional' => TRUE,
+              'default value' => '',
             ),
           ),
         ),
@@ -963,12 +971,20 @@ function rovas_civic_ensure_services_resources() {
  * ========================================================================= */
 
 /**
- * Services callback: GET /rovas/civic_claims?view=&limit=&offset=
+ * Services callback: GET /rovas/civic_claims?view=&limit=&offset=&receipt_uid=
+ *
+ * When receipt_uid is non-empty, returns global claim-status for Civic verify
+ * preview: { claimed: bool, receipt_uid } — no scanner identity.
  */
-function rovas_civic_services_claims_index($view = 'submitted', $limit = ROVAS_CIVIC_CLAIMS_DEFAULT_LIMIT, $offset = 0) {
+function rovas_civic_services_claims_index($view = 'submitted', $limit = ROVAS_CIVIC_CLAIMS_DEFAULT_LIMIT, $offset = 0, $receipt_uid = '') {
   $uid = rovas_civic_request_uid();
   if ($uid < 1) {
     return services_error(t('Authentication required'), 401);
+  }
+
+  $receipt_uid = trim((string) $receipt_uid);
+  if ($receipt_uid !== '') {
+    return rovas_civic_claim_status_by_receipt_uid($receipt_uid);
   }
 
   $view = drupal_strtolower(trim((string) $view));
@@ -984,6 +1000,25 @@ function rovas_civic_services_claims_index($view = 'submitted', $limit = ROVAS_C
     return rovas_civic_claims_list_submitted($uid, $pager['limit'], $pager['offset']);
   }
   return rovas_civic_claims_list_received($uid, $pager['limit'], $pager['offset']);
+}
+
+/**
+ * Global receipt UID claim check (SoT: {civic_claims}).
+ *
+ * @param string $receipt_uid
+ *   eKasa online UID.
+ *
+ * @return array
+ *   keys: claimed (bool), receipt_uid (string).
+ */
+function rovas_civic_claim_status_by_receipt_uid($receipt_uid) {
+  $exists = (bool) db_query('SELECT 1 FROM {civic_claims} WHERE receipt_uid = :r', array(
+    ':r' => $receipt_uid,
+  ))->fetchField();
+  return array(
+    'claimed' => $exists,
+    'receipt_uid' => $receipt_uid,
+  );
 }
 
 /**
