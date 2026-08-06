@@ -8,8 +8,9 @@ Civic API); keep both in sync when contracts change.
 
 **Agents working in this repo:** implement / maintain work under
 [Next work: solo VAT claim](#next-work-solo-vat-claim),
-[Next work: Civic claim reads + SoT](#next-work-civic-claim-reads--sot), and
-[Next work: public national hourly rate API](#next-work-public-national-hourly-rate-api).
+[Next work: Civic claim reads + SoT](#next-work-civic-claim-reads--sot),
+[Next work: public national hourly rate API](#next-work-public-national-hourly-rate-api),
+and [Next work: users search (split typeahead)](#next-work-users-search-split-typeahead).
 Do not rely on reading the Civic tree unless you need Expo/API details.
 
 **Dev target (until told otherwise):** all Civic integration work targets
@@ -36,6 +37,7 @@ not run deploys on their own.
 | Claim rule + split claims | `POST /rovas/rules/rules_proxy_claim_vat_receipt` | Implemented in `rovas_civic` (enable via updb / admin) |
 | Claim reads + summary | `GET /rovas/civic_claims`, `…/summary` | Implemented in `rovas_civic` (`rovas_civic_update_7002`) |
 | National hourly rate read | `GET /rovas/civic_national_hourly_rate` | Implemented in `rovas_civic` (`rovas_civic_update_7003`) |
+| Users search (split typeahead) | `GET /rovas/users_search?q=` | Implemented in `rovas_civic` (`rovas_civic_update_7005`) |
 
 ## OAuth endpoints (live on dev)
 
@@ -244,8 +246,9 @@ When **no** Bearer: omit `user_*` fields. When Bearer present: fill them.
 
 **Implemented in `rovas_civic`** (enable on rovdev after deploy). Civic verifies
 eKasa receipts; Rovas grants donor Merits on the **State Treasury of Slovakia**
-project. Split-claim typeahead (`/rovas/users/search`) remains out of scope —
-`shares[]` is already supported (each beneficiary is an individual donor).
+project. `shares[]` is already supported (each beneficiary is an individual
+donor). Split-claim typeahead is a separate task — see
+[Next work: users search (split typeahead)](#next-work-users-search-split-typeahead).
 
 ### Checklist
 
@@ -334,7 +337,6 @@ Non-zero `result` + `result_explain` for failures (`duplicate_receipt`,
 
 ### Out of scope for this Rovas slice
 
-- `GET /rovas/users/search` (split typeahead — later)
 - Full A11 charity custody / settlement
 - Volunteer report proxy, charity/invest project lists
 - Civic SQLite / fraud heuristics (Civic repo)
@@ -376,9 +378,90 @@ curl -sS https://dev.rovas.app/rovas/merit_distribution \
 
 ### Later (after solo claim ships)
 
-- `GET /rovas/users/search?q=` — split-claim typeahead
 - Charity pass-through using national rates (A11)
 - Ensure multi-beneficiary shares are exercised end-to-end from Civic
+
+## Next work: users search (split typeahead)
+
+**Implemented in `rovas_civic`** (enable on rovdev: `drush74 updb -y`, or admin
+**Enable Civic VAT claim + claim-read + rate + users_search APIs**). Civic
+split-claim UI needs a lightweight typeahead so the scanner can add other
+Rovas users as Merit co-recipients. The claim rule already accepts `shares[]`;
+this endpoint unblocks the add-person flow.
+
+Civic proxies this as `GET /users/search?q=` (Bearer required).
+
+### Path note
+
+Drupal Services resource aliases **cannot contain slashes**. Use the
+machine-name path:
+
+| Method | URL | Auth |
+|--------|-----|------|
+| `GET` | `https://dev.rovas.app/rovas/users_search?q=` | Bearer required (`civic` / `user_profile`) |
+
+Do **not** register `/rovas/users/search` (slash in alias). Civic API calls
+`/rovas/users_search`.
+
+### Query
+
+| Param | Rules |
+|-------|--------|
+| `q` | Required; trim; **≥ 3** characters; reject shorter with 400 |
+| (implicit) | Max **10** results |
+
+### Response
+
+JSON array of public profile rows only — **no** email, balance, or
+contributions:
+
+```json
+[
+  {
+    "rovas_uid": "42",
+    "username": "anna_nb",
+    "display_name": "Anna Nováková"
+  }
+]
+```
+
+| Field | Notes |
+|-------|--------|
+| `rovas_uid` | Drupal uid as string |
+| `username` | Rovas username |
+| `display_name` | Prefer real name / display; fall back to `username` |
+
+Empty match → `[]` (200).
+
+### Required logic
+
+1. Resolve caller from Bearer (reject anonymous)
+2. Match `q` case-insensitively against username and display name
+3. Exclude blocked / inactive users; exclude the caller (optional but
+   preferred — scanner is always injected client-side)
+4. Cap at 10 rows, stable order (username ASC is fine)
+5. **Phase 3+:** honour a per-user “not searchable / don’t include me in
+   split claims” preference — stub as no-op for v1 (`rovas_civic_user_is_searchable`)
+
+### Checklist
+
+1. [x] Services action `GET /rovas/users_search`
+2. [x] Auth: OAuth2 Bearer (`civic` / `user_profile`); reject anonymous
+3. [x] Validate `q` ≥ 3; return ≤ 10 `{ rovas_uid, username, display_name }`
+4. [x] API-key auth disabled on the resource (same as other Civic resources)
+5. [x] Enable via updb / ensure helper after deploy (`rovas_civic_update_7005`)
+6. [ ] Smoke-test curl below
+
+### Smoke test (after deploy + enable)
+
+```bash
+# After deploy: drush74 updb -y && drush74 cc all -y
+# or admin: Enable Civic VAT claim + claim-read + rate + users_search APIs
+
+curl -sS "https://dev.rovas.app/rovas/users_search?q=ann" \
+  -H "Authorization: Bearer $ACCESS_TOKEN" \
+  -H "Accept: application/json"
+```
 
 ## Next work: Civic claim reads + SoT
 
@@ -501,7 +584,6 @@ scanned by someone else):
 - Civic SQLite / `claim_attempts` / GPS fraud (Civic repo)
 - Built-in truncate / Merit reversal for re-claim testing
 - Prod `/var/www/rovas` until explicitly requested
-- `GET /rovas/users/search` (still under Later)
 
 ### Smoke test (after deploy + enable)
 
@@ -524,9 +606,10 @@ curl -sS "https://dev.rovas.app/rovas/civic_claims/summary" \
 
 ## Path note (Services)
 
-Drupal Services resource aliases **cannot contain slashes**. Civic claim and
-rate reads use machine-name paths (`/rovas/civic_claims`,
-`/rovas/civic_national_hourly_rate`), not `/rovas/civic/…`.
+Drupal Services resource aliases **cannot contain slashes**. Civic claim,
+rate, and user-search reads use machine-name paths (`/rovas/civic_claims`,
+`/rovas/civic_national_hourly_rate`, `/rovas/users_search`), not
+`/rovas/civic/…` or `/rovas/users/search`.
 
 ## Next work: public national hourly rate API
 

@@ -339,3 +339,13 @@ function rovas_civic_update_7004() {
   }
   return t('Civic Services resources re-saved without slash aliases.');
 }
+
+/**
+ * Enable Civic users_search Services resource (split-claim typeahead).
+ */
+function rovas_civic_update_7005() {
+  if (function_exists('rovas_civic_ensure_services_resources')) {
+    rovas_civic_ensure_services_resources();
+  }
+  return t('Civic users search API (GET /rovas/users_search) enabled on rovas_endpoint.');
+}

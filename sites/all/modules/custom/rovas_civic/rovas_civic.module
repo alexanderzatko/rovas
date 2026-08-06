@@ -13,6 +13,8 @@ define('ROVAS_CIVIC_ME_PER_HOUR', 10.0);
 define('ROVAS_CIVIC_SHARE_PCT_TOLERANCE', 0.01);
 define('ROVAS_CIVIC_CLAIMS_DEFAULT_LIMIT', 50);
 define('ROVAS_CIVIC_CLAIMS_MAX_LIMIT', 100);
+define('ROVAS_CIVIC_USERS_SEARCH_MIN_Q', 3);
+define('ROVAS_CIVIC_USERS_SEARCH_MAX', 10);
 // 64.99 Other financial service activities… — same fallback as shares_merit_rewarder
 // (timeshare / non-labor Merit attribution when there is no work-report NACE).
 define('ROVAS_CIVIC_FALLBACK_NACE_TID', 1601);
@@ -67,6 +69,7 @@ function rovas_civic_menu() {
  * - POST /rovas/rules/rules_proxy_claim_vat_receipt (VAT claim)
  * - GET  /rovas/civic_claims?view=… (+ /summary retrieve)
  * - GET  /rovas/civic_national_hourly_rate?country=SK (public)
+ * - GET  /rovas/users_search?q= (split-claim typeahead)
  *
  * Note: Services aliases must be slash-free. Do not use aliases like
  * civic/claims — Services treats the first segment as the resource name.
@@ -220,6 +223,26 @@ function rovas_civic_services_resources() {
         ),
       ),
     ),
+    'users_search' => array(
+      'operations' => array(
+        'index' => array(
+          'help' => 'Typeahead search for Civic split-claim co-recipients. ?q= (≥3 chars). Bearer required. Max 10 public profile rows.',
+          'callback' => 'rovas_civic_services_users_search_index',
+          'access callback' => $bearer_auth['access callback'],
+          'access arguments' => $bearer_auth['access arguments'],
+          'access arguments append' => $bearer_auth['access arguments append'],
+          'args' => array(
+            array(
+              'name' => 'q',
+              'type' => 'string',
+              'description' => 'Search string (username / display name); min 3 characters.',
+              'source' => array('param' => 'q'),
+              'optional' => FALSE,
+            ),
+          ),
+        ),
+      ),
+    ),
   );
 }
 
@@ -349,6 +372,113 @@ function rovas_civic_services_national_hourly_rate_index($country = ROVAS_CIVIC_
     'source' => isset($row->source) ? (string) $row->source : '',
     'updated' => !empty($row->updated) ? rovas_civic_format_created($row->updated) : NULL,
   );
+}
+
+/* ===========================================================================
+ * Users search (split-claim typeahead)
+ * ========================================================================= */
+
+/**
+ * Services callback: GET /rovas/users_search?q=
+ *
+ * Bearer required. Returns ≤10 public profile rows (no email / balance).
+ */
+function rovas_civic_services_users_search_index($q = '') {
+  $uid = rovas_civic_request_uid();
+  if ($uid < 1) {
+    return services_error(t('Authentication required'), 401);
+  }
+
+  $q = trim((string) $q);
+  if (drupal_strlen($q) < ROVAS_CIVIC_USERS_SEARCH_MIN_Q) {
+    return services_error(t('Query must be at least @n characters.', array(
+      '@n' => ROVAS_CIVIC_USERS_SEARCH_MIN_Q,
+    )), 400);
+  }
+
+  return rovas_civic_users_search($q, $uid);
+}
+
+/**
+ * Search active users by username / display name for split-claim typeahead.
+ *
+ * @param string $q
+ *   Trimmed search string (≥3 chars; caller validates).
+ * @param int $caller_uid
+ *   Bearer user — excluded from results.
+ *
+ * @return array
+ *   List of {rovas_uid, username, display_name}.
+ */
+function rovas_civic_users_search($q, $caller_uid) {
+  $caller_uid = (int) $caller_uid;
+  $like = '%' . db_like($q) . '%';
+
+  $query = db_select('users', 'u');
+  $query->fields('u', array('uid', 'name'));
+  $query->condition('u.status', 1);
+  $query->condition('u.uid', 0, '>');
+  if ($caller_uid > 0) {
+    $query->condition('u.uid', $caller_uid, '<>');
+  }
+
+  $has_full_name = (bool) field_info_field('field_full_name');
+  if ($has_full_name) {
+    $query->leftJoin('field_data_field_full_name', 'fn',
+      "fn.entity_id = u.uid AND fn.entity_type = 'user' AND fn.deleted = 0 AND fn.delta = 0");
+    $query->addField('fn', 'field_full_name_value', 'full_name');
+    $or = db_or()
+      ->condition('u.name', $like, 'LIKE')
+      ->condition('fn.field_full_name_value', $like, 'LIKE');
+    $query->condition($or);
+  }
+  else {
+    $query->condition('u.name', $like, 'LIKE');
+  }
+
+  // Fetch a small oversample so Phase-3 searchable filtering can drop rows
+  // without undershooting the 10-result cap.
+  $query->orderBy('u.name', 'ASC');
+  $query->range(0, ROVAS_CIVIC_USERS_SEARCH_MAX * 2);
+
+  $rows = $query->execute();
+  $out = array();
+  foreach ($rows as $row) {
+    if (!rovas_civic_user_is_searchable($row)) {
+      continue;
+    }
+    $username = (string) $row->name;
+    $display = $username;
+    if ($has_full_name && !empty($row->full_name)) {
+      $display = (string) $row->full_name;
+    }
+    $out[] = array(
+      'rovas_uid' => (string) ((int) $row->uid),
+      'username' => $username,
+      'display_name' => $display,
+    );
+    if (count($out) >= ROVAS_CIVIC_USERS_SEARCH_MAX) {
+      break;
+    }
+  }
+
+  return $out;
+}
+
+/**
+ * Whether a user may appear in Civic split-claim typeahead.
+ *
+ * Phase 3+: honour a per-user “not searchable / don’t include me in split
+ * claims” preference. v1 is a no-op (always searchable).
+ *
+ * @param object $account
+ *   User row with at least ->uid.
+ *
+ * @return bool
+ */
+function rovas_civic_user_is_searchable($account) {
+  // Stub — always searchable in v1.
+  return TRUE;
 }
 
 /**
@@ -716,7 +846,7 @@ function rovas_civic_ensure_state_treasury() {
 }
 
 /**
- * Enable VAT claim action + claim-read + rate resources on rovas_endpoint.
+ * Enable VAT claim action + claim-read + rate + users_search on rovas_endpoint.
  *
  * @return bool
  */
@@ -802,6 +932,18 @@ function rovas_civic_ensure_services_resources() {
   if (empty($endpoint->resources['civic_national_hourly_rate'])
     || $endpoint->resources['civic_national_hourly_rate'] != $rate_resource) {
     $endpoint->resources['civic_national_hourly_rate'] = $rate_resource;
+    $changed = TRUE;
+  }
+
+  // GET /rovas/users_search?q= — split-claim typeahead (Bearer).
+  $users_search_resource = array(
+    'operations' => array(
+      'index' => $bearer_op,
+    ),
+  );
+  if (empty($endpoint->resources['users_search'])
+    || $endpoint->resources['users_search'] != $users_search_resource) {
+    $endpoint->resources['users_search'] = $users_search_resource;
     $changed = TRUE;
   }
 
