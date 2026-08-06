@@ -37,7 +37,7 @@ not run deploys on their own.
 | Claim rule + split claims | `POST /rovas/rules/rules_proxy_claim_vat_receipt` | Implemented in `rovas_civic` (enable via updb / admin) |
 | Claim reads + summary | `GET /rovas/civic_claims`, `…/summary` | Implemented in `rovas_civic` (`rovas_civic_update_7002`) |
 | National hourly rate read | `GET /rovas/civic_national_hourly_rate` | Implemented in `rovas_civic` (`rovas_civic_update_7003`) |
-| Users search (split typeahead) | `GET /rovas/users_search?q=` | Implemented in `rovas_civic` (`rovas_civic_update_7005`) |
+| Users search (split typeahead) | `GET /rovas/users_search?query=` | Implemented in `rovas_civic` (`rovas_civic_update_7005`). **Param is `query`, not `q`** — Drupal reserves `$_GET['q']` for the request path. |
 
 ## OAuth endpoints (live on dev)
 
@@ -389,7 +389,8 @@ split-claim UI needs a lightweight typeahead so the scanner can add other
 Rovas users as Merit co-recipients. The claim rule already accepts `shares[]`;
 this endpoint unblocks the add-person flow.
 
-Civic proxies this as `GET /users/search?q=` (Bearer required).
+Civic proxies this as `GET /users/search?q=` (Bearer required). Civic keeps
+the friendly `q` on its own API and maps it to Rovas `query`.
 
 ### Path note
 
@@ -398,16 +399,21 @@ machine-name path:
 
 | Method | URL | Auth |
 |--------|-----|------|
-| `GET` | `https://dev.rovas.app/rovas/users_search?q=` | Bearer required (`civic` / `user_profile`) |
+| `GET` | `https://dev.rovas.app/rovas/users_search?query=` | Bearer required (`civic` / `user_profile`) |
 
 Do **not** register `/rovas/users/search` (slash in alias). Civic API calls
-`/rovas/users_search`.
+`/rovas/users_search?query=`.
+
+**Critical:** the search string param must **not** be named `q`. Drupal uses
+`$_GET['q']` as the internal request path; `?q=ann` replaces the Services
+path with `ann` and returns a themed HTML 404 before Services runs (no
+dblog Services entries). Use `query`.
 
 ### Query
 
 | Param | Rules |
 |-------|--------|
-| `q` | Required; trim; **≥ 3** characters; reject shorter with 400 |
+| `query` | Required; trim; **≥ 3** characters; reject shorter with 400. **Never `q`.** |
 | (implicit) | Max **10** results |
 
 ### Response
@@ -436,7 +442,7 @@ Empty match → `[]` (200).
 ### Required logic
 
 1. Resolve caller from Bearer (reject anonymous)
-2. Match `q` case-insensitively against username and display name
+2. Match `query` case-insensitively against username and display name
 3. Exclude blocked / inactive users; exclude the caller (optional but
    preferred — scanner is always injected client-side)
 4. Cap at 10 rows, stable order (username ASC is fine)
@@ -447,10 +453,11 @@ Empty match → `[]` (200).
 
 1. [x] Services action `GET /rovas/users_search`
 2. [x] Auth: OAuth2 Bearer (`civic` / `user_profile`); reject anonymous
-3. [x] Validate `q` ≥ 3; return ≤ 10 `{ rovas_uid, username, display_name }`
-4. [x] API-key auth disabled on the resource (same as other Civic resources)
-5. [x] Enable via updb / ensure helper after deploy (`rovas_civic_update_7005`)
-6. [ ] Smoke-test curl below
+3. [x] Validate `query` ≥ 3; return ≤ 10 `{ rovas_uid, username, display_name }`
+4. [x] Param named `query` (not `q`) — Drupal path conflict
+5. [x] API-key auth disabled on the resource (same as other Civic resources)
+6. [x] Enable via updb / ensure helper after deploy (`rovas_civic_update_7005`)
+7. [ ] Smoke-test curl below
 
 ### Smoke test (after deploy + enable)
 
@@ -458,7 +465,7 @@ Empty match → `[]` (200).
 # After deploy: drush74 updb -y && drush74 cc all -y
 # or admin: Enable Civic VAT claim + claim-read + rate + users_search APIs
 
-curl -sS "https://dev.rovas.app/rovas/users_search?q=ann" \
+curl -sS "https://dev.rovas.app/rovas/users_search?query=ann" \
   -H "Authorization: Bearer $ACCESS_TOKEN" \
   -H "Accept: application/json"
 ```

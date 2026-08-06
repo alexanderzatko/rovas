@@ -69,7 +69,7 @@ function rovas_civic_menu() {
  * - POST /rovas/rules/rules_proxy_claim_vat_receipt (VAT claim)
  * - GET  /rovas/civic_claims?view=… (+ /summary retrieve)
  * - GET  /rovas/civic_national_hourly_rate?country=SK (public)
- * - GET  /rovas/users_search?q= (split-claim typeahead)
+ * - GET  /rovas/users_search?query= (split-claim typeahead)
  *
  * Note: Services aliases must be slash-free. Do not use aliases like
  * civic/claims — Services treats the first segment as the resource name.
@@ -226,17 +226,20 @@ function rovas_civic_services_resources() {
     'users_search' => array(
       'operations' => array(
         'index' => array(
-          'help' => 'Typeahead search for Civic split-claim co-recipients. ?q= (≥3 chars). Bearer required. Max 10 public profile rows.',
+          // IMPORTANT: do NOT use query param name "q" — Drupal reserves
+          // $_GET['q'] for the internal path (clean URLs off / path rewrite).
+          // ?q=ann would replace the path with "ann" and 404 before Services.
+          'help' => 'Typeahead search for Civic split-claim co-recipients. ?query= (≥3 chars). Bearer required. Max 10 public profile rows.',
           'callback' => 'rovas_civic_services_users_search_index',
           'access callback' => $bearer_auth['access callback'],
           'access arguments' => $bearer_auth['access arguments'],
           'access arguments append' => $bearer_auth['access arguments append'],
           'args' => array(
             array(
-              'name' => 'q',
+              'name' => 'query',
               'type' => 'string',
-              'description' => 'Search string (username / display name); min 3 characters.',
-              'source' => array('param' => 'q'),
+              'description' => 'Search string (username / display name); min 3 characters. Param name must not be "q" (Drupal path).',
+              'source' => array('param' => 'query'),
               'optional' => FALSE,
             ),
           ),
@@ -379,24 +382,25 @@ function rovas_civic_services_national_hourly_rate_index($country = ROVAS_CIVIC_
  * ========================================================================= */
 
 /**
- * Services callback: GET /rovas/users_search?q=
+ * Services callback: GET /rovas/users_search?query=
  *
  * Bearer required. Returns ≤10 public profile rows (no email / balance).
+ * Param is "query", not "q" — Drupal uses $_GET['q'] as the request path.
  */
-function rovas_civic_services_users_search_index($q = '') {
+function rovas_civic_services_users_search_index($query = '') {
   $uid = rovas_civic_request_uid();
   if ($uid < 1) {
     return services_error(t('Authentication required'), 401);
   }
 
-  $q = trim((string) $q);
-  if (drupal_strlen($q) < ROVAS_CIVIC_USERS_SEARCH_MIN_Q) {
+  $query = trim((string) $query);
+  if (drupal_strlen($query) < ROVAS_CIVIC_USERS_SEARCH_MIN_Q) {
     return services_error(t('Query must be at least @n characters.', array(
       '@n' => ROVAS_CIVIC_USERS_SEARCH_MIN_Q,
     )), 400);
   }
 
-  return rovas_civic_users_search($q, $uid);
+  return rovas_civic_users_search($query, $uid);
 }
 
 /**
@@ -935,7 +939,8 @@ function rovas_civic_ensure_services_resources() {
     $changed = TRUE;
   }
 
-  // GET /rovas/users_search?q= — split-claim typeahead (Bearer).
+  // GET /rovas/users_search?query= — split-claim typeahead (Bearer).
+  // Never use param name "q" (Drupal path conflict).
   $users_search_resource = array(
     'operations' => array(
       'index' => $bearer_op,
