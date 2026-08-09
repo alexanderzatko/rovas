@@ -1126,15 +1126,31 @@ function rovas_civic_claims_list_received($uid, $limit, $offset) {
   $query->orderBy('s.created', 'DESC');
   $query->orderBy('s.id', 'DESC');
   $query->range($offset, $limit);
-  $rows = $query->execute();
+  $rows = $query->execute()->fetchAll();
+
+  $scanner_uids = array();
+  foreach ($rows as $row) {
+    $scanner_uid = (int) $row->scanner_uid;
+    if ($scanner_uid > 0) {
+      $scanner_uids[$scanner_uid] = $scanner_uid;
+    }
+  }
+  $accounts = $scanner_uids ? user_load_multiple(array_values($scanner_uids)) : array();
 
   $items = array();
   foreach ($rows as $row) {
+    $scanner_uid = (int) $row->scanner_uid;
+    $labels = rovas_civic_user_public_labels(
+      $scanner_uid,
+      isset($accounts[$scanner_uid]) ? $accounts[$scanner_uid] : NULL
+    );
     $items[] = array(
       'receipt_uid' => $row->receipt_uid,
       'merchant_name' => $row->merchant_name,
       'purchase_at' => $row->purchase_at,
-      'scanner_rovas_uid' => (string) (int) $row->scanner_uid,
+      'scanner_rovas_uid' => (string) $scanner_uid,
+      'scanner_username' => $labels['username'],
+      'scanner_display_name' => $labels['display_name'],
       'share_pct' => (float) $row->share_pct,
       'merits_awarded' => (float) $row->merits_awarded,
       'created_at' => rovas_civic_format_created($row->created),
@@ -1147,6 +1163,43 @@ function rovas_civic_claims_list_received($uid, $limit, $offset) {
     'limit' => (int) $limit,
     'offset' => (int) $offset,
     'view' => 'received',
+  );
+}
+
+/**
+ * Public username / display_name for Civic list rows (no email / balance).
+ *
+ * Missing or blocked accounts still return a usable username fallback (uid
+ * string) so one bad scanner never fails the whole list.
+ *
+ * @param int $uid
+ * @param object|null $account
+ *   Preloaded user object, or NULL.
+ *
+ * @return array
+ *   keys: username, display_name.
+ */
+function rovas_civic_user_public_labels($uid, $account = NULL) {
+  $uid = (int) $uid;
+  $fallback = (string) $uid;
+
+  if (!$account || empty($account->uid) || empty($account->status)) {
+    return array(
+      'username' => $fallback,
+      'display_name' => $fallback,
+    );
+  }
+
+  $username = (string) $account->name;
+  $display_name = $username;
+  $items = field_get_items('user', $account, 'field_full_name');
+  if (!empty($items[0]['value'])) {
+    $display_name = (string) $items[0]['value'];
+  }
+
+  return array(
+    'username' => $username,
+    'display_name' => $display_name,
   );
 }
 

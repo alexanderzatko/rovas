@@ -9,6 +9,7 @@ Civic API); keep both in sync when contracts change.
 **Agents working in this repo:** implement / maintain work under
 [Next work: solo VAT claim](#next-work-solo-vat-claim),
 [Next work: Civic claim reads + SoT](#next-work-civic-claim-reads--sot),
+[Next work: enrich received claims with scanner username](#next-work-enrich-received-claims-with-scanner-username),
 [Next work: public national hourly rate API](#next-work-public-national-hourly-rate-api),
 and [Next work: users search (split typeahead)](#next-work-users-search-split-typeahead).
 Do not rely on reading the Civic tree unless you need Expo/API details.
@@ -35,8 +36,9 @@ not run deploys on their own.
 | Home Merits reads | `/rovas/me`, `/rovas/contributions/aggregate`, `/rovas/merit_distribution` | Implemented |
 | `rovas_civic` | `sites/all/modules/custom/rovas_civic` | National rates, donor Merit issuance, State Treasury, VAT claim |
 | Claim rule + split claims | `POST /rovas/rules/rules_proxy_claim_vat_receipt` | Implemented in `rovas_civic` (enable via updb / admin) |
-| Claim reads + summary | `GET /rovas/civic_claims`, `…/summary` | Implemented in `rovas_civic` (`rovas_civic_update_7002`) |
+| Claim reads + summary | `GET /rovas/civic_claims`, `…/summary` | Implemented in `rovas_civic` (`rovas_civic_update_7002`); **Civic proxies live** (`GET /receipts`, `/me/contributions/summary`) |
 | Claim status by receipt | `GET /rovas/civic_claims?receipt_uid=` | Implemented — `{ claimed, receipt_uid }` only (no scanner) |
+| Received history “From” | `view=received` scanner username | Implemented — `scanner_username` + `scanner_display_name` |
 | National hourly rate read | `GET /rovas/civic_national_hourly_rate` | Implemented in `rovas_civic` (`rovas_civic_update_7003`) |
 | Users search (split typeahead) | `GET /rovas/users_search?query=` | Implemented in `rovas_civic` (`rovas_civic_update_7005`). **Param is `query`, not `q`** — Drupal reserves `$_GET['q']` for the request path. |
 
@@ -489,6 +491,12 @@ phpMyAdmin + `drush74 cc all`); Merit balances are **not** reversed.
 Civic will proxy these reads into `GET /receipts` and
 `GET /me/contributions/summary` once they exist.
 
+**Civic status (2026-08):** done — Expo Bločky history tabs call Civic
+`GET /receipts?view=submitted|received`, and home taxes use
+`GET /rovas/civic_claims/summary` via `/me/contributions/summary`. Received
+items include `scanner_username` / `scanner_display_name` for the From column
+(after rovdev deploy).
+
 ### Decisions (locked)
 
 - Summary is standalone: `GET /rovas/civic_claims/summary` (not fields on `/me`)
@@ -588,6 +596,8 @@ scanned by someone else):
       "merchant_name": "Tesco Bratislava",
       "purchase_at": "2026-06-11T14:22:00+02:00",
       "scanner_rovas_uid": "7",
+      "scanner_username": "sano",
+      "scanner_display_name": "Sano",
       "share_pct": 50,
       "merits_awarded": 3.21,
       "created_at": "2026-06-11T15:01:00+02:00"
@@ -643,6 +653,58 @@ curl -sS "https://dev.rovas.app/rovas/civic_claims/summary" \
 curl -sS "https://dev.rovas.app/rovas/civic_claims?receipt_uid=O-<known-or-unknown>" \
   -H "Authorization: Bearer $ACCESS_TOKEN" \
   -H "Accept: application/json"
+```
+
+## Next work: enrich received claims with scanner username
+
+**Implemented in `rovas_civic`.** Civic screen 2 (“Bločky”) history tab
+**Moje merity z bločkov** / **My Merits from receipts** shows an **Od / From**
+column (who scanned the receipt that credited the caller). `view=received`
+now includes `scanner_username` + `scanner_display_name` alongside
+`scanner_rovas_uid` so Civic can show `@sano` instead of `#<uid>`.
+
+Scanners are batch-loaded via `user_load_multiple()`. Missing/blocked accounts
+still return the uid string as username/display_name — one bad row never 500s
+the list. `view=submitted` is unchanged.
+
+### `view=received` item shape
+
+```json
+{
+  "receipt_uid": "O-…",
+  "merchant_name": "Tesco Bratislava",
+  "purchase_at": "2026-06-11T14:22:00+02:00",
+  "scanner_rovas_uid": "7",
+  "scanner_username": "sano",
+  "scanner_display_name": "Sano",
+  "share_pct": 50,
+  "merits_awarded": 3.21,
+  "created_at": "2026-06-11T15:01:00+02:00"
+}
+```
+
+### Checklist
+
+1. [x] Add `scanner_username` + `scanner_display_name` on `view=received` items
+2. [x] Batch-load usernames (`user_load_multiple`)
+3. [x] Document fields under [Claim reads](#next-work-civic-claim-reads--sot)
+4. [ ] Smoke-test: `GET /rovas/civic_claims?view=received` after deploy + `drush74 cc all`
+5. [ ] Civic: switch From column from `#uid` to `@username` (Civic agent)
+
+### Out of scope
+
+- Privacy / “not searchable” filtering for scanners on history (Phase 3+)
+- Changing summary or `receipt_uid=` claim-status responses
+- Civic mobile wiring (Civic agent picks that up after this ships)
+
+### Smoke test
+
+```bash
+# After deploy: drush74 cc all -y
+curl -sS "https://dev.rovas.app/rovas/civic_claims?view=received" \
+  -H "Authorization: Bearer $ACCESS_TOKEN" \
+  -H "Accept: application/json"
+# Expect each item: scanner_rovas_uid + scanner_username + scanner_display_name
 ```
 
 ## Path note (Services)
