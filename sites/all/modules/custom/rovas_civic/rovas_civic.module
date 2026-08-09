@@ -70,6 +70,7 @@ function rovas_civic_menu() {
  * - GET  /rovas/civic_claims?view=… (+ /summary retrieve)
  * - GET  /rovas/civic_national_hourly_rate?country=SK (public)
  * - GET  /rovas/users_search?query= (split-claim typeahead)
+ * - GET  /rovas/users_lookup?username= (community public profile)
  *
  * Note: Services aliases must be slash-free. Do not use aliases like
  * civic/claims — Services treats the first segment as the resource name.
@@ -248,6 +249,26 @@ function rovas_civic_services_resources() {
               'type' => 'string',
               'description' => 'Search string (username / display name); min 3 characters. Param name must not be "q" (Drupal path).',
               'source' => array('param' => 'query'),
+              'optional' => FALSE,
+            ),
+          ),
+        ),
+      ),
+    ),
+    'users_lookup' => array(
+      'operations' => array(
+        'index' => array(
+          'help' => 'Civic community public profile by exact Rovas username. ?username=. Bearer required.',
+          'callback' => 'rovas_civic_services_users_lookup_index',
+          'access callback' => $bearer_auth['access callback'],
+          'access arguments' => $bearer_auth['access arguments'],
+          'access arguments append' => $bearer_auth['access arguments append'],
+          'args' => array(
+            array(
+              'name' => 'username',
+              'type' => 'string',
+              'description' => 'Exact Rovas username (case-insensitive).',
+              'source' => array('param' => 'username'),
               'optional' => FALSE,
             ),
           ),
@@ -491,6 +512,156 @@ function rovas_civic_users_search($q, $caller_uid) {
 function rovas_civic_user_is_searchable($account) {
   // Stub — always searchable in v1.
   return TRUE;
+}
+
+/* ===========================================================================
+ * Users lookup (community public profile)
+ * ========================================================================= */
+
+/**
+ * Services callback: GET /rovas/users_lookup?username=
+ *
+ * Bearer required. Public contribution profile for Civic Screen 6.
+ */
+function rovas_civic_services_users_lookup_index($username = '') {
+  $caller_uid = rovas_civic_request_uid();
+  if ($caller_uid < 1) {
+    return services_error(t('Authentication required'), 401);
+  }
+
+  $username = trim((string) $username);
+  if ($username === '') {
+    return services_error(t('Username is required.'), 400);
+  }
+
+  $profile = rovas_civic_users_lookup($username);
+  if ($profile === FALSE) {
+    return services_error(t('User not found'), 404);
+  }
+  return $profile;
+}
+
+/**
+ * Load a public Civic contribution profile by exact username.
+ *
+ * @param string $username
+ *   Trimmed Rovas username (case-insensitive).
+ *
+ * @return array|false
+ *   UserLookup-shaped array, or FALSE if not found / not searchable.
+ */
+function rovas_civic_users_lookup($username) {
+  $username = trim((string) $username);
+  if ($username === '') {
+    return FALSE;
+  }
+
+  // Exact match, case-insensitive (MySQL utf8_general_ci is typical).
+  $uid = db_query("SELECT uid FROM {users} WHERE status = 1 AND uid > 0 AND LOWER(name) = LOWER(:n)", array(
+    ':n' => $username,
+  ))->fetchField();
+  if (!$uid) {
+    return FALSE;
+  }
+  $uid = (int) $uid;
+
+  $account = user_load($uid);
+  if (!$account || empty($account->uid) || empty($account->status)) {
+    return FALSE;
+  }
+  if (!rovas_civic_user_is_searchable($account)) {
+    return FALSE;
+  }
+
+  $labels = rovas_civic_user_public_labels($uid, $account);
+
+  $total_me = 0.0;
+  if (function_exists('_rovas_merit_distribution_user_merits')) {
+    $merits = _rovas_merit_distribution_user_merits($uid);
+    $total_me = $merits !== NULL ? (float) $merits : 0.0;
+  }
+  elseif (function_exists('rovas_oauth_user_merits_fallback')) {
+    $total_me = (float) rovas_oauth_user_merits_fallback($uid);
+  }
+
+  $taxes_summary = rovas_civic_claims_summary_received($uid);
+  $taxes_me = isset($taxes_summary['taxes_me']) ? (float) $taxes_summary['taxes_me'] : 0.0;
+
+  return array(
+    'rovas_uid' => (string) $uid,
+    'username' => $labels['username'],
+    'display_name' => $labels['display_name'],
+    'total_me' => round($total_me, 2),
+    'by_category' => array(
+      'taxes' => round($taxes_me, 2),
+      // Best-effort later; zeros OK for v1.
+      'charity' => 0,
+      'volunteer' => 0,
+    ),
+    'taxes_last_3_months' => rovas_civic_users_lookup_taxes_last_3_months($uid),
+    'top_charities' => array(),
+    'top_volunteer_projects' => array(),
+  );
+}
+
+/**
+ * Last three calendar months of VAT-claim Merits for a beneficiary.
+ *
+ * @param int $uid
+ *
+ * @return array
+ *   List of { month: YYYY-MM, me: float } for months with activity (≤3).
+ */
+function rovas_civic_users_lookup_taxes_last_3_months($uid) {
+  $uid = (int) $uid;
+  if ($uid < 1) {
+    return array();
+  }
+
+  $months = array();
+  for ($i = 2; $i >= 0; $i--) {
+    $ts = strtotime('-' . $i . ' months');
+    $key = format_date($ts, 'custom', 'Y-m');
+    $months[$key] = 0.0;
+  }
+  $keys = array_keys($months);
+  $start_key = $keys[0];
+  $start_ts = strtotime($start_key . '-01 00:00:00');
+  if ($start_ts === FALSE) {
+    return array();
+  }
+
+  $rows = db_query("SELECT s.merits_awarded AS me, c.created AS created
+    FROM {civic_claim_shares} s
+    INNER JOIN {civic_claims} c ON c.id = s.claim_id
+    WHERE s.beneficiary_uid = :u AND c.created >= :start", array(
+    ':u' => $uid,
+    ':start' => (int) $start_ts,
+  ));
+
+  foreach ($rows as $row) {
+    $created = (int) $row->created;
+    if ($created < 1) {
+      continue;
+    }
+    $key = format_date($created, 'custom', 'Y-m');
+    if (!isset($months[$key])) {
+      continue;
+    }
+    $months[$key] += (float) $row->me;
+  }
+
+  $out = array();
+  foreach ($months as $month => $me) {
+    if ($me <= 0) {
+      continue;
+    }
+    $out[] = array(
+      'month' => $month,
+      'me' => round($me, 2),
+    );
+  }
+  return $out;
 }
 
 /**
@@ -858,7 +1029,7 @@ function rovas_civic_ensure_state_treasury() {
 }
 
 /**
- * Enable VAT claim action + claim-read + rate + users_search on rovas_endpoint.
+ * Enable VAT claim action + claim-read + rate + users_search + users_lookup on rovas_endpoint.
  *
  * @return bool
  */
@@ -957,6 +1128,18 @@ function rovas_civic_ensure_services_resources() {
   if (empty($endpoint->resources['users_search'])
     || $endpoint->resources['users_search'] != $users_search_resource) {
     $endpoint->resources['users_search'] = $users_search_resource;
+    $changed = TRUE;
+  }
+
+  // GET /rovas/users_lookup?username= — community public profile (Bearer).
+  $users_lookup_resource = array(
+    'operations' => array(
+      'index' => $bearer_op,
+    ),
+  );
+  if (empty($endpoint->resources['users_lookup'])
+    || $endpoint->resources['users_lookup'] != $users_lookup_resource) {
+    $endpoint->resources['users_lookup'] = $users_lookup_resource;
     $changed = TRUE;
   }
 

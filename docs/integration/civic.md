@@ -11,7 +11,8 @@ Civic API); keep both in sync when contracts change.
 [Next work: Civic claim reads + SoT](#next-work-civic-claim-reads--sot),
 [Next work: enrich received claims with scanner username](#next-work-enrich-received-claims-with-scanner-username),
 [Next work: public national hourly rate API](#next-work-public-national-hourly-rate-api),
-and [Next work: users search (split typeahead)](#next-work-users-search-split-typeahead).
+[Next work: users search (split typeahead)](#next-work-users-search-split-typeahead),
+and [Next work: users lookup (community public profile)](#next-work-users-lookup-community-public-profile).
 Do not rely on reading the Civic tree unless you need Expo/API details.
 
 **Dev target (until told otherwise):** all Civic integration work targets
@@ -41,6 +42,8 @@ not run deploys on their own.
 | Received history “From” | `view=received` scanner username | Implemented — `scanner_username` + `scanner_display_name` |
 | National hourly rate read | `GET /rovas/civic_national_hourly_rate` | Implemented in `rovas_civic` (`rovas_civic_update_7003`) |
 | Users search (split typeahead) | `GET /rovas/users_search?query=` | Implemented in `rovas_civic` (`rovas_civic_update_7005`). **Param is `query`, not `q`** — Drupal reserves `$_GET['q']` for the request path. |
+| Users lookup (community profile) | `GET /rovas/users_lookup?username=` | Implemented in `rovas_civic` (`rovas_civic_update_7006`). Exact username; Bearer required. See [users lookup](#next-work-users-lookup-community-public-profile). |
+| Friend invite (Civic) | — | **Civic-client only** (`mailto:`). No Rovas invite endpoint. Signup URL in the email body should work (`/user/register` or OAuth authorize). |
 
 ## OAuth endpoints (live on dev)
 
@@ -469,6 +472,112 @@ Empty match → `[]` (200).
 # or admin: Enable Civic VAT claim + claim-read + rate + users_search APIs
 
 curl -sS "https://dev.rovas.app/rovas/users_search?query=ann" \
+  -H "Authorization: Bearer $ACCESS_TOKEN" \
+  -H "Accept: application/json"
+```
+
+## Next work: users lookup (community public profile)
+
+**Implemented in `rovas_civic`** (enable on rovdev: `drush74 updb -y`, or admin
+**Enable Civic VAT claim + claim-read + rate + users_search + users_lookup APIs**).
+Civic Screen 6 (Komunita) needs a **public contribution profile** for a
+Rovas username — heavier than split-claim typeahead (`users_search`). Civic
+proxies this as `GET /users/lookup?username=` (Bearer required). Percentile /
+rank ladder are computed on **Civic** from `/rovas/merit_distribution` +
+`total_me`; do **not** return percentile from this endpoint.
+
+### Path note
+
+Drupal Services resource aliases **cannot contain slashes**. Use the
+machine-name path:
+
+| Method | URL | Auth |
+|--------|-----|------|
+| `GET` | `https://dev.rovas.app/rovas/users_lookup?username=` | Bearer required (`civic` / `user_profile`) |
+
+Do **not** register `/rovas/users/lookup` (slash in alias). Civic API calls
+`/rovas/users_lookup?username=`.
+
+### Query
+
+| Param | Rules |
+|-------|--------|
+| `username` | Required; trim; exact match, case-insensitive against `users.name`. Reject empty with **400**. |
+
+### Response
+
+```json
+{
+  "rovas_uid": "42",
+  "username": "anna_nb",
+  "display_name": "Anna Nováková",
+  "total_me": 3410.0,
+  "by_category": {
+    "taxes": 980.0,
+    "charity": 0,
+    "volunteer": 0
+  },
+  "taxes_last_3_months": [
+    { "month": "2026-04", "me": 310.0 },
+    { "month": "2026-05", "me": 340.0 },
+    { "month": "2026-06", "me": 330.0 }
+  ],
+  "top_charities": [],
+  "top_volunteer_projects": []
+}
+```
+
+| Field | Notes |
+|-------|--------|
+| `rovas_uid` | Drupal uid as string |
+| `username` | Canonical Rovas username |
+| `display_name` | Prefer `field_full_name`; fall back to `username` |
+| `total_me` | Same source as `/rovas/me` for that uid (`_rovas_merit_distribution_user_merits` or fallback) |
+| `by_category.taxes` | Sum of `{civic_claim_shares}.merits_awarded` for this beneficiary; else `0` |
+| `by_category.charity` / `volunteer` | Best-effort from existing Rovas Merit / project data; **`0` OK** if unavailable |
+| `taxes_last_3_months` | Last **3 calendar months** (including current) of VAT-claim Merits for this uid, keyed `YYYY-MM`; omit zero months or include with `me: 0` — prefer only months with activity; max 3 rows; `[]` if none |
+| `top_charities` / `top_volunteer_projects` | Up to **3** `{ name, me }` rows; **`[]` OK** if unavailable |
+
+### Errors
+
+| Status | When |
+|--------|------|
+| 401 | No / invalid Bearer |
+| 400 | Empty / missing `username` |
+| 404 | Unknown username, blocked/inactive user, or not searchable (privacy) |
+
+### Required logic
+
+1. Resolve caller from Bearer (reject anonymous)
+2. Load active user by exact username (case-insensitive); exclude uid 0 / blocked
+3. Honour `rovas_civic_user_is_searchable` — if false, return **404** (same as unknown)
+4. Build response fields above; missing enrichment → zeros / `[]`
+5. Enable via updb / `rovas_civic_ensure_services_resources()`; disable API-key auth on the resource (same as other Civic Bearer resources)
+
+### Checklist
+
+1. [x] Services action `GET /rovas/users_lookup`
+2. [x] Auth: OAuth2 Bearer (`civic` / `user_profile`); reject anonymous
+3. [x] Validate `username` non-empty; return `UserLookup` shape above
+4. [x] Machine-name path (no slash alias)
+5. [x] API-key auth disabled on the resource
+6. [x] Enable via updb / ensure helper after deploy (`rovas_civic_update_7006`)
+7. [ ] Smoke-test curl below
+
+### Friend invite (explicit non-work)
+
+Civic friend invite is **client `mailto:` only**. Do **not** add a Rovas
+invite endpoint. Ensure `/user/register` (and/or OAuth authorize) works so
+the invite email can link to signup — no new Rovas landing page required
+(unlike charity `/charity-projects`).
+
+### Smoke test (after deploy + enable)
+
+```bash
+# After deploy: drush74 updb -y && drush74 cc all -y
+# or admin: Enable Civic … + users_lookup APIs
+
+curl -sS "https://dev.rovas.app/rovas/users_lookup?username=sano" \
   -H "Authorization: Bearer $ACCESS_TOKEN" \
   -H "Accept: application/json"
 ```
