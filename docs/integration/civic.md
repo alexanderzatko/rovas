@@ -537,11 +537,11 @@ Do **not** register `/rovas/users/lookup` (slash in alias). Civic API calls
 | `username` | Canonical Rovas username |
 | `display_name` | Prefer `field_full_name`; fall back to `username` |
 | `total_me` | Same source as `/rovas/me` for that uid (`_rovas_merit_distribution_user_merits` or fallback) |
-| `by_category.taxes` | Larger of (a) `{civic_claim_shares}.merits_awarded` for this beneficiary and (b) `user_expertise` Merits on fallback NACE `ROVAS_CIVIC_FALLBACK_NACE_TID` (64.99 / tid **1601**) |
+| `by_category.taxes` | `user_expertise` Merits on fallback NACE `ROVAS_CIVIC_FALLBACK_NACE_TID` (64.99 / tid **1601**) only — exclusive source |
 | `by_category.charity` | `user_expertise` Merits on `ROVAS_CIVIC_CHARITY_NACE_TID` when that constant is a positive tid; **0** until a dedicated charity NACE is configured |
 | `by_category.volunteer` | Sum of `user_expertise` Merits whose NACE is **neither** the fallback tid nor the charity tid |
 | `taxes_last_3_months` | Last **3 calendar months** (including current) of VAT-claim Merits for this uid, keyed `YYYY-MM`; omit zero months or include with `me: 0` — prefer only months with activity; max 3 rows; `[]` if none |
-| `top_charities` | Up to **3** `{ name, me }` from `purchase_receipt` rows (buyer = uid, no `field_rewarded_report`, exclude State Treasury project) |
+| `top_charities` | Up to **3** `{ name, me }` from `{rovas_merit_issuance}` rows with `source_type = project_reward_order` (Path-1 donor Merits from project donations). **Not** raw `purchase_receipt` Merit spends. Exclude State Treasury. Empty until real charity donations exist. |
 | `top_volunteer_projects` | Up to **3** `{ name, me }` from `project_merit_allocation` / `co_worker_merit_allocation` labor Merits |
 
 ### Errors

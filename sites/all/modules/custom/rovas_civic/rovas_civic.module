@@ -587,16 +587,7 @@ function rovas_civic_users_lookup($username) {
     $total_me = (float) rovas_oauth_user_merits_fallback($uid);
   }
 
-  $taxes_summary = rovas_civic_claims_summary_received($uid);
-  $taxes_from_claims = isset($taxes_summary['taxes_me']) ? (float) $taxes_summary['taxes_me'] : 0.0;
-
   $expertise = rovas_civic_users_lookup_expertise_categories($uid);
-  // Fallback NACE (1601) expertise includes VAT claim Merits and other 64.99
-  // attributions — take the larger of claim summary vs expertise so neither
-  // under-reports the taxes bucket.
-  $taxes_me = max($taxes_from_claims, $expertise['taxes']);
-  $charity_me = $expertise['charity'];
-  $volunteer_me = $expertise['volunteer'];
 
   return array(
     'rovas_uid' => (string) $uid,
@@ -604,9 +595,9 @@ function rovas_civic_users_lookup($username) {
     'display_name' => $labels['display_name'],
     'total_me' => round($total_me, 2),
     'by_category' => array(
-      'taxes' => round($taxes_me, 2),
-      'charity' => round($charity_me, 2),
-      'volunteer' => round($volunteer_me, 2),
+      'taxes' => round($expertise['taxes'], 2),
+      'charity' => round($expertise['charity'], 2),
+      'volunteer' => round($expertise['volunteer'], 2),
     ),
     'taxes_last_3_months' => rovas_civic_users_lookup_taxes_last_3_months($uid),
     'top_charities' => rovas_civic_users_lookup_top_charities($uid),
@@ -617,9 +608,10 @@ function rovas_civic_users_lookup($username) {
 /**
  * Split user_expertise Merits into taxes / charity / volunteer by NACE.
  *
- * - Fallback NACE (ROVAS_CIVIC_FALLBACK_NACE_TID / 64.99) → taxes
- * - Charity NACE (ROVAS_CIVIC_CHARITY_NACE_TID, when configured) → charity
- * - Any other NACE → volunteer work
+ * Exclusive source for users_lookup `by_category`:
+ * - tid ROVAS_CIVIC_FALLBACK_NACE_TID (1601 / 64.99) → taxes
+ * - tid ROVAS_CIVIC_CHARITY_NACE_TID (when > 0) → charity
+ * - any other NACE → volunteering
  *
  * @param int $uid
  *
@@ -673,10 +665,16 @@ function rovas_civic_users_lookup_expertise_categories($uid) {
 }
 
 /**
- * Top charity/donation projects for a user (purchase receipts without a work report).
+ * Top charity/donation projects for a user.
  *
- * Excludes the State Treasury project (VAT path). Amounts are Merit units on
- * field_amount_paid.
+ * Uses NeoFund A3 issuance rows (`rovas_merit_issuance`) with source_type
+ * `project_reward_order` — i.e. Path-1 donor Merits from project donations.
+ *
+ * Do NOT use raw `purchase_receipt` rows: those also cover ordinary Merit
+ * spending (rewarding others' work, platform fees, etc.) and would falsely
+ * surface as charity (e.g. freemap.sk / Rováš tips).
+ *
+ * Excludes State Treasury (VAT path uses source_type `civic_vat_claim`).
  *
  * @param int $uid
  *
@@ -691,24 +689,15 @@ function rovas_civic_users_lookup_top_charities($uid) {
 
   $treasury_nid = (int) variable_get(ROVAS_CIVIC_STATE_TREASURY_VAR, 0);
 
-  $query = db_select('node', 'n');
-  $query->join('field_data_field_buyer', 'b',
-    "b.entity_id = n.nid AND b.entity_type = 'node' AND b.deleted = 0");
-  $query->join('field_data_field_amount_paid', 'a',
-    "a.entity_id = n.nid AND a.entity_type = 'node' AND a.deleted = 0");
-  $query->join('field_data_field_receipt_project', 'p',
-    "p.entity_id = n.nid AND p.entity_type = 'node' AND p.deleted = 0");
-  $query->join('node', 'pn', 'pn.nid = p.field_receipt_project_target_id');
-  $query->leftJoin('field_data_field_rewarded_report', 'rr',
-    "rr.entity_id = n.nid AND rr.entity_type = 'node' AND rr.deleted = 0");
+  $query = db_select('rovas_merit_issuance', 'i');
+  $query->join('node', 'pn', 'pn.nid = i.project_nid');
   $query->fields('pn', array('title'));
-  $query->addExpression('SUM(a.field_amount_paid_value)', 'me');
-  $query->condition('n.type', 'purchase_receipt');
-  $query->condition('n.status', 1);
-  $query->condition('b.field_buyer_target_id', $uid);
-  $query->isNull('rr.field_rewarded_report_target_id');
+  $query->addExpression('SUM(i.amount)', 'me');
+  $query->condition('i.uid', $uid);
+  $query->condition('i.source_type', 'project_reward_order');
+  $query->condition('i.amount', 0, '>');
   if ($treasury_nid > 0) {
-    $query->condition('p.field_receipt_project_target_id', $treasury_nid, '<>');
+    $query->condition('i.project_nid', $treasury_nid, '<>');
   }
   $query->groupBy('pn.nid');
   $query->groupBy('pn.title');
