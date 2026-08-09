@@ -99,4 +99,4 @@ msgstr "Přihlaste se a autorizujte <strong>@app</strong>. Použijte Google, Fac
 
 #: sites/all/modules/custom/rovas_oauth/rovas_oauth.module:159
 msgid "Read your Rovas username and grant Merits on your behalf."
-msgstr "Číst vaše uživatelské jméno v Rovasi a přidělovat Merity vaším jménem."
+msgstr "Číst vaše uživatelské jméno v Rováši a přidělovat Merity vaším jménem."

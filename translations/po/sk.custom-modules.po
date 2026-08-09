@@ -97,4 +97,4 @@ msgstr "Prihláste sa a autorizujte <strong>@app</strong>. Použite Google, Face
 
 #: sites/all/modules/custom/rovas_oauth/rovas_oauth.module:159
 msgid "Read your Rovas username and grant Merits on your behalf."
-msgstr "Čítať vaše používateľské meno v Rovasi a prideľovať Merity vo vašom mene."
+msgstr "Čítať vaše používateľské meno v Rováši a prideľovať Merity vo vašom mene."
