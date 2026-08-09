@@ -71,3 +71,23 @@ msgstr ""
 msgid "Chrons to Euros exchanges are temporarily suspended"
 msgstr ""
 
+#: sites/all/modules/contrib/oauth2_server/oauth2_server.pages.inc:94
+msgid "Authorize @client to use your account?"
+msgstr ""
+
+#: sites/all/modules/contrib/oauth2_server/oauth2_server.pages.inc:97
+msgid "This application will be able to:"
+msgstr ""
+
+#: sites/all/modules/contrib/oauth2_server/oauth2_server.pages.inc:110
+msgid "Yes, I authorize this request."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_oauth/rovas_oauth.module:107
+msgid "Sign in to authorize <strong>@app</strong>. Use Google, Facebook, or your Rovas account. Civic does not store a separate password."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_oauth/rovas_oauth.module:159
+msgid "Read your Rovas username and grant Merits on your behalf."
+msgstr ""
+

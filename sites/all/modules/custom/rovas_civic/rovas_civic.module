@@ -472,15 +472,19 @@ function rovas_civic_users_search($q, $caller_uid) {
     $query->condition('u.name', $like, 'LIKE');
   }
 
-  // Fetch a small oversample so Phase-3 searchable filtering can drop rows
-  // without undershooting the 10-result cap.
+  // Oversample so searchable / negative-ME filtering can drop rows without
+  // undershooting the 10-result cap.
   $query->orderBy('u.name', 'ASC');
-  $query->range(0, ROVAS_CIVIC_USERS_SEARCH_MAX * 2);
+  $query->range(0, ROVAS_CIVIC_USERS_SEARCH_MAX * 5);
 
   $rows = $query->execute();
   $out = array();
   foreach ($rows as $row) {
     if (!rovas_civic_user_is_searchable($row)) {
+      continue;
+    }
+    // Hide negative Merit balances from Civic typeahead (do not expose total_me).
+    if (rovas_civic_user_total_me((int) $row->uid) < 0) {
       continue;
     }
     $username = (string) $row->name;
@@ -515,6 +519,29 @@ function rovas_civic_users_search($q, $caller_uid) {
 function rovas_civic_user_is_searchable($account) {
   // Stub — always searchable in v1.
   return TRUE;
+}
+
+/**
+ * Total Merits for a user (same source as /rovas/me and users_lookup).
+ *
+ * @param int $uid
+ *
+ * @return float
+ *   Merit total; 0 when unknown (do not treat as negative).
+ */
+function rovas_civic_user_total_me($uid) {
+  $uid = (int) $uid;
+  if ($uid < 1) {
+    return 0.0;
+  }
+  if (function_exists('_rovas_merit_distribution_user_merits')) {
+    $merits = _rovas_merit_distribution_user_merits($uid);
+    return $merits !== NULL ? (float) $merits : 0.0;
+  }
+  if (function_exists('rovas_oauth_user_merits_fallback')) {
+    return (float) rovas_oauth_user_merits_fallback($uid);
+  }
+  return 0.0;
 }
 
 /* ===========================================================================
@@ -578,13 +605,10 @@ function rovas_civic_users_lookup($username) {
 
   $labels = rovas_civic_user_public_labels($uid, $account);
 
-  $total_me = 0.0;
-  if (function_exists('_rovas_merit_distribution_user_merits')) {
-    $merits = _rovas_merit_distribution_user_merits($uid);
-    $total_me = $merits !== NULL ? (float) $merits : 0.0;
-  }
-  elseif (function_exists('rovas_oauth_user_merits_fallback')) {
-    $total_me = (float) rovas_oauth_user_merits_fallback($uid);
+  $total_me = rovas_civic_user_total_me($uid);
+  // Negative Merit users are hidden from Civic community profile lookup.
+  if ($total_me < 0) {
+    return FALSE;
   }
 
   $expertise = rovas_civic_users_lookup_expertise_categories($uid);

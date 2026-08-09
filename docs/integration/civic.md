@@ -12,7 +12,8 @@ Civic API); keep both in sync when contracts change.
 [Next work: enrich received claims with scanner username](#next-work-enrich-received-claims-with-scanner-username),
 [Next work: public national hourly rate API](#next-work-public-national-hourly-rate-api),
 [Next work: users search (split typeahead)](#next-work-users-search-split-typeahead),
-and [Next work: users lookup (community public profile)](#next-work-users-lookup-community-public-profile).
+[Next work: users lookup (community public profile)](#next-work-users-lookup-community-public-profile),
+and [Next work: hide negative Merit users from Civic](#next-work-hide-negative-merit-users-from-civic).
 Do not rely on reading the Civic tree unless you need Expo/API details.
 
 **Dev target (until told otherwise):** all Civic integration work targets
@@ -43,6 +44,7 @@ not run deploys on their own.
 | National hourly rate read | `GET /rovas/civic_national_hourly_rate` | Implemented in `rovas_civic` (`rovas_civic_update_7003`) |
 | Users search (split typeahead) | `GET /rovas/users_search?query=` | Implemented in `rovas_civic` (`rovas_civic_update_7005`). **Param is `query`, not `q`** — Drupal reserves `$_GET['q']` for the request path. |
 | Users lookup (community profile) | `GET /rovas/users_lookup?username=` | Implemented in `rovas_civic` (`rovas_civic_update_7006`). Exact username; Bearer required. See [users lookup](#next-work-users-lookup-community-public-profile). |
+| Hide negative Merit users | `users_search` / `users_lookup` | Implemented — `total_me < 0` omitted / 404; search response stays public fields only |
 | Friend invite (Civic) | — | **Civic-client only** (`mailto:`). No Rovas invite endpoint. Signup URL in the email body should work (`/user/register` or OAuth authorize). |
 
 ## OAuth endpoints (live on dev)
@@ -586,6 +588,50 @@ the invite email can link to signup — no new Rovas landing page required
 curl -sS "https://dev.rovas.app/rovas/users_lookup?username=sano" \
   -H "Authorization: Bearer $ACCESS_TOKEN" \
   -H "Accept: application/json"
+```
+
+## Next work: hide negative Merit users from Civic
+
+**Implemented in `rovas_civic`.** Filtering belongs on Rovas (not the Civic API
+proxy): `users_search` does not expose wallet balance, so Civic cannot filter
+typeahead without either leaking `total_me` or N+1 lookups.
+
+Users with a **negative** Merit balance (`total_me < 0`) are omitted from
+`users_search` and return **404** from `users_lookup`. Zero and positive
+balances are fine. Search response shape is unchanged
+(`{ rovas_uid, username, display_name }` only). Shared helper:
+`rovas_civic_user_total_me()`.
+
+### Endpoints
+
+| Endpoint | Behaviour when `total_me < 0` |
+|----------|-------------------------------|
+| `GET /rovas/users_search?query=` | Omit the user from the result list (oversample so the 10-row cap still fills) |
+| `GET /rovas/users_lookup?username=` | Treat as not found → **404** (same as unknown / not searchable) |
+
+### Checklist
+
+1. [x] `users_search` skips uids with `total_me < 0`; response shape unchanged
+2. [x] `users_lookup` returns 404 for negative-ME usernames
+3. [x] Shared Merit helper (`rovas_civic_user_total_me`)
+4. [ ] Smoke-test: search a known negative-ME user → absent; lookup → 404;
+      positive-ME user still works
+5. [ ] Deploy to rovdev when human asks (`ops/deploy_rovdev.sh` / targeted rsync)
+
+### Smoke test
+
+```bash
+# After deploy: drush74 cc all -y
+# Pick a known negative-ME username on rovdev, then:
+curl -sS "https://dev.rovas.app/rovas/users_search?query=<prefix>" \
+  -H "Authorization: Bearer $ACCESS_TOKEN" \
+  -H "Accept: application/json"
+# → user must not appear
+
+curl -sS "https://dev.rovas.app/rovas/users_lookup?username=<negative_user>" \
+  -H "Authorization: Bearer $ACCESS_TOKEN" \
+  -H "Accept: application/json"
+# → 404
 ```
 
 ## Next work: Civic claim reads + SoT
