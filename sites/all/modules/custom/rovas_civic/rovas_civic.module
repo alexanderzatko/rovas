@@ -18,6 +18,9 @@ define('ROVAS_CIVIC_USERS_SEARCH_MAX', 10);
 // 64.99 Other financial service activities… — same fallback as shares_merit_rewarder
 // (timeshare / non-labor Merit attribution when there is no work-report NACE).
 define('ROVAS_CIVIC_FALLBACK_NACE_TID', 1601);
+// Charity donations will use a dedicated NACE (not the Merit-purchase fallback).
+// 0 = not configured yet → no expertise rows classified as charity.
+define('ROVAS_CIVIC_CHARITY_NACE_TID', 0);
 
 /**
  * Implements hook_permission().
@@ -585,7 +588,15 @@ function rovas_civic_users_lookup($username) {
   }
 
   $taxes_summary = rovas_civic_claims_summary_received($uid);
-  $taxes_me = isset($taxes_summary['taxes_me']) ? (float) $taxes_summary['taxes_me'] : 0.0;
+  $taxes_from_claims = isset($taxes_summary['taxes_me']) ? (float) $taxes_summary['taxes_me'] : 0.0;
+
+  $expertise = rovas_civic_users_lookup_expertise_categories($uid);
+  // Fallback NACE (1601) expertise includes VAT claim Merits and other 64.99
+  // attributions — take the larger of claim summary vs expertise so neither
+  // under-reports the taxes bucket.
+  $taxes_me = max($taxes_from_claims, $expertise['taxes']);
+  $charity_me = $expertise['charity'];
+  $volunteer_me = $expertise['volunteer'];
 
   return array(
     'rovas_uid' => (string) $uid,
@@ -594,14 +605,210 @@ function rovas_civic_users_lookup($username) {
     'total_me' => round($total_me, 2),
     'by_category' => array(
       'taxes' => round($taxes_me, 2),
-      // Best-effort later; zeros OK for v1.
-      'charity' => 0,
-      'volunteer' => 0,
+      'charity' => round($charity_me, 2),
+      'volunteer' => round($volunteer_me, 2),
     ),
     'taxes_last_3_months' => rovas_civic_users_lookup_taxes_last_3_months($uid),
-    'top_charities' => array(),
-    'top_volunteer_projects' => array(),
+    'top_charities' => rovas_civic_users_lookup_top_charities($uid),
+    'top_volunteer_projects' => rovas_civic_users_lookup_top_volunteer_projects($uid),
   );
+}
+
+/**
+ * Split user_expertise Merits into taxes / charity / volunteer by NACE.
+ *
+ * - Fallback NACE (ROVAS_CIVIC_FALLBACK_NACE_TID / 64.99) → taxes
+ * - Charity NACE (ROVAS_CIVIC_CHARITY_NACE_TID, when configured) → charity
+ * - Any other NACE → volunteer work
+ *
+ * @param int $uid
+ *
+ * @return array
+ *   keys: taxes, charity, volunteer (floats).
+ */
+function rovas_civic_users_lookup_expertise_categories($uid) {
+  $uid = (int) $uid;
+  $out = array('taxes' => 0.0, 'charity' => 0.0, 'volunteer' => 0.0);
+  if ($uid < 1) {
+    return $out;
+  }
+
+  $fallback = (int) ROVAS_CIVIC_FALLBACK_NACE_TID;
+  $charity_nace = (int) ROVAS_CIVIC_CHARITY_NACE_TID;
+  $rows = db_query("SELECT c.field_category_tid AS tid,
+      COALESCE(SUM(m.field_merits_value), 0) AS me
+    FROM {node} n
+    INNER JOIN {field_data_field_expert} e
+      ON e.entity_id = n.nid AND e.entity_type = 'node' AND e.deleted = 0
+    INNER JOIN {field_data_field_category} c
+      ON c.entity_id = n.nid AND c.entity_type = 'node' AND c.deleted = 0
+    INNER JOIN {field_data_field_merits} m
+      ON m.entity_id = n.nid AND m.entity_type = 'node' AND m.deleted = 0
+    WHERE n.type = 'user_expertise'
+      AND n.status = 1
+      AND e.field_expert_target_id = :uid
+      AND m.field_merits_value > 0
+    GROUP BY c.field_category_tid", array(
+    ':uid' => $uid,
+  ));
+
+  foreach ($rows as $row) {
+    $tid = (int) $row->tid;
+    $me = (float) $row->me;
+    if ($tid < 1 || $me <= 0) {
+      continue;
+    }
+    if ($tid === $fallback) {
+      $out['taxes'] += $me;
+    }
+    elseif ($charity_nace > 0 && $tid === $charity_nace) {
+      $out['charity'] += $me;
+    }
+    else {
+      $out['volunteer'] += $me;
+    }
+  }
+
+  return $out;
+}
+
+/**
+ * Top charity/donation projects for a user (purchase receipts without a work report).
+ *
+ * Excludes the State Treasury project (VAT path). Amounts are Merit units on
+ * field_amount_paid.
+ *
+ * @param int $uid
+ *
+ * @return array
+ *   Up to 3 { name, me }.
+ */
+function rovas_civic_users_lookup_top_charities($uid) {
+  $uid = (int) $uid;
+  if ($uid < 1) {
+    return array();
+  }
+
+  $treasury_nid = (int) variable_get(ROVAS_CIVIC_STATE_TREASURY_VAR, 0);
+
+  $query = db_select('node', 'n');
+  $query->join('field_data_field_buyer', 'b',
+    "b.entity_id = n.nid AND b.entity_type = 'node' AND b.deleted = 0");
+  $query->join('field_data_field_amount_paid', 'a',
+    "a.entity_id = n.nid AND a.entity_type = 'node' AND a.deleted = 0");
+  $query->join('field_data_field_receipt_project', 'p',
+    "p.entity_id = n.nid AND p.entity_type = 'node' AND p.deleted = 0");
+  $query->join('node', 'pn', 'pn.nid = p.field_receipt_project_target_id');
+  $query->leftJoin('field_data_field_rewarded_report', 'rr',
+    "rr.entity_id = n.nid AND rr.entity_type = 'node' AND rr.deleted = 0");
+  $query->fields('pn', array('title'));
+  $query->addExpression('SUM(a.field_amount_paid_value)', 'me');
+  $query->condition('n.type', 'purchase_receipt');
+  $query->condition('n.status', 1);
+  $query->condition('b.field_buyer_target_id', $uid);
+  $query->isNull('rr.field_rewarded_report_target_id');
+  if ($treasury_nid > 0) {
+    $query->condition('p.field_receipt_project_target_id', $treasury_nid, '<>');
+  }
+  $query->groupBy('pn.nid');
+  $query->groupBy('pn.title');
+  $query->orderBy('me', 'DESC');
+  $query->range(0, 3);
+
+  $out = array();
+  foreach ($query->execute() as $row) {
+    $me = (float) $row->me;
+    $name = trim((string) $row->title);
+    if ($me <= 0 || $name === '') {
+      continue;
+    }
+    $out[] = array(
+      'name' => $name,
+      'me' => round($me, 2),
+    );
+  }
+  return $out;
+}
+
+/**
+ * Top volunteer projects from labor Merit allocations.
+ *
+ * @param int $uid
+ *
+ * @return array
+ *   Up to 3 { name, me }.
+ */
+function rovas_civic_users_lookup_top_volunteer_projects($uid) {
+  $uid = (int) $uid;
+  if ($uid < 1) {
+    return array();
+  }
+
+  // Own project_merit_allocation rows.
+  $sql = "
+    SELECT pn.title AS title, SUM(me.field_merits_earned_value) AS me
+    FROM {node} n
+    INNER JOIN {field_data_field_project} p
+      ON p.entity_id = n.nid AND p.entity_type = 'node' AND p.deleted = 0
+    INNER JOIN {node} pn ON pn.nid = p.field_project_target_id
+    INNER JOIN {field_data_field_merits_earned} me
+      ON me.entity_id = n.nid AND me.entity_type = 'node' AND me.deleted = 0
+    WHERE n.type = 'project_merit_allocation'
+      AND n.status = 1
+      AND n.uid = :uid
+      AND me.field_merits_earned_value > 0
+    GROUP BY pn.nid, pn.title
+
+    UNION ALL
+
+    SELECT pn.title AS title, SUM(me.field_merits_earned_value) AS me
+    FROM {node} n
+    INNER JOIN {field_data_field_coworker} cw
+      ON cw.entity_id = n.nid AND cw.entity_type = 'node' AND cw.deleted = 0
+    INNER JOIN {field_data_field_project} p
+      ON p.entity_id = n.nid AND p.entity_type = 'node' AND p.deleted = 0
+    INNER JOIN {node} pn ON pn.nid = p.field_project_target_id
+    INNER JOIN {field_data_field_merits_earned} me
+      ON me.entity_id = n.nid AND me.entity_type = 'node' AND me.deleted = 0
+    WHERE n.type = 'co_worker_merit_allocation'
+      AND n.status = 1
+      AND cw.field_coworker_target_id = :uid
+      AND me.field_merits_earned_value > 0
+    GROUP BY pn.nid, pn.title
+  ";
+
+  $rows = db_query($sql, array(':uid' => $uid));
+  $by_title = array();
+  foreach ($rows as $row) {
+    $name = trim((string) $row->title);
+    $me = (float) $row->me;
+    if ($name === '' || $me <= 0) {
+      continue;
+    }
+    if (!isset($by_title[$name])) {
+      $by_title[$name] = 0.0;
+    }
+    $by_title[$name] += $me;
+  }
+
+  if (empty($by_title)) {
+    return array();
+  }
+
+  arsort($by_title);
+  $out = array();
+  $i = 0;
+  foreach ($by_title as $name => $me) {
+    $out[] = array(
+      'name' => $name,
+      'me' => round($me, 2),
+    );
+    $i++;
+    if ($i >= 3) {
+      break;
+    }
+  }
+  return $out;
 }
 
 /**
