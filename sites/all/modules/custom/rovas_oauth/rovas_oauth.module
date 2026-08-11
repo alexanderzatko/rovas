@@ -330,7 +330,7 @@ function rovas_oauth_me_access() {
  * Services callback: GET /rovas/me.
  *
  * @return array
- *   uid, username, display_name, total_me.
+ *   uid, username, display_name, total_me, created (ISO-8601 or null).
  */
 function rovas_oauth_me_index() {
   global $user;
@@ -360,11 +360,17 @@ function rovas_oauth_me_index() {
     $total_me = (float) rovas_oauth_user_merits_fallback($uid);
   }
 
+  $created = NULL;
+  if (!empty($account->created) && (int) $account->created > 0) {
+    $created = gmdate('c', (int) $account->created);
+  }
+
   return array(
     'uid' => $uid,
     'username' => $account->name,
     'display_name' => $display_name,
     'total_me' => $total_me,
+    'created' => $created,
   );
 }
 

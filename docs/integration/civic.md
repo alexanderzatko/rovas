@@ -13,7 +13,8 @@ Civic API); keep both in sync when contracts change.
 [Next work: public national hourly rate API](#next-work-public-national-hourly-rate-api),
 [Next work: users search (split typeahead)](#next-work-users-search-split-typeahead),
 [Next work: users lookup (community public profile)](#next-work-users-lookup-community-public-profile),
-and [Next work: hide negative Merit users from Civic](#next-work-hide-negative-merit-users-from-civic).
+[Next work: hide negative Merit users from Civic](#next-work-hide-negative-merit-users-from-civic),
+and [Next work: expose account created on /rovas/me](#next-work-expose-account-created-on-rovasme).
 Do not rely on reading the Civic tree unless you need Expo/API details.
 
 **Dev target (until told otherwise):** all Civic integration work targets
@@ -201,7 +202,8 @@ In `rovas_oauth` (`rovas_oauth_me_index()`).
   "uid": 42,
   "username": "sano",
   "display_name": "Alexander Žaťko",
-  "total_me": 1248.35
+  "total_me": 1248.35,
+  "created": "2019-03-12T14:22:01+00:00"
 }
 ```
 
@@ -211,6 +213,7 @@ In `rovas_oauth` (`rovas_oauth_me_index()`).
 | `username` | `$user->name` |
 | `display_name` | `field_full_name` if set; else username |
 | `total_me` | `_rovas_merit_distribution_user_merits()` (userpoints + decimal) |
+| `created` | ISO-8601 from Drupal `$account->created` (`gmdate('c')`); `null` if missing/invalid |
 
 #### 3. `GET /rovas/contributions/aggregate` (public) — **implemented**
 
@@ -943,6 +946,65 @@ Civic API `resolveMeritRate()` calls the URL above (5‑minute cache) and falls
 back to `HOURLY_WAGE_EUR` if the endpoint 404s / Rovas is down. Proxied as
 `GET /merit-rate` for the Expo client. No Civic changes needed once this
 ships on rovdev — just deploy + enable.
+
+## Next work: expose account created on /rovas/me
+
+**Implemented in `rovas_oauth`.** Civic fraud rule C rejects VAT claims when
+the receipt `purchase_at` (Bratislava calendar day) is strictly before the
+scanner’s Rovas registration day. Civic already parses `created` from
+`GET /rovas/me` and **fails closed** on claim when the field is missing.
+
+### Change
+
+In `rovas_oauth` → `rovas_oauth_me_index()`:
+
+1. Read Drupal `$account->created` (Unix seconds).
+2. Emit ISO-8601 via `gmdate('c', (int) $account->created)` (or equivalent).
+3. Include `"created"` in the JSON response alongside `uid`, `username`,
+   `display_name`, `total_me`.
+4. If `created` is empty/invalid, return `null` (Civic treats null as missing
+   and rejects the claim with `rejected_account_age`).
+
+No new Services resource — extend the existing `/rovas/me` payload only.
+
+### Response (after)
+
+```json
+{
+  "uid": 42,
+  "username": "sano",
+  "display_name": "Alexander Žaťko",
+  "total_me": 1248.35,
+  "created": "2019-03-12T14:22:01+00:00"
+}
+```
+
+| Field | Source |
+|-------|--------|
+| `created` | `$account->created` → ISO-8601 (UTC/`gmdate('c')`) |
+
+### Checklist
+
+1. [x] `rovas_oauth_me_index()` returns `created` as ISO-8601 string
+2. [x] Existing clients still work (additive field)
+3. [ ] Deploy to rovdev + `drush74 cc all`
+4. [ ] Smoke-test curl below
+
+### Smoke test (after deploy)
+
+```bash
+# TOKEN = Civic OAuth access token with user_profile scope
+curl -sS https://dev.rovas.app/rovas/me \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Accept: application/json"
+# Expect: "created": "YYYY-MM-DDTHH:MM:SS+00:00" (or similar ISO-8601)
+```
+
+### Civic already consumes this
+
+Civic `RovasClient.fetchMe()` maps `created`. Claim/verify fraud evaluation
+uses it for rule C (`rejected_account_age` when purchase day < registration
+day, or when `created` is absent).
 
 ## Related Civic docs
 
