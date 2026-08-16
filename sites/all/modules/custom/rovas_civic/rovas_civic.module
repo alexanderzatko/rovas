@@ -287,7 +287,7 @@ function rovas_civic_services_resources() {
     'civic_project' => array(
       'operations' => array(
         'retrieve' => array(
-          'help' => 'Civic project detail + first page of work reports. Bearer required. Private projects omit body/WR bodies.',
+          'help' => 'Civic project detail + first page of work reports and shareholders. Bearer required. is_public is informational only (Private still returns full content).',
           'callback' => 'rovas_civic_services_project_retrieve',
           'access callback' => $bearer_auth['access callback'],
           'access arguments' => $bearer_auth['access arguments'],
@@ -1091,9 +1091,12 @@ function rovas_civic_load_published_project($nid) {
 }
 
 /**
- * Whether a project is public / public-dependent for Civic body/WR disclosure.
+ * Whether a project is Public / Public-dependent (informational for Civic).
  *
  * field_participation: 0 = Private, 1 = Public, 2 = Public-dependent.
+ * On Rovas, Private only restricts who may join as a shareholder — it does
+ * not hide project content. Civic still receives full payload; is_public is
+ * a flag only.
  *
  * @param object $project
  *
@@ -1102,7 +1105,6 @@ function rovas_civic_load_published_project($nid) {
 function rovas_civic_project_is_public($project) {
   $items = field_get_items('node', $project, 'field_participation');
   if ($items === FALSE || !isset($items[0]['value'])) {
-    // Missing participation field — treat as non-public (omit bodies).
     return FALSE;
   }
   $value = (int) $items[0]['value'];
@@ -1230,16 +1232,10 @@ function rovas_civic_project_detail($project, $limit = ROVAS_CIVIC_WR_DEFAULT_LI
   $shareholder_count = rovas_civic_project_shareholder_count($nid);
   $pager = rovas_civic_normalize_pager($limit, $offset, ROVAS_CIVIC_WR_DEFAULT_LIMIT, ROVAS_CIVIC_WR_MAX_LIMIT);
 
-  $summary = NULL;
-  $wr_items = array();
-  $shareholder_items = array();
-  if ($is_public) {
-    $summary = rovas_civic_plain_teaser(rovas_civic_node_body_value($project));
-    $page = rovas_civic_project_work_reports_fetch($nid, $pager['limit'], $pager['offset'], TRUE);
-    $wr_items = $page['items'];
-    $sh_page = rovas_civic_project_shareholders_fetch($nid, $pager['limit'], $pager['offset']);
-    $shareholder_items = $sh_page['items'];
-  }
+  // Private participation does not hide content — only who may join as shareholder.
+  $summary = rovas_civic_plain_teaser(rovas_civic_node_body_value($project));
+  $page = rovas_civic_project_work_reports_fetch($nid, $pager['limit'], $pager['offset'], TRUE);
+  $sh_page = rovas_civic_project_shareholders_fetch($nid, $pager['limit'], $pager['offset']);
 
   return array(
     'project_nid' => (string) $nid,
@@ -1258,20 +1254,20 @@ function rovas_civic_project_detail($project, $limit = ROVAS_CIVIC_WR_DEFAULT_LI
       'total' => $wr_count,
       'limit' => $pager['limit'],
       'offset' => $pager['offset'],
-      'items' => $wr_items,
+      'items' => $page['items'],
     ),
     'shareholders' => array(
       'project_nid' => (string) $nid,
       'total' => $shareholder_count,
       'limit' => $pager['limit'],
       'offset' => $pager['offset'],
-      'items' => $shareholder_items,
+      'items' => $sh_page['items'],
     ),
   );
 }
 
 /**
- * Paginated work-reports response for a project (privacy-aware).
+ * Paginated work-reports response for a published project.
  *
  * @param object $project
  * @param int $limit
@@ -1281,22 +1277,7 @@ function rovas_civic_project_detail($project, $limit = ROVAS_CIVIC_WR_DEFAULT_LI
  */
 function rovas_civic_project_work_reports_page($project, $limit, $offset) {
   $nid = (int) $project->nid;
-  $is_public = rovas_civic_project_is_public($project);
   $total = rovas_civic_project_work_report_count($nid);
-
-  if (!$is_public) {
-    // Prefer empty items; do not expose WR bodies. Keep total accurate for
-    // public only — for private return total 0 so clients cannot infer count
-    // from this list endpoint alone (project retrieve may still expose count).
-    return array(
-      'project_nid' => (string) $nid,
-      'total' => 0,
-      'limit' => (int) $limit,
-      'offset' => (int) $offset,
-      'items' => array(),
-    );
-  }
-
   $page = rovas_civic_project_work_reports_fetch($nid, $limit, $offset, TRUE);
   return array(
     'project_nid' => (string) $nid,
@@ -1447,7 +1428,7 @@ function rovas_civic_project_shareholder_count($project_nid) {
 }
 
 /**
- * Paginated shareholders response (privacy-aware).
+ * Paginated shareholders response for a published project.
  *
  * @param object $project
  * @param int $limit
@@ -1457,19 +1438,7 @@ function rovas_civic_project_shareholder_count($project_nid) {
  */
 function rovas_civic_project_shareholders_page($project, $limit, $offset) {
   $nid = (int) $project->nid;
-  $is_public = rovas_civic_project_is_public($project);
   $total = rovas_civic_project_shareholder_count($nid);
-
-  if (!$is_public) {
-    return array(
-      'project_nid' => (string) $nid,
-      'total' => 0,
-      'limit' => (int) $limit,
-      'offset' => (int) $offset,
-      'items' => array(),
-    );
-  }
-
   $page = rovas_civic_project_shareholders_fetch($nid, $limit, $offset);
   return array(
     'project_nid' => (string) $nid,

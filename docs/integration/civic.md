@@ -15,8 +15,9 @@ Civic API); keep both in sync when contracts change.
 [Next work: users lookup (community public profile)](#next-work-users-lookup-community-public-profile),
 [Next work: hide negative Merit users from Civic](#next-work-hide-negative-merit-users-from-civic),
 [Next work: expose account created on /rovas/me](#next-work-expose-account-created-on-rovasme),
-and [Next work: project detail + work reports (Civic modal)](#next-work-project-detail--work-reports-civic-modal),
-and [Next work: project shareholders + WR photos](#next-work-project-shareholders--wr-photos).
+[Next work: project detail + work reports (Civic modal)](#next-work-project-detail--work-reports-civic-modal),
+[Next work: project shareholders + WR photos](#next-work-project-shareholders--wr-photos),
+and [Next work: private projects are fully readable](#next-work-private-projects-are-fully-readable).
 Do not rely on reading the Civic tree unless you need Expo/API details.
 
 **Dev target (until told otherwise):** all Civic integration work targets
@@ -49,7 +50,7 @@ not run deploys on their own.
 | Users lookup (community profile) | `GET /rovas/users_lookup?username=` | Implemented in `rovas_civic` (`rovas_civic_update_7006`). Exact username; Bearer required. See [users lookup](#next-work-users-lookup-community-public-profile). |
 | Hide negative Merit users | `users_search` / `users_lookup` | Implemented — `total_me < 0` omitted / 404; search response stays public fields only |
 | Friend invite (Civic) | — | **Civic-client only** (`mailto:`). No Rovas invite endpoint. Signup URL in the email body should work (`/user/register` or OAuth authorize). |
-| Project detail + WR list | `GET /rovas/civic_project/{nid}`, `GET /rovas/civic_project_work_reports` | Implemented in `rovas_civic` (`rovas_civic_update_7007`). Lookup `top_*` rows include `project_nid`. |
+| Project detail + WR list | `GET /rovas/civic_project/{nid}`, `GET /rovas/civic_project_work_reports` | Implemented (`rovas_civic_update_7007`). Private participation still returns full content — see [private projects are fully readable](#next-work-private-projects-are-fully-readable). |
 | Project shareholders + WR photos | `GET /rovas/civic_project_shareholders`, WR `photo_urls[]` | Implemented in `rovas_civic` (`rovas_civic_update_7008`). |
 
 ## OAuth endpoints (live on dev)
@@ -1076,8 +1077,8 @@ Machine-name paths only (no slash aliases).
 
 | Field | Source / rules |
 |-------|----------------|
-| `summary` | `strip_tags` + decode entities on `body`; max ~800 chars; `null` if empty. **Omitted content** when `is_public` is false (`summary` null, `work_reports.items` empty, counts may still be present). |
-| `is_public` | `field_participation` ∈ {Public (1), Public-dependent (2)}. Private (0) → restricted payload (title + flags + `rovas_url` only; no body / WR bodies). |
+| `summary` | `strip_tags` + decode entities on `body`; max ~800 chars; `null` if empty. Always include for published projects (do **not** omit for Private participation). |
+| `is_public` | Informational only: `field_participation` ∈ {Public (1), Public-dependent (2)}. **Private (0) is still fully readable** — it only means the owner controls who may join as a shareholder (not “hide from Civic”). Full summary, WR list, photos, and shareholders for all published projects. |
 | `total_hours` | `field_project_total_hours` (float or null) |
 | `total_me` | `field_merit_reward` (float or null) |
 | `work_report_count` / `work_reports.total` | Count of published `work_report` nodes with `field_project` → this nid |
@@ -1097,7 +1098,7 @@ Default first WR page: `limit=20` (max 50), `offset=0`.
 | `limit` | Default 20, max 50 |
 | `offset` | Default 0 |
 
-Same privacy rules as project retrieve (private → empty `items`, `total` may still reflect count or 0 — prefer **0 items** and keep `total` accurate only for public). Return **404** if project missing/unpublished.
+Return full published WR pages for **any** published project (including Private participation). Return **404** only if project missing/unpublished.
 
 Order work reports by `created` DESC (then nid DESC).
 
@@ -1105,7 +1106,7 @@ Order work reports by `created` DESC (then nid DESC).
 
 1. Resolve Bearer uid (reject anonymous)
 2. Load project node; require `type=project` + published
-3. Build restricted vs full payload from `field_participation`
+3. Return full payload for all published projects — **do not** strip body/WRs when `field_participation` is Private
 4. Enable via `rovas_civic_ensure_services_resources()` + `rovas_civic_update_7007`
 
 ### Checklist
@@ -1169,7 +1170,7 @@ On both `GET /rovas/civic_project/{nid}` embedded `work_reports.items[]` and
 
 | Field | Rules |
 |-------|--------|
-| `photo_urls` | Absolute HTTPS URLs from `field_photos` via `file_create_url` (or equivalent). Empty array when none / private project. Omit broken/missing files. Prefer image styles only if a stable public style already exists; otherwise original file URL is fine. |
+| `photo_urls` | Absolute HTTPS URLs from `field_photos` via `file_create_url` (or equivalent). Empty array when none. Include for Private participation projects too. Omit broken/missing files. Prefer image styles only if a stable public style already exists; otherwise original file URL is fine. |
 
 ### Endpoint: shareholders
 
@@ -1212,8 +1213,9 @@ Also embed the **first page** on `GET /rovas/civic_project/{nid}` as
 | `share_percent` | `field_merit_allocation` when percent; else `null`. |
 | `hours` | `field_total_hours_worked` (float or null) — especially meaningful for time-based shares. |
 
-Privacy: same as project detail — private / unpublished → **404** or empty
-items (prefer same behaviour as work-reports endpoint).
+Visibility: same as project detail — return shareholders for any **published**
+project (including Private participation). **404** only if project
+missing/unpublished.
 
 Pagination: default `limit=20`, max `50`, `offset` ≥ 0.
 
@@ -1244,6 +1246,44 @@ curl -sS "https://dev.rovas.app/rovas/civic_project_shareholders?project_nid=199
 
 - Proxy `GET /projects/:nid/shareholders`
 - Modal section Podielnici / Shareholders; WR photos in expand panel
+
+## Next work: private projects are fully readable
+
+**Implemented in `rovas_civic`.** Civic initially treated Rovas
+`field_participation = Private (0)` as “hide project content”. That is
+**wrong**.
+
+On Rovas, **Private** only means the **owner controls who may be added as a
+shareholder** (others cannot freely join). It does **not** mean the project,
+summary, work ledgers, photos, or shareholders are secret.
+
+### Fix in `rovas_civic`
+
+1. `GET /rovas/civic_project/{nid}` — return full payload for all published
+   projects regardless of `field_participation`. Keep `is_public` as an
+   informational boolean only.
+2. `GET /rovas/civic_project_work_reports` — return WR pages for Private
+   projects too (do not empty `items` when private).
+3. `GET /rovas/civic_project_shareholders` — same; include Private projects.
+4. `photo_urls` — include when photos exist on Private projects.
+5. Update any helpers that currently strip body / WRs / shareholders when
+   `rovas_civic_project_is_public()` is false.
+6. Deploy + `drush74 cc all` (updb only if a new schema hook is needed).
+
+### Checklist
+
+1. [x] Private published project returns summary + WR list + shareholders
+2. [x] `is_public: false` still reported, but content is complete
+3. [ ] Smoke-test a known Private project nid from Civic / curl
+
+### Smoke test
+
+```bash
+# Pick a published Private project nid from the DB, then:
+curl -sS "https://dev.rovas.app/rovas/civic_project/$PRIVATE_NID" \
+  -H "Authorization: Bearer $TOKEN" -H "Accept: application/json"
+# Expect is_public:false AND non-empty summary / work_reports when data exists
+```
 
 ## Related Civic docs
 
