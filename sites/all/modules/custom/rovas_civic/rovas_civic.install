@@ -369,3 +369,13 @@ function rovas_civic_update_7007() {
   }
   return t('Civic project detail + work-reports APIs (GET /rovas/civic_project, /rovas/civic_project_work_reports) enabled on rovas_endpoint.');
 }
+
+/**
+ * Enable Civic project shareholders resource + WR photo_urls (ensure re-save).
+ */
+function rovas_civic_update_7008() {
+  if (function_exists('rovas_civic_ensure_services_resources')) {
+    rovas_civic_ensure_services_resources();
+  }
+  return t('Civic project shareholders API (GET /rovas/civic_project_shareholders) enabled; WR photo_urls on project/WR reads.');
+}

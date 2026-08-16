@@ -79,6 +79,7 @@ function rovas_civic_menu() {
  * - GET  /rovas/users_lookup?username= (community public profile)
  * - GET  /rovas/civic_project/{nid} (project modal detail)
  * - GET  /rovas/civic_project_work_reports?project_nid= (WR pages)
+ * - GET  /rovas/civic_project_shareholders?project_nid= (user shareholders)
  *
  * Note: Services aliases must be slash-free. Do not use aliases like
  * civic/claims — Services treats the first segment as the resource name.
@@ -308,6 +309,42 @@ function rovas_civic_services_resources() {
         'index' => array(
           'help' => 'Paginated work reports for a project. ?project_nid=&limit=&offset=. Bearer required.',
           'callback' => 'rovas_civic_services_project_work_reports_index',
+          'access callback' => $bearer_auth['access callback'],
+          'access arguments' => $bearer_auth['access arguments'],
+          'access arguments append' => $bearer_auth['access arguments append'],
+          'args' => array(
+            array(
+              'name' => 'project_nid',
+              'type' => 'int',
+              'description' => 'Project node nid.',
+              'source' => array('param' => 'project_nid'),
+              'optional' => FALSE,
+            ),
+            array(
+              'name' => 'limit',
+              'type' => 'int',
+              'description' => 'Page size (default 20, max 50).',
+              'source' => array('param' => 'limit'),
+              'optional' => TRUE,
+              'default value' => ROVAS_CIVIC_WR_DEFAULT_LIMIT,
+            ),
+            array(
+              'name' => 'offset',
+              'type' => 'int',
+              'description' => 'Row offset for pagination.',
+              'source' => array('param' => 'offset'),
+              'optional' => TRUE,
+              'default value' => 0,
+            ),
+          ),
+        ),
+      ),
+    ),
+    'civic_project_shareholders' => array(
+      'operations' => array(
+        'index' => array(
+          'help' => 'Paginated user shareholders for a project. ?project_nid=&limit=&offset=. Bearer required. Skips project-as-shareholder rows.',
+          'callback' => 'rovas_civic_services_project_shareholders_index',
           'access callback' => $bearer_auth['access callback'],
           'access arguments' => $bearer_auth['access arguments'],
           'access arguments append' => $bearer_auth['access arguments append'],
@@ -1012,6 +1049,29 @@ function rovas_civic_services_project_work_reports_index($project_nid, $limit = 
 }
 
 /**
+ * Services callback: GET /rovas/civic_project_shareholders
+ */
+function rovas_civic_services_project_shareholders_index($project_nid, $limit = ROVAS_CIVIC_WR_DEFAULT_LIMIT, $offset = 0) {
+  $uid = rovas_civic_request_uid();
+  if ($uid < 1) {
+    return services_error(t('Authentication required'), 401);
+  }
+
+  $project_nid = (int) $project_nid;
+  if ($project_nid < 1) {
+    return services_error(t('project_nid is required'), 400);
+  }
+
+  $project = rovas_civic_load_published_project($project_nid);
+  if (!$project) {
+    return services_error(t('Project not found'), 404);
+  }
+
+  $pager = rovas_civic_normalize_pager($limit, $offset, ROVAS_CIVIC_WR_DEFAULT_LIMIT, ROVAS_CIVIC_WR_MAX_LIMIT);
+  return rovas_civic_project_shareholders_page($project, $pager['limit'], $pager['offset']);
+}
+
+/**
  * Load a published project node or NULL.
  *
  * @param int $nid
@@ -1167,14 +1227,18 @@ function rovas_civic_project_detail($project, $limit = ROVAS_CIVIC_WR_DEFAULT_LI
   $owner = user_load((int) $project->uid);
   $labels = rovas_civic_user_public_labels((int) $project->uid, $owner);
   $wr_count = rovas_civic_project_work_report_count($nid);
+  $shareholder_count = rovas_civic_project_shareholder_count($nid);
   $pager = rovas_civic_normalize_pager($limit, $offset, ROVAS_CIVIC_WR_DEFAULT_LIMIT, ROVAS_CIVIC_WR_MAX_LIMIT);
 
   $summary = NULL;
   $wr_items = array();
+  $shareholder_items = array();
   if ($is_public) {
     $summary = rovas_civic_plain_teaser(rovas_civic_node_body_value($project));
     $page = rovas_civic_project_work_reports_fetch($nid, $pager['limit'], $pager['offset'], TRUE);
     $wr_items = $page['items'];
+    $sh_page = rovas_civic_project_shareholders_fetch($nid, $pager['limit'], $pager['offset']);
+    $shareholder_items = $sh_page['items'];
   }
 
   return array(
@@ -1187,6 +1251,7 @@ function rovas_civic_project_detail($project, $limit = ROVAS_CIVIC_WR_DEFAULT_LI
     'total_hours' => rovas_civic_node_float_field($project, 'field_project_total_hours'),
     'total_me' => rovas_civic_node_float_field($project, 'field_merit_reward'),
     'work_report_count' => $wr_count,
+    'shareholder_count' => $shareholder_count,
     'rovas_url' => url('node/' . $nid, array('absolute' => TRUE)),
     'work_reports' => array(
       'project_nid' => (string) $nid,
@@ -1194,6 +1259,13 @@ function rovas_civic_project_detail($project, $limit = ROVAS_CIVIC_WR_DEFAULT_LI
       'limit' => $pager['limit'],
       'offset' => $pager['offset'],
       'items' => $wr_items,
+    ),
+    'shareholders' => array(
+      'project_nid' => (string) $nid,
+      'total' => $shareholder_count,
+      'limit' => $pager['limit'],
+      'offset' => $pager['offset'],
+      'items' => $shareholder_items,
     ),
   );
 }
@@ -1288,8 +1360,10 @@ function rovas_civic_project_work_reports_fetch($project_nid, $limit, $offset, $
     $labels = rovas_civic_user_public_labels($author_uid, $author);
     $hours = rovas_civic_node_float_field($node, 'field_hours_worked');
     $summary = NULL;
+    $photo_urls = array();
     if ($include_bodies) {
       $summary = rovas_civic_plain_teaser(rovas_civic_node_body_value($node));
+      $photo_urls = rovas_civic_work_report_photo_urls($node);
     }
     $items[] = array(
       'work_report_nid' => (string) ((int) $node->nid),
@@ -1299,7 +1373,184 @@ function rovas_civic_project_work_reports_fetch($project_nid, $limit, $offset, $
       'author_username' => $labels['username'],
       'author_display_name' => $labels['display_name'],
       'created_at' => rovas_civic_work_report_created_at($node),
+      'photo_urls' => $photo_urls,
     );
+  }
+
+  return array('items' => $items);
+}
+
+/**
+ * Absolute public URLs for work_report field_photos.
+ *
+ * @param object $node
+ *
+ * @return array
+ *   List of absolute URL strings.
+ */
+function rovas_civic_work_report_photo_urls($node) {
+  $items = field_get_items('node', $node, 'field_photos');
+  if ($items === FALSE || empty($items)) {
+    return array();
+  }
+
+  $urls = array();
+  foreach ($items as $item) {
+    if (empty($item['fid'])) {
+      continue;
+    }
+    $file = file_load($item['fid']);
+    if (!$file || empty($file->uri)) {
+      continue;
+    }
+    // Skip private:// and similar non-public schemes.
+    $scheme = file_uri_scheme($file->uri);
+    if ($scheme && $scheme !== 'public') {
+      continue;
+    }
+    $url = file_create_url($file->uri);
+    if (!empty($url)) {
+      $urls[] = $url;
+    }
+  }
+  return $urls;
+}
+
+/**
+ * Count user shareholders (co_worker_merit_allocation) for a project.
+ *
+ * Mirrors project_coworkers view user rows; excludes project-as-shareholder.
+ *
+ * @param int $project_nid
+ *
+ * @return int
+ */
+function rovas_civic_project_shareholder_count($project_nid) {
+  $project_nid = (int) $project_nid;
+  if ($project_nid < 1) {
+    return 0;
+  }
+  return (int) db_query("
+    SELECT COUNT(n.nid)
+    FROM {node} n
+    INNER JOIN {field_data_field_project} p
+      ON p.entity_id = n.nid AND p.entity_type = 'node' AND p.deleted = 0
+    INNER JOIN {field_data_field_coworker} cw
+      ON cw.entity_id = n.nid AND cw.entity_type = 'node' AND cw.deleted = 0
+    INNER JOIN {users} u ON u.uid = cw.field_coworker_target_id
+    WHERE n.type = 'co_worker_merit_allocation'
+      AND n.status = 1
+      AND p.field_project_target_id = :nid
+      AND u.uid > 0
+      AND u.status = 1
+  ", array(':nid' => $project_nid))->fetchField();
+}
+
+/**
+ * Paginated shareholders response (privacy-aware).
+ *
+ * @param object $project
+ * @param int $limit
+ * @param int $offset
+ *
+ * @return array
+ */
+function rovas_civic_project_shareholders_page($project, $limit, $offset) {
+  $nid = (int) $project->nid;
+  $is_public = rovas_civic_project_is_public($project);
+  $total = rovas_civic_project_shareholder_count($nid);
+
+  if (!$is_public) {
+    return array(
+      'project_nid' => (string) $nid,
+      'total' => 0,
+      'limit' => (int) $limit,
+      'offset' => (int) $offset,
+      'items' => array(),
+    );
+  }
+
+  $page = rovas_civic_project_shareholders_fetch($nid, $limit, $offset);
+  return array(
+    'project_nid' => (string) $nid,
+    'total' => $total,
+    'limit' => (int) $limit,
+    'offset' => (int) $offset,
+    'items' => $page['items'],
+  );
+}
+
+/**
+ * Fetch a page of user shareholder rows for a project.
+ *
+ * Logic mirrors Views `project_coworkers` user rows:
+ * - type co_worker_merit_allocation + field_coworker username
+ * - share_kind percent when field_merit_allocation > 0, else time_based
+ *
+ * @param int $project_nid
+ * @param int $limit
+ * @param int $offset
+ *
+ * @return array
+ *   keys: items
+ */
+function rovas_civic_project_shareholders_fetch($project_nid, $limit, $offset) {
+  $project_nid = (int) $project_nid;
+  $limit = (int) $limit;
+  $offset = (int) $offset;
+
+  $rows = db_query("
+    SELECT u.name AS username,
+      ma.field_merit_allocation_value AS share_pct,
+      hw.field_total_hours_worked_value AS hours
+    FROM {node} n
+    INNER JOIN {field_data_field_project} p
+      ON p.entity_id = n.nid AND p.entity_type = 'node' AND p.deleted = 0
+    INNER JOIN {field_data_field_coworker} cw
+      ON cw.entity_id = n.nid AND cw.entity_type = 'node' AND cw.deleted = 0
+    INNER JOIN {users} u ON u.uid = cw.field_coworker_target_id
+    LEFT JOIN {field_data_field_merit_allocation} ma
+      ON ma.entity_id = n.nid AND ma.entity_type = 'node' AND ma.deleted = 0
+    LEFT JOIN {field_data_field_total_hours_worked} hw
+      ON hw.entity_id = n.nid AND hw.entity_type = 'node' AND hw.deleted = 0
+    WHERE n.type = 'co_worker_merit_allocation'
+      AND n.status = 1
+      AND p.field_project_target_id = :nid
+      AND u.uid > 0
+      AND u.status = 1
+    ORDER BY hw.field_total_hours_worked_value DESC, u.name ASC, n.nid DESC
+    LIMIT " . $limit . " OFFSET " . $offset . "
+  ", array(':nid' => $project_nid));
+
+  $items = array();
+  foreach ($rows as $row) {
+    $username = trim((string) $row->username);
+    if ($username === '') {
+      continue;
+    }
+    $share_pct = isset($row->share_pct) && $row->share_pct !== NULL && $row->share_pct !== ''
+      ? (float) $row->share_pct
+      : 0.0;
+    $hours = isset($row->hours) && $row->hours !== NULL && $row->hours !== ''
+      ? (float) $row->hours
+      : NULL;
+
+    if ($share_pct > 0) {
+      $items[] = array(
+        'username' => $username,
+        'share_kind' => 'percent',
+        'share_percent' => $share_pct,
+        'hours' => $hours,
+      );
+    }
+    else {
+      $items[] = array(
+        'username' => $username,
+        'share_kind' => 'time_based',
+        'share_percent' => NULL,
+        'hours' => $hours,
+      );
+    }
   }
 
   return array('items' => $items);
@@ -1805,6 +2056,18 @@ function rovas_civic_ensure_services_resources() {
   if (empty($endpoint->resources['civic_project_work_reports'])
     || $endpoint->resources['civic_project_work_reports'] != $civic_wr_resource) {
     $endpoint->resources['civic_project_work_reports'] = $civic_wr_resource;
+    $changed = TRUE;
+  }
+
+  // GET /rovas/civic_project_shareholders?project_nid= — user shareholders (Bearer).
+  $civic_sh_resource = array(
+    'operations' => array(
+      'index' => $bearer_op,
+    ),
+  );
+  if (empty($endpoint->resources['civic_project_shareholders'])
+    || $endpoint->resources['civic_project_shareholders'] != $civic_sh_resource) {
+    $endpoint->resources['civic_project_shareholders'] = $civic_sh_resource;
     $changed = TRUE;
   }
 

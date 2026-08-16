@@ -15,7 +15,8 @@ Civic API); keep both in sync when contracts change.
 [Next work: users lookup (community public profile)](#next-work-users-lookup-community-public-profile),
 [Next work: hide negative Merit users from Civic](#next-work-hide-negative-merit-users-from-civic),
 [Next work: expose account created on /rovas/me](#next-work-expose-account-created-on-rovasme),
-and [Next work: project detail + work reports (Civic modal)](#next-work-project-detail--work-reports-civic-modal).
+and [Next work: project detail + work reports (Civic modal)](#next-work-project-detail--work-reports-civic-modal),
+and [Next work: project shareholders + WR photos](#next-work-project-shareholders--wr-photos).
 Do not rely on reading the Civic tree unless you need Expo/API details.
 
 **Dev target (until told otherwise):** all Civic integration work targets
@@ -49,6 +50,7 @@ not run deploys on their own.
 | Hide negative Merit users | `users_search` / `users_lookup` | Implemented — `total_me < 0` omitted / 404; search response stays public fields only |
 | Friend invite (Civic) | — | **Civic-client only** (`mailto:`). No Rovas invite endpoint. Signup URL in the email body should work (`/user/register` or OAuth authorize). |
 | Project detail + WR list | `GET /rovas/civic_project/{nid}`, `GET /rovas/civic_project_work_reports` | Implemented in `rovas_civic` (`rovas_civic_update_7007`). Lookup `top_*` rows include `project_nid`. |
+| Project shareholders + WR photos | `GET /rovas/civic_project_shareholders`, WR `photo_urls[]` | Implemented in `rovas_civic` (`rovas_civic_update_7008`). |
 
 ## OAuth endpoints (live on dev)
 
@@ -879,8 +881,8 @@ Drupal Services resource aliases **cannot contain slashes**. Civic claim,
 rate, user-search, and project reads use machine-name paths
 (`/rovas/civic_claims`, `/rovas/civic_national_hourly_rate`,
 `/rovas/users_search`, `/rovas/civic_project`,
-`/rovas/civic_project_work_reports`), not `/rovas/civic/…` or
-`/rovas/users/search`.
+`/rovas/civic_project_work_reports`, `/rovas/civic_project_shareholders`),
+not `/rovas/civic/…` or `/rovas/users/search`.
 
 ## Next work: public national hourly rate API
 
@@ -1139,6 +1141,109 @@ Civic side is wired to this contract:
 
 **Implemented in `rovas_civic`** (Services resources + ensure helper + updb). Do not
 change Civic Expo/API in this repo.
+
+## Next work: project shareholders + WR photos
+
+**Implemented in `rovas_civic`** (enable on rovdev: `drush74 updb -y`, or admin
+enable APIs). Extends the Civic project modal with (1) a paginated
+**shareholders** list matching the Rovas `project_coworkers` view user rows,
+and (2) **photos** attached to work ledgers (`field_photos` on `work_report`).
+
+**Auth:** Bearer required (`civic` / `user_profile`).
+
+Shareholders are a non-Views SQL query in `rovas_civic` mirroring
+`project_coworkers` public columns for **user** rows only
+(`co_worker_merit_allocation` + `field_coworker`). Project-as-shareholder
+rows are omitted.
+
+### Additive: `photo_urls` on work-ledger items
+
+On both `GET /rovas/civic_project/{nid}` embedded `work_reports.items[]` and
+`GET /rovas/civic_project_work_reports` items, add:
+
+```json
+"photo_urls": [
+  "https://dev.rovas.app/sites/default/files/…"
+]
+```
+
+| Field | Rules |
+|-------|--------|
+| `photo_urls` | Absolute HTTPS URLs from `field_photos` via `file_create_url` (or equivalent). Empty array when none / private project. Omit broken/missing files. Prefer image styles only if a stable public style already exists; otherwise original file URL is fine. |
+
+### Endpoint: shareholders
+
+| Method | URL | Notes |
+|--------|-----|------|
+| `GET` | `https://dev.rovas.app/rovas/civic_project_shareholders?project_nid=&limit=&offset=` | Paginated; machine-name path |
+
+Also embed the **first page** on `GET /rovas/civic_project/{nid}` as
+`shareholders` (same page shape) plus `shareholder_count`.
+
+**200** example page:
+
+```json
+{
+  "project_nid": "1998",
+  "total": 42,
+  "limit": 20,
+  "offset": 0,
+  "items": [
+    {
+      "username": "bob",
+      "share_kind": "percent",
+      "share_percent": 12.5,
+      "hours": null
+    },
+    {
+      "username": "alice",
+      "share_kind": "time_based",
+      "share_percent": null,
+      "hours": 3.5
+    }
+  ]
+}
+```
+
+| Field | Source / rules (match Rovas shareholder view logic) |
+|-------|--------|
+| `username` | Rovas **username** (not full name). From coworker user for worker shares; skip pure project-as-shareholder rows **or** omit them from Civic (Civic only needs user usernames linkable to Komunita). |
+| `share_kind` | `"percent"` when `field_merit_allocation` > 0; else `"time_based"` (Rovas view prints “work time share”). |
+| `share_percent` | `field_merit_allocation` when percent; else `null`. |
+| `hours` | `field_total_hours_worked` (float or null) — especially meaningful for time-based shares. |
+
+Privacy: same as project detail — private / unpublished → **404** or empty
+items (prefer same behaviour as work-reports endpoint).
+
+Pagination: default `limit=20`, max `50`, `offset` ≥ 0.
+
+Enable via `rovas_civic_ensure_services_resources()` +
+`rovas_civic_update_7008`.
+
+### Checklist
+
+1. [x] WR items include `photo_urls[]` (project retrieve + WR list)
+2. [x] `GET /rovas/civic_project_shareholders`
+3. [x] First shareholders page + `shareholder_count` on `civic_project` retrieve
+4. [x] Bearer + API-key disabled
+5. [x] updb / ensure helper
+6. [ ] Smoke-test curls
+
+### Smoke test
+
+```bash
+curl -sS "https://dev.rovas.app/rovas/civic_project/1998" \
+  -H "Authorization: Bearer $TOKEN" -H "Accept: application/json"
+# Expect shareholders + photo_urls on WR items when present
+
+curl -sS "https://dev.rovas.app/rovas/civic_project_shareholders?project_nid=1998&limit=5" \
+  -H "Authorization: Bearer $TOKEN" -H "Accept: application/json"
+```
+
+### Civic already consumes
+
+- Proxy `GET /projects/:nid/shareholders`
+- Modal section Podielnici / Shareholders; WR photos in expand panel
 
 ## Related Civic docs
 
