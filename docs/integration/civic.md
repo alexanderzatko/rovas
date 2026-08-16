@@ -16,6 +16,7 @@ Civic API); keep both in sync when contracts change.
 [Next work: hide negative Merit users from Civic](#next-work-hide-negative-merit-users-from-civic),
 [Next work: expose account created on /rovas/me](#next-work-expose-account-created-on-rovasme),
 [Next work: expose preferred language on /rovas/me](#next-work-expose-preferred-language-on-rovasme),
+[Next work: localized project and work-report text](#next-work-localized-project-and-work-report-text),
 [Next work: project detail + work reports (Civic modal)](#next-work-project-detail--work-reports-civic-modal),
 [Next work: project shareholders + WR photos](#next-work-project-shareholders--wr-photos),
 and [Next work: private projects are fully readable](#next-work-private-projects-are-fully-readable).
@@ -53,6 +54,7 @@ not run deploys on their own.
 | Friend invite (Civic) | — | **Civic-client only** (`mailto:`). No Rovas invite endpoint. Signup URL in the email body should work (`/user/register` or OAuth authorize). |
 | Project detail + WR list | `GET /rovas/civic_project/{nid}`, `GET /rovas/civic_project_work_reports` | Implemented (`rovas_civic_update_7007`). Private participation still returns full content — see [private projects are fully readable](#next-work-private-projects-are-fully-readable). |
 | Project shareholders + WR photos | `GET /rovas/civic_project_shareholders`, WR `photo_urls[]` | Implemented in `rovas_civic` (`rovas_civic_update_7008`). |
+| Localized project / WR / lookup text | `?lang=` on `civic_project`, `civic_project_work_reports`, `users_lookup` | Implemented — Entity Translation / `title_field` / `body` with source fallback. |
 
 ## OAuth endpoints (live on dev)
 
@@ -1084,6 +1086,91 @@ curl -sS https://dev.rovas.app/rovas/me \
 
 Civic API `GET /me` proxies `language` from Rovas. Expo `LocaleProvider`
 applies it after login (unless the user set an explicit Civic override).
+
+## Next work: localized project and work-report text
+
+**Implemented in `rovas_civic`.** Civic UI chrome is already `sk`/`en`, and the
+Expo client + Civic API send `?lang=sk|en` on project/WR/lookup requests.
+Rovas honors `lang` so Entity Translation / `title_field` / `body` values
+match the Civic language when a translation exists.
+
+### Civic → Rovas contract (already live on Civic side)
+
+| Civic API | Forwards to Rovas |
+|-----------|-------------------|
+| `GET /projects/:nid?lang=` | `GET /rovas/civic_project/{nid}?lang=` |
+| `GET /projects/:nid/work-reports?lang=` | `GET /rovas/civic_project_work_reports?project_nid=&lang=` |
+| `GET /users/lookup?username=&lang=` | `GET /rovas/users_lookup?username=&lang=` |
+
+| Param | Rules |
+|-------|--------|
+| `lang` | Optional. Civic sends `sk` or `en` only. Treat `cs`/`cz` as `sk` if ever received. Missing → keep current behavior (source/default). |
+
+Shareholders endpoint stays language-agnostic (no translated copy).
+
+### Fields that must respect `lang`
+
+| Endpoint | Fields |
+|----------|--------|
+| `civic_project` | `title`, `summary`; embedded `work_reports.items[].title`, `.summary` |
+| `civic_project_work_reports` | `items[].title`, `items[].summary` |
+| `users_lookup` | `top_charities[].name`, `top_volunteer_projects[].name` |
+
+### Required logic (`rovas_civic`)
+
+1. Resolve requested langcode from `$_GET['lang']` (primary). Optionally also
+   accept `Accept-Language` if `lang` is absent — same mapping as above.
+2. Constrain to an **enabled** Drupal interface/content language (reuse
+   `rovas_base_normalize_to_enabled_language()` when available).
+3. For each project / work_report node:
+   - **Title:** prefer `title_field[$lang][0]['value']` when Title + Entity
+     Translation are enabled; else fall back to `$node->title`. If the
+     requested lang has no title translation, fall back to Entity Translation
+     source language (`rovas_base_translation_node_source_language()` /
+     `rovas_base_translation_pick_source_text($node, 'title_field')`), then
+     `$node->title`.
+   - **Body / summary:** read `body` for `$lang` (via `field_get_items` with
+     language, or direct `$node->body[$lang]`), then source, then
+     `LANGUAGE_NONE`. Keep existing `rovas_civic_plain_teaser()` rules.
+4. For `users_lookup` top project rows: today SQL uses `{node}.title`. After
+   aggregating nids, `node_load_multiple` and resolve each `name` with the
+   same title picker as above (do not leave SQL `pn.title` as the only
+   source when `lang` is set).
+5. Do **not** fail the request when a translation is missing — always return
+   a string with source fallback.
+6. Additive only: omitting `lang` must behave as today.
+
+### Checklist
+
+1. [x] `civic_project` + embedded WR items honor `?lang=`
+2. [x] `civic_project_work_reports` honors `?lang=`
+3. [x] `users_lookup` top charity/volunteer `name` honors `?lang=`
+4. [x] Missing translation → source/default (no empty title)
+5. [ ] Deploy to rovdev + `drush74 cc all`
+6. [ ] Smoke-test curl below on a node with both `sk` and `en` title_field
+
+### Smoke test (after deploy)
+
+```bash
+# TOKEN = Civic OAuth access token; NID = project with sk+en translations
+curl -sS "https://dev.rovas.app/rovas/civic_project/$NID?lang=en" \
+  -H "Authorization: Bearer $TOKEN" -H "Accept: application/json"
+# Expect title/summary (and WR titles) in English when translations exist
+
+curl -sS "https://dev.rovas.app/rovas/civic_project/$NID?lang=sk" \
+  -H "Authorization: Bearer $TOKEN" -H "Accept: application/json"
+# Expect Slovak variants when translations exist
+
+curl -sS "https://dev.rovas.app/rovas/users_lookup?username=sano&lang=en" \
+  -H "Authorization: Bearer $TOKEN" -H "Accept: application/json"
+# Expect top_*[].name in English when project titles are translated
+```
+
+### Civic already consumes this
+
+Expo sends `lang` from the active Civic locale on lookup + project + WR
+fetches. Civic API proxies it. No further Civic change needed once Rovas
+honors the param.
 ## Next work: project detail + work reports (Civic modal)
 
 **Implemented in `rovas_civic`** (enable on rovdev: `drush74 updb -y`, or admin

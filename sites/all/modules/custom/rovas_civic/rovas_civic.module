@@ -280,6 +280,14 @@ function rovas_civic_services_resources() {
               'source' => array('param' => 'username'),
               'optional' => FALSE,
             ),
+            array(
+              'name' => 'lang',
+              'type' => 'string',
+              'description' => 'Optional content language (sk|en). Maps cs/cz→sk. Affects top_* project names.',
+              'source' => array('param' => 'lang'),
+              'optional' => TRUE,
+              'default value' => '',
+            ),
           ),
         ),
       ),
@@ -287,7 +295,7 @@ function rovas_civic_services_resources() {
     'civic_project' => array(
       'operations' => array(
         'retrieve' => array(
-          'help' => 'Civic project detail + first page of work reports and shareholders. Bearer required. is_public is informational only (Private still returns full content).',
+          'help' => 'Civic project detail + first page of work reports and shareholders. Bearer required. Optional ?lang= for title/summary. is_public is informational only (Private still returns full content).',
           'callback' => 'rovas_civic_services_project_retrieve',
           'access callback' => $bearer_auth['access callback'],
           'access arguments' => $bearer_auth['access arguments'],
@@ -300,6 +308,14 @@ function rovas_civic_services_resources() {
               'source' => array('path' => 0),
               'optional' => FALSE,
             ),
+            array(
+              'name' => 'lang',
+              'type' => 'string',
+              'description' => 'Optional content language (sk|en). Maps cs/cz→sk.',
+              'source' => array('param' => 'lang'),
+              'optional' => TRUE,
+              'default value' => '',
+            ),
           ),
         ),
       ),
@@ -307,7 +323,7 @@ function rovas_civic_services_resources() {
     'civic_project_work_reports' => array(
       'operations' => array(
         'index' => array(
-          'help' => 'Paginated work reports for a project. ?project_nid=&limit=&offset=. Bearer required.',
+          'help' => 'Paginated work reports for a project. ?project_nid=&limit=&offset=&lang=. Bearer required.',
           'callback' => 'rovas_civic_services_project_work_reports_index',
           'access callback' => $bearer_auth['access callback'],
           'access arguments' => $bearer_auth['access arguments'],
@@ -335,6 +351,14 @@ function rovas_civic_services_resources() {
               'source' => array('param' => 'offset'),
               'optional' => TRUE,
               'default value' => 0,
+            ),
+            array(
+              'name' => 'lang',
+              'type' => 'string',
+              'description' => 'Optional content language (sk|en). Maps cs/cz→sk.',
+              'source' => array('param' => 'lang'),
+              'optional' => TRUE,
+              'default value' => '',
             ),
           ),
         ),
@@ -449,6 +473,102 @@ function rovas_civic_format_created($timestamp) {
     return NULL;
   }
   return format_date($timestamp, 'custom', 'c');
+}
+
+/**
+ * Resolve optional Civic content language from request / argument.
+ *
+ * Civic sends sk|en. cs/cz map to sk. Empty → NULL (source/default text).
+ * Does not use Accept-Language so omitting ?lang= keeps prior behavior.
+ *
+ * @param string|null $lang
+ *   Explicit lang from Services, or empty to read $_GET['lang'].
+ *
+ * @return string|null
+ *   Enabled Drupal langcode, or NULL when not requested.
+ */
+function rovas_civic_request_lang($lang = NULL) {
+  if ($lang === NULL || $lang === '') {
+    if (!isset($_GET['lang'])) {
+      return NULL;
+    }
+    $lang = $_GET['lang'];
+  }
+  $lang = drupal_strtolower(trim((string) $lang));
+  if ($lang === '') {
+    return NULL;
+  }
+  if (strpos($lang, '-') !== FALSE || strpos($lang, '_') !== FALSE) {
+    $parts = preg_split('/[-_]/', $lang, 2);
+    $lang = $parts[0];
+  }
+  if ($lang === 'cs' || $lang === 'cz') {
+    $lang = 'sk';
+  }
+  if (function_exists('rovas_base_normalize_to_enabled_language')) {
+    return rovas_base_normalize_to_enabled_language($lang);
+  }
+  return $lang;
+}
+
+/**
+ * Localized node title for Civic (?lang=).
+ *
+ * @param object $node
+ * @param string|null $lang
+ *   Enabled langcode, or NULL for default $node->title.
+ *
+ * @return string
+ */
+function rovas_civic_node_localized_title($node, $lang = NULL) {
+  $fallback = (!empty($node->title)) ? (string) $node->title : '';
+  if ($lang === NULL || $lang === '') {
+    return $fallback;
+  }
+  $lang = drupal_strtolower(trim((string) $lang));
+
+  if (!empty($node->title_field[$lang][0]['value'])) {
+    return (string) $node->title_field[$lang][0]['value'];
+  }
+  $items = field_get_items('node', $node, 'title_field', $lang);
+  if (!empty($items[0]['value'])) {
+    return (string) $items[0]['value'];
+  }
+  if (function_exists('rovas_base_translation_pick_source_text')) {
+    $src = rovas_base_translation_pick_source_text($node, 'title_field');
+    if ($src !== '') {
+      return $src;
+    }
+  }
+  return $fallback !== '' ? $fallback : '';
+}
+
+/**
+ * Resolve localized titles for a list of project nids.
+ *
+ * @param array $nids
+ * @param string|null $lang
+ *
+ * @return array
+ *   nid => title string.
+ */
+function rovas_civic_project_titles_for_nids(array $nids, $lang = NULL) {
+  $out = array();
+  $nids = array_values(array_unique(array_filter(array_map('intval', $nids))));
+  if (empty($nids)) {
+    return $out;
+  }
+  $nodes = node_load_multiple($nids);
+  foreach ($nids as $nid) {
+    if (empty($nodes[$nid])) {
+      continue;
+    }
+    $title = trim(rovas_civic_node_localized_title($nodes[$nid], $lang));
+    if ($title !== '') {
+      $out[$nid] = $title;
+    }
+  }
+  return $out;
 }
 
 /* ===========================================================================
@@ -660,7 +780,7 @@ function rovas_civic_user_total_me($uid) {
  *
  * Bearer required. Public contribution profile for Civic Screen 6.
  */
-function rovas_civic_services_users_lookup_index($username = '') {
+function rovas_civic_services_users_lookup_index($username = '', $lang = '') {
   $caller_uid = rovas_civic_request_uid();
   if ($caller_uid < 1) {
     return services_error(t('Authentication required'), 401);
@@ -671,7 +791,7 @@ function rovas_civic_services_users_lookup_index($username = '') {
     return services_error(t('Username is required.'), 400);
   }
 
-  $profile = rovas_civic_users_lookup($username);
+  $profile = rovas_civic_users_lookup($username, rovas_civic_request_lang($lang));
   if ($profile === FALSE) {
     return services_error(t('User not found'), 404);
   }
@@ -683,11 +803,13 @@ function rovas_civic_services_users_lookup_index($username = '') {
  *
  * @param string $username
  *   Trimmed Rovas username (case-insensitive).
+ * @param string|null $lang
+ *   Optional content language for top_* project names.
  *
  * @return array|false
  *   UserLookup-shaped array, or FALSE if not found / not searchable.
  */
-function rovas_civic_users_lookup($username) {
+function rovas_civic_users_lookup($username, $lang = NULL) {
   $username = trim((string) $username);
   if ($username === '') {
     return FALSE;
@@ -731,8 +853,8 @@ function rovas_civic_users_lookup($username) {
       'volunteer' => round($expertise['volunteer'], 2),
     ),
     'taxes_last_3_months' => rovas_civic_users_lookup_taxes_last_3_months($uid),
-    'top_charities' => rovas_civic_users_lookup_top_charities($uid),
-    'top_volunteer_projects' => rovas_civic_users_lookup_top_volunteer_projects($uid),
+    'top_charities' => rovas_civic_users_lookup_top_charities($uid, $lang),
+    'top_volunteer_projects' => rovas_civic_users_lookup_top_volunteer_projects($uid, $lang),
   );
 }
 
@@ -808,11 +930,13 @@ function rovas_civic_users_lookup_expertise_categories($uid) {
  * Excludes State Treasury (VAT path uses source_type `civic_vat_claim`).
  *
  * @param int $uid
+ * @param string|null $lang
+ *   Optional content language for project names.
  *
  * @return array
  *   Up to 3 { project_nid, name, me }.
  */
-function rovas_civic_users_lookup_top_charities($uid) {
+function rovas_civic_users_lookup_top_charities($uid, $lang = NULL) {
   $uid = (int) $uid;
   if ($uid < 1) {
     return array();
@@ -835,18 +959,33 @@ function rovas_civic_users_lookup_top_charities($uid) {
   $query->orderBy('me', 'DESC');
   $query->range(0, 3);
 
-  $out = array();
+  $rows = array();
+  $nids = array();
   foreach ($query->execute() as $row) {
     $me = (float) $row->me;
-    $name = trim((string) $row->title);
     $nid = (int) $row->nid;
-    if ($me <= 0 || $name === '' || $nid < 1) {
+    if ($me <= 0 || $nid < 1) {
+      continue;
+    }
+    $rows[] = array(
+      'nid' => $nid,
+      'title' => trim((string) $row->title),
+      'me' => $me,
+    );
+    $nids[] = $nid;
+  }
+
+  $titles = rovas_civic_project_titles_for_nids($nids, $lang);
+  $out = array();
+  foreach ($rows as $row) {
+    $name = isset($titles[$row['nid']]) ? $titles[$row['nid']] : $row['title'];
+    if ($name === '') {
       continue;
     }
     $out[] = array(
-      'project_nid' => (string) $nid,
+      'project_nid' => (string) $row['nid'],
       'name' => $name,
-      'me' => round($me, 2),
+      'me' => round($row['me'], 2),
     );
   }
   return $out;
@@ -856,11 +995,13 @@ function rovas_civic_users_lookup_top_charities($uid) {
  * Top volunteer projects from labor Merit allocations.
  *
  * @param int $uid
+ * @param string|null $lang
+ *   Optional content language for project names.
  *
  * @return array
  *   Up to 3 { project_nid, name, me }.
  */
-function rovas_civic_users_lookup_top_volunteer_projects($uid) {
+function rovas_civic_users_lookup_top_volunteer_projects($uid, $lang = NULL) {
   $uid = (int) $uid;
   if ($uid < 1) {
     return array();
@@ -905,7 +1046,7 @@ function rovas_civic_users_lookup_top_volunteer_projects($uid) {
     $nid = (int) $row->nid;
     $name = trim((string) $row->title);
     $me = (float) $row->me;
-    if ($nid < 1 || $name === '' || $me <= 0) {
+    if ($nid < 1 || $me <= 0) {
       continue;
     }
     if (!isset($by_nid[$nid])) {
@@ -928,18 +1069,28 @@ function rovas_civic_users_lookup_top_volunteer_projects($uid) {
     return ($a['me'] > $b['me']) ? -1 : 1;
   });
 
-  $out = array();
+  $top_nids = array();
   $i = 0;
   foreach ($by_nid as $nid => $row) {
-    $out[] = array(
-      'project_nid' => (string) $nid,
-      'name' => $row['name'],
-      'me' => round($row['me'], 2),
-    );
+    $top_nids[] = $nid;
     $i++;
     if ($i >= 3) {
       break;
     }
+  }
+  $titles = rovas_civic_project_titles_for_nids($top_nids, $lang);
+
+  $out = array();
+  foreach ($top_nids as $nid) {
+    $name = isset($titles[$nid]) ? $titles[$nid] : $by_nid[$nid]['name'];
+    if ($name === '') {
+      continue;
+    }
+    $out[] = array(
+      'project_nid' => (string) $nid,
+      'name' => $name,
+      'me' => round($by_nid[$nid]['me'], 2),
+    );
   }
   return $out;
 }
@@ -1011,7 +1162,7 @@ function rovas_civic_users_lookup_taxes_last_3_months($uid) {
 /**
  * Services callback: GET /rovas/civic_project/{nid}
  */
-function rovas_civic_services_project_retrieve($nid) {
+function rovas_civic_services_project_retrieve($nid, $lang = '') {
   $uid = rovas_civic_request_uid();
   if ($uid < 1) {
     return services_error(t('Authentication required'), 401);
@@ -1022,13 +1173,13 @@ function rovas_civic_services_project_retrieve($nid) {
     return services_error(t('Project not found'), 404);
   }
 
-  return rovas_civic_project_detail($project, ROVAS_CIVIC_WR_DEFAULT_LIMIT, 0);
+  return rovas_civic_project_detail($project, ROVAS_CIVIC_WR_DEFAULT_LIMIT, 0, rovas_civic_request_lang($lang));
 }
 
 /**
  * Services callback: GET /rovas/civic_project_work_reports
  */
-function rovas_civic_services_project_work_reports_index($project_nid, $limit = ROVAS_CIVIC_WR_DEFAULT_LIMIT, $offset = 0) {
+function rovas_civic_services_project_work_reports_index($project_nid, $limit = ROVAS_CIVIC_WR_DEFAULT_LIMIT, $offset = 0, $lang = '') {
   $uid = rovas_civic_request_uid();
   if ($uid < 1) {
     return services_error(t('Authentication required'), 401);
@@ -1045,7 +1196,7 @@ function rovas_civic_services_project_work_reports_index($project_nid, $limit = 
   }
 
   $pager = rovas_civic_normalize_pager($limit, $offset, ROVAS_CIVIC_WR_DEFAULT_LIMIT, ROVAS_CIVIC_WR_MAX_LIMIT);
-  return rovas_civic_project_work_reports_page($project, $pager['limit'], $pager['offset']);
+  return rovas_civic_project_work_reports_page($project, $pager['limit'], $pager['offset'], rovas_civic_request_lang($lang));
 }
 
 /**
@@ -1139,10 +1290,32 @@ function rovas_civic_plain_teaser($html, $max = ROVAS_CIVIC_TEASER_MAX_CHARS) {
  * Node body value as raw HTML string (or empty).
  *
  * @param object $node
+ * @param string|null $lang
+ *   Optional content language; NULL keeps field_get_items default.
  *
  * @return string
  */
-function rovas_civic_node_body_value($node) {
+function rovas_civic_node_body_value($node, $lang = NULL) {
+  if ($lang !== NULL && $lang !== '') {
+    $lang = drupal_strtolower(trim((string) $lang));
+    if (!empty($node->body[$lang][0]['value'])) {
+      return (string) $node->body[$lang][0]['value'];
+    }
+    $items = field_get_items('node', $node, 'body', $lang);
+    if (!empty($items[0]['value'])) {
+      return (string) $items[0]['value'];
+    }
+    if (function_exists('rovas_base_translation_pick_source_text')) {
+      $src = rovas_base_translation_pick_source_text($node, 'body');
+      if ($src !== '') {
+        return $src;
+      }
+    }
+    if (!empty($node->body[LANGUAGE_NONE][0]['value'])) {
+      return (string) $node->body[LANGUAGE_NONE][0]['value'];
+    }
+  }
+
   $items = field_get_items('node', $node, 'body');
   if (empty($items[0]['value'])) {
     return '';
@@ -1220,10 +1393,12 @@ function rovas_civic_project_work_report_count($project_nid) {
  * @param object $project
  * @param int $limit
  * @param int $offset
+ * @param string|null $lang
+ *   Optional content language for title/summary/WR text.
  *
  * @return array
  */
-function rovas_civic_project_detail($project, $limit = ROVAS_CIVIC_WR_DEFAULT_LIMIT, $offset = 0) {
+function rovas_civic_project_detail($project, $limit = ROVAS_CIVIC_WR_DEFAULT_LIMIT, $offset = 0, $lang = NULL) {
   $nid = (int) $project->nid;
   $is_public = rovas_civic_project_is_public($project);
   $owner = user_load((int) $project->uid);
@@ -1233,13 +1408,13 @@ function rovas_civic_project_detail($project, $limit = ROVAS_CIVIC_WR_DEFAULT_LI
   $pager = rovas_civic_normalize_pager($limit, $offset, ROVAS_CIVIC_WR_DEFAULT_LIMIT, ROVAS_CIVIC_WR_MAX_LIMIT);
 
   // Private participation does not hide content — only who may join as shareholder.
-  $summary = rovas_civic_plain_teaser(rovas_civic_node_body_value($project));
-  $page = rovas_civic_project_work_reports_fetch($nid, $pager['limit'], $pager['offset'], TRUE);
+  $summary = rovas_civic_plain_teaser(rovas_civic_node_body_value($project, $lang));
+  $page = rovas_civic_project_work_reports_fetch($nid, $pager['limit'], $pager['offset'], TRUE, $lang);
   $sh_page = rovas_civic_project_shareholders_fetch($nid, $pager['limit'], $pager['offset']);
 
   return array(
     'project_nid' => (string) $nid,
-    'title' => (string) $project->title,
+    'title' => rovas_civic_node_localized_title($project, $lang),
     'summary' => $summary,
     'is_public' => $is_public,
     'owner_username' => $labels['username'],
@@ -1272,13 +1447,14 @@ function rovas_civic_project_detail($project, $limit = ROVAS_CIVIC_WR_DEFAULT_LI
  * @param object $project
  * @param int $limit
  * @param int $offset
+ * @param string|null $lang
  *
  * @return array
  */
-function rovas_civic_project_work_reports_page($project, $limit, $offset) {
+function rovas_civic_project_work_reports_page($project, $limit, $offset, $lang = NULL) {
   $nid = (int) $project->nid;
   $total = rovas_civic_project_work_report_count($nid);
-  $page = rovas_civic_project_work_reports_fetch($nid, $limit, $offset, TRUE);
+  $page = rovas_civic_project_work_reports_fetch($nid, $limit, $offset, TRUE, $lang);
   return array(
     'project_nid' => (string) $nid,
     'total' => $total,
@@ -1296,11 +1472,13 @@ function rovas_civic_project_work_reports_page($project, $limit, $offset) {
  * @param int $offset
  * @param bool $include_bodies
  *   When FALSE, summary is always null.
+ * @param string|null $lang
+ *   Optional content language for title/summary.
  *
  * @return array
  *   keys: items
  */
-function rovas_civic_project_work_reports_fetch($project_nid, $limit, $offset, $include_bodies = TRUE) {
+function rovas_civic_project_work_reports_fetch($project_nid, $limit, $offset, $include_bodies = TRUE, $lang = NULL) {
   $project_nid = (int) $project_nid;
   $limit = (int) $limit;
   $offset = (int) $offset;
@@ -1343,12 +1521,12 @@ function rovas_civic_project_work_reports_fetch($project_nid, $limit, $offset, $
     $summary = NULL;
     $photo_urls = array();
     if ($include_bodies) {
-      $summary = rovas_civic_plain_teaser(rovas_civic_node_body_value($node));
+      $summary = rovas_civic_plain_teaser(rovas_civic_node_body_value($node, $lang));
       $photo_urls = rovas_civic_work_report_photo_urls($node);
     }
     $items[] = array(
       'work_report_nid' => (string) ((int) $node->nid),
-      'title' => (string) $node->title,
+      'title' => rovas_civic_node_localized_title($node, $lang),
       'summary' => $summary,
       'hours' => $hours,
       'author_username' => $labels['username'],
