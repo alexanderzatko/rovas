@@ -330,7 +330,8 @@ function rovas_oauth_me_access() {
  * Services callback: GET /rovas/me.
  *
  * @return array
- *   uid, username, display_name, total_me, created (ISO-8601 or null).
+ *   uid, username, display_name, total_me, created (ISO-8601 or null),
+ *   language (Drupal langcode or null).
  */
 function rovas_oauth_me_index() {
   global $user;
@@ -365,12 +366,22 @@ function rovas_oauth_me_index() {
     $created = gmdate('c', (int) $account->created);
   }
 
+  // Raw Drupal preferred language; Civic maps cs/cz → sk for its catalog.
+  $language = NULL;
+  if (!empty($account->language)) {
+    $language = trim((string) $account->language);
+    if ($language === '' || $language === 'und') {
+      $language = NULL;
+    }
+  }
+
   return array(
     'uid' => $uid,
     'username' => $account->name,
     'display_name' => $display_name,
     'total_me' => $total_me,
     'created' => $created,
+    'language' => $language,
   );
 }
 

@@ -15,6 +15,7 @@ Civic API); keep both in sync when contracts change.
 [Next work: users lookup (community public profile)](#next-work-users-lookup-community-public-profile),
 [Next work: hide negative Merit users from Civic](#next-work-hide-negative-merit-users-from-civic),
 [Next work: expose account created on /rovas/me](#next-work-expose-account-created-on-rovasme),
+[Next work: expose preferred language on /rovas/me](#next-work-expose-preferred-language-on-rovasme),
 [Next work: project detail + work reports (Civic modal)](#next-work-project-detail--work-reports-civic-modal),
 [Next work: project shareholders + WR photos](#next-work-project-shareholders--wr-photos),
 and [Next work: private projects are fully readable](#next-work-private-projects-are-fully-readable).
@@ -208,7 +209,8 @@ In `rovas_oauth` (`rovas_oauth_me_index()`).
   "username": "sano",
   "display_name": "Alexander Žaťko",
   "total_me": 1248.35,
-  "created": "2019-03-12T14:22:01+00:00"
+  "created": "2019-03-12T14:22:01+00:00",
+  "language": "sk"
 }
 ```
 
@@ -219,7 +221,7 @@ In `rovas_oauth` (`rovas_oauth_me_index()`).
 | `display_name` | `field_full_name` if set; else username |
 | `total_me` | `_rovas_merit_distribution_user_merits()` (userpoints + decimal) |
 | `created` | ISO-8601 from Drupal `$account->created` (`gmdate('c')`); `null` if missing/invalid |
-
+| `language` | `$account->language` (raw Drupal langcode); `null` if empty/`und` — see [preferred language](#next-work-expose-preferred-language-on-rovasme) |
 #### 3. `GET /rovas/contributions/aggregate` (public) — **implemented**
 
 In `rovas_oauth` (`rovas_oauth_contributions_retrieve()`). Uses the cached
@@ -1013,6 +1015,75 @@ Civic `RovasClient.fetchMe()` maps `created`. Claim/verify fraud evaluation
 uses it for rule C (`rejected_account_age` when purchase day < registration
 day, or when `created` is absent).
 
+## Next work: expose preferred language on /rovas/me
+
+**Implemented in `rovas_oauth`.** Civic uses this after login to pick the UI
+language (`sk` / `en`), with device preferred languages for anonymous users
+and an in-app override on the Civic profile screen.
+
+### Mapping Civic applies (do not change without Civic agreement)
+
+| Rovas / device code | Civic UI |
+|---------------------|----------|
+| `sk` | `sk` |
+| `cs` / `cz` | `sk` (until Civic ships a Czech catalog) |
+| anything else | `en` |
+
+Same spirit as `rovas_base_map_partner_user_language()` (cs/cz → sk).
+
+### Change
+
+In `rovas_oauth` → `rovas_oauth_me_index()`:
+
+1. Read Drupal `$account->language` (user preferred interface language).
+2. Include `"language"` in the JSON response (raw Drupal langcode string,
+   e.g. `sk`, `en`, `cs`). Empty / unset → `null` or omit (Civic falls back
+   to device language).
+3. Do **not** map cs→sk on the Rovas side for this field — emit the stored
+   account language; Civic maps for its catalog.
+
+No new Services resource — extend the existing `/rovas/me` payload only.
+Optional later: a write endpoint so the Civic profile language switcher can
+persist back to `$account->language` (not required for v1).
+
+### Response (after)
+
+```json
+{
+  "uid": 42,
+  "username": "sano",
+  "display_name": "Alexander Žaťko",
+  "total_me": 1248.35,
+  "created": "2019-03-12T14:22:01+00:00",
+  "language": "sk"
+}
+```
+
+| Field | Source |
+|-------|--------|
+| `language` | `$account->language` (Drupal user preferred language); `null` if empty |
+
+### Checklist
+
+1. [x] `rovas_oauth_me_index()` returns `language` (string or null)
+2. [x] Existing clients still work (additive field)
+3. [ ] Deploy to rovdev + `drush74 cc all`
+4. [ ] Smoke-test curl below
+
+### Smoke test (after deploy)
+
+```bash
+# TOKEN = Civic OAuth access token with user_profile scope
+curl -sS https://dev.rovas.app/rovas/me \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Accept: application/json"
+# Expect: "language": "sk" | "en" | "cs" | … (or null)
+```
+
+### Civic already consumes this
+
+Civic API `GET /me` proxies `language` from Rovas. Expo `LocaleProvider`
+applies it after login (unless the user set an explicit Civic override).
 ## Next work: project detail + work reports (Civic modal)
 
 **Implemented in `rovas_civic`** (enable on rovdev: `drush74 updb -y`, or admin
