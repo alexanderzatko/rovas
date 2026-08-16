@@ -359,3 +359,13 @@ function rovas_civic_update_7006() {
   }
   return t('Civic users lookup API (GET /rovas/users_lookup) enabled on rovas_endpoint.');
 }
+
+/**
+ * Enable Civic project detail + work-reports Services resources.
+ */
+function rovas_civic_update_7007() {
+  if (function_exists('rovas_civic_ensure_services_resources')) {
+    rovas_civic_ensure_services_resources();
+  }
+  return t('Civic project detail + work-reports APIs (GET /rovas/civic_project, /rovas/civic_project_work_reports) enabled on rovas_endpoint.');
+}

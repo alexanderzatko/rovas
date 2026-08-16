@@ -14,7 +14,8 @@ Civic API); keep both in sync when contracts change.
 [Next work: users search (split typeahead)](#next-work-users-search-split-typeahead),
 [Next work: users lookup (community public profile)](#next-work-users-lookup-community-public-profile),
 [Next work: hide negative Merit users from Civic](#next-work-hide-negative-merit-users-from-civic),
-and [Next work: expose account created on /rovas/me](#next-work-expose-account-created-on-rovasme).
+[Next work: expose account created on /rovas/me](#next-work-expose-account-created-on-rovasme),
+and [Next work: project detail + work reports (Civic modal)](#next-work-project-detail--work-reports-civic-modal).
 Do not rely on reading the Civic tree unless you need Expo/API details.
 
 **Dev target (until told otherwise):** all Civic integration work targets
@@ -47,6 +48,7 @@ not run deploys on their own.
 | Users lookup (community profile) | `GET /rovas/users_lookup?username=` | Implemented in `rovas_civic` (`rovas_civic_update_7006`). Exact username; Bearer required. See [users lookup](#next-work-users-lookup-community-public-profile). |
 | Hide negative Merit users | `users_search` / `users_lookup` | Implemented — `total_me < 0` omitted / 404; search response stays public fields only |
 | Friend invite (Civic) | — | **Civic-client only** (`mailto:`). No Rovas invite endpoint. Signup URL in the email body should work (`/user/register` or OAuth authorize). |
+| Project detail + WR list | `GET /rovas/civic_project/{nid}`, `GET /rovas/civic_project_work_reports` | Implemented in `rovas_civic` (`rovas_civic_update_7007`). Lookup `top_*` rows include `project_nid`. |
 
 ## OAuth endpoints (live on dev)
 
@@ -528,10 +530,10 @@ Do **not** register `/rovas/users/lookup` (slash in alias). Civic API calls
     { "month": "2026-06", "me": 330.0 }
   ],
   "top_charities": [
-    { "name": "Detský dom Topoľčany", "me": 120.0 }
+    { "project_nid": "1201", "name": "Detský dom Topoľčany", "me": 120.0 }
   ],
   "top_volunteer_projects": [
-    { "name": "Obnova lesov v Tatranskom NP", "me": 80.0 }
+    { "project_nid": "1998", "name": "Obnova lesov v Tatranskom NP", "me": 80.0 }
   ]
 }
 ```
@@ -546,8 +548,8 @@ Do **not** register `/rovas/users/lookup` (slash in alias). Civic API calls
 | `by_category.charity` | `user_expertise` Merits on `ROVAS_CIVIC_CHARITY_NACE_TID` when that constant is a positive tid; **0** until a dedicated charity NACE is configured |
 | `by_category.volunteer` | Sum of `user_expertise` Merits whose NACE is **neither** the fallback tid nor the charity tid |
 | `taxes_last_3_months` | Last **3 calendar months** (including current) of VAT-claim Merits for this uid, keyed `YYYY-MM`; omit zero months or include with `me: 0` — prefer only months with activity; max 3 rows; `[]` if none |
-| `top_charities` | Up to **3** `{ name, me }` from `{rovas_merit_issuance}` rows with `source_type = project_reward_order` (Path-1 donor Merits from project donations). **Not** raw `purchase_receipt` Merit spends. Exclude State Treasury. Empty until real charity donations exist. |
-| `top_volunteer_projects` | Up to **3** `{ name, me }` from `project_merit_allocation` / `co_worker_merit_allocation` labor Merits |
+| `top_charities` | Up to **3** `{ project_nid, name, me }` from `{rovas_merit_issuance}` rows with `source_type = project_reward_order` (Path-1 donor Merits from project donations). **Not** raw `purchase_receipt` Merit spends. Exclude State Treasury. Empty until real charity donations exist. |
+| `top_volunteer_projects` | Up to **3** `{ project_nid, name, me }` from `project_merit_allocation` / `co_worker_merit_allocation` labor Merits (aggregated by project nid) |
 
 ### Errors
 
@@ -874,9 +876,11 @@ curl -sS "https://dev.rovas.app/rovas/civic_claims?view=received" \
 ## Path note (Services)
 
 Drupal Services resource aliases **cannot contain slashes**. Civic claim,
-rate, and user-search reads use machine-name paths (`/rovas/civic_claims`,
-`/rovas/civic_national_hourly_rate`, `/rovas/users_search`), not
-`/rovas/civic/…` or `/rovas/users/search`.
+rate, user-search, and project reads use machine-name paths
+(`/rovas/civic_claims`, `/rovas/civic_national_hourly_rate`,
+`/rovas/users_search`, `/rovas/civic_project`,
+`/rovas/civic_project_work_reports`), not `/rovas/civic/…` or
+`/rovas/users/search`.
 
 ## Next work: public national hourly rate API
 
@@ -1005,6 +1009,136 @@ curl -sS https://dev.rovas.app/rovas/me \
 Civic `RovasClient.fetchMe()` maps `created`. Claim/verify fraud evaluation
 uses it for rule C (`rejected_account_age` when purchase day < registration
 day, or when `created` is absent).
+
+## Next work: project detail + work reports (Civic modal)
+
+**Implemented in `rovas_civic`** (enable on rovdev: `drush74 updb -y`, or admin
+**Enable Civic … + project APIs**). Civic opens an in-app modal when the user
+taps a project name on Home / Community merit-source tables
+(`top_charities`, `top_volunteer_projects`). Modal content is **JSON atomic
+fields**, not embedded Rovas HTML. Work reports expand **in place** (no
+nested modal).
+
+**Auth:** Bearer required (`civic` / `user_profile`) — same as `users_lookup`.
+
+### Additive: `project_nid` on lookup rows
+
+`top_charities` / `top_volunteer_projects` items become
+`{ project_nid, name, me }` (`project_nid` string). Backward compatible for
+clients that ignore unknown fields.
+
+### Endpoints
+
+| Method | URL | Notes |
+|--------|-----|------|
+| `GET` | `https://dev.rovas.app/rovas/civic_project/{nid}` | Project summary + first page of work reports |
+| `GET` | `https://dev.rovas.app/rovas/civic_project_work_reports?project_nid=&limit=&offset=` | Paginated work reports for a project |
+
+Machine-name paths only (no slash aliases).
+
+### `GET /rovas/civic_project/{nid}`
+
+**200** published project:
+
+```json
+{
+  "project_nid": "1998",
+  "title": "Openstreetmap",
+  "summary": "Plain-text body teaser…",
+  "is_public": true,
+  "owner_username": "alice",
+  "owner_display_name": "Alice",
+  "total_hours": 1234.5,
+  "total_me": 980.0,
+  "work_report_count": 6898,
+  "rovas_url": "https://dev.rovas.app/node/1998",
+  "work_reports": {
+    "project_nid": "1998",
+    "total": 6898,
+    "limit": 20,
+    "offset": 0,
+    "items": [
+      {
+        "work_report_nid": "527201",
+        "title": "Odstranovanie kriakov",
+        "summary": "Plain-text body teaser…",
+        "hours": 0.75,
+        "author_username": "bob",
+        "author_display_name": "Bob",
+        "created_at": "2026-06-01T12:00:00+00:00"
+      }
+    ]
+  }
+}
+```
+
+| Field | Source / rules |
+|-------|----------------|
+| `summary` | `strip_tags` + decode entities on `body`; max ~800 chars; `null` if empty. **Omitted content** when `is_public` is false (`summary` null, `work_reports.items` empty, counts may still be present). |
+| `is_public` | `field_participation` ∈ {Public (1), Public-dependent (2)}. Private (0) → restricted payload (title + flags + `rovas_url` only; no body / WR bodies). |
+| `total_hours` | `field_project_total_hours` (float or null) |
+| `total_me` | `field_merit_reward` (float or null) |
+| `work_report_count` / `work_reports.total` | Count of published `work_report` nodes with `field_project` → this nid |
+| `created_at` (WR) | Prefer `field_date` unix; else node `created` → ISO-8601 |
+| `hours` (WR) | `field_hours_worked` |
+| `summary` (WR) | Same plain-text teaser rules as project body |
+
+**404** — unknown nid, wrong type, or unpublished (`status != 1`).
+
+Default first WR page: `limit=20` (max 50), `offset=0`.
+
+### `GET /rovas/civic_project_work_reports`
+
+| Param | Rules |
+|-------|--------|
+| `project_nid` | Required positive int |
+| `limit` | Default 20, max 50 |
+| `offset` | Default 0 |
+
+Same privacy rules as project retrieve (private → empty `items`, `total` may still reflect count or 0 — prefer **0 items** and keep `total` accurate only for public). Return **404** if project missing/unpublished.
+
+Order work reports by `created` DESC (then nid DESC).
+
+### Required logic
+
+1. Resolve Bearer uid (reject anonymous)
+2. Load project node; require `type=project` + published
+3. Build restricted vs full payload from `field_participation`
+4. Enable via `rovas_civic_ensure_services_resources()` + `rovas_civic_update_7007`
+
+### Checklist
+
+1. [x] `project_nid` on `users_lookup` top_* rows
+2. [x] Services `GET /rovas/civic_project/{nid}`
+3. [x] Services `GET /rovas/civic_project_work_reports`
+4. [x] Bearer + API-key disabled on both resources
+5. [x] updb / ensure helper
+6. [ ] Smoke-test curls below
+
+### Smoke test (after deploy)
+
+```bash
+# TOKEN = Civic OAuth access token
+curl -sS "https://dev.rovas.app/rovas/users_lookup?username=sano" \
+  -H "Authorization: Bearer $TOKEN" -H "Accept: application/json"
+# Expect top_* items to include project_nid when present
+
+curl -sS "https://dev.rovas.app/rovas/civic_project/1998" \
+  -H "Authorization: Bearer $TOKEN" -H "Accept: application/json"
+
+curl -sS "https://dev.rovas.app/rovas/civic_project_work_reports?project_nid=1998&limit=5" \
+  -H "Authorization: Bearer $TOKEN" -H "Accept: application/json"
+```
+
+### Civic will consume (after Rovas ships)
+
+Civic side is wired to this contract:
+
+- Proxy `GET /projects/:nid` and `GET /projects/:nid/work-reports`
+- Expo `ProjectDetailModal` + clickable `ProjectMeTable` rows (needs `project_nid`)
+
+**Implemented in `rovas_civic`** (Services resources + ensure helper + updb). Do not
+change Civic Expo/API in this repo.
 
 ## Related Civic docs
 
