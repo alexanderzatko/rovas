@@ -19,7 +19,8 @@ Civic API); keep both in sync when contracts change.
 [Next work: localized project and work-report text](#next-work-localized-project-and-work-report-text),
 [Next work: project detail + work reports (Civic modal)](#next-work-project-detail--work-reports-civic-modal),
 [Next work: project shareholders + WR photos](#next-work-project-shareholders--wr-photos),
-and [Next work: private projects are fully readable](#next-work-private-projects-are-fully-readable).
+[Next work: private projects are fully readable](#next-work-private-projects-are-fully-readable),
+and [Next work: merit history (profile ledger)](#next-work-merit-history-profile-ledger).
 Do not rely on reading the Civic tree unless you need Expo/API details.
 
 **Dev target (until told otherwise):** all Civic integration work targets
@@ -55,6 +56,7 @@ not run deploys on their own.
 | Project detail + WR list | `GET /rovas/civic_project/{nid}`, `GET /rovas/civic_project_work_reports` | Implemented (`rovas_civic_update_7007`). Private participation still returns full content — see [private projects are fully readable](#next-work-private-projects-are-fully-readable). |
 | Project shareholders + WR photos | `GET /rovas/civic_project_shareholders`, WR `photo_urls[]` | Implemented in `rovas_civic` (`rovas_civic_update_7008`). |
 | Localized project / WR / lookup text | `?lang=` on `civic_project`, `civic_project_work_reports`, `users_lookup` | Implemented — Entity Translation / `title_field` / `body` with source fallback. |
+| Merit history (profile ledger) | `GET /rovas/civic_merit_history` | Implemented in `rovas_civic` (`rovas_civic_update_7009`). JSON of Views `merit_history` / `page_1` for the Bearer user. |
 
 ## OAuth endpoints (live on dev)
 
@@ -1442,6 +1444,174 @@ curl -sS "https://dev.rovas.app/rovas/civic_project/$PRIVATE_NID" \
   -H "Authorization: Bearer $TOKEN" -H "Accept: application/json"
 # Expect is_public:false AND non-empty summary / work_reports when data exists
 ```
+
+## Next work: merit history (profile ledger)
+
+**Implemented in `rovas_civic`** (enable on rovdev: `drush74 updb -y`, or admin
+enable APIs). Civic’s **Profil** screen needs the same Merit ledger Rovas already shows at
+`/user/<uid>/merits` — Views **`merit_history`**, display **`page_1`**.
+
+Do **not** scrape HTML or call `views_get_view()` / `views_embed_view()`. Add a
+JSON Services resource in `rovas_civic` that **mirrors that view with SQL**
+(same pattern as `civic_project_shareholders` vs `project_coworkers`).
+
+**Auth:** Bearer required (`civic` / `user_profile`). History is **only for the
+caller** (`field_reward_recipient` = Bearer uid). Ignore any `uid` / `username`
+query param (do not expose another user’s ledger).
+
+### What the view shows (parity)
+
+| Views field | Role | Civic JSON |
+|-------------|------|------------|
+| `nid` (Receipt Id) | Disbursement / penalty node | `disbursement_nid` |
+| `created` (Date) | Node created | `created_at` ISO-8601 |
+| PHP **Source** | See rules below | `source_kind` + `source_title` + nids |
+| `field_reward_amount` (Reward) | ME credited (can be negative) | `merits` |
+| `field_receipt_project` (hidden) | Project on parent `purchase_receipt` | `project_nid` |
+| `field_rewarded_report` (hidden) | Work report on parent receipt | `work_report_nid` |
+
+HTML-only columns Civic does **not** need: Buyer (`field_buyer`), Amount paid
+(`field_amount_paid`). Skip them.
+
+**Node types** (view filter): published `merits_disbursement` **and**
+`merit_penalty`.
+
+**Source PHP on `page_1` (reproduce exactly, without HTML):**
+
+1. No project **and** no work report → `source_kind: "purchase"`,
+   `source_title: null` (Rovas label *Merits purchase* — Civic i18n’s that).
+2. Project, no work report → `source_kind: "project"`,
+   `source_title` = localized project title, `project_nid` set.
+3. Work report present → `source_kind: "report"`,
+   `source_title` = localized WR title, `work_report_nid` set,
+   `project_nid` still included when known.
+
+VAT claims and charity donations are **project** rows (State Treasury / funded
+project). Volunteer work is **report**. Bought Merits are **purchase**.
+
+### Endpoint
+
+| Method | URL | Auth |
+|--------|-----|------|
+| `GET` | `https://dev.rovas.app/rovas/civic_merit_history` | Bearer required |
+
+Machine-name path only (no slash alias).
+
+| Param | Rules |
+|-------|--------|
+| `limit` | Default **20**, max **50** |
+| `offset` | Default 0 |
+| `lang` | Optional `sk` \| `en` — same Entity Translation / `title_field` rules as `civic_project` (source fallback). Used for `source_title` only. |
+
+### 200 response
+
+```json
+{
+  "total": 128,
+  "limit": 20,
+  "offset": 0,
+  "items": [
+    {
+      "disbursement_nid": "612345",
+      "node_type": "merits_disbursement",
+      "created_at": "2026-08-12T14:22:00+00:00",
+      "merits": 6.43,
+      "source_kind": "project",
+      "source_title": "State Treasury of Slovakia",
+      "project_nid": "1998",
+      "work_report_nid": null
+    },
+    {
+      "disbursement_nid": "612300",
+      "node_type": "merits_disbursement",
+      "created_at": "2026-06-01T12:00:00+00:00",
+      "merits": 7.5,
+      "source_kind": "report",
+      "source_title": "Trail clearing",
+      "project_nid": "1998",
+      "work_report_nid": "527201"
+    },
+    {
+      "disbursement_nid": "610001",
+      "node_type": "merits_disbursement",
+      "created_at": "2026-01-15T09:00:00+00:00",
+      "merits": 100.0,
+      "source_kind": "purchase",
+      "source_title": null,
+      "project_nid": null,
+      "work_report_nid": null
+    }
+  ]
+}
+```
+
+| Field | Rules |
+|-------|--------|
+| `disbursement_nid` | String nid of the `merits_disbursement` / `merit_penalty` node |
+| `node_type` | `merits_disbursement` or `merit_penalty` |
+| `created_at` | Node `created` → ISO-8601 (`rovas_civic_format_created`) |
+| `merits` | `field_reward_amount` float (negative allowed for penalties) |
+| `source_kind` | `project` \| `report` \| `purchase` only |
+| `source_title` | Localized entity title, or `null` for `purchase` |
+| `project_nid` / `work_report_nid` | String nids or `null` |
+
+Order: `created` DESC, then nid DESC. Empty ledger → `total: 0`, `items: []`
+(still 200).
+
+### SQL sketch (view relationships)
+
+Base: `{node} n` (`status = 1`, `type IN ('merits_disbursement','merit_penalty')`).
+
+- `{field_data_field_reward_recipient}` on `n.nid` = Bearer uid (required)
+- `{field_data_field_reward_amount}` on `n.nid`
+- LEFT `{field_data_field_parent_purchase_receipt}` on `n.nid` → receipt nid
+- LEFT `{field_data_field_receipt_project}` on **receipt** nid
+- LEFT `{field_data_field_rewarded_report}` on **receipt** nid
+
+Do not apply the view’s **exposed** Project / Buyer filters (HTML-only).
+
+Reuse `rovas_civic_node_localized_title()` for project + WR titles. Reuse
+`rovas_civic_normalize_pager($limit, $offset, 20, 50)`.
+
+### Required logic
+
+1. Resolve Bearer uid (reject anonymous)
+2. Count + page the SQL above
+3. Map Source PHP → `source_kind` / titles / nids
+4. Register `civic_merit_history` **index** on `rovas_endpoint` (Bearer,
+   API-key disabled) via `rovas_civic_ensure_services_resources()`
+5. Enable with `rovas_civic_update_7009` + `drush74 updb -y`
+
+### Checklist
+
+1. [x] Services `GET /rovas/civic_merit_history`
+2. [x] Bearer-only; ledger is the caller (reward recipient)
+3. [x] Types `merits_disbursement` + `merit_penalty`; published only
+4. [x] Source kinds match Views PHP (`purchase` / `project` / `report`)
+5. [x] `?lang=` localizes `source_title`
+6. [x] Pagination `limit`/`offset` (default 20, max 50) + `total`
+7. [x] `rovas_civic_ensure_services_resources()` + `rovas_civic_update_7009`
+8. [ ] Smoke-test curl below after deploy
+
+### Smoke test (after deploy)
+
+```bash
+# TOKEN = Civic OAuth access token
+curl -sS "https://dev.rovas.app/rovas/civic_merit_history?limit=5&lang=sk" \
+  -H "Authorization: Bearer $TOKEN" -H "Accept: application/json"
+# Expect { total, limit, offset, items[] } with source_kind in
+# project|report|purchase. Compare a few rows to /user/<uid>/merits.
+
+curl -sS "https://dev.rovas.app/rovas/civic_merit_history" \
+  -H "Accept: application/json"
+# Expect 401 / 403 (no anonymous)
+```
+
+### Civic will consume (after Rovas ships)
+
+- Proxy `GET /users/me/merit-history?limit=&offset=&lang=`
+- Expo Profil list: date, source, whole-number ME; project rows open the
+  existing project modal
 
 ## Related Civic docs
 

@@ -80,6 +80,7 @@ function rovas_civic_menu() {
  * - GET  /rovas/civic_project/{nid} (project modal detail)
  * - GET  /rovas/civic_project_work_reports?project_nid= (WR pages)
  * - GET  /rovas/civic_project_shareholders?project_nid= (user shareholders)
+ * - GET  /rovas/civic_merit_history (signed-in Merit ledger)
  *
  * Note: Services aliases must be slash-free. Do not use aliases like
  * civic/claims — Services treats the first segment as the resource name.
@@ -395,6 +396,43 @@ function rovas_civic_services_resources() {
               'source' => array('param' => 'offset'),
               'optional' => TRUE,
               'default value' => 0,
+            ),
+          ),
+        ),
+      ),
+    ),
+    'civic_merit_history' => array(
+      'operations' => array(
+        'index' => array(
+          'help' => 'Paginated Merit ledger for the Bearer user (Views merit_history / page_1). ?limit=&offset=&lang=. Ignore uid/username params.',
+          'callback' => 'rovas_civic_services_merit_history_index',
+          'access callback' => $bearer_auth['access callback'],
+          'access arguments' => $bearer_auth['access arguments'],
+          'access arguments append' => $bearer_auth['access arguments append'],
+          'args' => array(
+            array(
+              'name' => 'limit',
+              'type' => 'int',
+              'description' => 'Page size (default 20, max 50).',
+              'source' => array('param' => 'limit'),
+              'optional' => TRUE,
+              'default value' => ROVAS_CIVIC_WR_DEFAULT_LIMIT,
+            ),
+            array(
+              'name' => 'offset',
+              'type' => 'int',
+              'description' => 'Row offset for pagination.',
+              'source' => array('param' => 'offset'),
+              'optional' => TRUE,
+              'default value' => 0,
+            ),
+            array(
+              'name' => 'lang',
+              'type' => 'string',
+              'description' => 'Optional content language (sk|en) for source_title. Maps cs/cz→sk.',
+              'source' => array('param' => 'lang'),
+              'optional' => TRUE,
+              'default value' => '',
             ),
           ),
         ),
@@ -1223,6 +1261,22 @@ function rovas_civic_services_project_shareholders_index($project_nid, $limit = 
 }
 
 /**
+ * Services callback: GET /rovas/civic_merit_history
+ *
+ * Ledger is always the Bearer user (field_reward_recipient). Query params
+ * uid / username are ignored — do not expose another user's history.
+ */
+function rovas_civic_services_merit_history_index($limit = ROVAS_CIVIC_WR_DEFAULT_LIMIT, $offset = 0, $lang = '') {
+  $uid = rovas_civic_request_uid();
+  if ($uid < 1) {
+    return services_error(t('Authentication required'), 401);
+  }
+
+  $pager = rovas_civic_normalize_pager($limit, $offset, ROVAS_CIVIC_WR_DEFAULT_LIMIT, ROVAS_CIVIC_WR_MAX_LIMIT);
+  return rovas_civic_merit_history_page($uid, $pager['limit'], $pager['offset'], rovas_civic_request_lang($lang));
+}
+
+/**
  * Load a published project node or NULL.
  *
  * @param int $nid
@@ -1704,6 +1758,145 @@ function rovas_civic_project_shareholders_fetch($project_nid, $limit, $offset) {
 }
 
 /**
+ * Paginated Merit ledger for the Bearer user.
+ *
+ * Mirrors Views merit_history / page_1 (/user/%/merits) with SQL — not
+ * views_get_view(). Source kinds match that display's PHP field without HTML.
+ *
+ * @param int $uid
+ * @param int $limit
+ * @param int $offset
+ * @param string|null $lang
+ *
+ * @return array
+ *   keys: total, limit, offset, items
+ */
+function rovas_civic_merit_history_page($uid, $limit, $offset, $lang = NULL) {
+  $uid = (int) $uid;
+  $limit = (int) $limit;
+  $offset = (int) $offset;
+
+  $total = (int) db_query("
+    SELECT COUNT(DISTINCT n.nid)
+    FROM {node} n
+    INNER JOIN {field_data_field_reward_recipient} rec
+      ON rec.entity_id = n.nid AND rec.entity_type = 'node' AND rec.deleted = 0
+    WHERE n.status = 1
+      AND n.type IN ('merits_disbursement', 'merit_penalty')
+      AND rec.field_reward_recipient_target_id = :uid
+  ", array(':uid' => $uid))->fetchField();
+
+  $items = array();
+  if ($total > 0) {
+    $items = rovas_civic_merit_history_fetch($uid, $limit, $offset, $lang);
+  }
+
+  return array(
+    'total' => $total,
+    'limit' => $limit,
+    'offset' => $offset,
+    'items' => $items,
+  );
+}
+
+/**
+ * Fetch a page of Merit ledger rows for a reward recipient.
+ *
+ * Source PHP on Views page_1 (no HTML; Civic i18n's purchase):
+ * - no project and no work report → purchase (includes merit_penalty rows)
+ * - project, no work report → project
+ * - work report present → report (project_nid still set when known)
+ *
+ * @param int $uid
+ * @param int $limit
+ * @param int $offset
+ * @param string|null $lang
+ *
+ * @return array
+ */
+function rovas_civic_merit_history_fetch($uid, $limit, $offset, $lang = NULL) {
+  $uid = (int) $uid;
+  $limit = (int) $limit;
+  $offset = (int) $offset;
+
+  $rows = db_query("
+    SELECT n.nid AS disbursement_nid,
+      n.type AS node_type,
+      n.created AS created,
+      MAX(amt.field_reward_amount_value) AS merits,
+      MAX(proj.field_receipt_project_target_id) AS project_nid,
+      MAX(wr.field_rewarded_report_target_id) AS work_report_nid
+    FROM {node} n
+    INNER JOIN {field_data_field_reward_recipient} rec
+      ON rec.entity_id = n.nid AND rec.entity_type = 'node' AND rec.deleted = 0
+    LEFT JOIN {field_data_field_reward_amount} amt
+      ON amt.entity_id = n.nid AND amt.entity_type = 'node' AND amt.deleted = 0
+    LEFT JOIN {field_data_field_parent_purchase_receipt} parent
+      ON parent.entity_id = n.nid AND parent.entity_type = 'node' AND parent.deleted = 0
+    LEFT JOIN {field_data_field_receipt_project} proj
+      ON proj.entity_id = parent.field_parent_purchase_receipt_target_id
+      AND proj.entity_type = 'node' AND proj.deleted = 0
+    LEFT JOIN {field_data_field_rewarded_report} wr
+      ON wr.entity_id = parent.field_parent_purchase_receipt_target_id
+      AND wr.entity_type = 'node' AND wr.deleted = 0
+    WHERE n.status = 1
+      AND n.type IN ('merits_disbursement', 'merit_penalty')
+      AND rec.field_reward_recipient_target_id = :uid
+    GROUP BY n.nid, n.type, n.created
+    ORDER BY n.created DESC, n.nid DESC
+    LIMIT " . $limit . " OFFSET " . $offset . "
+  ", array(':uid' => $uid))->fetchAll();
+
+  $title_nids = array();
+  foreach ($rows as $row) {
+    $project_nid = (int) $row->project_nid;
+    $wr_nid = (int) $row->work_report_nid;
+    if ($project_nid > 0) {
+      $title_nids[] = $project_nid;
+    }
+    if ($wr_nid > 0) {
+      $title_nids[] = $wr_nid;
+    }
+  }
+  $titles = rovas_civic_project_titles_for_nids($title_nids, $lang);
+
+  $items = array();
+  foreach ($rows as $row) {
+    $project_nid = (int) $row->project_nid;
+    $wr_nid = (int) $row->work_report_nid;
+    $node_type = ($row->node_type === 'merit_penalty') ? 'merit_penalty' : 'merits_disbursement';
+
+    if ($wr_nid > 0) {
+      $source_kind = 'report';
+      $source_title = isset($titles[$wr_nid]) ? $titles[$wr_nid] : NULL;
+    }
+    elseif ($project_nid > 0) {
+      $source_kind = 'project';
+      $source_title = isset($titles[$project_nid]) ? $titles[$project_nid] : NULL;
+    }
+    else {
+      $source_kind = 'purchase';
+      $source_title = NULL;
+    }
+
+    $items[] = array(
+      'disbursement_nid' => (string) ((int) $row->disbursement_nid),
+      'node_type' => $node_type,
+      'created_at' => rovas_civic_format_created($row->created),
+      'merits' => isset($row->merits) && $row->merits !== NULL && $row->merits !== ''
+        ? (float) $row->merits
+        : 0.0,
+      'source_kind' => $source_kind,
+      'source_title' => $source_title,
+      'project_nid' => $project_nid > 0 ? (string) $project_nid : NULL,
+      'work_report_nid' => $wr_nid > 0 ? (string) $wr_nid : NULL,
+    );
+  }
+
+  return $items;
+}
+
+/**
  * Compute donor Merits from an EUR slice and hourly rate.
  *
  * ME = (eur_slice / hourly_rate_eur) * 10
@@ -2068,7 +2261,7 @@ function rovas_civic_ensure_state_treasury() {
 }
 
 /**
- * Enable VAT claim + claim-read + rate + users_search + users_lookup + project APIs on rovas_endpoint.
+ * Enable VAT claim + claim-read + rate + users_search + users_lookup + project + merit-history APIs on rovas_endpoint.
  *
  * @return bool
  */
@@ -2215,6 +2408,18 @@ function rovas_civic_ensure_services_resources() {
   if (empty($endpoint->resources['civic_project_shareholders'])
     || $endpoint->resources['civic_project_shareholders'] != $civic_sh_resource) {
     $endpoint->resources['civic_project_shareholders'] = $civic_sh_resource;
+    $changed = TRUE;
+  }
+
+  // GET /rovas/civic_merit_history — signed-in Merit ledger (Bearer).
+  $civic_mh_resource = array(
+    'operations' => array(
+      'index' => $bearer_op,
+    ),
+  );
+  if (empty($endpoint->resources['civic_merit_history'])
+    || $endpoint->resources['civic_merit_history'] != $civic_mh_resource) {
+    $endpoint->resources['civic_merit_history'] = $civic_mh_resource;
     $changed = TRUE;
   }
 

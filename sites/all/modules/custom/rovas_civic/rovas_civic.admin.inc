@@ -120,11 +120,11 @@ function rovas_civic_admin_bootstrap_treasury_submit($form, &$form_state) {
 }
 
 /**
- * Enable Services Civic resources on rovas_endpoint (claims, rates, users, project, shareholders).
+ * Enable Services Civic resources on rovas_endpoint (claims, rates, users, project, shareholders, merit history).
  */
 function rovas_civic_admin_resources_submit($form, &$form_state) {
   if (rovas_civic_ensure_services_resources()) {
-    drupal_set_message(t('Civic APIs enabled on rovas_endpoint (claims, rates, users, project, shareholders).'));
+    drupal_set_message(t('Civic APIs enabled on rovas_endpoint (claims, rates, users, project, shareholders, merit history).'));
   }
   else {
     drupal_set_message(t('Could not update Services endpoint.'), 'error');
