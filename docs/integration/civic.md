@@ -20,7 +20,11 @@ Civic API); keep both in sync when contracts change.
 [Next work: project detail + work reports (Civic modal)](#next-work-project-detail--work-reports-civic-modal),
 [Next work: project shareholders + WR photos](#next-work-project-shareholders--wr-photos),
 [Next work: private projects are fully readable](#next-work-private-projects-are-fully-readable),
-and [Next work: merit history (profile ledger)](#next-work-merit-history-profile-ledger).
+[Next work: merit history (profile ledger)](#next-work-merit-history-profile-ledger),
+[Next work: volunteer report (Civic deferred form)](#next-work-volunteer-report-civic-deferred-form),
+[Next work: AI NACE + title from work-report text](#next-work-ai-nace--title-from-work-report-text),
+[Next work: CHR to ME on WR verification](#next-work-chr-to-me-on-wr-verification),
+and [Next work: geofield on Civic work reports](#next-work-geofield-on-civic-work-reports).
 Do not rely on reading the Civic tree unless you need Expo/API details.
 
 **Dev target (until told otherwise):** all Civic integration work targets
@@ -57,6 +61,7 @@ not run deploys on their own.
 | Project shareholders + WR photos | `GET /rovas/civic_project_shareholders`, WR `photo_urls[]` | Implemented in `rovas_civic` (`rovas_civic_update_7008`). |
 | Localized project / WR / lookup text | `?lang=` on `civic_project`, `civic_project_work_reports`, `users_lookup` | Implemented — Entity Translation / `title_field` / `body` with source fallback. |
 | Merit history (profile ledger) | `GET /rovas/civic_merit_history` | Implemented in `rovas_civic` (`rovas_civic_update_7009`). JSON of Views `merit_history` / `page_1` for the Bearer user. |
+| Volunteer report (deferred form) | `GET /rovas/civic_my_projects`, `civic_projects_search`, `civic_nace_tree`; `POST /rovas/civic_create_project`, `civic_create_work_report` | Implemented in `rovas_civic` (`rovas_civic_update_7010`). Bearer only — do **not** call the partner API-KEY rules from Civic. |
 
 ## OAuth endpoints (live on dev)
 
@@ -1612,6 +1617,142 @@ curl -sS "https://dev.rovas.app/rovas/civic_merit_history" \
 - Proxy `GET /users/me/merit-history?limit=&offset=&lang=`
 - Expo Profil list: date, source, whole-number ME; project rows open the
   existing project modal
+
+## Next work: volunteer report (Civic deferred form)
+
+Civic screen 4 (Dobrovoľnícka práca) submits a simplified work report. **Do
+not** call the partner API-KEY rules (`rules_proxy_create_new_project`,
+`rules_proxy_create_work_report`, `rules_proxy_check_or_add_shareholder`) from
+Civic — those resolve the user via API-KEY/TOKEN. Civic only has OAuth Bearer.
+
+New `rovas_civic` Services resources, Bearer via `$user` /
+`rovas_oauth_uid_from_bearer()`, JSON errors. Internally invoke
+`rules_create_project`, `rules_check_or_add_shareholder_core`,
+`rules_create_work_report`. Enable with `rovas_civic_update_7010`.
+
+Machine-name paths (no `?q=` — Drupal path conflict). Optional `?lang=sk|en`
+on reads (same rules as project detail).
+
+### Reads
+
+| Method | URL | Returns |
+|--------|-----|---------|
+| `GET` | `/rovas/civic_my_projects?lang=` | `{ project_nid, title, is_public }[]` — published projects where the Bearer user is a co-worker shareholder **or** the project author |
+| `GET` | `/rovas/civic_projects_search?query=&lang=` | Same row shape. `query` ≥ 3 chars, cap 10, published `project` nodes, title LIKE |
+| `GET` | `/rovas/civic_nace_tree?lang=` | Nested `{ tid, code, label, children[] }` from vocabulary `tags` |
+
+### Writes
+
+| Method | URL | Body / result |
+|--------|-----|----------------|
+| `POST` | `/rovas/civic_create_project` | `{ name, description, url? }` → `{ project_nid }`. Defaults: `project_status=1` (for sale), `project_participation=1` (Public), not a system project. Creator becomes shareholder via existing node-insert rules |
+| `POST` | `/rovas/civic_create_work_report` | See below |
+
+**Create work report body:**
+
+```json
+{
+  "project_nid": "1998",
+  "date_started": 1750000000,
+  "hours": 4,
+  "description": "Cleared invasive plants along the trail.",
+  "title": "Trail clearing",
+  "nace_tid": "860",
+  "web_url": "https://example.org/proof",
+  "reward_kind": "merits",
+  "photos": [
+    { "filename": "site.jpg", "mime": "image/jpeg", "data": "<base64>" }
+  ]
+}
+```
+
+| Field | Rules |
+|-------|--------|
+| `project_nid` | Required published project |
+| `date_started` | Unix timestamp; reject if strictly before the author's Rovas `created` |
+| `hours` | Required, `> 0` |
+| `description` | Required non-empty |
+| `title` | Optional; empty → truncated description |
+| `nace_tid` | Required taxonomy tid in vocabulary `tags` |
+| `web_url` | Optional proof URL |
+| `photos` | Optional array of `{ filename, mime, data }` (base64). Max 5, 4 MB decoded each |
+| `reward_kind` | `merits` or `chrons` (default `chrons`). Persisted in `{civic_work_report_reward}` for a later CHR→ME rule — **not** applied at create time |
+
+At least one of `web_url` or `photos[]` is required. Photos attach to
+`field_photos` after the WR node exists (partner create-WR required a URL;
+Civic must accept photos without a URL).
+
+Before create: `rules_check_or_add_shareholder_core`. Private + not already a
+shareholder → **403** `{ "error": "not_shareholder" }`.
+
+Typed errors (HTTP + `{ error, message }`):
+
+| `error` | HTTP | Meaning |
+|---------|------|---------|
+| `not_shareholder` | 403 | Private project; caller cannot self-join |
+| `date_before_registration` | 400 | `date_started` before account created |
+| `pending_verifications` | 403 | Caller has more than one unfilled verification slot |
+| `invalid_input` | 400 | Missing/invalid fields, no proof, hours ≤ 0 |
+| `project_not_found` | 404 | Unknown / unpublished project |
+
+Success: `{ "work_report_nid": "527201", "reward_kind": "merits" }`.
+
+### Checklist
+
+1. [x] `GET /rovas/civic_my_projects`
+2. [x] `GET /rovas/civic_projects_search` (`query`, never `q`)
+3. [x] `GET /rovas/civic_nace_tree`
+4. [x] `POST /rovas/civic_create_project` (status=1, public)
+5. [x] `POST /rovas/civic_create_work_report` (shareholder join, photos and/or URL, `reward_kind`)
+6. [x] Bearer-only; API-keys disabled; `rovas_civic_ensure_services_resources()` + `rovas_civic_update_7010`
+7. [ ] Smoke-test curl below after deploy
+
+### Smoke test (after deploy)
+
+```bash
+# TOKEN = Civic OAuth access token
+curl -sS "https://dev.rovas.app/rovas/civic_my_projects?lang=sk" \
+  -H "Authorization: Bearer $TOKEN" -H "Accept: application/json"
+
+curl -sS "https://dev.rovas.app/rovas/civic_projects_search?query=les&lang=sk" \
+  -H "Authorization: Bearer $TOKEN" -H "Accept: application/json"
+
+curl -sS "https://dev.rovas.app/rovas/civic_nace_tree?lang=sk" \
+  -H "Authorization: Bearer $TOKEN" -H "Accept: application/json"
+
+curl -sS -X POST "https://dev.rovas.app/rovas/civic_create_project" \
+  -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
+  -d '{"name":"Civic volunteer test","description":"Public test project from Civic."}'
+
+curl -sS "https://dev.rovas.app/rovas/civic_create_project" \
+  -H "Accept: application/json"
+# Expect 401 / 403 (no anonymous)
+```
+
+### Civic will consume
+
+- `GET /projects/mine`, `GET /projects/search?q=`, `POST /projects`
+- `GET /nace?lang=`
+- `POST /work-reports` (photos as base64)
+
+## Next work: AI NACE + title from work-report text
+
+**Not implemented.** Target: a new `rovas_ai` module that classifies NACE and
+suggests a WR title from the description. Low confidence → `need_more_info`
+so Civic prompts. Civic already ships the NACE-tree fallback for outage or
+when this module is absent.
+
+## Next work: CHR to ME on WR verification
+
+**Not implemented.** Civic persists `reward_kind` (`merits`|`chrons`) on create.
+When a work report is approved by two verifiers, Chrons are credited as today.
+If `reward_kind=merits`, convert that Chron grant to Merits (A6, 10 CHR ↔ 10
+ME) for the author.
+
+## Next work: geofield on Civic work reports
+
+**Not implemented.** Accept `field_location` point/line GeoJSON on Civic create
+WR for a future map widget / live GPS track. Out of the deferred-form pass.
 
 ## Related Civic docs
 

@@ -81,6 +81,8 @@ function rovas_civic_menu() {
  * - GET  /rovas/civic_project_work_reports?project_nid= (WR pages)
  * - GET  /rovas/civic_project_shareholders?project_nid= (user shareholders)
  * - GET  /rovas/civic_merit_history (signed-in Merit ledger)
+ * - GET  /rovas/civic_my_projects, civic_projects_search, civic_nace_tree
+ * - POST /rovas/civic_create_project, civic_create_work_report
  *
  * Note: Services aliases must be slash-free. Do not use aliases like
  * civic/claims — Services treats the first segment as the resource name.
@@ -90,6 +92,11 @@ function rovas_civic_services_resources() {
     'access callback' => 'rovas_civic_claim_access',
     'access arguments' => array(),
     'access arguments append' => FALSE,
+  );
+  $volunteer_file = array(
+    'type' => 'inc',
+    'module' => 'rovas_civic',
+    'name' => 'rovas_civic.volunteer',
   );
 
   return array(
@@ -433,6 +440,121 @@ function rovas_civic_services_resources() {
               'source' => array('param' => 'lang'),
               'optional' => TRUE,
               'default value' => '',
+            ),
+          ),
+        ),
+      ),
+    ),
+    'civic_my_projects' => array(
+      'operations' => array(
+        'index' => array(
+          'help' => 'Published projects the Bearer user shares in or authored. Optional ?lang=. Bearer required.',
+          'callback' => 'rovas_civic_services_my_projects_index',
+          'file' => $volunteer_file,
+          'access callback' => $bearer_auth['access callback'],
+          'access arguments' => $bearer_auth['access arguments'],
+          'access arguments append' => $bearer_auth['access arguments append'],
+          'args' => array(
+            array(
+              'name' => 'lang',
+              'type' => 'string',
+              'description' => 'Optional content language (sk|en). Maps cs/cz→sk.',
+              'source' => array('param' => 'lang'),
+              'optional' => TRUE,
+              'default value' => '',
+            ),
+          ),
+        ),
+      ),
+    ),
+    'civic_projects_search' => array(
+      'operations' => array(
+        'index' => array(
+          'help' => 'Typeahead published projects by title. ?query= (≥3 chars). Optional ?lang=. Bearer required. Param name must not be q.',
+          'callback' => 'rovas_civic_services_projects_search_index',
+          'file' => $volunteer_file,
+          'access callback' => $bearer_auth['access callback'],
+          'access arguments' => $bearer_auth['access arguments'],
+          'access arguments append' => $bearer_auth['access arguments append'],
+          'args' => array(
+            array(
+              'name' => 'query',
+              'type' => 'string',
+              'description' => 'Search string; min 3 characters. Param name must not be q (Drupal path).',
+              'source' => array('param' => 'query'),
+              'optional' => FALSE,
+            ),
+            array(
+              'name' => 'lang',
+              'type' => 'string',
+              'description' => 'Optional content language (sk|en). Maps cs/cz→sk.',
+              'source' => array('param' => 'lang'),
+              'optional' => TRUE,
+              'default value' => '',
+            ),
+          ),
+        ),
+      ),
+    ),
+    'civic_nace_tree' => array(
+      'operations' => array(
+        'index' => array(
+          'help' => 'Nested NACE taxonomy (vocabulary tags) for Civic volunteer form. Optional ?lang=. Bearer required.',
+          'callback' => 'rovas_civic_services_nace_tree_index',
+          'file' => $volunteer_file,
+          'access callback' => $bearer_auth['access callback'],
+          'access arguments' => $bearer_auth['access arguments'],
+          'access arguments append' => $bearer_auth['access arguments append'],
+          'args' => array(
+            array(
+              'name' => 'lang',
+              'type' => 'string',
+              'description' => 'Optional content language (sk|en). Maps cs/cz→sk.',
+              'source' => array('param' => 'lang'),
+              'optional' => TRUE,
+              'default value' => '',
+            ),
+          ),
+        ),
+      ),
+    ),
+    'civic_create_project' => array(
+      'operations' => array(
+        'create' => array(
+          'help' => 'Create a Public for-sale project for the Bearer user. Body: name, description, optional url.',
+          'callback' => 'rovas_civic_services_create_project',
+          'file' => $volunteer_file,
+          'access callback' => $bearer_auth['access callback'],
+          'access arguments' => $bearer_auth['access arguments'],
+          'access arguments append' => $bearer_auth['access arguments append'],
+          'args' => array(
+            array(
+              'name' => 'data',
+              'type' => 'struct',
+              'description' => 'Project fields: name, description, optional url.',
+              'source' => 'data',
+              'optional' => FALSE,
+            ),
+          ),
+        ),
+      ),
+    ),
+    'civic_create_work_report' => array(
+      'operations' => array(
+        'create' => array(
+          'help' => 'Create a work report for the Bearer user. Body: project_nid, date_started, hours, description, nace_tid, optional title/web_url/photos/reward_kind.',
+          'callback' => 'rovas_civic_services_create_work_report',
+          'file' => $volunteer_file,
+          'access callback' => $bearer_auth['access callback'],
+          'access arguments' => $bearer_auth['access arguments'],
+          'access arguments append' => $bearer_auth['access arguments append'],
+          'args' => array(
+            array(
+              'name' => 'data',
+              'type' => 'struct',
+              'description' => 'Work report fields including optional photos[] (base64).',
+              'source' => 'data',
+              'optional' => FALSE,
             ),
           ),
         ),
@@ -2421,6 +2543,32 @@ function rovas_civic_ensure_services_resources() {
     || $endpoint->resources['civic_merit_history'] != $civic_mh_resource) {
     $endpoint->resources['civic_merit_history'] = $civic_mh_resource;
     $changed = TRUE;
+  }
+
+  $civic_index_resource = array(
+    'operations' => array(
+      'index' => $bearer_op,
+    ),
+  );
+  foreach (array('civic_my_projects', 'civic_projects_search', 'civic_nace_tree') as $res_name) {
+    if (empty($endpoint->resources[$res_name])
+      || $endpoint->resources[$res_name] != $civic_index_resource) {
+      $endpoint->resources[$res_name] = $civic_index_resource;
+      $changed = TRUE;
+    }
+  }
+
+  $civic_create_resource = array(
+    'operations' => array(
+      'create' => $bearer_op,
+    ),
+  );
+  foreach (array('civic_create_project', 'civic_create_work_report') as $res_name) {
+    if (empty($endpoint->resources[$res_name])
+      || $endpoint->resources[$res_name] != $civic_create_resource) {
+      $endpoint->resources[$res_name] = $civic_create_resource;
+      $changed = TRUE;
+    }
   }
 
   if ($changed) {

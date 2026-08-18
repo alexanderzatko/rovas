@@ -241,6 +241,39 @@ function rovas_civic_schema() {
     ),
   );
 
+  $schema['civic_work_report_reward'] = array(
+    'description' => 'Civic volunteer WR reward preference (chrons vs merits after verification).',
+    'fields' => array(
+      'wr_nid' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+      'reward_kind' => array(
+        'type' => 'varchar',
+        'length' => 16,
+        'not null' => TRUE,
+        'default' => 'chrons',
+      ),
+      'uid' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+      'created' => array(
+        'type' => 'int',
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+    ),
+    'primary key' => array('wr_nid'),
+    'indexes' => array(
+      'uid' => array('uid'),
+    ),
+  );
+
   return $schema;
 }
 
@@ -388,4 +421,18 @@ function rovas_civic_update_7009() {
     rovas_civic_ensure_services_resources();
   }
   return t('Civic merit history API (GET /rovas/civic_merit_history) enabled on rovas_endpoint.');
+}
+
+/**
+ * Volunteer report APIs + reward-preference table.
+ */
+function rovas_civic_update_7010() {
+  if (!db_table_exists('civic_work_report_reward')) {
+    $schema = rovas_civic_schema();
+    db_create_table('civic_work_report_reward', $schema['civic_work_report_reward']);
+  }
+  if (function_exists('rovas_civic_ensure_services_resources')) {
+    rovas_civic_ensure_services_resources();
+  }
+  return t('Civic volunteer APIs (my projects, search, NACE, create project/WR) enabled on rovas_endpoint.');
 }
