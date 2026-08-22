@@ -45,7 +45,7 @@ function rovas_civic_services_my_projects_index($lang = '') {
  * @param string|null $lang
  *
  * @return array
- *   List of {project_nid, title, is_public}, newest report first.
+ *   List of {project_nid, title, is_public, can_report}, newest report first.
  */
 function rovas_civic_my_projects($uid, $lang = NULL) {
   $uid = (int) $uid;
@@ -94,6 +94,7 @@ function rovas_civic_my_projects($uid, $lang = NULL) {
       'project_nid' => (string) $nid,
       'title' => $title,
       'is_public' => rovas_civic_project_is_public($nodes[$nid]),
+      'can_report' => rovas_civic_user_can_report_on_project($uid, $nodes[$nid]),
     );
   }
 
@@ -114,7 +115,7 @@ function rovas_civic_services_projects_search_index($query = '', $lang = '') {
     return rovas_civic_volunteer_error(400, 'invalid_input', 'Query must be at least 3 characters.');
   }
 
-  return rovas_civic_projects_search($query, rovas_civic_request_lang($lang));
+  return rovas_civic_projects_search($query, rovas_civic_request_lang($lang), $uid);
 }
 
 /**
@@ -122,10 +123,12 @@ function rovas_civic_services_projects_search_index($query = '', $lang = '') {
  *
  * @param string $q
  * @param string|null $lang
+ * @param int $uid
+ *   Bearer user — used for can_report on each row.
  *
  * @return array
  */
-function rovas_civic_projects_search($q, $lang = NULL) {
+function rovas_civic_projects_search($q, $lang = NULL, $uid = 0) {
   $like = '%' . db_like($q) . '%';
   $nids = db_query("
     SELECT n.nid
@@ -156,6 +159,7 @@ function rovas_civic_projects_search($q, $lang = NULL) {
       'project_nid' => (string) $nid,
       'title' => $title,
       'is_public' => rovas_civic_project_is_public($nodes[$nid]),
+      'can_report' => rovas_civic_user_can_report_on_project($uid, $nodes[$nid]),
     );
   }
   return $out;

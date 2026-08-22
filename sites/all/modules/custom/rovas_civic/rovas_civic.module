@@ -1440,6 +1440,61 @@ function rovas_civic_project_is_public($project) {
 }
 
 /**
+ * Whether a user is a co-worker shareholder on a published project.
+ *
+ * @param int $uid
+ * @param int $project_nid
+ *
+ * @return bool
+ */
+function rovas_civic_user_is_project_shareholder($uid, $project_nid) {
+  $uid = (int) $uid;
+  $project_nid = (int) $project_nid;
+  if ($uid < 1 || $project_nid < 1) {
+    return FALSE;
+  }
+  return (bool) db_query("
+    SELECT 1
+    FROM {node} n
+    INNER JOIN {field_data_field_project} p
+      ON p.entity_id = n.nid AND p.entity_type = 'node' AND p.deleted = 0
+    INNER JOIN {field_data_field_coworker} cw
+      ON cw.entity_id = n.nid AND cw.entity_type = 'node' AND cw.deleted = 0
+    WHERE n.type = 'co_worker_merit_allocation'
+      AND n.status = 1
+      AND p.field_project_target_id = :nid
+      AND cw.field_coworker_target_id = :uid
+    LIMIT 1
+  ", array(':nid' => $project_nid, ':uid' => $uid))->fetchField();
+}
+
+/**
+ * Whether the user may file a work report on this project (Civic picker hint).
+ *
+ * Public projects: yes (Rovas self-join on submit). Private: project author or
+ * existing co-worker shareholder only.
+ *
+ * @param int $uid
+ * @param object $project
+ *   Published project node.
+ *
+ * @return bool
+ */
+function rovas_civic_user_can_report_on_project($uid, $project) {
+  $uid = (int) $uid;
+  if ($uid < 1 || empty($project) || $project->type !== 'project') {
+    return FALSE;
+  }
+  if (rovas_civic_project_is_public($project)) {
+    return TRUE;
+  }
+  if ((int) $project->uid === $uid) {
+    return TRUE;
+  }
+  return rovas_civic_user_is_project_shareholder($uid, (int) $project->nid);
+}
+
+/**
  * Plain-text teaser from HTML body (strip tags, decode entities, max chars).
  *
  * @param string|null $html
