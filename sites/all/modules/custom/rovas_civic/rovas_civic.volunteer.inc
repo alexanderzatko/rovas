@@ -2,7 +2,7 @@
 
 /**
  * @file
- * Civic volunteer-report APIs (my projects, search, NACE, create project/WR).
+ * Civic volunteer-report APIs (my recent projects, search, NACE, create project/WR).
  *
  * Loaded via Services resource 'file' keys. See docs/integration/civic.md
  * → Next work: volunteer report (Civic deferred form).
@@ -38,47 +38,46 @@ function rovas_civic_services_my_projects_index($lang = '') {
 }
 
 /**
- * Published projects the user shares in or authored.
+ * Up to ROVAS_CIVIC_MY_PROJECTS_LIMIT published projects where the user filed
+ * work reports most recently (by work_report node created time).
  *
  * @param int $uid
  * @param string|null $lang
  *
  * @return array
- *   List of {project_nid, title, is_public}.
+ *   List of {project_nid, title, is_public}, newest report first.
  */
 function rovas_civic_my_projects($uid, $lang = NULL) {
   $uid = (int) $uid;
-  $nids = array();
-
-  $authored = db_query("
-    SELECT n.nid
-    FROM {node} n
-    WHERE n.type = 'project'
-      AND n.status = 1
-      AND n.uid = :uid
-  ", array(':uid' => $uid))->fetchCol();
-  foreach ($authored as $nid) {
-    $nids[(int) $nid] = TRUE;
+  $limit = (int) ROVAS_CIVIC_MY_PROJECTS_LIMIT;
+  if ($limit < 1) {
+    $limit = 3;
   }
 
-  $shared = db_query("
-    SELECT DISTINCT p.field_project_target_id AS nid
+  $rows = db_query("
+    SELECT p.field_project_target_id AS nid, MAX(n.created) AS last_reported
     FROM {node} n
     INNER JOIN {field_data_field_project} p
       ON p.entity_id = n.nid AND p.entity_type = 'node' AND p.deleted = 0
-    INNER JOIN {field_data_field_coworker} cw
-      ON cw.entity_id = n.nid AND cw.entity_type = 'node' AND cw.deleted = 0
-    WHERE n.type = 'co_worker_merit_allocation'
+    INNER JOIN {node} proj
+      ON proj.nid = p.field_project_target_id
+      AND proj.type = 'project'
+      AND proj.status = 1
+    WHERE n.type = 'work_report'
       AND n.status = 1
-      AND cw.field_coworker_target_id = :uid
-  ", array(':uid' => $uid))->fetchCol();
-  foreach ($shared as $nid) {
-    $nids[(int) $nid] = TRUE;
+      AND n.uid = :uid
+    GROUP BY p.field_project_target_id
+    ORDER BY last_reported DESC, nid DESC
+    LIMIT " . $limit . "
+  ", array(':uid' => $uid))->fetchAll();
+
+  if (empty($rows)) {
+    return array();
   }
 
-  $nids = array_keys($nids);
-  if (empty($nids)) {
-    return array();
+  $nids = array();
+  foreach ($rows as $row) {
+    $nids[] = (int) $row->nid;
   }
 
   $nodes = node_load_multiple($nids);
@@ -98,11 +97,7 @@ function rovas_civic_my_projects($uid, $lang = NULL) {
     );
   }
 
-  usort($out, function ($a, $b) {
-    return strcasecmp($a['title'], $b['title']);
-  });
-
-  return array_slice($out, 0, 100);
+  return $out;
 }
 
 /**

@@ -1637,7 +1637,7 @@ on reads (same rules as project detail).
 
 | Method | URL | Returns |
 |--------|-----|---------|
-| `GET` | `/rovas/civic_my_projects?lang=` | `{ project_nid, title, is_public }[]` — published projects where the Bearer user is a co-worker shareholder **or** the project author |
+| `GET` | `/rovas/civic_my_projects?lang=` | `{ project_nid, title, is_public }[]` — up to **3** published projects where the Bearer user authored work reports, ordered by most recent report (`work_report` node `created` DESC). Empty when the user has never reported. Use search/create for other projects |
 | `GET` | `/rovas/civic_projects_search?query=&lang=` | Same row shape. `query` ≥ 3 chars, cap 10, published `project` nodes, title LIKE |
 | `GET` | `/rovas/civic_nace_tree?lang=` | Nested `{ tid, code, label, children[] }` from vocabulary `tags` |
 

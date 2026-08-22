@@ -17,6 +17,7 @@ define('ROVAS_CIVIC_WR_DEFAULT_LIMIT', 20);
 define('ROVAS_CIVIC_WR_MAX_LIMIT', 50);
 define('ROVAS_CIVIC_USERS_SEARCH_MIN_Q', 3);
 define('ROVAS_CIVIC_USERS_SEARCH_MAX', 10);
+define('ROVAS_CIVIC_MY_PROJECTS_LIMIT', 3);
 define('ROVAS_CIVIC_TEASER_MAX_CHARS', 800);
 // 64.99 Other financial service activities… — same fallback as shares_merit_rewarder
 // (timeshare / non-labor Merit attribution when there is no work-report NACE).
