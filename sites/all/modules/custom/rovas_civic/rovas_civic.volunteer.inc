@@ -426,7 +426,7 @@ function rovas_civic_services_create_work_report($data) {
     return rovas_civic_volunteer_error(400, 'invalid_input', 'Unknown nace_tid.');
   }
 
-  if (rovas_civic_pending_verify_slot_count($uid) > 1) {
+  if (rovas_civic_pending_verify_slot_count($uid) > 0) {
     return rovas_civic_volunteer_error(403, 'pending_verifications', 'Verify outstanding work reports before filing another.');
   }
 
@@ -496,7 +496,10 @@ function rovas_civic_services_create_work_report($data) {
 }
 
 /**
- * Count unfilled verification slots owned by the user.
+ * Count verification slots with an assigned report owned by the user.
+ *
+ * Empty obligation slots (no field_report_to_verify) are not actionable and
+ * must not block new work-report filings.
  *
  * @param int $uid
  *
@@ -504,7 +507,7 @@ function rovas_civic_services_create_work_report($data) {
  */
 function rovas_civic_pending_verify_slot_count($uid) {
   $uid = (int) $uid;
-  if ($uid < 1 || !field_info_field('field_slip_owner')) {
+  if ($uid < 1 || !field_info_field('field_slip_owner') || !field_info_field('field_report_to_verify')) {
     return 0;
   }
   $sql = "
@@ -512,24 +515,14 @@ function rovas_civic_pending_verify_slot_count($uid) {
     FROM {node} n
     INNER JOIN {field_data_field_slip_owner} o
       ON o.entity_id = n.nid AND o.entity_type = 'node' AND o.deleted = 0
+    INNER JOIN {field_data_field_report_to_verify} r
+      ON r.entity_id = n.nid AND r.entity_type = 'node' AND r.deleted = 0
     WHERE n.type = 'verification_slot'
       AND n.status = 1
       AND o.field_slip_owner_target_id = :uid
+      AND r.field_report_to_verify_target_id IS NOT NULL
+      AND r.field_report_to_verify_target_id > 0
   ";
-  if (field_info_field('field_report_to_verify')) {
-    $sql = "
-      SELECT COUNT(n.nid)
-      FROM {node} n
-      INNER JOIN {field_data_field_slip_owner} o
-        ON o.entity_id = n.nid AND o.entity_type = 'node' AND o.deleted = 0
-      LEFT JOIN {field_data_field_report_to_verify} r
-        ON r.entity_id = n.nid AND r.entity_type = 'node' AND r.deleted = 0
-      WHERE n.type = 'verification_slot'
-        AND n.status = 1
-        AND o.field_slip_owner_target_id = :uid
-        AND (r.field_report_to_verify_target_id IS NULL OR r.field_report_to_verify_target_id = 0)
-    ";
-  }
   return (int) db_query($sql, array(':uid' => $uid))->fetchField();
 }
 

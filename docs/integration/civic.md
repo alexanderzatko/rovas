@@ -22,6 +22,7 @@ Civic API); keep both in sync when contracts change.
 [Next work: private projects are fully readable](#next-work-private-projects-are-fully-readable),
 [Next work: merit history (profile ledger)](#next-work-merit-history-profile-ledger),
 [Next work: volunteer report (Civic deferred form)](#next-work-volunteer-report-civic-deferred-form),
+[Next work: pending verifications gate (assigned slots only)](#next-work-pending-verifications-gate-assigned-slots-only),
 [Next work: AI NACE + title from work-report text](#next-work-ai-nace--title-from-work-report-text),
 [Next work: CHR to ME on WR verification](#next-work-chr-to-me-on-wr-verification),
 and [Next work: geofield on Civic work reports](#next-work-geofield-on-civic-work-reports).
@@ -1691,7 +1692,7 @@ Typed errors (HTTP + `{ error, message }`):
 |---------|------|---------|
 | `not_shareholder` | 403 | Private project; caller cannot self-join |
 | `date_before_registration` | 400 | `date_started` before account created |
-| `pending_verifications` | 403 | Caller has more than one unfilled verification slot |
+| `pending_verifications` | 403 | Caller has at least one verification slot with a report assigned to verify |
 | `invalid_input` | 400 | Missing/invalid fields, no proof, hours ≤ 0 |
 | `project_not_found` | 404 | Unknown / unpublished project |
 
@@ -1734,6 +1735,132 @@ curl -sS "https://dev.rovas.app/rovas/civic_create_project" \
 - `GET /projects/mine`, `GET /projects/search?q=`, `POST /projects`
 - `GET /nace?lang=`
 - `POST /work-reports` (photos as base64)
+
+## Next work: pending verifications gate (assigned slots only)
+
+**Implemented in `rovas_civic`.** `POST /rovas/civic_create_work_report` was returning **403**
+`pending_verifications` even when the caller has **no report assigned to verify**.
+
+**Repro (rovdev, Aug 2026):** uid **289** (`sano`) filed two work reports
+(527174, 527201). Each create added two obligation `verification_slot` nodes
+(527175–527176, 527202–527203). All four slots have
+`field_report_to_verify` **empty**, yet create is blocked. Civic shows
+“Najprv overte výkazy…” but neither Civic nor the Rovas `pending_verifications`
+view lists anything actionable (that view only shows slots with a report
+assigned).
+
+**Root cause:** `rovas_civic_pending_verify_slot_count()` in
+`sites/all/modules/custom/rovas_civic/rovas_civic.volunteer.inc` counts slots
+where `field_report_to_verify_target_id IS NULL OR = 0` (empty obligation
+slots). The create gate fires when that count is **`> 1`**.
+
+**Required behaviour:** only count slots that have a work report **assigned**
+(`field_report_to_verify_target_id > 0`). Empty obligation slots are not
+actionable and must **not** block new filings. Block when the assigned count is
+**`> 0`** (any pending verification obligation with a report to act on).
+
+### Code changes
+
+File: `sites/all/modules/custom/rovas_civic/rovas_civic.volunteer.inc`
+
+**1. Create gate (~line 429)** — change:
+
+```php
+if (rovas_civic_pending_verify_slot_count($uid) > 1) {
+```
+
+to:
+
+```php
+if (rovas_civic_pending_verify_slot_count($uid) > 0) {
+```
+
+**2. `rovas_civic_pending_verify_slot_count()`** — replace the function body.
+Update the docblock: count slots **with an assigned report**, not “unfilled”
+slots.
+
+```php
+function rovas_civic_pending_verify_slot_count($uid) {
+  $uid = (int) $uid;
+  if ($uid < 1 || !field_info_field('field_slip_owner') || !field_info_field('field_report_to_verify')) {
+    return 0;
+  }
+  $sql = "
+    SELECT COUNT(n.nid)
+    FROM {node} n
+    INNER JOIN {field_data_field_slip_owner} o
+      ON o.entity_id = n.nid AND o.entity_type = 'node' AND o.deleted = 0
+    INNER JOIN {field_data_field_report_to_verify} r
+      ON r.entity_id = n.nid AND r.entity_type = 'node' AND r.deleted = 0
+    WHERE n.type = 'verification_slot'
+      AND n.status = 1
+      AND o.field_slip_owner_target_id = :uid
+      AND r.field_report_to_verify_target_id IS NOT NULL
+      AND r.field_report_to_verify_target_id > 0
+  ";
+  return (int) db_query($sql, array(':uid' => $uid))->fetchField();
+}
+```
+
+Remove the old fallback that counted all slots when `field_report_to_verify` is
+missing — return `0` instead (cannot detect assigned reports without the field).
+
+**No Services resource or schema change.** No Civic API/Expo change (Civic
+already maps `pending_verifications` to a user-facing string).
+
+### Error response (unchanged shape)
+
+HTTP **403**, body:
+
+```json
+{
+  "error": "pending_verifications",
+  "message": "Verify outstanding work reports before filing another."
+}
+```
+
+Semantics after fix: returned only when the Bearer user owns at least one
+published `verification_slot` with `field_report_to_verify` pointing at a
+work report.
+
+### Checklist
+
+1. [x] Apply both edits in `rovas_civic.volunteer.inc`
+2. [ ] Deploy to **rovdev** only (`/var/www/rovdev`)
+3. [ ] Smoke: uid 289 with empty slots only — `POST /rovas/civic_create_work_report` succeeds
+4. [ ] Smoke: manually assign a WR to one of the caller's slots (or wait for
+       `rules_find_verifier`) — same POST returns 403 `pending_verifications`
+5. [ ] Confirm `pending_verifications` view rows match what blocks create
+
+### Smoke test (after deploy)
+
+```bash
+# TOKEN = Civic OAuth access token for a user with empty obligation slots only
+# (e.g. sano / uid 289 on rovdev after two prior reports)
+curl -sS -X POST "https://dev.rovas.app/rovas/civic_create_work_report" \
+  -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
+  -d '{
+    "project_nid": "527225",
+    "date_started": 1750000000,
+    "hours": 1,
+    "description": "Civic pending-verifications gate test",
+    "nace_tid": "860",
+    "web_url": "https://example.org/proof",
+    "reward_kind": "merits"
+  }'
+# Expect 200: { "work_report_nid": "…", "reward_kind": "merits" }
+
+# Optional DB check before/after:
+# drush sqlq "SELECT s.nid, r.field_report_to_verify_target_id AS wr_nid
+#   FROM node s
+#   INNER JOIN field_data_field_slip_owner o ON o.entity_id = s.nid AND o.deleted = 0
+#   LEFT JOIN field_data_field_report_to_verify r ON r.entity_id = s.nid AND r.deleted = 0
+#   WHERE s.type = 'verification_slot' AND s.status = 1
+#   AND o.field_slip_owner_target_id = 289"
+
+# After a report is assigned to one of the caller's slots — repeat POST
+# Expect 403: { "error": "pending_verifications", "message": "…" }
+```
 
 ## Next work: AI NACE + title from work-report text
 
