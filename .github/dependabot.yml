@@ -1,0 +1,40 @@
+# Dependabot scans every composer.json / composer.lock in the repo, including
+# vendored libraries under sites/all/libraries/ and contrib test trees.
+# Most alerts are dev-only metadata, not packages installed in production.
+#
+# Runtime Symfony 2.7 (service_container) is vendored inside the Drupal module;
+# Dependabot cannot patch it — track via drupal.org/service_container instead.
+
+version: 2
+updates:
+  - package-ecosystem: "composer"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+    ignore:
+      # Dev / test tooling declared in library composer.json files
+      - dependency-name: "phpunit/phpunit"
+      - dependency-name: "squizlabs/php_codesniffer"
+      - dependency-name: "symfony/process"
+      - dependency-name: "mockery/mockery"
+      - dependency-name: "hamcrest/hamcrest-php"
+      - dependency-name: "php-coveralls/php-coveralls"
+      - dependency-name: "satooshi/php-coveralls"
+
+      # oauth2-server-php optional integrations; Rovas uses built-in Jwt, not FirebaseJwt
+      - dependency-name: "aws/aws-sdk-php"
+      - dependency-name: "firebase/php-jwt"
+
+      # Bundled inside service_container (OpenLayers dependency); not Composer-managed
+      - dependency-name: "symfony/yaml"
+      - dependency-name: "symfony/dependency-injection"
+
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 3
+    ignore:
+      # Vendored front-end libraries; upgrade via library refresh, not npm install
+      - dependency-name: "jquery"
