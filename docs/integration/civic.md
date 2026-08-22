@@ -131,6 +131,9 @@ drush74 cc all -y
 
 Docroot mapping: **dev.rovas.app** → `/var/www/rovdev` (not prod `/var/www/rovas`).
 
+Outgoing email on dev is logged, not sent (`DevelMailLog`). See
+[`docs/dev-setup.md`](../dev-setup.md#outgoing-email-disabled-on-dev).
+
 ### Services OAuth2 (rovas_endpoint)
 
 - Admin: **Structure → Services → rovas_endpoint → Authentication**

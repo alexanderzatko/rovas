@@ -9,6 +9,7 @@ set -euo pipefail
 #
 # Prod deploy remains ops/deploy_magura.sh → /var/www/rovas (rovas.app).
 # Dev site: https://dev.rovas.app → /var/www/rovdev
+# Dev notes (email logging, settings.local.php): docs/dev-setup.md
 
 TARGET=${1:?"Provide ssh target (e.g. root@magura)"}
 DEST=/var/www/rovdev
