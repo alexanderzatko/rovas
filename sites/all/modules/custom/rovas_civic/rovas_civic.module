@@ -71,6 +71,30 @@ function rovas_civic_menu() {
 }
 
 /**
+ * Implements hook_node_insert().
+ *
+ * Runs after Rules (module weight 20) so verification Chron grants exist before
+ * Civic CHR→ME conversion.
+ */
+function rovas_civic_node_insert($node) {
+  if ($node->type !== 'verification') {
+    return;
+  }
+  module_load_include('inc', 'rovas_civic', 'rovas_civic.reward');
+  if (!function_exists('field_get_items')) {
+    return;
+  }
+  $wr_ref = field_get_items('node', $node, 'field_work_report');
+  if (empty($wr_ref[0]['target_id'])) {
+    return;
+  }
+  $work_report = node_load((int) $wr_ref[0]['target_id']);
+  if ($work_report && $work_report->type === 'work_report') {
+    rovas_civic_maybe_convert_wr_chron_to_merits($work_report);
+  }
+}
+
+/**
  * Implements hook_services_resources().
  *
  * - POST /rovas/rules/rules_proxy_claim_vat_receipt (VAT claim)

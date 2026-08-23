@@ -24,7 +24,7 @@ Civic API); keep both in sync when contracts change.
 [Next work: volunteer report (Civic deferred form)](#next-work-volunteer-report-civic-deferred-form),
 [Next work: pending verifications gate (assigned slots only)](#next-work-pending-verifications-gate-assigned-slots-only),
 [AI NACE + title from work-report text](#ai-nace--title-from-work-report-text),
-[Next work: CHR to ME on WR verification](#next-work-chr-to-me-on-wr-verification),
+[CHR to ME on WR verification](#chr-to-me-on-wr-verification),
 and [Next work: geofield on Civic work reports](#next-work-geofield-on-civic-work-reports).
 Do not rely on reading the Civic tree unless you need Expo/API details.
 
@@ -63,6 +63,7 @@ not run deploys on their own.
 | Localized project / WR / lookup text | `?lang=` on `civic_project`, `civic_project_work_reports`, `users_lookup` | Implemented — Entity Translation / `title_field` / `body` with source fallback. |
 | Merit history (profile ledger) | `GET /rovas/civic_merit_history` | Implemented in `rovas_civic` (`rovas_civic_update_7009`). JSON of Views `merit_history` / `page_1` for the Bearer user. |
 | Volunteer report (deferred form) | `GET /rovas/civic_my_projects`, `civic_projects_search`, `civic_nace_tree`; `POST /rovas/civic_create_project`, `civic_create_work_report` | Implemented in `rovas_civic` (`rovas_civic_update_7010`). Bearer only — do **not** call the partner API-KEY rules from Civic. |
+| CHR→ME on WR verification | `{civic_work_report_reward}` + verification hook | Implemented in `rovas_civic` (`rovas_civic_update_7011`). When `reward_kind=merits`, A6 converts the Chron grant after approval. |
 | AI NACE + title | `POST /rovas/civic_ai_nace` | Implemented in `rovas_ai` (`rovas_ai_update_7001`). Bearer; keep NACE-tree fallback when `unavailable` or module absent. |
 
 ## OAuth endpoints (live on dev)
@@ -1682,7 +1683,7 @@ on reads (same rules as project detail).
 | `nace_tid` | Required taxonomy tid in vocabulary `tags` |
 | `web_url` | Optional proof URL |
 | `photos` | Optional array of `{ filename, mime, data }` (base64). Max 5, 4 MB decoded each |
-| `reward_kind` | `merits` or `chrons` (default `chrons`). Persisted in `{civic_work_report_reward}` for a later CHR→ME rule — **not** applied at create time |
+| `reward_kind` | `merits` or `chrons` (default `chrons`). Persisted in `{civic_work_report_reward}`; when `merits`, converted to ME on verification (A6) |
 
 At least one of `web_url` or `photos[]` is required. Photos attach to
 `field_photos` after the WR node exists (partner create-WR required a URL;
@@ -1965,12 +1966,63 @@ curl -sS -X POST "https://dev.rovas.app/rovas/civic_ai_nace" \
   -d '{"description":"Repaired a wooden bridge railing","lang":"en"}'
 ```
 
-## Next work: CHR to ME on WR verification
+## CHR to ME on WR verification
 
-**Not implemented.** Civic persists `reward_kind` (`merits`|`chrons`) on create.
-When a work report is approved by two verifiers, Chrons are credited as today.
-If `reward_kind=merits`, convert that Chron grant to Merits (A6, 10 CHR ↔ 10
-ME) for the author.
+**Implemented in `rovas_civic`.** Civic persists `reward_kind` (`merits`|`chrons`) on create
+in `{civic_work_report_reward}`. When a work report is approved by two verifiers,
+Chrons are credited as today (`rules_verify_work_report`). If `reward_kind=merits`,
+`rovas_civic_node_insert()` (verification bundle, module weight **20** — after Rules)
+calls `rovas_civic_maybe_convert_wr_chron_to_merits()` which runs the existing forex
+**A6** path (`_rovas_forex_grant_merits` / `_convert_chr_2_merits`, 10 CHR ↔ 10 ME)
+for the author. Idempotent via `{civic_work_report_reward}.converted`.
+
+### Code
+
+| File | Role |
+|------|------|
+| `rovas_civic.reward.inc` | `rovas_civic_maybe_convert_wr_chron_to_merits()`, grant amount helpers |
+| `rovas_civic.module` | `hook_node_insert()` on `verification` |
+| `rovas_civic.install` | `converted` column; `rovas_civic_update_7011`; module weight 20 |
+
+Chron amount: `field_chrons_to_grant` when set, else `field_hours_worked × 10`.
+Requires `rovas_forex` helpers at runtime (`function_exists` guard + watchdog if missing).
+Rovas usage fee (AUR) still debits CHR before conversion, unchanged.
+
+### Checklist
+
+1. [x] `converted` column on `{civic_work_report_reward}`
+2. [x] Post-verification hook + A6 conversion in `rovas_civic.reward.inc`
+3. [ ] Deploy to **rovdev** only (`/var/www/rovdev`); `drush74 updb -y`
+4. [ ] Smoke: Civic WR with `reward_kind=merits` → verify → author ME +CHR ledger as A6
+5. [ ] Smoke: `reward_kind=chrons` (default) → verify → CHR only, `converted` stays 0
+
+### Smoke test (after deploy)
+
+```bash
+# TOKEN = Civic OAuth access token
+# 1) Create WR electing Merits
+curl -sS -X POST "https://dev.rovas.app/rovas/civic_create_work_report" \
+  -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
+  -d '{
+    "project_nid": "YOUR_PROJECT_NID",
+    "date_started": 1750000000,
+    "hours": 1,
+    "description": "CHR→ME verification test",
+    "nace_tid": "860",
+    "web_url": "https://example.org/proof",
+    "reward_kind": "merits"
+  }'
+# Note work_report_nid from response
+
+# 2) After two verifiers approve (rules_verify_work_report):
+# drush sqlq "SELECT wr_nid, reward_kind, converted FROM civic_work_report_reward WHERE wr_nid = WR_NID"
+# Expect converted > 0 when reward_kind = merits
+
+# 3) Author balances — ME increased by hours×10; CHR net −Rovas fee only
+curl -sS "https://dev.rovas.app/rovas/me" -H "Authorization: Bearer $AUTHOR_TOKEN"
+curl -sS "https://dev.rovas.app/rovas/civic_merit_history?limit=5" \
+  -H "Authorization: Bearer $AUTHOR_TOKEN"
+```
 
 ## Next work: geofield on Civic work reports
 

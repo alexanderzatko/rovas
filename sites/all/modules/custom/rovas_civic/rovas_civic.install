@@ -267,6 +267,12 @@ function rovas_civic_schema() {
         'not null' => TRUE,
         'default' => 0,
       ),
+      'converted' => array(
+        'description' => 'Unix time when CHR→ME conversion ran (0 = not yet).',
+        'type' => 'int',
+        'not null' => TRUE,
+        'default' => 0,
+      ),
     ),
     'primary key' => array('wr_nid'),
     'indexes' => array(
@@ -281,6 +287,9 @@ function rovas_civic_schema() {
  * Implements hook_install().
  */
 function rovas_civic_install() {
+  // Run hook_node_insert after Rules verification reactions complete.
+  module_set_weight('rovas_civic', 20);
+
   // Seed SK rate placeholder (admin should set real series).
   db_merge('rovas_national_hourly_rate')
     ->key(array('country_code' => 'SK'))
@@ -435,4 +444,20 @@ function rovas_civic_update_7010() {
     rovas_civic_ensure_services_resources();
   }
   return t('Civic volunteer APIs (my projects, search, NACE, create project/WR) enabled on rovas_endpoint.');
+}
+
+/**
+ * CHR→ME on WR verification (A6 conversion after rules_verify_work_report).
+ */
+function rovas_civic_update_7011() {
+  module_set_weight('rovas_civic', 20);
+  if (db_table_exists('civic_work_report_reward') && !db_field_exists('civic_work_report_reward', 'converted')) {
+    db_add_field('civic_work_report_reward', 'converted', array(
+      'description' => 'Unix time when CHR→ME conversion ran (0 = not yet).',
+      'type' => 'int',
+      'not null' => TRUE,
+      'default' => 0,
+    ));
+  }
+  return t('Civic CHR→ME on work-report verification (A6 conversion hook).');
 }
