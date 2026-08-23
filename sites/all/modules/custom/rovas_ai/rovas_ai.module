@@ -1,0 +1,419 @@
+<?php
+
+/**
+ * @file
+ * Pluggable LLM providers and NACE / work-report AI helpers.
+ *
+ * Services:
+ * - POST /rovas/civic_ai_nace — classify NACE + suggest WR title (Bearer).
+ */
+
+define('ROVAS_AI_DEFAULT_BASE_URL', 'https://api.openai.com/v1');
+define('ROVAS_AI_DEFAULT_MODEL', 'gpt-4o-mini');
+define('ROVAS_AI_DEFAULT_CONFIDENCE', 0.65);
+define('ROVAS_AI_DEFAULT_DAILY_BUDGET', 50);
+define('ROVAS_AI_MAX_TOKENS', 200);
+define('ROVAS_AI_HTTP_TIMEOUT', 45);
+
+/**
+ * Implements hook_permission().
+ */
+function rovas_ai_permission() {
+  return array(
+    'administer rovas ai' => array(
+      'title' => t('Administer Rovas AI'),
+      'description' => t('Configure LLM providers, models, and Civic AI APIs.'),
+    ),
+  );
+}
+
+/**
+ * Implements hook_menu().
+ */
+function rovas_ai_menu() {
+  $items = array();
+
+  $items['admin/config/rovas'] = array(
+    'title' => 'Rovas',
+    'description' => 'Rovas module settings.',
+    'position' => 'left',
+    'weight' => 5,
+    'page callback' => 'system_admin_menu_block_page',
+    'access arguments' => array('administer site configuration'),
+    'file' => 'system.admin.inc',
+    'file path' => drupal_get_path('module', 'system'),
+  );
+
+  $items['admin/config/rovas/ai'] = array(
+    'title' => 'AI',
+    'description' => 'LLM providers for NACE classification and future AI use cases.',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('rovas_ai_admin_form'),
+    'access arguments' => array('administer rovas ai'),
+    'file' => 'rovas_ai.admin.inc',
+    'type' => MENU_NORMAL_ITEM,
+  );
+
+  return $items;
+}
+
+/**
+ * Implements hook_services_resources().
+ *
+ * Note: Services aliases must be slash-free.
+ */
+function rovas_ai_services_resources() {
+  $classify_file = array(
+    'type' => 'inc',
+    'module' => 'rovas_ai',
+    'name' => 'rovas_ai.classify',
+  );
+
+  return array(
+    'civic_ai_nace' => array(
+      'operations' => array(
+        'create' => array(
+          'help' => 'Classify NACE + suggest work-report title from description. Body: description, optional lang. Bearer required. Returns status ok|need_more_info|unavailable|error.',
+          'callback' => 'rovas_ai_services_classify_nace',
+          'file' => $classify_file,
+          'access callback' => 'rovas_ai_bearer_access',
+          'access arguments' => array(),
+          'access arguments append' => FALSE,
+          'args' => array(
+            array(
+              'name' => 'data',
+              'type' => 'struct',
+              'description' => 'Fields: description (required), lang (optional sk|en).',
+              'source' => 'data',
+              'optional' => FALSE,
+            ),
+          ),
+        ),
+      ),
+    ),
+  );
+}
+
+/**
+ * Access: authenticated after OAuth2 Bearer (or session).
+ */
+function rovas_ai_bearer_access() {
+  global $user;
+  if (!empty($user->uid)) {
+    return TRUE;
+  }
+  if (function_exists('rovas_oauth_uid_from_bearer')) {
+    return (bool) rovas_oauth_uid_from_bearer('user_profile');
+  }
+  return FALSE;
+}
+
+/**
+ * Resolve Drupal uid for AI Services callbacks.
+ *
+ * @return int
+ */
+function rovas_ai_request_uid() {
+  global $user;
+  if (!empty($user->uid)) {
+    return (int) $user->uid;
+  }
+  if (function_exists('rovas_oauth_uid_from_bearer')) {
+    return (int) rovas_oauth_uid_from_bearer('user_profile');
+  }
+  return 0;
+}
+
+/**
+ * Normalize lang (cs/cz → sk).
+ *
+ * @param string|null $lang
+ *
+ * @return string
+ */
+function rovas_ai_normalize_lang($lang = NULL) {
+  $lang = drupal_strtolower(trim((string) $lang));
+  if ($lang === '') {
+    global $user;
+    $lang = !empty($user->language) ? $user->language : 'en';
+  }
+  if (strpos($lang, '-') !== FALSE || strpos($lang, '_') !== FALSE) {
+    $parts = preg_split('/[-_]/', $lang, 2);
+    $lang = $parts[0];
+  }
+  if ($lang === 'cs' || $lang === 'cz') {
+    $lang = 'sk';
+  }
+  if (function_exists('rovas_base_normalize_to_enabled_language')) {
+    return rovas_base_normalize_to_enabled_language($lang);
+  }
+  return $lang ? $lang : 'en';
+}
+
+/**
+ * Whether an API key and provider are configured.
+ *
+ * @return bool
+ */
+function rovas_ai_is_configured() {
+  $key = trim((string) variable_get('rovas_ai_api_key', ''));
+  if ($key === '') {
+    return FALSE;
+  }
+  $providers = rovas_ai_providers();
+  $provider = variable_get('rovas_ai_provider', 'openai');
+  return isset($providers[$provider]);
+}
+
+/**
+ * Registered LLM providers.
+ *
+ * @return array
+ *   Machine name => info (label, file, chat callback).
+ */
+function rovas_ai_providers() {
+  $providers = array(
+    'openai' => array(
+      'label' => t('OpenAI-compatible'),
+      'file' => 'providers/openai.inc',
+      'chat' => 'rovas_ai_openai_chat',
+    ),
+    // Future: 'anthropic' => array(...).
+  );
+  drupal_alter('rovas_ai_providers', $providers);
+  return $providers;
+}
+
+/**
+ * Model for a task (override map or default).
+ *
+ * @param string $task_id
+ *   e.g. nace_classify.
+ *
+ * @return string
+ */
+function rovas_ai_model_for_task($task_id) {
+  $map = variable_get('rovas_ai_task_models', array());
+  if (is_array($map) && !empty($map[$task_id])) {
+    return trim((string) $map[$task_id]);
+  }
+  return trim((string) variable_get('rovas_ai_model', ROVAS_AI_DEFAULT_MODEL));
+}
+
+/**
+ * Confidence threshold (0–1).
+ *
+ * @return float
+ */
+function rovas_ai_confidence_threshold() {
+  $t = (float) variable_get('rovas_ai_confidence_threshold', ROVAS_AI_DEFAULT_CONFIDENCE);
+  if ($t < 0) {
+    return 0.0;
+  }
+  if ($t > 1) {
+    return 1.0;
+  }
+  return $t;
+}
+
+/**
+ * Normalize OpenAI-compatible base URL.
+ *
+ * @param string $base
+ *
+ * @return string
+ */
+function rovas_ai_normalize_base_url($base) {
+  $default = ROVAS_AI_DEFAULT_BASE_URL;
+  $base = trim((string) $base);
+  if ($base === '') {
+    return $default;
+  }
+  $parsed = @parse_url($base);
+  if ($parsed === FALSE) {
+    return $default;
+  }
+  if (empty($parsed['scheme'])) {
+    if (strpos($base, '//') === 0) {
+      $base = 'https:' . $base;
+    }
+    else {
+      $base = 'https://' . ltrim($base, '/');
+    }
+  }
+  return rtrim($base, '/');
+}
+
+/**
+ * Chat completion via the active provider.
+ *
+ * @param array $messages
+ *   OpenAI-style [{role, content}, ...].
+ * @param array $options
+ *   Optional: task_id, model, max_tokens, temperature.
+ *
+ * @return array
+ *   Keys: ok (bool), content (string), usage (array), error (string).
+ */
+function rovas_ai_chat(array $messages, array $options = array()) {
+  if (!rovas_ai_is_configured()) {
+    return array(
+      'ok' => FALSE,
+      'content' => '',
+      'usage' => array(),
+      'error' => 'not_configured',
+    );
+  }
+
+  $providers = rovas_ai_providers();
+  $provider_id = variable_get('rovas_ai_provider', 'openai');
+  if (empty($providers[$provider_id])) {
+    return array(
+      'ok' => FALSE,
+      'content' => '',
+      'usage' => array(),
+      'error' => 'unknown_provider',
+    );
+  }
+  $info = $providers[$provider_id];
+  $path = drupal_get_path('module', 'rovas_ai') . '/' . $info['file'];
+  if (!is_readable($path)) {
+    watchdog('rovas_ai', 'Provider file missing: @p', array('@p' => $info['file']), WATCHDOG_ERROR);
+    return array(
+      'ok' => FALSE,
+      'content' => '',
+      'usage' => array(),
+      'error' => 'provider_missing',
+    );
+  }
+  require_once DRUPAL_ROOT . '/' . $path;
+
+  if (empty($options['model'])) {
+    $task = !empty($options['task_id']) ? $options['task_id'] : '';
+    $options['model'] = $task ? rovas_ai_model_for_task($task) : variable_get('rovas_ai_model', ROVAS_AI_DEFAULT_MODEL);
+  }
+  if (!isset($options['max_tokens'])) {
+    $options['max_tokens'] = ROVAS_AI_MAX_TOKENS;
+  }
+
+  $callback = $info['chat'];
+  if (!function_exists($callback)) {
+    return array(
+      'ok' => FALSE,
+      'content' => '',
+      'usage' => array(),
+      'error' => 'provider_callback_missing',
+    );
+  }
+
+  return $callback($messages, $options);
+}
+
+/**
+ * Classify work description → NACE + title.
+ *
+ * @param string $description
+ * @param string $lang
+ * @param array $options
+ *   Optional: uid (for daily budget).
+ *
+ * @return array
+ *   status: ok|need_more_info|error|unavailable
+ *   plus nace_tid, nace_code, nace_label, title, clarifying_question, confidence, error.
+ */
+function rovas_ai_classify_work($description, $lang = 'en', array $options = array()) {
+  module_load_include('inc', 'rovas_ai', 'rovas_ai.classify');
+  return rovas_ai_classify_work_run($description, $lang, $options);
+}
+
+/**
+ * Daily budget check for a uid.
+ *
+ * @param int $uid
+ *
+ * @return bool
+ *   TRUE if under budget (or budget disabled / anonymous skipped).
+ */
+function rovas_ai_budget_allow($uid) {
+  $budget = (int) variable_get('rovas_ai_daily_budget', ROVAS_AI_DEFAULT_DAILY_BUDGET);
+  if ($budget <= 0 || $uid < 1) {
+    return TRUE;
+  }
+  $cid = 'rovas_ai_budget:' . (int) $uid . ':' . gmdate('Y-m-d');
+  $cache = cache_get($cid);
+  $count = ($cache && isset($cache->data)) ? (int) $cache->data : 0;
+  return $count < $budget;
+}
+
+/**
+ * Increment daily budget counter after a classify attempt.
+ *
+ * @param int $uid
+ */
+function rovas_ai_budget_consume($uid) {
+  $budget = (int) variable_get('rovas_ai_daily_budget', ROVAS_AI_DEFAULT_DAILY_BUDGET);
+  if ($budget <= 0 || $uid < 1) {
+    return;
+  }
+  $cid = 'rovas_ai_budget:' . (int) $uid . ':' . gmdate('Y-m-d');
+  $cache = cache_get($cid);
+  $count = ($cache && isset($cache->data)) ? (int) $cache->data : 0;
+  // Expire at next UTC midnight + 1 hour slack.
+  $expire = gmmktime(1, 0, 0, gmdate('n'), gmdate('j') + 1, gmdate('Y'));
+  cache_set($cid, $count + 1, 'cache', $expire);
+}
+
+/**
+ * Enable civic_ai_nace on rovas_endpoint (Bearer, civic oauth2 server).
+ *
+ * @return bool
+ */
+function rovas_ai_ensure_services_resources() {
+  if (!function_exists('services_endpoint_load') || !function_exists('services_endpoint_save')) {
+    return FALSE;
+  }
+  if (function_exists('rovas_oauth_ensure_civic_resources')) {
+    rovas_oauth_ensure_civic_resources();
+  }
+
+  $endpoint = services_endpoint_load('rovas_endpoint');
+  if (!$endpoint) {
+    return FALSE;
+  }
+
+  $changed = FALSE;
+  if (!is_array($endpoint->authentication['oauth2_server'])
+    || empty($endpoint->authentication['oauth2_server']['server'])) {
+    $endpoint->authentication['oauth2_server'] = array('server' => 'civic');
+    $changed = TRUE;
+  }
+
+  $bearer_op = array(
+    'enabled' => 1,
+    'settings' => array(
+      'services_auth_apikeys' => array(
+        'disable_authentication' => 1,
+      ),
+      'oauth2_server' => array(
+        'require_authentication' => 1,
+        'scope' => 'user_profile',
+      ),
+    ),
+  );
+
+  $resource = array(
+    'operations' => array(
+      'create' => $bearer_op,
+    ),
+  );
+  if (empty($endpoint->resources['civic_ai_nace'])
+    || $endpoint->resources['civic_ai_nace'] != $resource) {
+    $endpoint->resources['civic_ai_nace'] = $resource;
+    $changed = TRUE;
+  }
+
+  if ($changed) {
+    services_endpoint_save($endpoint);
+  }
+  return TRUE;
+}

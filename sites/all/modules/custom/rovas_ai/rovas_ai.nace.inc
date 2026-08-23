@@ -1,0 +1,292 @@
+<?php
+
+/**
+ * @file
+ * NACE taxonomy helpers for AI classification (vocabulary tags).
+ */
+
+/**
+ * Split a NACE term name into code + label.
+ *
+ * @param string $name
+ *
+ * @return array
+ *   array(code, label).
+ */
+function rovas_ai_nace_code_label($name) {
+  $name = trim((string) $name);
+  if (preg_match('/^([A-Z0-9][A-Z0-9.]{0,7})\s*[–\-:]+\s*(.+)$/u', $name, $m)) {
+    return array($m[1], $m[2]);
+  }
+  if (preg_match('/^([A-Z])\s+(.+)$/u', $name, $m)) {
+    return array($m[1], $m[2]);
+  }
+  return array('', $name);
+}
+
+/**
+ * Localized term display name.
+ *
+ * @param object $term
+ * @param string $lang
+ *
+ * @return string
+ */
+function rovas_ai_nace_term_name($term, $lang) {
+  $name = $term->name;
+  if (function_exists('_rb_translate_term')) {
+    $translated = _rb_translate_term($term->tid, $lang);
+    if ($translated) {
+      $name = $translated;
+    }
+  }
+  return $name;
+}
+
+/**
+ * Flat map of all NACE terms: tid => {tid, code, label, parent, depth}.
+ *
+ * @param string $lang
+ *
+ * @return array
+ */
+function rovas_ai_nace_flat($lang = 'en') {
+  $cid = 'rovas_ai_nace_flat:' . $lang;
+  $cache = cache_get($cid);
+  if ($cache && is_array($cache->data)) {
+    return $cache->data;
+  }
+
+  $vocab = taxonomy_vocabulary_machine_name_load('tags');
+  if (!$vocab) {
+    return array();
+  }
+  $terms = taxonomy_get_tree($vocab->vid);
+  if (empty($terms)) {
+    return array();
+  }
+
+  $items = array();
+  foreach ($terms as $term) {
+    $name = rovas_ai_nace_term_name($term, $lang);
+    $parsed = rovas_ai_nace_code_label($name);
+    $parent = 0;
+    if (!empty($term->parents[0])) {
+      $parent = (int) $term->parents[0];
+    }
+    $items[(int) $term->tid] = array(
+      'tid' => (int) $term->tid,
+      'code' => $parsed[0],
+      'label' => $parsed[1],
+      'parent' => $parent,
+      'depth' => isset($term->depth) ? (int) $term->depth : 0,
+    );
+  }
+
+  cache_set($cid, $items, 'cache', REQUEST_TIME + 3600);
+  return $items;
+}
+
+/**
+ * Top-level NACE sections with a non-empty code.
+ *
+ * Prefers depth 0 (taxonomy roots). If those have no usable codes (single
+ * unlabeled container), falls back to depth 1 — matching how Rovas often
+ * stores letter sections under one root.
+ *
+ * @param string $lang
+ *
+ * @return array
+ *   List of {tid, code, label}.
+ */
+function rovas_ai_nace_sections($lang = 'en') {
+  $flat = rovas_ai_nace_flat($lang);
+  $by_depth = array(0 => array(), 1 => array());
+  foreach ($flat as $item) {
+    if ($item['code'] === '') {
+      continue;
+    }
+    $d = $item['depth'];
+    if ($d === 0 || $d === 1) {
+      $by_depth[$d][] = array(
+        'tid' => $item['tid'],
+        'code' => $item['code'],
+        'label' => $item['label'],
+      );
+    }
+  }
+  if (!empty($by_depth[0])) {
+    return $by_depth[0];
+  }
+  return $by_depth[1];
+}
+
+/**
+ * Leaf NACE terms under a section tid (descendants with no children).
+ *
+ * @param int $section_tid
+ * @param string $lang
+ *
+ * @return array
+ *   List of {tid, code, label}.
+ */
+function rovas_ai_nace_leaves_under($section_tid, $lang = 'en') {
+  $section_tid = (int) $section_tid;
+  if ($section_tid < 1) {
+    return array();
+  }
+
+  $vocab = taxonomy_vocabulary_machine_name_load('tags');
+  if (!$vocab) {
+    return array();
+  }
+
+  // Descendants of the section (exclude the section itself).
+  $tree = taxonomy_get_tree($vocab->vid, $section_tid);
+  if (empty($tree)) {
+    // Section itself may be a leaf.
+    $term = taxonomy_term_load($section_tid);
+    if (!$term) {
+      return array();
+    }
+    $name = rovas_ai_nace_term_name($term, $lang);
+    $parsed = rovas_ai_nace_code_label($name);
+    if ($parsed[0] === '') {
+      return array();
+    }
+    return array(
+      array(
+        'tid' => (int) $term->tid,
+        'code' => $parsed[0],
+        'label' => $parsed[1],
+      ),
+    );
+  }
+
+  $tids = array();
+  foreach ($tree as $term) {
+    $tids[] = (int) $term->tid;
+  }
+
+  // Terms that appear as a parent of another in this subtree are non-leaves.
+  $parents = array();
+  foreach ($tree as $term) {
+    if (!empty($term->parents[0])) {
+      $parents[(int) $term->parents[0]] = TRUE;
+    }
+  }
+
+  $leaves = array();
+  foreach ($tree as $term) {
+    $tid = (int) $term->tid;
+    if (isset($parents[$tid])) {
+      continue;
+    }
+    $name = rovas_ai_nace_term_name($term, $lang);
+    $parsed = rovas_ai_nace_code_label($name);
+    if ($parsed[0] === '') {
+      continue;
+    }
+    $leaves[] = array(
+      'tid' => $tid,
+      'code' => $parsed[0],
+      'label' => $parsed[1],
+    );
+  }
+
+  return $leaves;
+}
+
+/**
+ * Find section item by section code (case-insensitive).
+ *
+ * @param string $code
+ * @param string $lang
+ *
+ * @return array|null
+ */
+function rovas_ai_nace_section_by_code($code, $lang = 'en') {
+  $code = drupal_strtoupper(trim((string) $code));
+  if ($code === '') {
+    return NULL;
+  }
+  foreach (rovas_ai_nace_sections($lang) as $section) {
+    if (drupal_strtoupper($section['code']) === $code) {
+      return $section;
+    }
+  }
+  return NULL;
+}
+
+/**
+ * Resolve a leaf by NACE code under an optional section.
+ *
+ * @param string $code
+ * @param string $lang
+ * @param int|null $section_tid
+ *   If set, only search leaves under this section.
+ *
+ * @return array|null
+ *   {tid, code, label} or NULL.
+ */
+function rovas_ai_nace_leaf_by_code($code, $lang = 'en', $section_tid = NULL) {
+  $code = trim((string) $code);
+  if ($code === '') {
+    return NULL;
+  }
+  $needle = drupal_strtolower($code);
+
+  if ($section_tid) {
+    $candidates = rovas_ai_nace_leaves_under($section_tid, $lang);
+  }
+  else {
+    $candidates = array();
+    $flat = rovas_ai_nace_flat($lang);
+    $parent_of = array();
+    foreach ($flat as $item) {
+      if ($item['parent']) {
+        $parent_of[$item['parent']] = TRUE;
+      }
+    }
+    foreach ($flat as $item) {
+      if (isset($parent_of[$item['tid']])) {
+        continue;
+      }
+      if ($item['code'] === '') {
+        continue;
+      }
+      $candidates[] = $item;
+    }
+  }
+
+  foreach ($candidates as $item) {
+    if (drupal_strtolower($item['code']) === $needle) {
+      return array(
+        'tid' => (int) $item['tid'],
+        'code' => $item['code'],
+        'label' => $item['label'],
+      );
+    }
+  }
+  return NULL;
+}
+
+/**
+ * Compact "code | label" lines for prompts.
+ *
+ * @param array $items
+ *   List of {code, label}.
+ *
+ * @return string
+ */
+function rovas_ai_nace_prompt_lines(array $items) {
+  $lines = array();
+  foreach ($items as $item) {
+    if (empty($item['code'])) {
+      continue;
+    }
+    $label = isset($item['label']) ? $item['label'] : '';
+    $lines[] = $item['code'] . ' | ' . $label;
+  }
+  return implode("\n", $lines);
+}

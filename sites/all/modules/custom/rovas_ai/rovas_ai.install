@@ -1,0 +1,24 @@
+<?php
+
+/**
+ * @file
+ * Install / update for Rovas AI.
+ */
+
+/**
+ * Implements hook_enable().
+ */
+function rovas_ai_enable() {
+  rovas_ai_ensure_services_resources();
+}
+
+/**
+ * Enable Civic AI NACE Services resource on rovas_endpoint.
+ */
+function rovas_ai_update_7001() {
+  module_load_include('module', 'rovas_ai');
+  if (rovas_ai_ensure_services_resources()) {
+    return t('Enabled civic_ai_nace on rovas_endpoint.');
+  }
+  return t('Could not enable civic_ai_nace (rovas_endpoint missing or Services unavailable).');
+}

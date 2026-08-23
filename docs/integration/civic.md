@@ -23,7 +23,7 @@ Civic API); keep both in sync when contracts change.
 [Next work: merit history (profile ledger)](#next-work-merit-history-profile-ledger),
 [Next work: volunteer report (Civic deferred form)](#next-work-volunteer-report-civic-deferred-form),
 [Next work: pending verifications gate (assigned slots only)](#next-work-pending-verifications-gate-assigned-slots-only),
-[Next work: AI NACE + title from work-report text](#next-work-ai-nace--title-from-work-report-text),
+[AI NACE + title from work-report text](#ai-nace--title-from-work-report-text),
 [Next work: CHR to ME on WR verification](#next-work-chr-to-me-on-wr-verification),
 and [Next work: geofield on Civic work reports](#next-work-geofield-on-civic-work-reports).
 Do not rely on reading the Civic tree unless you need Expo/API details.
@@ -63,6 +63,7 @@ not run deploys on their own.
 | Localized project / WR / lookup text | `?lang=` on `civic_project`, `civic_project_work_reports`, `users_lookup` | Implemented — Entity Translation / `title_field` / `body` with source fallback. |
 | Merit history (profile ledger) | `GET /rovas/civic_merit_history` | Implemented in `rovas_civic` (`rovas_civic_update_7009`). JSON of Views `merit_history` / `page_1` for the Bearer user. |
 | Volunteer report (deferred form) | `GET /rovas/civic_my_projects`, `civic_projects_search`, `civic_nace_tree`; `POST /rovas/civic_create_project`, `civic_create_work_report` | Implemented in `rovas_civic` (`rovas_civic_update_7010`). Bearer only — do **not** call the partner API-KEY rules from Civic. |
+| AI NACE + title | `POST /rovas/civic_ai_nace` | Implemented in `rovas_ai` (`rovas_ai_update_7001`). Bearer; keep NACE-tree fallback when `unavailable` or module absent. |
 
 ## OAuth endpoints (live on dev)
 
@@ -1651,6 +1652,7 @@ on reads (same rules as project detail).
 |--------|-----|----------------|
 | `POST` | `/rovas/civic_create_project` | `{ name, description, url? }` → `{ project_nid }`. Defaults: `project_status=1` (for sale), `project_participation=1` (Public), not a system project. Creator becomes shareholder via existing node-insert rules |
 | `POST` | `/rovas/civic_create_work_report` | See below |
+| `POST` | `/rovas/civic_ai_nace` | See [AI NACE + title](#ai-nace--title-from-work-report-text) — classify from description (Bearer) |
 
 **Create work report body:**
 
@@ -1865,12 +1867,103 @@ curl -sS -X POST "https://dev.rovas.app/rovas/civic_create_work_report" \
 # Expect 403: { "error": "pending_verifications", "message": "…" }
 ```
 
-## Next work: AI NACE + title from work-report text
+## AI NACE + title from work-report text
 
-**Not implemented.** Target: a new `rovas_ai` module that classifies NACE and
-suggests a WR title from the description. Low confidence → `need_more_info`
-so Civic prompts. Civic already ships the NACE-tree fallback for outage or
-when this module is absent.
+**Implemented** in `sites/all/modules/custom/rovas_ai`. Classifies NACE and
+suggests a work-report title from a free-text description. Low confidence →
+`need_more_info` so Civic can prompt. Civic must keep the `civic_nace_tree`
+manual picker as fallback when the module is absent, not configured, over
+budget, or returns `unavailable`.
+
+Internal PHP API (same module): `rovas_ai_classify_work($description, $lang, $options)`.
+
+### Enable on rovdev
+
+```bash
+cd /var/www/rovdev
+drush74 en rovas_ai -y
+drush74 updb -y
+drush74 cc all -y
+```
+
+Admin: **Configuration → Rovas → AI** (`/admin/config/rovas/ai`) — set API key,
+optional base URL (OpenAI-compatible), model (default `gpt-4o-mini`), confidence
+threshold, daily per-user call budget. Click **Enable Civic AI APIs** (or rely
+on `rovas_ai_update_7001` / `hook_enable`).
+
+### Contract
+
+| Method | URL | Auth |
+|--------|-----|------|
+| `POST` | `/rovas/civic_ai_nace` | Bearer (`user_profile`), API-key auth disabled |
+
+**Request body:**
+
+```json
+{
+  "description": "Cleared invasive plants along the trail.",
+  "lang": "sk"
+}
+```
+
+| Field | Rules |
+|-------|--------|
+| `description` | Required for a useful result; empty → `need_more_info` |
+| `lang` | Optional (`sk`\|`en`; `cs`/`cz` → `sk`). Clarifying questions + title language |
+
+**Response** — HTTP **200** with a `status` field (except **401** when unauthenticated). Civic should branch on `status`, not only on HTTP code:
+
+```json
+{
+  "status": "ok",
+  "nace_tid": "860",
+  "nace_code": "43.21",
+  "nace_label": "…",
+  "title": "Trail clearing",
+  "clarifying_question": "",
+  "confidence": 0.82,
+  "error": ""
+}
+```
+
+| `status` | Meaning | Civic behaviour |
+|----------|---------|-----------------|
+| `ok` | NACE tid + title ready | Prefill form; user can still edit |
+| `need_more_info` | Ambiguous / low confidence | Show `clarifying_question`; keep NACE tree available |
+| `unavailable` | Not configured, LLM error, budget, empty taxonomy | Fall back to NACE tree; optional soft message |
+| `error` | Unexpected | Fall back to NACE tree |
+
+`need_more_info` example:
+
+```json
+{
+  "status": "need_more_info",
+  "nace_tid": "",
+  "nace_code": "",
+  "nace_label": "",
+  "title": "",
+  "clarifying_question": "Can you clarify the industry or type of activity?",
+  "confidence": 0.4,
+  "error": ""
+}
+```
+
+### Cost / behaviour notes (Rovas-side)
+
+- Provider: pluggable; v1 ships **OpenAI-compatible** (`drupal_http_request`, JSON mode).
+- Two-pass classification: top-level NACE section → leaves under that section only (never the full tree in one prompt).
+- Per-user daily budget (default 50 classify calls); over budget → `unavailable`.
+- Unknown model codes are never trusted as tids — must resolve against vocabulary `tags`.
+
+### Smoke test
+
+```bash
+# After OAuth token + API key configured:
+curl -sS -X POST "https://dev.rovas.app/rovas/civic_ai_nace" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"description":"Repaired a wooden bridge railing","lang":"en"}'
+```
 
 ## Next work: CHR to ME on WR verification
 
