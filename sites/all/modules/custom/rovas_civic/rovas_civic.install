@@ -284,11 +284,21 @@ function rovas_civic_schema() {
 }
 
 /**
+ * Set rovas_civic module weight so hook_node_insert runs after Rules (weight 21).
+ */
+function rovas_civic_set_module_weight() {
+  db_update('system')
+    ->fields(array('weight' => 21))
+    ->condition('name', 'rovas_civic')
+    ->condition('type', 'module')
+    ->execute();
+}
+
+/**
  * Implements hook_install().
  */
 function rovas_civic_install() {
-  // Run hook_node_insert after Rules verification reactions complete.
-  module_set_weight('rovas_civic', 20);
+  rovas_civic_set_module_weight();
 
   // Seed SK rate placeholder (admin should set real series).
   db_merge('rovas_national_hourly_rate')
@@ -450,7 +460,7 @@ function rovas_civic_update_7010() {
  * CHR→ME on WR verification (A6 conversion after rules_verify_work_report).
  */
 function rovas_civic_update_7011() {
-  module_set_weight('rovas_civic', 20);
+  rovas_civic_set_module_weight();
   if (db_table_exists('civic_work_report_reward') && !db_field_exists('civic_work_report_reward', 'converted')) {
     db_add_field('civic_work_report_reward', 'converted', array(
       'description' => 'Unix time when CHR→ME conversion ran (0 = not yet).',

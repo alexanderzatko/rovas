@@ -1971,7 +1971,7 @@ curl -sS -X POST "https://dev.rovas.app/rovas/civic_ai_nace" \
 **Implemented in `rovas_civic`.** Civic persists `reward_kind` (`merits`|`chrons`) on create
 in `{civic_work_report_reward}`. When a work report is approved by two verifiers,
 Chrons are credited as today (`rules_verify_work_report`). If `reward_kind=merits`,
-`rovas_civic_node_insert()` (verification bundle, module weight **20** — after Rules)
+`rovas_civic_node_insert()` (verification bundle, module weight **21** — after Rules)
 calls `rovas_civic_maybe_convert_wr_chron_to_merits()` which runs the existing forex
 **A6** path (`_rovas_forex_grant_merits` / `_convert_chr_2_merits`, 10 CHR ↔ 10 ME)
 for the author. Idempotent via `{civic_work_report_reward}.converted`.
@@ -1982,7 +1982,7 @@ for the author. Idempotent via `{civic_work_report_reward}.converted`.
 |------|------|
 | `rovas_civic.reward.inc` | `rovas_civic_maybe_convert_wr_chron_to_merits()`, grant amount helpers |
 | `rovas_civic.module` | `hook_node_insert()` on `verification` |
-| `rovas_civic.install` | `converted` column; `rovas_civic_update_7011`; module weight 20 |
+| `rovas_civic.install` | `converted` column; `rovas_civic_update_7011`; module weight 21 |
 
 Chron amount: `field_chrons_to_grant` when set, else `field_hours_worked × 10`.
 Requires `rovas_forex` helpers at runtime (`function_exists` guard + watchdog if missing).

@@ -73,7 +73,7 @@ function rovas_civic_menu() {
 /**
  * Implements hook_node_insert().
  *
- * Runs after Rules (module weight 20) so verification Chron grants exist before
+ * Runs after Rules (module weight 21) so verification Chron grants exist before
  * Civic CHR→ME conversion.
  */
 function rovas_civic_node_insert($node) {
