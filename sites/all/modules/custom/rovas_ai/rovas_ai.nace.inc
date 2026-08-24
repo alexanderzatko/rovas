@@ -8,6 +8,9 @@
 /**
  * Split a NACE term name into code + label.
  *
+ * Handles both dash-separated names ("F – Construction", "41.10 – …") and
+ * space-separated names used on this site ("41.10 Development of …").
+ *
  * @param string $name
  *
  * @return array
@@ -15,10 +18,12 @@
  */
 function rovas_ai_nace_code_label($name) {
   $name = trim((string) $name);
+  // "F – Construction" / "41.10 – Development..." (en-dash, hyphen, or colon).
   if (preg_match('/^([A-Z0-9][A-Z0-9.]{0,7})\s*[–\-:]+\s*(.+)$/u', $name, $m)) {
     return array($m[1], $m[2]);
   }
-  if (preg_match('/^([A-Z])\s+(.+)$/u', $name, $m)) {
+  // "F Construction" / "41 Construction…" / "41.10 Development…" / "43.21 …"
+  if (preg_match('/^([A-Z]|[0-9]{1,2}(?:\.[0-9]{1,2}){0,2})\s+(.+)$/u', $name, $m)) {
     return array($m[1], $m[2]);
   }
   return array('', $name);
@@ -51,7 +56,8 @@ function rovas_ai_nace_term_name($term, $lang) {
  * @return array
  */
 function rovas_ai_nace_flat($lang = 'en') {
-  $cid = 'rovas_ai_nace_flat:' . $lang;
+  // v2: space-separated codes ("41.10 Label") parse correctly.
+  $cid = 'rovas_ai_nace_flat:v2:' . $lang;
   $cache = cache_get($cid);
   if ($cache && is_array($cache->data)) {
     return $cache->data;
