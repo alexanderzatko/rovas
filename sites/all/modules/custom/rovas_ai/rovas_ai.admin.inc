@@ -27,22 +27,37 @@ function rovas_ai_admin_form($form, &$form_state) {
     '#required' => TRUE,
   );
 
-  $form['rovas_ai_api_key'] = array(
-    '#type' => 'password',
-    '#title' => t('API key'),
+  $key = trim((string) variable_get('rovas_ai_api_key', ''));
+  $form['api_key_status'] = array(
+    '#type' => 'item',
+    '#title' => t('Current API key'),
+    '#markup' => $key !== ''
+      ? t('Stored (@hint). Leave the field below empty to keep it.', array(
+        '@hint' => rovas_ai_api_key_hint($key),
+      ))
+      : t('Not set — enter a key below.'),
+  );
+  // Field machine name must NOT be rovas_ai_api_key: password managers and any
+  // blanket variable_set of form values would overwrite the stored key with "".
+  $form['api_key_new'] = array(
+    '#type' => 'textfield',
+    '#title' => t('New API key'),
+    '#default_value' => '',
     '#description' => t('Leave blank to keep the current key. Stored in the database; never logged.'),
     '#maxlength' => 512,
+    '#attributes' => array(
+      'autocomplete' => 'off',
+      'autocorrect' => 'off',
+      'autocapitalize' => 'off',
+      'spellcheck' => 'false',
+    ),
   );
-  $key = variable_get('rovas_ai_api_key', '');
-  if ($key !== '') {
-    $form['rovas_ai_api_key']['#description'] = t('A key is already stored. Leave blank to keep it, or enter a new key to replace it.');
-  }
 
   $form['rovas_ai_base_url'] = array(
     '#type' => 'textfield',
     '#title' => t('API base URL'),
     '#default_value' => variable_get('rovas_ai_base_url', ROVAS_AI_DEFAULT_BASE_URL),
-    '#description' => t('OpenAI-compatible base ending in /v1 (e.g. https://api.openai.com/v1). Azure/proxies: set the compatible base URL.'),
+    '#description' => t('OpenAI-compatible base ending in /v1 (e.g. https://api.openai.com/v1 or https://openrouter.ai/api/v1).'),
     '#maxlength' => 255,
   );
 
@@ -50,7 +65,7 @@ function rovas_ai_admin_form($form, &$form_state) {
     '#type' => 'textfield',
     '#title' => t('Default model'),
     '#default_value' => variable_get('rovas_ai_model', ROVAS_AI_DEFAULT_MODEL),
-    '#description' => t('Used when a task has no override. Prefer inexpensive models.'),
+    '#description' => t('Used when a task has no override. Prefer inexpensive models. OpenRouter: use slug like openai/gpt-4o-mini.'),
     '#required' => TRUE,
     '#maxlength' => 128,
   );
@@ -103,15 +118,38 @@ function rovas_ai_admin_form($form, &$form_state) {
 }
 
 /**
+ * Short non-secret hint for a stored API key (length + last 4 chars).
+ *
+ * @param string $key
+ *
+ * @return string
+ */
+function rovas_ai_api_key_hint($key) {
+  $key = (string) $key;
+  $len = drupal_strlen($key);
+  if ($len <= 4) {
+    return t('@n chars', array('@n' => $len));
+  }
+  return t('@n chars, ends with @s', array(
+    '@n' => $len,
+    '@s' => drupal_substr($key, -4),
+  ));
+}
+
+/**
  * Save AI settings.
  */
 function rovas_ai_admin_form_submit($form, &$form_state) {
   $v = $form_state['values'];
   variable_set('rovas_ai_provider', $v['rovas_ai_provider']);
-  $new_key = isset($v['rovas_ai_api_key']) ? trim((string) $v['rovas_ai_api_key']) : '';
+
+  // Never overwrite the stored key with an empty field value.
+  $new_key = isset($v['api_key_new']) ? trim((string) $v['api_key_new']) : '';
   if ($new_key !== '') {
     variable_set('rovas_ai_api_key', $new_key);
+    drupal_set_message(t('API key updated.'));
   }
+
   variable_set('rovas_ai_base_url', rovas_ai_normalize_base_url($v['rovas_ai_base_url']));
   variable_set('rovas_ai_model', trim((string) $v['rovas_ai_model']));
 

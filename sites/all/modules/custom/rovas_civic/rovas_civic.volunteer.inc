@@ -240,6 +240,9 @@ function rovas_civic_nace_tree($lang = NULL) {
 /**
  * Split a NACE term name into a short code + label.
  *
+ * Handles both dash-separated names ("F – Construction", "41.10 – …") and
+ * space-separated names used on this site ("41.10 Development of …").
+ *
  * @param string $name
  *
  * @return array
@@ -247,10 +250,12 @@ function rovas_civic_nace_tree($lang = NULL) {
  */
 function rovas_civic_nace_code_label($name) {
   $name = trim((string) $name);
+  // "F – Construction" / "41.10 – Development..." (en-dash, hyphen, or colon).
   if (preg_match('/^([A-Z0-9][A-Z0-9.]{0,7})\s*[–\-:]+\s*(.+)$/u', $name, $m)) {
     return array($m[1], $m[2]);
   }
-  if (preg_match('/^([A-Z])\s+(.+)$/u', $name, $m)) {
+  // "F Construction" / "41 Construction…" / "41.10 Development…" / "43.21 …"
+  if (preg_match('/^([A-Z]|[0-9]{1,2}(?:\.[0-9]{1,2}){0,2})\s+(.+)$/u', $name, $m)) {
     return array($m[1], $m[2]);
   }
   return array('', $name);
