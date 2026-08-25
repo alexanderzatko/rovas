@@ -39,12 +39,22 @@ function rovas_ai_openai_chat(array $messages, array $options = array()) {
     'response_format' => array('type' => 'json_object'),
   );
 
+  $headers = array(
+    'Content-Type' => 'application/json',
+    'Authorization' => 'Bearer ' . $api_key,
+  );
+  // OpenRouter may return usage with empty message.content when these are missing.
+  // See https://openrouter.ai/docs and app-attribution guidance.
+  if (stripos($base, 'openrouter.ai') !== FALSE) {
+    global $base_url;
+    $referer = !empty($base_url) ? $base_url : 'https://rovas.app';
+    $headers['HTTP-Referer'] = $referer;
+    $headers['X-Title'] = 'Rovas AI';
+  }
+
   $response = drupal_http_request($url, array(
     'method' => 'POST',
-    'headers' => array(
-      'Content-Type' => 'application/json',
-      'Authorization' => 'Bearer ' . $api_key,
-    ),
+    'headers' => $headers,
     'data' => drupal_json_encode($body),
     'timeout' => ROVAS_AI_HTTP_TIMEOUT,
   ));
@@ -74,18 +84,32 @@ function rovas_ai_openai_chat(array $messages, array $options = array()) {
   }
 
   $data = json_decode($response->data, TRUE);
-  if (!is_array($data) || empty($data['choices'][0]['message']['content'])) {
-    watchdog('rovas_ai', 'OpenAI response missing content', array(), WATCHDOG_WARNING);
+  $usage = (is_array($data) && isset($data['usage']) && is_array($data['usage']))
+    ? $data['usage']
+    : array();
+  $choice = (is_array($data) && !empty($data['choices'][0]) && is_array($data['choices'][0]))
+    ? $data['choices'][0]
+    : array();
+  $message = (!empty($choice['message']) && is_array($choice['message']))
+    ? $choice['message']
+    : array();
+  $content = rovas_ai_openai_extract_content($message);
+
+  if ($content === '') {
+    $finish = isset($choice['finish_reason']) ? $choice['finish_reason'] : '';
+    $msg_keys = $message ? implode(',', array_keys($message)) : '(no message)';
+    watchdog('rovas_ai', 'OpenAI response missing content (finish=@f keys=@k)', array(
+      '@f' => $finish,
+      '@k' => $msg_keys,
+    ), WATCHDOG_WARNING);
     return array(
       'ok' => FALSE,
       'content' => '',
-      'usage' => isset($data['usage']) && is_array($data['usage']) ? $data['usage'] : array(),
-      'error' => 'empty_content',
+      'usage' => $usage,
+      'error' => $finish === 'length' ? 'truncated' : 'empty_content',
+      'finish_reason' => $finish,
     );
   }
-
-  $content = trim((string) $data['choices'][0]['message']['content']);
-  $usage = isset($data['usage']) && is_array($data['usage']) ? $data['usage'] : array();
 
   return array(
     'ok' => TRUE,
@@ -93,4 +117,43 @@ function rovas_ai_openai_chat(array $messages, array $options = array()) {
     'usage' => $usage,
     'error' => '',
   );
+}
+
+/**
+ * Normalize assistant message content to a string.
+ *
+ * OpenAI-compatible APIs may return a string or an array of content parts.
+ *
+ * @param array $message
+ *
+ * @return string
+ */
+function rovas_ai_openai_extract_content(array $message) {
+  if (!isset($message['content'])) {
+    return '';
+  }
+  $raw = $message['content'];
+  if (is_string($raw)) {
+    return trim($raw);
+  }
+  if (!is_array($raw)) {
+    return '';
+  }
+  $parts = array();
+  foreach ($raw as $part) {
+    if (is_string($part)) {
+      $parts[] = $part;
+      continue;
+    }
+    if (!is_array($part)) {
+      continue;
+    }
+    if (isset($part['text']) && is_string($part['text'])) {
+      $parts[] = $part['text'];
+    }
+    elseif (isset($part['content']) && is_string($part['content'])) {
+      $parts[] = $part['content'];
+    }
+  }
+  return trim(implode('', $parts));
 }

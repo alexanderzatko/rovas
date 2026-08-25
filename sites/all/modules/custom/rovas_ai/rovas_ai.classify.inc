@@ -168,7 +168,9 @@ function rovas_ai_classify_pass_section($description, $lang, array $sections) {
     ),
     array(
       'task_id' => 'nace_classify',
-      'max_tokens' => 120,
+      // Keep headroom: OpenRouter sometimes returns empty content when the
+      // completion hits max_tokens exactly (finish_reason=length).
+      'max_tokens' => 256,
     )
   );
 
@@ -240,10 +242,10 @@ function rovas_ai_classify_pass_leaf($description, $lang, array $leaves) {
 
   $user = "Work description:\n" . $description . "\n\nNACE leaf codes (code | label):\n" . $catalog;
 
-  // Larger catalog may need a bit more completion budget for JSON only.
-  $max_tokens = 160;
+  // Larger catalog may need more completion budget for JSON only.
+  $max_tokens = 300;
   if (drupal_strlen($catalog) > 8000) {
-    $max_tokens = 200;
+    $max_tokens = 400;
   }
 
   $chat = rovas_ai_chat(
