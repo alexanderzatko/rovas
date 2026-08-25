@@ -65,7 +65,7 @@ function rovas_ai_admin_form($form, &$form_state) {
     '#type' => 'textfield',
     '#title' => t('Default model'),
     '#default_value' => variable_get('rovas_ai_model', ROVAS_AI_DEFAULT_MODEL),
-    '#description' => t('Used when a task has no override. Prefer inexpensive models. OpenRouter: use slug like openai/gpt-4o-mini.'),
+    '#description' => t('Used when a task has no override. Prefer inexpensive non-reasoning models (e.g. openai/gpt-4o-mini). Reasoning models (o-series, GPT-5, R1) spend max_tokens on thinking and often return empty content.'),
     '#required' => TRUE,
     '#maxlength' => 128,
   );
