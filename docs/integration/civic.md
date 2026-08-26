@@ -1903,7 +1903,8 @@ on `rovas_ai_update_7001` / `hook_enable`).
 ```json
 {
   "description": "Cleared invasive plants along the trail.",
-  "lang": "sk"
+  "lang": "sk",
+  "project_nid": "1998"
 }
 ```
 
@@ -1911,6 +1912,8 @@ on `rovas_ai_update_7001` / `hook_enable`).
 |-------|--------|
 | `description` | Required for a useful result; empty → `need_more_info` |
 | `lang` | Optional (`sk`\|`en`; `cs`/`cz` → `sk`). Clarifying questions + title language |
+| `project_nid` | Optional published project. Rovas loads localized title + body and sends them to the LLM as background context (classify the work done, not the whole project) |
+| `project_title` / `project_description` | Optional plain-text overrides or client-side context when `project_nid` is omitted |
 
 **Response** — HTTP **200** with a `status` field (except **401** when unauthenticated). Civic should branch on `status`, not only on HTTP code:
 
@@ -1953,6 +1956,7 @@ on `rovas_ai_update_7001` / `hook_enable`).
 
 - Provider: pluggable; v1 ships **OpenAI-compatible** (`drupal_http_request`, JSON mode).
 - Two-pass classification: top-level NACE section(s) → leaves under that section only (never the full tree in one prompt). When pass 1 returns two section candidates with similar confidence (tie margin, default 0.20), their leaf lists are merged into one catalog and a single leaf pass compares them directly (e.g. Education P vs Recreation R for teaching sports) — two isolated pass-2 calls are not used because LLM confidence isn't comparable across separate, unrelated prompts.
+- Optional **project context** (`project_nid` or title/description) is appended to both passes so purpose/setting from the parent project can disambiguate short work texts. The model is instructed not to ask clarifying questions already answered by the work text or project context.
 - Per-user daily budget (default 50 classify calls); over budget → `unavailable`.
 - Unknown model codes are never trusted as tids — must resolve against vocabulary `tags`.
 
@@ -1963,7 +1967,7 @@ on `rovas_ai_update_7001` / `hook_enable`).
 curl -sS -X POST "https://dev.rovas.app/rovas/civic_ai_nace" \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
-  -d '{"description":"Repaired a wooden bridge railing","lang":"en"}'
+  -d '{"description":"Repaired a wooden bridge railing","lang":"en","project_nid":"1998"}'
 ```
 
 ## CHR to ME on WR verification

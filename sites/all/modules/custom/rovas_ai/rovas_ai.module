@@ -75,7 +75,7 @@ function rovas_ai_services_resources() {
     'civic_ai_nace' => array(
       'operations' => array(
         'create' => array(
-          'help' => 'Classify NACE + suggest work-report title from description. Body: description, optional lang. Bearer required. Returns status ok|need_more_info|unavailable|error.',
+          'help' => 'Classify NACE + suggest work-report title from description. Body: description, optional lang, optional project_nid (and/or project_title/project_description). Bearer required. Returns status ok|need_more_info|unavailable|error.',
           'callback' => 'rovas_ai_services_classify_nace',
           'file' => $classify_file,
           'access callback' => 'rovas_ai_bearer_access',
@@ -85,7 +85,7 @@ function rovas_ai_services_resources() {
             array(
               'name' => 'data',
               'type' => 'struct',
-              'description' => 'Fields: description (required), lang (optional sk|en).',
+              'description' => 'Fields: description (required), lang (optional sk|en), project_nid and/or project_title/project_description (optional context).',
               'source' => 'data',
               'optional' => FALSE,
             ),
@@ -333,7 +333,8 @@ function rovas_ai_chat(array $messages, array $options = array()) {
  * @param string $description
  * @param string $lang
  * @param array $options
- *   Optional: uid (for daily budget).
+ *   Optional: uid (for daily budget); project_nid and/or project_title /
+ *   project_description (project background for the LLM).
  *
  * @return array
  *   status: ok|need_more_info|error|unavailable

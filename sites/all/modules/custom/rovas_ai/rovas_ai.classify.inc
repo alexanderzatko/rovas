@@ -11,6 +11,11 @@
  * @param string $description
  * @param string $lang
  * @param array $options
+ *   Optional keys:
+ *   - uid: int, daily budget owner
+ *   - project_nid: int, load project title/body as LLM background context
+ *   - project_title / project_description: strings, used when nid omitted or
+ *     as override after nid load (Civic may already have them client-side)
  *
  * @return array
  */
@@ -20,6 +25,7 @@ function rovas_ai_classify_work_run($description, $lang = 'en', array $options =
   $description = trim((string) $description);
   $lang = rovas_ai_normalize_lang($lang);
   $uid = isset($options['uid']) ? (int) $options['uid'] : 0;
+  $project_context = rovas_ai_resolve_project_context($options, $lang);
 
   $empty = array(
     'status' => 'error',
@@ -61,7 +67,7 @@ function rovas_ai_classify_work_run($description, $lang = 'en', array $options =
     return $empty;
   }
 
-  $pass1 = rovas_ai_classify_pass_section($description, $lang, $sections);
+  $pass1 = rovas_ai_classify_pass_section($description, $lang, $sections, $project_context);
   if ($pass1['status'] !== 'ok') {
     return array_merge($empty, $pass1);
   }
@@ -141,7 +147,7 @@ function rovas_ai_classify_work_run($description, $lang = 'en', array $options =
   }
 
   $multi_section = count($resolved_sections) > 1;
-  $pass2 = rovas_ai_classify_pass_leaf($description, $lang, $leaves, $multi_section);
+  $pass2 = rovas_ai_classify_pass_leaf($description, $lang, $leaves, $multi_section, $project_context);
   if ($pass2['status'] !== 'ok') {
     return array_merge($empty, $pass2);
   }
@@ -187,16 +193,145 @@ function rovas_ai_classify_work_run($description, $lang = 'en', array $options =
 }
 
 /**
+ * Resolve optional project title/description for classify prompts.
+ *
+ * @param array $options
+ * @param string $lang
+ *
+ * @return array
+ *   Keys title, description (possibly empty strings).
+ */
+function rovas_ai_resolve_project_context(array $options, $lang = 'en') {
+  $title = isset($options['project_title']) ? trim((string) $options['project_title']) : '';
+  $description = isset($options['project_description'])
+    ? trim((string) $options['project_description'])
+    : '';
+
+  $nid = 0;
+  if (!empty($options['project_nid'])) {
+    $nid = (int) $options['project_nid'];
+  }
+
+  if ($nid > 0) {
+    $node = NULL;
+    if (function_exists('rovas_civic_load_published_project')) {
+      $node = rovas_civic_load_published_project($nid);
+    }
+    else {
+      $loaded = node_load($nid);
+      if ($loaded && !empty($loaded->nid) && $loaded->type === 'project' && (int) $loaded->status === 1) {
+        $node = $loaded;
+      }
+    }
+
+    if ($node) {
+      if ($title === '') {
+        if (function_exists('rovas_civic_node_localized_title')) {
+          $title = trim((string) rovas_civic_node_localized_title($node, $lang));
+        }
+        elseif (!empty($node->title)) {
+          $title = trim((string) $node->title);
+        }
+      }
+      if ($description === '') {
+        $html = '';
+        if (function_exists('rovas_civic_node_body_value')) {
+          $html = (string) rovas_civic_node_body_value($node, $lang);
+        }
+        else {
+          $items = field_get_items('node', $node, 'body');
+          if (!empty($items[0]['value'])) {
+            $html = (string) $items[0]['value'];
+          }
+        }
+        $description = rovas_ai_plain_text($html, 1200);
+      }
+    }
+  }
+
+  if ($description !== '') {
+    $description = rovas_ai_plain_text($description, 1200);
+  }
+
+  return array(
+    'title' => $title,
+    'description' => $description,
+  );
+}
+
+/**
+ * Strip HTML/entities and collapse whitespace; optional max length.
+ *
+ * @param string $html
+ * @param int $max
+ *
+ * @return string
+ */
+function rovas_ai_plain_text($html, $max = 0) {
+  $text = decode_entities(strip_tags((string) $html));
+  $text = trim(preg_replace('/\s+/u', ' ', $text));
+  $max = (int) $max;
+  if ($max > 0 && $text !== '' && drupal_strlen($text) > $max) {
+    $text = drupal_substr($text, 0, $max);
+  }
+  return $text;
+}
+
+/**
+ * Build the shared user-message block (work + optional project context).
+ *
+ * @param string $description
+ * @param array $project_context
+ *   {title, description}
+ *
+ * @return string
+ */
+function rovas_ai_classify_work_block($description, array $project_context = array()) {
+  $parts = array("Work description:\n" . $description);
+
+  $ptitle = isset($project_context['title']) ? trim((string) $project_context['title']) : '';
+  $pdesc = isset($project_context['description']) ? trim((string) $project_context['description']) : '';
+  if ($ptitle !== '' || $pdesc !== '') {
+    $proj = "Project context (background only — classify the work the person did, not the whole project):";
+    if ($ptitle !== '') {
+      $proj .= "\nTitle: " . $ptitle;
+    }
+    if ($pdesc !== '') {
+      $proj .= "\nDescription: " . $pdesc;
+    }
+    $parts[] = $proj;
+  }
+
+  return implode("\n\n", $parts);
+}
+
+/**
+ * Shared system-prompt rules for when to ask clarifying questions.
+ *
+ * @param string $lang
+ *
+ * @return string
+ */
+function rovas_ai_classify_clarify_rules($lang) {
+  return 'Do not ask a clarifying question whose answer is already stated in the '
+    . 'work description or project context. Prefer classifying with the given text '
+    . 'over need_more_info when purpose/activity is reasonably clear. '
+    . 'question (when used) must be one short clarifying question in language code '
+    . $lang . '.';
+}
+
+/**
  * Pass 1: pick top-level NACE section(s).
  *
  * @param string $description
  * @param string $lang
  * @param array $sections
+ * @param array $project_context
  *
  * @return array
  *   status ok → candidates[] of {section, confidence}, plus legacy section/confidence.
  */
-function rovas_ai_classify_pass_section($description, $lang, array $sections) {
+function rovas_ai_classify_pass_section($description, $lang, array $sections, array $project_context = array()) {
   $catalog = rovas_ai_nace_prompt_lines($sections);
   $system = 'You classify volunteer/civic work into NACE Rev.2 section letter(s). '
     . 'Reply with JSON only. Preferred shape: '
@@ -206,9 +341,10 @@ function rovas_ai_classify_pass_section($description, $lang, array $sections) {
     . 'letter is plausible (especially when teaching/coaching/instructing could be Education P '
     . 'while the activity setting looks like recreation R, or similar cross-boundary cases). '
     . 'Each section must be a code from the list. confidence is 0-1. '
-    . 'question must be one short clarifying question in language code ' . $lang . '.';
+    . rovas_ai_classify_clarify_rules($lang);
 
-  $user = "Work description:\n" . $description . "\n\nNACE sections (code | label):\n" . $catalog;
+  $user = rovas_ai_classify_work_block($description, $project_context)
+    . "\n\nNACE sections (code | label):\n" . $catalog;
 
   $chat = rovas_ai_chat(
     array(
@@ -354,10 +490,11 @@ function _rovas_ai_sort_section_candidates($a, $b) {
  *   TRUE when $leaves spans two candidate sections (boundary case), so the
  *   prompt asks for a genuine side-by-side comparison rather than assuming
  *   all candidates are already in the "right" industry.
+ * @param array $project_context
  *
  * @return array
  */
-function rovas_ai_classify_pass_leaf($description, $lang, array $leaves, $multi_section = FALSE) {
+function rovas_ai_classify_pass_leaf($description, $lang, array $leaves, $multi_section = FALSE, array $project_context = array()) {
   $catalog = rovas_ai_nace_prompt_lines($leaves);
   $system = 'You pick the single best-fitting NACE leaf code for the work and suggest a '
     . 'short work-report title. Reply with JSON only. Either '
@@ -367,14 +504,15 @@ function rovas_ai_classify_pass_leaf($description, $lang, array $leaves, $multi_
     . 'the best of a narrow list — if none of the codes describe the actual activity well, '
     . 'use need_more_info instead of forcing a poor match. '
     . 'title max 80 chars in language ' . $lang . '. '
-    . 'question one short clarifying question in ' . $lang . '.';
+    . rovas_ai_classify_clarify_rules($lang);
   if ($multi_section) {
     $system .= ' These codes come from two different plausible industries for this activity — '
       . 'compare them directly and choose the one that best matches what the person actually did, '
       . 'not just the setting it happened in.';
   }
 
-  $user = "Work description:\n" . $description . "\n\nNACE leaf codes (code | label):\n" . $catalog;
+  $user = rovas_ai_classify_work_block($description, $project_context)
+    . "\n\nNACE leaf codes (code | label):\n" . $catalog;
 
   // Larger catalog may need more completion budget for JSON only.
   $max_tokens = 300;
@@ -528,7 +666,18 @@ function rovas_ai_services_classify_nace($data) {
   $description = isset($data['description']) ? trim((string) $data['description']) : '';
   $lang = isset($data['lang']) ? $data['lang'] : '';
 
-  $result = rovas_ai_classify_work($description, $lang, array('uid' => $uid));
+  $options = array('uid' => $uid);
+  if (!empty($data['project_nid'])) {
+    $options['project_nid'] = (int) $data['project_nid'];
+  }
+  if (isset($data['project_title'])) {
+    $options['project_title'] = trim((string) $data['project_title']);
+  }
+  if (isset($data['project_description'])) {
+    $options['project_description'] = trim((string) $data['project_description']);
+  }
+
+  $result = rovas_ai_classify_work($description, $lang, $options);
 
   // Stable response shape for Civic.
   return array(
