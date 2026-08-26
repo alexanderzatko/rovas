@@ -69,12 +69,27 @@ function rovas_ai_classify_work_run($description, $lang = 'en', array $options =
 
   $pass1 = rovas_ai_classify_pass_section($description, $lang, $sections, $project_context);
   if ($pass1['status'] !== 'ok') {
+    watchdog('rovas_ai', 'NACE pass1 @status for "@d" (uid @u, project @p): @q', array(
+      '@status' => $pass1['status'],
+      '@d' => drupal_substr($description, 0, 80),
+      '@u' => $uid,
+      '@p' => !empty($options['project_nid']) ? (int) $options['project_nid'] : 0,
+      '@q' => !empty($pass1['error']) ? $pass1['error'] : (!empty($pass1['clarifying_question']) ? $pass1['clarifying_question'] : ''),
+    ), WATCHDOG_NOTICE);
     return array_merge($empty, $pass1);
   }
 
   $candidates = !empty($pass1['candidates']) && is_array($pass1['candidates'])
     ? $pass1['candidates']
     : array();
+
+  watchdog('rovas_ai', 'NACE pass1 candidates for "@d" (uid @u, project @p): @c', array(
+    '@d' => drupal_substr($description, 0, 80),
+    '@u' => $uid,
+    '@p' => !empty($options['project_nid']) ? (int) $options['project_nid'] : 0,
+    '@c' => rovas_ai_classify_format_candidates($candidates),
+  ), WATCHDOG_NOTICE);
+
   if (empty($candidates)) {
     return array_merge($empty, array(
       'status' => 'need_more_info',
@@ -184,6 +199,16 @@ function rovas_ai_classify_work_run($description, $lang = 'en', array $options =
     $title = drupal_substr($title, 0, 117) . '…';
   }
 
+  watchdog('rovas_ai', 'NACE pass2 result for "@d" (uid @u, project @p): @code @label (confidence @conf, sections tried: @s)', array(
+    '@d' => drupal_substr($description, 0, 80),
+    '@u' => $uid,
+    '@p' => !empty($options['project_nid']) ? (int) $options['project_nid'] : 0,
+    '@code' => $leaf['code'],
+    '@label' => drupal_substr($leaf['label'], 0, 60),
+    '@conf' => $pass2['confidence'],
+    '@s' => implode(',', array_map(function ($s) { return $s['code']; }, $resolved_sections)),
+  ), WATCHDOG_NOTICE);
+
   return array(
     'status' => 'ok',
     'nace_tid' => (string) $leaf['tid'],
@@ -194,6 +219,26 @@ function rovas_ai_classify_work_run($description, $lang = 'en', array $options =
     'confidence' => $pass2['confidence'],
     'error' => '',
   );
+}
+
+/**
+ * Format section candidates as "F:0.72, N:0.65" for watchdog messages.
+ *
+ * @param array $candidates
+ *   List of {section, confidence}.
+ *
+ * @return string
+ */
+function rovas_ai_classify_format_candidates(array $candidates) {
+  $parts = array();
+  foreach ($candidates as $cand) {
+    if (!isset($cand['section'])) {
+      continue;
+    }
+    $conf = isset($cand['confidence']) ? $cand['confidence'] : 0;
+    $parts[] = $cand['section'] . ':' . $conf;
+  }
+  return $parts ? implode(', ', $parts) : '(none)';
 }
 
 /**
@@ -399,7 +444,7 @@ function rovas_ai_classify_clarify_rules($lang) {
  *   status ok → candidates[] of {section, confidence}, plus legacy section/confidence.
  */
 function rovas_ai_classify_pass_section($description, $lang, array $sections, array $project_context = array()) {
-  $catalog = rovas_ai_nace_prompt_lines($sections);
+  $catalog = rovas_ai_nace_prompt_lines($sections, TRUE);
   $system = 'You classify volunteer/civic work into NACE Rev.2 section letter(s). '
     . 'Reply with JSON only. Preferred shape: '
     . '{"sections":[{"section":"R","confidence":0.85},{"section":"P","confidence":0.8}]} '

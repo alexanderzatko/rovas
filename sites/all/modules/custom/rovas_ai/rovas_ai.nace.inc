@@ -435,6 +435,13 @@ function rovas_ai_nace_prompt_lines(array $items, $with_hints = FALSE) {
  */
 function rovas_ai_nace_disambiguation_hints() {
   return array(
+    // Sections (pass 1) — steer the section choice itself before leaves
+    // under the "wrong" section are filtered out and never reach pass 2.
+    'e' => 'water supply, sewerage, waste collection/treatment, and remediation of contaminated sites — NOT routine snow/street/outdoor cleaning (see N)',
+    'n' => 'business support services incl. cleaning (buildings, streets, snow/ice removal), landscaping, security, rental, travel agencies',
+    'f' => 'construction of buildings, roads, and other civil engineering — building/paving/structural work, not routine cleaning or clearing',
+    'o' => 'public administration and government regulation/policy-making — NOT hands-on volunteer labor, even on public/municipal property',
+    // Leaves (pass 2).
     '81.29' => 'routine outdoor/street cleaning, snow and ice removal, litter clearing — use this for everyday snow shoveling or debris clearing',
     '39.00' => 'remediation of contaminated soil/water and hazardous waste treatment ONLY — NOT routine snow or street cleaning',
     '84.11' => 'general public administration (government offices) — NOT volunteer labor on public property',
