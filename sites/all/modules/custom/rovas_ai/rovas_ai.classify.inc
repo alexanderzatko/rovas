@@ -563,7 +563,7 @@ function _rovas_ai_sort_section_candidates($a, $b) {
  * @return array
  */
 function rovas_ai_classify_pass_leaf($description, $lang, array $leaves, $multi_section = FALSE, array $project_context = array()) {
-  $catalog = rovas_ai_nace_prompt_lines($leaves);
+  $catalog = rovas_ai_nace_prompt_lines($leaves, TRUE);
   $system = 'You pick the single best-fitting NACE leaf code for the work and suggest a '
     . 'short work-report title. Reply with JSON only. Either '
     . '{"code":"43.21","title":"...","confidence":0.0} '

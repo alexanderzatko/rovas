@@ -396,17 +396,53 @@ function rovas_ai_nace_merge_leaf_lists(array $lists) {
  *
  * @param array $items
  *   List of {code, label}.
+ * @param bool $with_hints
+ *   TRUE to append short disambiguation notes for known-confusable leaf
+ *   codes (see rovas_ai_nace_disambiguation_hints()). Section-level prompts
+ *   (pass 1) should pass FALSE; leaf prompts (pass 2) should pass TRUE.
  *
  * @return string
  */
-function rovas_ai_nace_prompt_lines(array $items) {
+function rovas_ai_nace_prompt_lines(array $items, $with_hints = FALSE) {
+  $hints = $with_hints ? rovas_ai_nace_disambiguation_hints() : array();
   $lines = array();
   foreach ($items as $item) {
     if (empty($item['code'])) {
       continue;
     }
     $label = isset($item['label']) ? $item['label'] : '';
-    $lines[] = $item['code'] . ' | ' . $label;
+    $line = $item['code'] . ' | ' . $label;
+    $key = rovas_ai_nace_normalize_code($item['code']);
+    if ($key !== '' && isset($hints[$key])) {
+      $line .= ' (' . $hints[$key] . ')';
+    }
+    $lines[] = $line;
   }
   return implode("\n", $lines);
+}
+
+/**
+ * Short disambiguation notes for NACE leaf codes the model tends to confuse.
+ *
+ * Keyed by normalized code (see rovas_ai_nace_normalize_code()). NACE labels
+ * alone are often too terse for an LLM to tell adjacent/generic-sounding
+ * codes apart (e.g. routine snow/street cleaning vs hazardous-site
+ * remediation, or volunteer labor on public property vs public-administration
+ * regulatory work). Extend this list as new confusions are observed.
+ *
+ * @return array
+ *   normalized code => short English hint (appended after the label).
+ */
+function rovas_ai_nace_disambiguation_hints() {
+  return array(
+    '81.29' => 'routine outdoor/street cleaning, snow and ice removal, litter clearing — use this for everyday snow shoveling or debris clearing',
+    '39.00' => 'remediation of contaminated soil/water and hazardous waste treatment ONLY — NOT routine snow or street cleaning',
+    '84.11' => 'general public administration (government offices) — NOT volunteer labor on public property',
+    '84.12' => 'government regulation/oversight of health, education, culture services — NOT hands-on volunteer work, even on municipal property',
+    '84.13' => 'government regulation of business and economic policy — NOT hands-on labor',
+    '42.11' => 'construction, resurfacing, or major repair of roads — use for building/paving work, not routine snow clearing or pothole patching',
+    '43.99' => 'other specialised construction not covered elsewhere (e.g. small structural repairs) — check 81.29/42.11 first for cleaning or road work',
+    '81.30' => 'landscape care and maintenance of green spaces (mowing, planting, tree care)',
+    '81.22' => 'other building and industrial cleaning (interiors, windows, industrial equipment) — not outdoor snow/street work (see 81.29)',
+  );
 }
