@@ -97,7 +97,7 @@ function rovas_ai_admin_form($form, &$form_state) {
     '#type' => 'textfield',
     '#title' => t('Section tie margin (top-2)'),
     '#default_value' => variable_get('rovas_ai_section_tie_margin', ROVAS_AI_DEFAULT_SECTION_TIE),
-    '#description' => t('When pass 1 returns two section candidates whose confidences differ by at most this amount (0–1), run the leaf pass on both and keep the better leaf fit. Default @d. Set 0 to never dual-run.', array(
+    '#description' => t('When pass 1 returns two section candidates whose confidences differ by at most this amount (0–1), merge their leaf codes into one list and let a single leaf pass compare them directly (avoids comparing two isolated, uncalibrated confidence scores). Default @d. Set 0 to always use only the top section.', array(
       '@d' => ROVAS_AI_DEFAULT_SECTION_TIE,
     )),
     '#size' => 6,

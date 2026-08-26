@@ -96,105 +96,74 @@ function rovas_ai_classify_work_run($description, $lang = 'en', array $options =
     ));
   }
 
-  // Dual leaf pass when top-2 section confidences are close.
-  $to_try = array($viable[0]);
+  // When top-2 section confidences are close, merge their leaves into ONE
+  // catalog so pass 2 makes a single, directly comparative choice. Two
+  // separate pass-2 calls (one per section) would each confidently pick the
+  // "least bad" option from its own list — LLM confidence is not calibrated
+  // across unrelated prompts, so comparing two isolated scores is unreliable.
+  $sections_to_use = array($viable[0]);
   $tie = rovas_ai_section_tie_margin();
   if ($tie > 0 && count($viable) >= 2) {
     $gap = abs($viable[0]['confidence'] - $viable[1]['confidence']);
     if ($gap <= $tie) {
-      $to_try[] = $viable[1];
+      $sections_to_use[] = $viable[1];
     }
   }
 
-  $best_ok = NULL;
-  $best_fail = NULL;
-  foreach ($to_try as $cand) {
-    $attempt = rovas_ai_classify_try_section($description, $lang, $cand, $threshold);
-    if ($attempt['status'] === 'ok') {
-      if ($best_ok === NULL
-        || $attempt['confidence'] > $best_ok['confidence']
-        || ($attempt['confidence'] == $best_ok['confidence']
-          && $cand['confidence'] > $best_ok['section_confidence'])) {
-        $attempt['section_confidence'] = $cand['confidence'];
-        $best_ok = $attempt;
-      }
+  $leaf_lists = array();
+  $resolved_sections = array();
+  foreach ($sections_to_use as $cand) {
+    $section = rovas_ai_nace_section_by_code($cand['section'], $lang);
+    if (!$section) {
+      continue;
     }
-    elseif ($best_fail === NULL
-      || (isset($attempt['confidence']) && $attempt['confidence'] > $best_fail['confidence'])) {
-      $best_fail = $attempt;
-    }
+    $resolved_sections[] = $section;
+    $leaf_lists[] = rovas_ai_nace_leaves_under($section['tid'], $lang);
   }
 
-  if ($best_ok !== NULL) {
-    unset($best_ok['section_confidence']);
-    return $best_ok;
-  }
-  if ($best_fail !== NULL) {
-    return array_merge($empty, $best_fail);
-  }
-  return array_merge($empty, array(
-    'status' => 'need_more_info',
-    'clarifying_question' => rovas_ai_clarify_default($lang, 'leaf'),
-    'confidence' => isset($viable[0]['confidence']) ? $viable[0]['confidence'] : 0,
-  ));
-}
-
-/**
- * Run leaf classification under one section candidate.
- *
- * @param string $description
- * @param string $lang
- * @param array $cand
- *   Keys: section, confidence.
- * @param float $threshold
- *
- * @return array
- *   Same shape as classify_work result (status ok|need_more_info|unavailable|…).
- */
-function rovas_ai_classify_try_section($description, $lang, array $cand, $threshold) {
-  $section = rovas_ai_nace_section_by_code($cand['section'], $lang);
-  if (!$section) {
-    return array(
+  if (empty($resolved_sections)) {
+    return array_merge($empty, array(
       'status' => 'need_more_info',
       'clarifying_question' => rovas_ai_clarify_default($lang, 'section'),
-      'confidence' => isset($cand['confidence']) ? (float) $cand['confidence'] : 0,
+      'confidence' => $viable[0]['confidence'],
       'error' => 'unknown_section',
-    );
+    ));
   }
 
-  $leaves = rovas_ai_nace_leaves_under($section['tid'], $lang);
+  $leaves = rovas_ai_nace_merge_leaf_lists($leaf_lists);
   if (empty($leaves)) {
-    return array(
+    return array_merge($empty, array(
       'status' => 'need_more_info',
       'clarifying_question' => rovas_ai_clarify_default($lang, 'leaf'),
-      'confidence' => isset($cand['confidence']) ? (float) $cand['confidence'] : 0,
+      'confidence' => $viable[0]['confidence'],
       'error' => 'no_leaves',
-    );
+    ));
   }
 
-  $pass2 = rovas_ai_classify_pass_leaf($description, $lang, $leaves);
+  $multi_section = count($resolved_sections) > 1;
+  $pass2 = rovas_ai_classify_pass_leaf($description, $lang, $leaves, $multi_section);
   if ($pass2['status'] !== 'ok') {
-    return $pass2;
+    return array_merge($empty, $pass2);
   }
 
   if ($pass2['confidence'] < $threshold) {
-    return array(
+    return array_merge($empty, array(
       'status' => 'need_more_info',
       'clarifying_question' => !empty($pass2['clarifying_question'])
         ? $pass2['clarifying_question']
         : rovas_ai_clarify_default($lang, 'leaf'),
       'confidence' => $pass2['confidence'],
-    );
+    ));
   }
 
-  $leaf = rovas_ai_nace_leaf_by_code($pass2['code'], $lang, $section['tid']);
+  $leaf = rovas_ai_nace_find_in_list($leaves, $pass2['code']);
   if (!$leaf) {
-    return array(
+    return array_merge($empty, array(
       'status' => 'need_more_info',
       'clarifying_question' => rovas_ai_clarify_default($lang, 'leaf'),
       'confidence' => $pass2['confidence'],
       'error' => 'unknown_code',
-    );
+    ));
   }
 
   $title = trim((string) $pass2['title']);
@@ -375,21 +344,35 @@ function _rovas_ai_sort_section_candidates($a, $b) {
 }
 
 /**
- * Pass 2: pick leaf code + title under a section.
+ * Pass 2: pick leaf code + title from a leaf catalog.
  *
  * @param string $description
  * @param string $lang
  * @param array $leaves
+ *   Candidate leaves, possibly merged from more than one NACE section.
+ * @param bool $multi_section
+ *   TRUE when $leaves spans two candidate sections (boundary case), so the
+ *   prompt asks for a genuine side-by-side comparison rather than assuming
+ *   all candidates are already in the "right" industry.
  *
  * @return array
  */
-function rovas_ai_classify_pass_leaf($description, $lang, array $leaves) {
+function rovas_ai_classify_pass_leaf($description, $lang, array $leaves, $multi_section = FALSE) {
   $catalog = rovas_ai_nace_prompt_lines($leaves);
-  $system = 'You pick the best NACE leaf code for the work and suggest a short work-report title. '
-    . 'Reply with JSON only. Either {"code":"43.21","title":"...","confidence":0.0} '
+  $system = 'You pick the single best-fitting NACE leaf code for the work and suggest a '
+    . 'short work-report title. Reply with JSON only. Either '
+    . '{"code":"43.21","title":"...","confidence":0.0} '
     . 'or {"need_more_info":true,"question":"...","confidence":0.0}. '
-    . 'code must be from the list. title max 80 chars in language ' . $lang . '. '
+    . 'code must be from the list. confidence is 0-1 and must reflect true fit, not just '
+    . 'the best of a narrow list — if none of the codes describe the actual activity well, '
+    . 'use need_more_info instead of forcing a poor match. '
+    . 'title max 80 chars in language ' . $lang . '. '
     . 'question one short clarifying question in ' . $lang . '.';
+  if ($multi_section) {
+    $system .= ' These codes come from two different plausible industries for this activity — '
+      . 'compare them directly and choose the one that best matches what the person actually did, '
+      . 'not just the setting it happened in.';
+  }
 
   $user = "Work description:\n" . $description . "\n\nNACE leaf codes (code | label):\n" . $catalog;
 

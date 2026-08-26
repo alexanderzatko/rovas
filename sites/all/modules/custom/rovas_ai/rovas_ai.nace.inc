@@ -278,6 +278,55 @@ function rovas_ai_nace_leaf_by_code($code, $lang = 'en', $section_tid = NULL) {
 }
 
 /**
+ * Find a leaf by code within an already-fetched list (no taxonomy lookup).
+ *
+ * Used when leaves from multiple sections have been merged in memory, so
+ * resolution must not be scoped to a single section tid.
+ *
+ * @param array $leaves
+ *   List of {tid, code, label}.
+ * @param string $code
+ *
+ * @return array|null
+ */
+function rovas_ai_nace_find_in_list(array $leaves, $code) {
+  $needle = drupal_strtolower(trim((string) $code));
+  if ($needle === '') {
+    return NULL;
+  }
+  foreach ($leaves as $item) {
+    if (isset($item['code']) && drupal_strtolower($item['code']) === $needle) {
+      return $item;
+    }
+  }
+  return NULL;
+}
+
+/**
+ * Merge leaf lists from multiple sections, deduplicated by code.
+ *
+ * @param array $lists
+ *   Array of leaf-lists (each a list of {tid, code, label}).
+ *
+ * @return array
+ */
+function rovas_ai_nace_merge_leaf_lists(array $lists) {
+  $by_code = array();
+  foreach ($lists as $leaves) {
+    foreach ($leaves as $item) {
+      if (empty($item['code'])) {
+        continue;
+      }
+      $key = drupal_strtolower($item['code']);
+      if (!isset($by_code[$key])) {
+        $by_code[$key] = $item;
+      }
+    }
+  }
+  return array_values($by_code);
+}
+
+/**
  * Compact "code | label" lines for prompts.
  *
  * @param array $items
