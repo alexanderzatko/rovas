@@ -414,7 +414,9 @@ function rovas_ai_classify_activity_rules() {
     . 'landscaping, transport-support, or similar — never Public administration (section O / 84.x) '
     . 'unless the person actually did government regulation, permitting, or office administration. '
     . 'Words like obecní/obecnej, verejný, municipal, public project, chron, merit, reward must not '
-    . 'push the choice toward O/84.x.';
+    . 'push the choice toward O/84.x. '
+    . 'Using software tools (map editors, CMS, spreadsheets) to create or edit data is data-processing '
+    . '(e.g. 63.11), not computer programming (62.01), unless they wrote or changed the software itself.';
 }
 
 /**
