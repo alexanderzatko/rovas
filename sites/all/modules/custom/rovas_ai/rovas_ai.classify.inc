@@ -162,13 +162,17 @@ function rovas_ai_classify_work_run($description, $lang = 'en', array $options =
     ));
   }
 
-  $leaf = rovas_ai_nace_find_in_list($leaves, $pass2['code']);
+  $leaf = rovas_ai_nace_resolve_model_code($leaves, $pass2['code'], $lang);
   if (!$leaf) {
+    watchdog('rovas_ai', 'NACE unknown_code from model: @c (normalized @n)', array(
+      '@c' => isset($pass2['code']) ? $pass2['code'] : '',
+      '@n' => rovas_ai_nace_normalize_code(isset($pass2['code']) ? $pass2['code'] : ''),
+    ), WATCHDOG_WARNING);
     return array_merge($empty, array(
       'status' => 'need_more_info',
       'clarifying_question' => rovas_ai_clarify_default($lang, 'leaf'),
       'confidence' => $pass2['confidence'],
-      'error' => 'unknown_code',
+      'error' => 'unknown_code:' . rovas_ai_nace_normalize_code($pass2['code']),
     ));
   }
 
@@ -564,9 +568,10 @@ function rovas_ai_classify_pass_leaf($description, $lang, array $leaves, $multi_
     . 'short work-report title. Reply with JSON only. Either '
     . '{"code":"43.21","title":"...","confidence":0.0} '
     . 'or {"need_more_info":true,"question":"...","confidence":0.0}. '
-    . 'code must be from the list. confidence is 0-1 and must reflect true fit, not just '
-    . 'the best of a narrow list — if none of the codes describe the actual activity well, '
-    . 'use need_more_info instead of forcing a poor match. '
+    . 'code must be copied EXACTLY from the list below (same digits and dots; no commas, '
+    . 'no labels in the code field, no inventing codes). confidence is 0-1 and must reflect '
+    . 'true fit, not just the best of a narrow list — if none of the codes describe the '
+    . 'actual activity well, use need_more_info instead of forcing a poor match. '
     . 'title max 80 chars in language ' . $lang . '. '
     . rovas_ai_classify_activity_rules() . ' '
     . rovas_ai_classify_clarify_rules($lang);

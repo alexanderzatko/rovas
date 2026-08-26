@@ -236,11 +236,10 @@ function rovas_ai_nace_section_by_code($code, $lang = 'en') {
  *   {tid, code, label} or NULL.
  */
 function rovas_ai_nace_leaf_by_code($code, $lang = 'en', $section_tid = NULL) {
-  $code = trim((string) $code);
-  if ($code === '') {
+  $needle = rovas_ai_nace_normalize_code($code);
+  if ($needle === '') {
     return NULL;
   }
-  $needle = drupal_strtolower($code);
 
   if ($section_tid) {
     $candidates = rovas_ai_nace_leaves_under($section_tid, $lang);
@@ -266,7 +265,7 @@ function rovas_ai_nace_leaf_by_code($code, $lang = 'en', $section_tid = NULL) {
   }
 
   foreach ($candidates as $item) {
-    if (drupal_strtolower($item['code']) === $needle) {
+    if (rovas_ai_nace_normalize_code($item['code']) === $needle) {
       return array(
         'tid' => (int) $item['tid'],
         'code' => $item['code'],
@@ -275,6 +274,33 @@ function rovas_ai_nace_leaf_by_code($code, $lang = 'en', $section_tid = NULL) {
     }
   }
   return NULL;
+}
+
+/**
+ * Normalize a model-supplied NACE code for matching.
+ *
+ * Accepts variants like "42,11", "NACE 42.11", "42.11 – Foo".
+ *
+ * @param string $code
+ *
+ * @return string
+ *   Lowercase dotted code, or '' if none found.
+ */
+function rovas_ai_nace_normalize_code($code) {
+  $code = trim((string) $code);
+  if ($code === '') {
+    return '';
+  }
+  // Prefer an explicit NACE-like token (letter section or digit[.digit]…).
+  if (preg_match('/\b([A-Z])\b/u', $code, $m) && !preg_match('/\d/', $code)) {
+    return drupal_strtolower($m[1]);
+  }
+  if (preg_match('/\b(\d{1,2}(?:[.,]\d{1,2}){0,2})\b/u', $code, $m)) {
+    return drupal_strtolower(str_replace(',', '.', $m[1]));
+  }
+  $code = str_replace(',', '.', $code);
+  $code = preg_replace('/\s+/u', '', $code);
+  return drupal_strtolower($code);
 }
 
 /**
@@ -290,15 +316,54 @@ function rovas_ai_nace_leaf_by_code($code, $lang = 'en', $section_tid = NULL) {
  * @return array|null
  */
 function rovas_ai_nace_find_in_list(array $leaves, $code) {
-  $needle = drupal_strtolower(trim((string) $code));
+  $needle = rovas_ai_nace_normalize_code($code);
   if ($needle === '') {
     return NULL;
   }
   foreach ($leaves as $item) {
-    if (isset($item['code']) && drupal_strtolower($item['code']) === $needle) {
+    if (!isset($item['code'])) {
+      continue;
+    }
+    if (rovas_ai_nace_normalize_code($item['code']) === $needle) {
       return $item;
     }
   }
+  return NULL;
+}
+
+/**
+ * Resolve a model code against the pass-2 leaf list, then the full taxonomy.
+ *
+ * Pass-1 section filtering is a prompt-size optimization; if the model returns
+ * a real leaf outside that catalog, accept it rather than failing as unknown_code.
+ *
+ * @param array $leaves
+ * @param string $code
+ * @param string $lang
+ *
+ * @return array|null
+ *   {tid, code, label} or NULL.
+ */
+function rovas_ai_nace_resolve_model_code(array $leaves, $code, $lang = 'en') {
+  $normalized = rovas_ai_nace_normalize_code($code);
+  if ($normalized === '') {
+    return NULL;
+  }
+
+  $leaf = rovas_ai_nace_find_in_list($leaves, $normalized);
+  if ($leaf) {
+    return $leaf;
+  }
+
+  // Valid leaf elsewhere in the tree (wrong section in pass 1, or model memory).
+  $leaf = rovas_ai_nace_leaf_by_code($normalized, $lang);
+  if ($leaf) {
+    watchdog('rovas_ai', 'NACE code @c accepted from full taxonomy (not in pass-2 catalog).', array(
+      '@c' => $leaf['code'],
+    ), WATCHDOG_NOTICE);
+    return $leaf;
+  }
+
   return NULL;
 }
 
