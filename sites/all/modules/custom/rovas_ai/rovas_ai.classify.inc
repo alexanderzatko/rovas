@@ -50,7 +50,7 @@ function rovas_ai_classify_work_run($description, $lang = 'en', array $options =
     return $empty;
   }
 
-  // One budget slot per classify attempt (covers both LLM passes).
+  // One budget slot per classify attempt (may be 2–3 LLM calls when top-2 tie).
   rovas_ai_budget_consume($uid);
 
   $threshold = rovas_ai_confidence_threshold();
@@ -66,66 +66,141 @@ function rovas_ai_classify_work_run($description, $lang = 'en', array $options =
     return array_merge($empty, $pass1);
   }
 
-  if ($pass1['confidence'] < $threshold) {
+  $candidates = !empty($pass1['candidates']) && is_array($pass1['candidates'])
+    ? $pass1['candidates']
+    : array();
+  if (empty($candidates)) {
+    return array_merge($empty, array(
+      'status' => 'need_more_info',
+      'clarifying_question' => rovas_ai_clarify_default($lang, 'section'),
+      'confidence' => 0,
+      'error' => 'no_section',
+    ));
+  }
+
+  // Drop candidates below the admin threshold (keep at least the top one for messaging).
+  $viable = array();
+  foreach ($candidates as $cand) {
+    if (!empty($cand['confidence']) && $cand['confidence'] >= $threshold) {
+      $viable[] = $cand;
+    }
+  }
+  if (empty($viable)) {
+    $top = $candidates[0];
     return array_merge($empty, array(
       'status' => 'need_more_info',
       'clarifying_question' => !empty($pass1['clarifying_question'])
         ? $pass1['clarifying_question']
         : rovas_ai_clarify_default($lang, 'section'),
-      'confidence' => $pass1['confidence'],
+      'confidence' => isset($top['confidence']) ? $top['confidence'] : 0,
     ));
   }
 
-  $section = rovas_ai_nace_section_by_code($pass1['section'], $lang);
+  // Dual leaf pass when top-2 section confidences are close.
+  $to_try = array($viable[0]);
+  $tie = rovas_ai_section_tie_margin();
+  if ($tie > 0 && count($viable) >= 2) {
+    $gap = abs($viable[0]['confidence'] - $viable[1]['confidence']);
+    if ($gap <= $tie) {
+      $to_try[] = $viable[1];
+    }
+  }
+
+  $best_ok = NULL;
+  $best_fail = NULL;
+  foreach ($to_try as $cand) {
+    $attempt = rovas_ai_classify_try_section($description, $lang, $cand, $threshold);
+    if ($attempt['status'] === 'ok') {
+      if ($best_ok === NULL
+        || $attempt['confidence'] > $best_ok['confidence']
+        || ($attempt['confidence'] == $best_ok['confidence']
+          && $cand['confidence'] > $best_ok['section_confidence'])) {
+        $attempt['section_confidence'] = $cand['confidence'];
+        $best_ok = $attempt;
+      }
+    }
+    elseif ($best_fail === NULL
+      || (isset($attempt['confidence']) && $attempt['confidence'] > $best_fail['confidence'])) {
+      $best_fail = $attempt;
+    }
+  }
+
+  if ($best_ok !== NULL) {
+    unset($best_ok['section_confidence']);
+    return $best_ok;
+  }
+  if ($best_fail !== NULL) {
+    return array_merge($empty, $best_fail);
+  }
+  return array_merge($empty, array(
+    'status' => 'need_more_info',
+    'clarifying_question' => rovas_ai_clarify_default($lang, 'leaf'),
+    'confidence' => isset($viable[0]['confidence']) ? $viable[0]['confidence'] : 0,
+  ));
+}
+
+/**
+ * Run leaf classification under one section candidate.
+ *
+ * @param string $description
+ * @param string $lang
+ * @param array $cand
+ *   Keys: section, confidence.
+ * @param float $threshold
+ *
+ * @return array
+ *   Same shape as classify_work result (status ok|need_more_info|unavailable|…).
+ */
+function rovas_ai_classify_try_section($description, $lang, array $cand, $threshold) {
+  $section = rovas_ai_nace_section_by_code($cand['section'], $lang);
   if (!$section) {
-    return array_merge($empty, array(
+    return array(
       'status' => 'need_more_info',
       'clarifying_question' => rovas_ai_clarify_default($lang, 'section'),
-      'confidence' => $pass1['confidence'],
+      'confidence' => isset($cand['confidence']) ? (float) $cand['confidence'] : 0,
       'error' => 'unknown_section',
-    ));
+    );
   }
 
   $leaves = rovas_ai_nace_leaves_under($section['tid'], $lang);
   if (empty($leaves)) {
-    return array_merge($empty, array(
+    return array(
       'status' => 'need_more_info',
       'clarifying_question' => rovas_ai_clarify_default($lang, 'leaf'),
-      'confidence' => $pass1['confidence'],
+      'confidence' => isset($cand['confidence']) ? (float) $cand['confidence'] : 0,
       'error' => 'no_leaves',
-    ));
+    );
   }
 
   $pass2 = rovas_ai_classify_pass_leaf($description, $lang, $leaves);
   if ($pass2['status'] !== 'ok') {
-    return array_merge($empty, $pass2);
+    return $pass2;
   }
 
   if ($pass2['confidence'] < $threshold) {
-    return array_merge($empty, array(
+    return array(
       'status' => 'need_more_info',
       'clarifying_question' => !empty($pass2['clarifying_question'])
         ? $pass2['clarifying_question']
         : rovas_ai_clarify_default($lang, 'leaf'),
       'confidence' => $pass2['confidence'],
-    ));
+    );
   }
 
   $leaf = rovas_ai_nace_leaf_by_code($pass2['code'], $lang, $section['tid']);
   if (!$leaf) {
-    return array_merge($empty, array(
+    return array(
       'status' => 'need_more_info',
       'clarifying_question' => rovas_ai_clarify_default($lang, 'leaf'),
       'confidence' => $pass2['confidence'],
       'error' => 'unknown_code',
-    ));
+    );
   }
 
   $title = trim((string) $pass2['title']);
   if ($title === '') {
     $title = drupal_substr($description, 0, 80);
   }
-  // Soft cap for WR titles.
   if (drupal_strlen($title) > 120) {
     $title = drupal_substr($title, 0, 117) . '…';
   }
@@ -143,20 +218,25 @@ function rovas_ai_classify_work_run($description, $lang = 'en', array $options =
 }
 
 /**
- * Pass 1: pick top-level NACE section.
+ * Pass 1: pick top-level NACE section(s).
  *
  * @param string $description
  * @param string $lang
  * @param array $sections
  *
  * @return array
+ *   status ok → candidates[] of {section, confidence}, plus legacy section/confidence.
  */
 function rovas_ai_classify_pass_section($description, $lang, array $sections) {
   $catalog = rovas_ai_nace_prompt_lines($sections);
-  $system = 'You classify volunteer/civic work into a NACE Rev.2 section letter. '
-    . 'Reply with JSON only. Either {"section":"F","confidence":0.0} '
+  $system = 'You classify volunteer/civic work into NACE Rev.2 section letter(s). '
+    . 'Reply with JSON only. Preferred shape: '
+    . '{"sections":[{"section":"R","confidence":0.85},{"section":"P","confidence":0.8}]} '
     . 'or {"need_more_info":true,"question":"...","confidence":0.0}. '
-    . 'section must be one code from the list. confidence is 0-1. '
+    . 'Return 1 or 2 candidates ranked best-first. Include a second section when another '
+    . 'letter is plausible (especially when teaching/coaching/instructing could be Education P '
+    . 'while the activity setting looks like recreation R, or similar cross-boundary cases). '
+    . 'Each section must be a code from the list. confidence is 0-1. '
     . 'question must be one short clarifying question in language code ' . $lang . '.';
 
   $user = "Work description:\n" . $description . "\n\nNACE sections (code | label):\n" . $catalog;
@@ -180,6 +260,7 @@ function rovas_ai_classify_pass_section($description, $lang, array $sections) {
       'error' => !empty($chat['error']) ? $chat['error'] : 'llm_error',
       'confidence' => 0,
       'clarifying_question' => '',
+      'candidates' => array(),
     );
   }
 
@@ -190,6 +271,7 @@ function rovas_ai_classify_pass_section($description, $lang, array $sections) {
       'error' => 'bad_json',
       'confidence' => 0,
       'clarifying_question' => '',
+      'candidates' => array(),
     );
   }
 
@@ -201,26 +283,95 @@ function rovas_ai_classify_pass_section($description, $lang, array $sections) {
       'clarifying_question' => $q !== '' ? $q : rovas_ai_clarify_default($lang, 'section'),
       'confidence' => $confidence,
       'error' => '',
+      'candidates' => array(),
     );
   }
 
-  $section = isset($parsed['section']) ? trim((string) $parsed['section']) : '';
-  if ($section === '') {
+  $candidates = rovas_ai_classify_parse_section_candidates($parsed);
+  if (empty($candidates)) {
     return array(
       'status' => 'need_more_info',
       'clarifying_question' => rovas_ai_clarify_default($lang, 'section'),
       'confidence' => $confidence,
       'error' => '',
+      'candidates' => array(),
     );
   }
 
   return array(
     'status' => 'ok',
-    'section' => $section,
-    'confidence' => $confidence,
+    'section' => $candidates[0]['section'],
+    'confidence' => $candidates[0]['confidence'],
+    'candidates' => $candidates,
     'clarifying_question' => isset($parsed['question']) ? trim((string) $parsed['question']) : '',
     'error' => '',
   );
+}
+
+/**
+ * Normalize pass-1 JSON into ranked section candidates.
+ *
+ * Accepts {"sections":[...]} or legacy {"section":"F","confidence":0.9}.
+ *
+ * @param array $parsed
+ *
+ * @return array
+ *   List of {section, confidence}, max 2, best first.
+ */
+function rovas_ai_classify_parse_section_candidates(array $parsed) {
+  $out = array();
+  if (!empty($parsed['sections']) && is_array($parsed['sections'])) {
+    foreach ($parsed['sections'] as $row) {
+      if (!is_array($row)) {
+        continue;
+      }
+      $code = isset($row['section']) ? trim((string) $row['section']) : '';
+      if ($code === '') {
+        continue;
+      }
+      $out[] = array(
+        'section' => $code,
+        'confidence' => isset($row['confidence']) ? (float) $row['confidence'] : 0.0,
+      );
+      if (count($out) >= 2) {
+        break;
+      }
+    }
+  }
+  if (empty($out) && !empty($parsed['section'])) {
+    $out[] = array(
+      'section' => trim((string) $parsed['section']),
+      'confidence' => isset($parsed['confidence']) ? (float) $parsed['confidence'] : 0.0,
+    );
+    if (!empty($parsed['section2'])) {
+      $out[] = array(
+        'section' => trim((string) $parsed['section2']),
+        'confidence' => isset($parsed['confidence2']) ? (float) $parsed['confidence2'] : 0.0,
+      );
+    }
+  }
+
+  // Dedupe by section letter (keep highest confidence).
+  $by_code = array();
+  foreach ($out as $cand) {
+    $key = drupal_strtoupper($cand['section']);
+    if (!isset($by_code[$key]) || $cand['confidence'] > $by_code[$key]['confidence']) {
+      $by_code[$key] = $cand;
+    }
+  }
+  $out = array_values($by_code);
+  usort($out, '_rovas_ai_sort_section_candidates');
+  return array_slice($out, 0, 2);
+}
+
+/**
+ * usort callback: higher confidence first.
+ */
+function _rovas_ai_sort_section_candidates($a, $b) {
+  if ($a['confidence'] == $b['confidence']) {
+    return 0;
+  }
+  return ($a['confidence'] > $b['confidence']) ? -1 : 1;
 }
 
 /**

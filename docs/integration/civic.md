@@ -1952,7 +1952,7 @@ on `rovas_ai_update_7001` / `hook_enable`).
 ### Cost / behaviour notes (Rovas-side)
 
 - Provider: pluggable; v1 ships **OpenAI-compatible** (`drupal_http_request`, JSON mode).
-- Two-pass classification: top-level NACE section → leaves under that section only (never the full tree in one prompt).
+- Two-pass classification: top-level NACE section(s) → leaves under that section only (never the full tree in one prompt). When pass 1 returns two section candidates with similar confidence (tie margin, default 0.20), leaf pass runs on both and the higher leaf confidence wins (e.g. Education P vs Recreation R for teaching sports).
 - Per-user daily budget (default 50 classify calls); over budget → `unavailable`.
 - Unknown model codes are never trusted as tids — must resolve against vocabulary `tags`.
 

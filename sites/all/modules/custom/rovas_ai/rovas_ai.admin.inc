@@ -93,6 +93,17 @@ function rovas_ai_admin_form($form, &$form_state) {
     '#required' => TRUE,
   );
 
+  $form['rovas_ai_section_tie_margin'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Section tie margin (top-2)'),
+    '#default_value' => variable_get('rovas_ai_section_tie_margin', ROVAS_AI_DEFAULT_SECTION_TIE),
+    '#description' => t('When pass 1 returns two section candidates whose confidences differ by at most this amount (0–1), run the leaf pass on both and keep the better leaf fit. Default @d. Set 0 to never dual-run.', array(
+      '@d' => ROVAS_AI_DEFAULT_SECTION_TIE,
+    )),
+    '#size' => 6,
+    '#required' => TRUE,
+  );
+
   $form['rovas_ai_daily_budget'] = array(
     '#type' => 'textfield',
     '#title' => t('Daily call budget per user'),
@@ -174,6 +185,16 @@ function rovas_ai_admin_form_submit($form, &$form_state) {
     $threshold = 1;
   }
   variable_set('rovas_ai_confidence_threshold', $threshold);
+
+  $tie = (float) $v['rovas_ai_section_tie_margin'];
+  if ($tie < 0) {
+    $tie = 0;
+  }
+  if ($tie > 1) {
+    $tie = 1;
+  }
+  variable_set('rovas_ai_section_tie_margin', $tie);
+
   variable_set('rovas_ai_daily_budget', max(0, (int) $v['rovas_ai_daily_budget']));
 
   drupal_set_message(t('AI configuration saved.'));

@@ -11,6 +11,8 @@
 define('ROVAS_AI_DEFAULT_BASE_URL', 'https://api.openai.com/v1');
 define('ROVAS_AI_DEFAULT_MODEL', 'gpt-4o-mini');
 define('ROVAS_AI_DEFAULT_CONFIDENCE', 0.65);
+/** Max gap between top-2 section confidences to run leaf pass on both. */
+define('ROVAS_AI_DEFAULT_SECTION_TIE', 0.20);
 define('ROVAS_AI_DEFAULT_DAILY_BUDGET', 50);
 define('ROVAS_AI_MAX_TOKENS', 400);
 define('ROVAS_AI_HTTP_TIMEOUT', 45);
@@ -207,6 +209,22 @@ function rovas_ai_model_for_task($task_id) {
  */
 function rovas_ai_confidence_threshold() {
   $t = (float) variable_get('rovas_ai_confidence_threshold', ROVAS_AI_DEFAULT_CONFIDENCE);
+  if ($t < 0) {
+    return 0.0;
+  }
+  if ($t > 1) {
+    return 1.0;
+  }
+  return $t;
+}
+
+/**
+ * Max |c1−c2| between top section candidates to dual-run leaf classification.
+ *
+ * @return float
+ */
+function rovas_ai_section_tie_margin() {
+  $t = (float) variable_get('rovas_ai_section_tie_margin', ROVAS_AI_DEFAULT_SECTION_TIE);
   if ($t < 0) {
     return 0.0;
   }
