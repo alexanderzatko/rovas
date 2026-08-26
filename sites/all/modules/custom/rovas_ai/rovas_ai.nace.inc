@@ -456,5 +456,6 @@ function rovas_ai_nace_disambiguation_hints() {
     '63.11' => 'creating, editing, processing, or maintaining digital data (incl. maps/GIS databases, OpenStreetMap/OpenHistoricalMap, hosted datasets) when the person is not developing the software itself',
     '58.29' => 'publishing/releasing software products — NOT using existing editors to contribute data to a map project',
     '71.12' => 'professional engineering/cartographic/GIS consultancy as a technical service — prefer 63.11 when the work is primarily editing/maintaining geospatial data in a database',
+    '41.20' => 'physical construction of residential/non-residential buildings — NOT mapping building footprints or editing building objects in OSM/OHM (see 63.11)',
   );
 }

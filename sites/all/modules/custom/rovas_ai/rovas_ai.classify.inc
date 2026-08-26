@@ -44,6 +44,15 @@ function rovas_ai_classify_work_run($description, $lang = 'en', array $options =
     return $empty;
   }
 
+  // Bare labels ("Buildings", "Budovy") are not an activity — ask before spending
+  // LLM budget or inventing construction/IT from a noun + project domain.
+  if (rovas_ai_work_description_too_thin($description)) {
+    $empty['status'] = 'need_more_info';
+    $empty['clarifying_question'] = rovas_ai_clarify_default($lang, 'thin');
+    $empty['error'] = 'description_too_thin';
+    return $empty;
+  }
+
   if (!rovas_ai_is_configured()) {
     $empty['status'] = 'unavailable';
     $empty['error'] = 'not_configured';
@@ -327,9 +336,39 @@ function rovas_ai_plain_text($html, $max = 0) {
 }
 
 /**
+ * Whether the work text is too thin to classify without guessing.
+ *
+ * One token ("Buildings", "Budovy") is not an activity description — project
+ * context must not invent labour (e.g. construction of buildings) from a map
+ * feature name or noun label.
+ *
+ * @param string $description
+ *
+ * @return bool
+ */
+function rovas_ai_work_description_too_thin($description) {
+  $description = trim(preg_replace('/\s+/u', ' ', (string) $description));
+  if ($description === '') {
+    return TRUE;
+  }
+  $words = preg_split('/\s+/u', $description, -1, PREG_SPLIT_NO_EMPTY);
+  $n = is_array($words) ? count($words) : 0;
+  if ($n <= 1) {
+    return TRUE;
+  }
+  // Extremely short two-token blobs (e.g. "a road") still need a verb/action.
+  if ($n === 2 && drupal_strlen($description) < 12) {
+    return TRUE;
+  }
+  return FALSE;
+}
+
+/**
  * Drop Rovas/platform/reward sentences from project text so they do not bias NACE.
  *
- * Keeps sentences about the physical place/activity (road, trail, building, …).
+ * Keeps sentences about the physical place/activity (road, trail, building, …)
+ * and mapping/GIS domain signals even when the same sentence mentions Rovas
+ * rewards or plugins (OSM project pages are mostly "Rovas + OpenStreetMap").
  *
  * @param string $text
  *
@@ -348,13 +387,15 @@ function rovas_ai_project_context_sanitize($text) {
   // Prefix match (no trailing \b): odmen* → Odmeniť, chron* → chronov, rovas* → Rovasi.
   // Do not treat obecní/verejný alone as noise — those can describe the work place.
   $noise = '/(?:^|[^\p{L}\p{N}_])(?:rovas|chron|merit|eur(?:o|á|y)?|odmen|odmeň|zaplat|registrovan|poskytovate[ľl]|shareholder|public\s+project|join\s+as|reward|payment|pridať\s+sa)/iu';
+  // Keep mapping / editor / GIS domain even if the sentence also hits $noise.
+  $domain_keep = '/(?:open\s*street\s*map|openstreetmap|\bosm\b|open\s*historical\s*map|openhistoricalmap|\bohm\b|josm|\bid\s+editor\b|rovas\s+connector|mapper|mapping|changeset|osmc?ha|geospatial|\bgis\b)/iu';
   $kept = array();
   foreach ($parts as $part) {
     $part = trim($part);
     if ($part === '') {
       continue;
     }
-    if (preg_match($noise, $part)) {
+    if (preg_match($noise, $part) && !preg_match($domain_keep, $part)) {
       continue;
     }
     $kept[] = $part;
@@ -410,9 +451,13 @@ function rovas_ai_classify_activity_rules() {
   return 'Classify by the economic activity the person physically or professionally performed '
     . '(e.g. clearing snow, repairing a road, teaching, coding), NOT by who owns the asset, '
     . 'whether the project is public/municipal, how workers are rewarded, or platform signup text. '
-    . 'Volunteer work on a municipal road, trail, park, or building is construction, cleaning, '
-    . 'landscaping, transport-support, or similar — never Public administration (section O / 84.x) '
-    . 'unless the person actually did government regulation, permitting, or office administration. '
+    . 'Volunteer physical labour on a municipal road, trail, park, or structure is construction, '
+    . 'cleaning, landscaping, transport-support, or similar — never Public administration '
+    . '(section O / 84.x) unless the person actually did government regulation, permitting, or '
+    . 'office administration. '
+    . 'A bare object/feature name (e.g. "Buildings", "Roads") is not enough: if the work text does '
+    . 'not state what was done, use need_more_info — do not invent construction from the word '
+    . 'building, and do not invent map-editing from an OpenStreetMap project alone. '
     . 'Words like obecní/obecnej, verejný, municipal, public project, chron, merit, reward must not '
     . 'push the choice toward O/84.x. '
     . 'Using software tools (map editors, CMS, spreadsheets) to create or edit data is data-processing '
@@ -430,6 +475,8 @@ function rovas_ai_classify_clarify_rules($lang) {
   return 'Do not ask a clarifying question whose answer is already stated in the '
     . 'work description or project setting. Prefer classifying with the given text '
     . 'over need_more_info when the activity is reasonably clear. '
+    . 'If the work text is only a noun/object/feature label without a clear action '
+    . '(what was done), you MUST return need_more_info — project domain alone is not enough. '
     . 'question (when used) must be one short clarifying question in language code '
     . $lang . '.';
 }
@@ -744,6 +791,11 @@ function rovas_ai_clarify_default($lang, $kind) {
       return $sk
         ? 'Popíšte prosím, akú prácu ste vykonali.'
         : 'Please describe the work you performed.';
+
+    case 'thin':
+      return $sk
+        ? 'Jedno slovo nestačí — napíšte, čo ste konkrétne robili (napr. mapovanie budov v OpenStreetMap, oprava strechy…).'
+        : 'One word is not enough — say what you actually did (e.g. mapped buildings in OpenStreetMap, repaired a roof…).';
 
     case 'section':
       return $sk
