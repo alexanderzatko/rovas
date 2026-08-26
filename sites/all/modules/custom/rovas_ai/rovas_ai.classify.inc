@@ -278,7 +278,50 @@ function rovas_ai_plain_text($html, $max = 0) {
 }
 
 /**
+ * Drop Rovas/platform/reward sentences from project text so they do not bias NACE.
+ *
+ * Keeps sentences about the physical place/activity (road, trail, building, …).
+ *
+ * @param string $text
+ *
+ * @return string
+ */
+function rovas_ai_project_context_sanitize($text) {
+  $text = trim((string) $text);
+  if ($text === '') {
+    return '';
+  }
+  // Split on sentence boundaries (., !, ?, and common Slovak/Czech punctuation).
+  $parts = preg_split('/(?<=[.!?…])\s+/u', $text);
+  if (!is_array($parts) || count($parts) < 2) {
+    $parts = array($text);
+  }
+  // Prefix match (no trailing \b): odmen* → Odmeniť, chron* → chronov, rovas* → Rovasi.
+  // Do not treat obecní/verejný alone as noise — those can describe the work place.
+  $noise = '/(?:^|[^\p{L}\p{N}_])(?:rovas|chron|merit|eur(?:o|á|y)?|odmen|odmeň|zaplat|registrovan|poskytovate[ľl]|shareholder|public\s+project|join\s+as|reward|payment|pridať\s+sa)/iu';
+  $kept = array();
+  foreach ($parts as $part) {
+    $part = trim($part);
+    if ($part === '') {
+      continue;
+    }
+    if (preg_match($noise, $part)) {
+      continue;
+    }
+    $kept[] = $part;
+  }
+  $out = trim(implode(' ', $kept));
+  // If everything looked like meta, fall back to a short prefix of the original.
+  if ($out === '') {
+    $out = drupal_strlen($text) > 280 ? drupal_substr($text, 0, 280) : $text;
+  }
+  return rovas_ai_plain_text($out, 500);
+}
+
+/**
  * Build the shared user-message block (work + optional project context).
+ *
+ * Work description is last so the model attends to the activity performed.
  *
  * @param string $description
  * @param array $project_context
@@ -287,12 +330,15 @@ function rovas_ai_plain_text($html, $max = 0) {
  * @return string
  */
 function rovas_ai_classify_work_block($description, array $project_context = array()) {
-  $parts = array("Work description:\n" . $description);
+  $parts = array();
 
   $ptitle = isset($project_context['title']) ? trim((string) $project_context['title']) : '';
-  $pdesc = isset($project_context['description']) ? trim((string) $project_context['description']) : '';
+  $pdesc = isset($project_context['description'])
+    ? rovas_ai_project_context_sanitize($project_context['description'])
+    : '';
   if ($ptitle !== '' || $pdesc !== '') {
-    $proj = "Project context (background only — classify the work the person did, not the whole project):";
+    $proj = "Project setting (optional background — use only to understand place/domain; "
+      . "do NOT classify from project ownership, funding, rewards, or 'public/municipal' status):";
     if ($ptitle !== '') {
       $proj .= "\nTitle: " . $ptitle;
     }
@@ -302,7 +348,24 @@ function rovas_ai_classify_work_block($description, array $project_context = arr
     $parts[] = $proj;
   }
 
+  $parts[] = "Work performed (PRIMARY — classify this activity):\n" . $description;
   return implode("\n\n", $parts);
+}
+
+/**
+ * Core rules: classify the economic activity done, not governance/platform meta.
+ *
+ * @return string
+ */
+function rovas_ai_classify_activity_rules() {
+  return 'Classify by the economic activity the person physically or professionally performed '
+    . '(e.g. clearing snow, repairing a road, teaching, coding), NOT by who owns the asset, '
+    . 'whether the project is public/municipal, how workers are rewarded, or platform signup text. '
+    . 'Volunteer work on a municipal road, trail, park, or building is construction, cleaning, '
+    . 'landscaping, transport-support, or similar — never Public administration (section O / 84.x) '
+    . 'unless the person actually did government regulation, permitting, or office administration. '
+    . 'Words like obecní/obecnej, verejný, municipal, public project, chron, merit, reward must not '
+    . 'push the choice toward O/84.x.';
 }
 
 /**
@@ -314,8 +377,8 @@ function rovas_ai_classify_work_block($description, array $project_context = arr
  */
 function rovas_ai_classify_clarify_rules($lang) {
   return 'Do not ask a clarifying question whose answer is already stated in the '
-    . 'work description or project context. Prefer classifying with the given text '
-    . 'over need_more_info when purpose/activity is reasonably clear. '
+    . 'work description or project setting. Prefer classifying with the given text '
+    . 'over need_more_info when the activity is reasonably clear. '
     . 'question (when used) must be one short clarifying question in language code '
     . $lang . '.';
 }
@@ -341,6 +404,7 @@ function rovas_ai_classify_pass_section($description, $lang, array $sections, ar
     . 'letter is plausible (especially when teaching/coaching/instructing could be Education P '
     . 'while the activity setting looks like recreation R, or similar cross-boundary cases). '
     . 'Each section must be a code from the list. confidence is 0-1. '
+    . rovas_ai_classify_activity_rules() . ' '
     . rovas_ai_classify_clarify_rules($lang);
 
   $user = rovas_ai_classify_work_block($description, $project_context)
@@ -504,6 +568,7 @@ function rovas_ai_classify_pass_leaf($description, $lang, array $leaves, $multi_
     . 'the best of a narrow list — if none of the codes describe the actual activity well, '
     . 'use need_more_info instead of forcing a poor match. '
     . 'title max 80 chars in language ' . $lang . '. '
+    . rovas_ai_classify_activity_rules() . ' '
     . rovas_ai_classify_clarify_rules($lang);
   if ($multi_section) {
     $system .= ' These codes come from two different plausible industries for this activity — '
