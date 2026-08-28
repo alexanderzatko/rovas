@@ -65,6 +65,7 @@ not run deploys on their own.
 | Volunteer report (deferred form) | `GET /rovas/civic_my_projects`, `civic_projects_search`, `civic_nace_tree`; `POST /rovas/civic_create_project`, `civic_create_work_report` | Implemented in `rovas_civic` (`rovas_civic_update_7010`). Bearer only — do **not** call the partner API-KEY rules from Civic. |
 | CHR→ME on WR verification | `{civic_work_report_reward}` + verification hook | Implemented in `rovas_civic` (`rovas_civic_update_7011`). When `reward_kind=merits`, A6 converts the Chron grant after approval. |
 | AI NACE + title | `POST /rovas/civic_ai_nace` | Implemented in `rovas_ai` (`rovas_ai_update_7001`). Bearer; keep NACE-tree fallback when `unavailable` or module absent. |
+| Work-report map proof | `GET /rovas/civic_work_report_map_config`; `field_location` on create WR | Implemented in `rovas_civic` (`rovas_civic_update_7012`). GeoJSON Point/LineString/Polygon; proof = URL **or** photos **or** map. |
 
 ## OAuth endpoints (live on dev)
 
@@ -1683,9 +1684,10 @@ on reads (same rules as project detail).
 | `nace_tid` | Required taxonomy tid in vocabulary `tags` |
 | `web_url` | Optional proof URL |
 | `photos` | Optional array of `{ filename, mime, data }` (base64). Max 5, 4 MB decoded each |
+| `field_location` | Optional GeoJSON Geometry (`Point`, `LineString`, `Polygon`); lon/lat order; persisted to `field_location` + map work-evidence bit |
 | `reward_kind` | `merits` or `chrons` (default `chrons`). Persisted in `{civic_work_report_reward}`; when `merits`, converted to ME on verification (A6) |
 
-At least one of `web_url` or `photos[]` is required. Photos attach to
+At least one of `web_url`, `photos[]`, or `field_location` is required. Photos attach to
 `field_photos` after the WR node exists (partner create-WR required a URL;
 Civic must accept photos without a URL).
 
@@ -2033,8 +2035,123 @@ curl -sS "https://dev.rovas.app/rovas/civic_merit_history?limit=5" \
 
 ## Next work: geofield on Civic work reports
 
-**Not implemented.** Accept `field_location` point/line GeoJSON on Civic create
-WR for a future map widget / live GPS track. Out of the deferred-form pass.
+**Implemented in `rovas_civic`** (enable on rovdev: `drush74 updb -y`, or admin
+enable APIs). Civic screen 4 (Dobrovoľnícka práca) adds an expandable **map proof** section:
+users draw a **Point**, **LineString**, or **Polygon** on a basemap (same proof
+type as Rovas `field_location` / `field_work_evidence` map checkbox on the
+Drupal work-report form). Civic proxies map layer definitions from Rovas and
+submits GeoJSON on create.
+
+**Civic client:** implemented against this contract; uses a local OSM fallback
+when the map-config endpoint is not yet deployed.
+
+### Read: map widget config
+
+| Method | URL | Auth |
+|--------|-----|------|
+| `GET` | `/rovas/civic_work_report_map_config` | Bearer |
+
+Export the **same** raster layers, default view, and allowed geometry types as
+the OpenLayers preset used by the `work_report` `field_location` geofield widget
+(on rovdev this is typically the **`freemap`** map export — basemap tiles Civic
+should render). Do **not** ship raw Drupal OpenLayers PHP objects; return a small
+JSON DTO Civic can feed to any map SDK.
+
+**Response shape:**
+
+```json
+{
+  "center": { "latitude": 48.7164, "longitude": 19.6611 },
+  "zoom": 8,
+  "geometry_types": ["Point", "LineString", "Polygon"],
+  "raster_layers": [
+    {
+      "id": "freemap",
+      "name": "Freemap",
+      "url_template": "https://tile.freemap.sk/T/{z}/{x}/{y}.jpeg",
+      "attribution": "© Freemap Slovakia",
+      "max_zoom": 18
+    }
+  ],
+  "default_layer_id": "freemap"
+}
+```
+
+| Field | Rules |
+|-------|--------|
+| `center` | Default map centre (WGS-84 degrees) |
+| `zoom` | Initial zoom (WebMercator / XYZ tile zoom) |
+| `geometry_types` | Subset of `Point`, `LineString`, `Polygon` the widget allows |
+| `raster_layers[]` | At least one XYZ template with `{z}`, `{x}`, `{y}` placeholders |
+| `default_layer_id` | Must match one `raster_layers[].id` |
+
+### Write: `field_location` on create work report
+
+Extend `POST /rovas/civic_create_work_report`:
+
+```json
+{
+  "project_nid": "1998",
+  "date_started": 1750000000,
+  "hours": 4,
+  "description": "Marked trail maintenance along the ridge.",
+  "nace_tid": "860",
+  "field_location": {
+    "type": "LineString",
+    "coordinates": [
+      [19.6611, 48.7164],
+      [19.6700, 48.7200]
+    ]
+  }
+}
+```
+
+| Field | Rules |
+|-------|--------|
+| `field_location` | Optional GeoJSON **Geometry** object (`Point`, `LineString`, or `Polygon`). Coordinates **WGS-84**, order **`[longitude, latitude]`** per RFC 7946. Persist to `field_location` on the created `work_report` node (same as the Drupal map widget WKT). Reject self-intersecting polygons / invalid rings with **400** `invalid_input`. |
+
+**Proof rule (update):** at least one of `web_url`, `photos[]`, or
+`field_location` is required (same as Drupal: any one evidence type suffices).
+
+After `rules_create_work_report` succeeds (same as photos), set geofield on the
+WR node when `field_location` is present. Set `field_work_evidence` map bit so
+verification UI shows the map proof.
+
+### Checklist
+
+1. [x] `GET /rovas/civic_work_report_map_config` — Bearer; JSON per above; layers from `freemap` (or active WR widget preset)
+2. [x] `POST /rovas/civic_create_work_report` — accept optional `field_location` GeoJSON; update proof rule (URL **or** photos **or** map)
+3. [x] Persist geometry to `field_location`; set work-evidence map flag
+4. [x] `rovas_civic_ensure_services_resources()` + `rovas_civic_update_7012`
+5. [ ] Smoke test below after deploy
+
+### Smoke test (after deploy)
+
+```bash
+# TOKEN = Civic OAuth access token
+curl -sS "https://dev.rovas.app/rovas/civic_work_report_map_config" \
+  -H "Authorization: Bearer $TOKEN" -H "Accept: application/json"
+
+curl -sS -X POST "https://dev.rovas.app/rovas/civic_create_work_report" \
+  -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
+  -d '{
+    "project_nid": "PROJECT_NID",
+    "date_started": 1750000000,
+    "hours": 1,
+    "description": "Map proof smoke test",
+    "nace_tid": "860",
+    "field_location": {
+      "type": "Point",
+      "coordinates": [19.6611, 48.7164]
+    }
+  }'
+# Expect work_report_nid; WR node field_location populated
+```
+
+### Civic will consume
+
+- `GET /work-reports/map-config` → proxy above (Civic API fallback until live)
+- `POST /work-reports` with optional `field_location` geometry
 
 ## Related Civic docs
 

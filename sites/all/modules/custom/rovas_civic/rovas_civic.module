@@ -108,6 +108,7 @@ function rovas_civic_node_insert($node) {
  * - GET  /rovas/civic_merit_history (signed-in Merit ledger)
  * - GET  /rovas/civic_my_projects, civic_projects_search, civic_nace_tree
  * - POST /rovas/civic_create_project, civic_create_work_report
+ * - GET  /rovas/civic_work_report_map_config (map proof widget)
  *
  * Note: Services aliases must be slash-free. Do not use aliases like
  * civic/claims — Services treats the first segment as the resource name.
@@ -122,6 +123,11 @@ function rovas_civic_services_resources() {
     'type' => 'inc',
     'module' => 'rovas_civic',
     'name' => 'rovas_civic.volunteer',
+  );
+  $geofield_file = array(
+    'type' => 'inc',
+    'module' => 'rovas_civic',
+    'name' => 'rovas_civic.geofield',
   );
 
   return array(
@@ -567,7 +573,7 @@ function rovas_civic_services_resources() {
     'civic_create_work_report' => array(
       'operations' => array(
         'create' => array(
-          'help' => 'Create a work report for the Bearer user. Body: project_nid, date_started, hours, description, nace_tid, optional title/web_url/photos/reward_kind.',
+          'help' => 'Create a work report for the Bearer user. Body: project_nid, date_started, hours, description, nace_tid, optional title/web_url/photos/reward_kind/field_location.',
           'callback' => 'rovas_civic_services_create_work_report',
           'file' => $volunteer_file,
           'access callback' => $bearer_auth['access callback'],
@@ -577,11 +583,23 @@ function rovas_civic_services_resources() {
             array(
               'name' => 'data',
               'type' => 'struct',
-              'description' => 'Work report fields including optional photos[] (base64).',
+              'description' => 'Work report fields including optional photos[] (base64) and field_location GeoJSON.',
               'source' => 'data',
               'optional' => FALSE,
             ),
           ),
+        ),
+      ),
+    ),
+    'civic_work_report_map_config' => array(
+      'operations' => array(
+        'index' => array(
+          'help' => 'Map proof widget config (basemap tiles, centre, geometry types) for Civic volunteer form. Bearer required.',
+          'callback' => 'rovas_civic_services_work_report_map_config_index',
+          'file' => $geofield_file,
+          'access callback' => $bearer_auth['access callback'],
+          'access arguments' => $bearer_auth['access arguments'],
+          'access arguments append' => $bearer_auth['access arguments append'],
         ),
       ),
     ),
@@ -2649,6 +2667,12 @@ function rovas_civic_ensure_services_resources() {
       $endpoint->resources[$res_name] = $civic_create_resource;
       $changed = TRUE;
     }
+  }
+
+  if (empty($endpoint->resources['civic_work_report_map_config'])
+    || $endpoint->resources['civic_work_report_map_config'] != $civic_index_resource) {
+    $endpoint->resources['civic_work_report_map_config'] = $civic_index_resource;
+    $changed = TRUE;
   }
 
   if ($changed) {

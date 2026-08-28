@@ -471,3 +471,13 @@ function rovas_civic_update_7011() {
   }
   return t('Civic CHR→ME on work-report verification (A6 conversion hook).');
 }
+
+/**
+ * Enable Civic work-report map config + geofield on create WR.
+ */
+function rovas_civic_update_7012() {
+  if (function_exists('rovas_civic_ensure_services_resources')) {
+    rovas_civic_ensure_services_resources();
+  }
+  return t('Civic work-report map config (GET /rovas/civic_work_report_map_config) and field_location on create WR enabled on rovas_endpoint.');
+}

@@ -396,6 +396,7 @@ function rovas_civic_services_create_work_report($data) {
   $web_url = isset($data['web_url']) ? trim((string) $data['web_url']) : '';
   $reward_kind = isset($data['reward_kind']) ? drupal_strtolower(trim((string) $data['reward_kind'])) : 'chrons';
   $photos = isset($data['photos']) && is_array($data['photos']) ? $data['photos'] : array();
+  $field_location_raw = array_key_exists('field_location', $data) ? $data['field_location'] : NULL;
 
   if ($reward_kind !== 'merits' && $reward_kind !== 'chrons') {
     $reward_kind = 'chrons';
@@ -406,8 +407,21 @@ function rovas_civic_services_create_work_report($data) {
   if ($date_started < 1) {
     return rovas_civic_volunteer_error(400, 'invalid_input', 'date_started must be a unix timestamp.');
   }
-  if ($web_url === '' && empty($photos)) {
-    return rovas_civic_volunteer_error(400, 'invalid_input', 'Provide a web_url and/or photos as proof of work.');
+
+  $field_location = rovas_civic_parse_field_location_geojson($field_location_raw);
+  if (is_array($field_location) && isset($field_location['error'])) {
+    return rovas_civic_volunteer_error(400, 'invalid_input', $field_location['error']);
+  }
+  $has_location = is_array($field_location) && !empty($field_location['type']);
+  if ($has_location) {
+    $geom_check = rovas_civic_validate_field_location_geometry($field_location);
+    if ($geom_check !== TRUE) {
+      return rovas_civic_volunteer_error(400, 'invalid_input', $geom_check);
+    }
+  }
+
+  if ($web_url === '' && empty($photos) && !$has_location) {
+    return rovas_civic_volunteer_error(400, 'invalid_input', 'Provide a web_url, photos, and/or field_location as proof of work.');
   }
   if ($title === '') {
     $title = drupal_substr(preg_replace('/\s+/u', ' ', $description), 0, 80);
@@ -448,7 +462,13 @@ function rovas_civic_services_create_work_report($data) {
   }
 
   $lang = !empty($author->language) ? $author->language : LANGUAGE_NONE;
-  $evidence = ($web_url !== '') ? array('1') : array();
+  $evidence = array();
+  if ($web_url !== '') {
+    $evidence[] = '1';
+  }
+  if ($has_location) {
+    $evidence[] = '3';
+  }
   $wr_nid = 0;
 
   if (function_exists('rules_invoke_component') && rules_config_load('rules_create_work_report')) {
@@ -483,6 +503,9 @@ function rovas_civic_services_create_work_report($data) {
   $wr = node_load($wr_nid);
   if ($wr && !empty($photos)) {
     rovas_civic_attach_wr_photos($wr, $photos);
+  }
+  if ($wr && $has_location) {
+    rovas_civic_attach_wr_field_location($wr, $field_location);
   }
 
   db_merge('civic_work_report_reward')
