@@ -23,6 +23,7 @@ Civic API); keep both in sync when contracts change.
 [Next work: merit history (profile ledger)](#next-work-merit-history-profile-ledger),
 [Next work: volunteer report (Civic deferred form)](#next-work-volunteer-report-civic-deferred-form),
 [Next work: pending verifications gate (assigned slots only)](#next-work-pending-verifications-gate-assigned-slots-only),
+[Next work: Civic WR verification (in-app)](#next-work-civic-wr-verification-in-app),
 [AI NACE + title from work-report text](#ai-nace--title-from-work-report-text),
 [CHR to ME on WR verification](#chr-to-me-on-wr-verification),
 and [Next work: geofield on Civic work reports](#next-work-geofield-on-civic-work-reports).
@@ -66,6 +67,7 @@ not run deploys on their own.
 | CHR→ME on WR verification | `{civic_work_report_reward}` + verification hook | Implemented in `rovas_civic` (`rovas_civic_update_7011`). When `reward_kind=merits`, A6 converts the Chron grant after approval. |
 | AI NACE + title | `POST /rovas/civic_ai_nace` | Implemented in `rovas_ai` (`rovas_ai_update_7001`). Bearer; keep NACE-tree fallback when `unavailable` or module absent. |
 | Work-report map proof | `GET /rovas/civic_work_report_map_config`; `field_location` on create WR | Implemented in `rovas_civic` (`rovas_civic_update_7012`). GeoJSON Point/LineString/Polygon; proof = URL **or** photos **or** map. |
+| Civic WR verification (in-app) | `GET /rovas/civic_pending_verifications`, `civic_work_report/{nid}`, `POST /rovas/civic_submit_verification` | Implemented in `rovas_civic` (`rovas_civic_update_7013`). Pending list + verifier detail + approve/reject/decline. |
 
 ## OAuth endpoints (live on dev)
 
@@ -1834,11 +1836,12 @@ work report.
 ### Checklist
 
 1. [x] Apply both edits in `rovas_civic.volunteer.inc`
-2. [ ] Deploy to **rovdev** only (`/var/www/rovdev`)
-3. [ ] Smoke: uid 289 with empty slots only — `POST /rovas/civic_create_work_report` succeeds
-4. [ ] Smoke: manually assign a WR to one of the caller's slots (or wait for
+2. [x] Exclude declined slots from `rovas_civic_pending_verify_slot_count()` (gate matches pending list)
+3. [ ] Deploy to **rovdev** only (`/var/www/rovdev`)
+4. [ ] Smoke: uid 289 with empty slots only — `POST /rovas/civic_create_work_report` succeeds
+5. [ ] Smoke: manually assign a WR to one of the caller's slots (or wait for
        `rules_find_verifier`) — same POST returns 403 `pending_verifications`
-5. [ ] Confirm `pending_verifications` view rows match what blocks create
+6. [ ] Confirm `pending_verifications` view rows match what blocks create
 
 ### Smoke test (after deploy)
 
@@ -2152,6 +2155,184 @@ curl -sS -X POST "https://dev.rovas.app/rovas/civic_create_work_report" \
 
 - `GET /work-reports/map-config` → proxy above (Civic API fallback until live)
 - `POST /work-reports` with optional `field_location` geometry
+
+## Next work: Civic WR verification (in-app)
+
+**Implemented in `rovas_civic`** (enable on rovdev: `drush74 updb -y`, or admin
+enable APIs). Civic surfaces **in-app notifications** (not a dedicated list screen) when the
+Bearer user has assigned `verification_slot` nodes to clear. Each notification
+links to a per-report verify screen in Civic. Civic API proxies three new
+Rovas Services resources; **implement on rovdev before Civic mobile can ship
+verifier UX.**
+
+**Prerequisite:** [pending verifications gate](#next-work-pending-verifications-gate-assigned-slots-only)
+deployed and smoke-tested — gate count must match pending list `total`.
+
+### 1. `GET /rovas/civic_pending_verifications?lang=`
+
+Bearer required. Minimal rows for notification copy and deep links — **not** a
+full report payload.
+
+**Response shape:**
+
+```json
+{
+  "total": 1,
+  "items": [{
+    "slot_nid": "527175",
+    "work_report_nid": "527174",
+    "title": "Trail maintenance",
+    "author_username": "jane",
+    "author_display_name": "Jane Doe",
+    "project_nid": "1998",
+    "assigned_at": "2026-08-30T10:00:00Z"
+  }]
+}
+```
+
+| Field | Rules |
+|-------|--------|
+| Predicate | Same as `rovas_civic_pending_verify_slot_count()` — published `verification_slot`, `field_slip_owner` = Bearer uid, `field_report_to_verify_target_id > 0`, not declined |
+| `total` | Must equal count that blocks `POST /rovas/civic_create_work_report` (403 `pending_verifications`) |
+| `lang` | Optional `sk\|en`; translate WR `title` like `civic_project_work_reports` |
+
+### 2. `GET /rovas/civic_work_report/{nid}?lang=`
+
+Bearer required. **Reuse** the item builder from
+`rovas_civic_project_work_reports_fetch()` (title, summary, hours, author,
+`created_at`, `photo_urls`) and extend with verifier fields:
+
+| Additional field | Notes |
+|------------------|--------|
+| `project_nid`, `project_name` | From `field_project` |
+| `web_urls[]` | `field_web_address` + content-access token (`cbt=`) like web verify UI |
+| `field_location` | GeoJSON geometry export from `field_location` geofield |
+| `nace_tid`, `nace_label` | From `field_classification` |
+| `reward_kind` | `merits` \| `chrons` from `{civic_work_report_reward}` |
+| `date_started` | Unix timestamp from `field_date` |
+
+**Verification context** — include only when Bearer user owns an assigned,
+non-declined slot for this WR:
+
+```json
+{
+  "verification": {
+    "slot_nid": "527175",
+    "can_decline": true,
+    "verification_count": 0,
+    "verification_needed": 2
+  }
+}
+```
+
+| Case | HTTP |
+|------|------|
+| WR not found / unpublished | **404** |
+| Caller has no assigned slot for this WR | **403** `{ "error": "not_assigned" }` |
+
+Prefer shared helper `rovas_civic_work_report_item($node, $lang, $include_proof,
+$verifier_uid)` used by both `civic_project_work_reports` and
+`civic_work_report/{nid}`.
+
+### 3. `POST /rovas/civic_submit_verification`
+
+Bearer required. Body:
+
+```json
+{
+  "slot_nid": "527175",
+  "verdict": "approve",
+  "verified_hours": 4,
+  "note": "optional string"
+}
+```
+
+| Field | Rules |
+|-------|--------|
+| `verdict` | `approve` \| `reject` \| `decline` |
+| `verified_hours` | Optional; default = WR `field_hours_worked`; required positive |
+| `note` | Optional for approve; **required for reject** |
+
+**Behaviour** (mirror existing Drupal — do not invent new rules):
+
+- **`approve` / `reject`:** `rules_verifiability` + create `verification` node
+  (like `rules_create_verification`) with `field_verdict` boolean,
+  `field_verified_time`, optional `field_verification_note`,
+  `field_verification_source = 1` (triggers `rules_verify_work_report`).
+- **`decline`:** only when slot `field_voluntary`; set `field_declined` on slot
+  (like `node_form_decline` in `rovas_verify.module`); optional note email.
+
+| Error | HTTP |
+|-------|------|
+| `not_assigned` | 403 |
+| `already_verified` | 409 |
+| `not_verifiable` | 403 |
+| `cannot_decline` | 403 |
+| `invalid_input` | 400 |
+
+**Success:**
+
+```json
+{
+  "ok": true,
+  "verification_nid": "527300",
+  "work_report_nid": "527174",
+  "verdict": "approve"
+}
+```
+
+(`verification_nid` omitted for `decline`.)
+
+### Checklist
+
+1. [x] Shared `rovas_civic_work_report_item()` helper (+ geofield GeoJSON export, web URLs with token)
+2. [x] `GET /rovas/civic_pending_verifications` — Bearer; register in Services + update hook
+3. [x] `GET /rovas/civic_work_report/{nid}` — Bearer; verification block when assigned
+4. [x] `POST /rovas/civic_submit_verification` — Bearer; approve/reject/decline
+5. [ ] Deploy to **rovdev** only
+6. [ ] Smoke tests below
+
+### Smoke test (after deploy)
+
+```bash
+# TOKEN = Civic OAuth access token for a user with at least one assigned slot
+curl -sS "https://dev.rovas.app/rovas/civic_pending_verifications" \
+  -H "Authorization: Bearer $TOKEN" -H "Accept: application/json"
+# Expect { "total": N, "items": [ { "slot_nid", "work_report_nid", ... } ] }
+
+WR_NID="<work_report_nid from items[0]>"
+SLOT_NID="<slot_nid from items[0]>"
+
+curl -sS "https://dev.rovas.app/rovas/civic_work_report/${WR_NID}" \
+  -H "Authorization: Bearer $TOKEN" -H "Accept: application/json"
+# Expect full WR + verification { slot_nid, can_decline, verification_count, verification_needed }
+
+curl -sS -X POST "https://dev.rovas.app/rovas/civic_submit_verification" \
+  -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
+  -d "{\"slot_nid\":\"${SLOT_NID}\",\"verdict\":\"approve\",\"verified_hours\":1}"
+# Expect { "ok": true, "verification_nid": "...", "verdict": "approve" }
+
+# Re-fetch pending — total decreased by 1; create WR no longer blocked when total=0
+curl -sS -X POST "https://dev.rovas.app/rovas/civic_create_work_report" \
+  -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
+  -d '{ "project_nid": "…", "date_started": 1750000000, "hours": 1,
+        "description": "gate test", "nace_tid": "860", "web_url": "https://example.org/x" }'
+```
+
+### Civic will consume
+
+- `GET /verifications/pending?lang=` → proxy above
+- `GET /work-reports/:nid?lang=` → proxy `civic_work_report/{nid}`
+- `POST /verifications/:slot_nid` → proxy submit
+
+See `~/Documents/homeProjects/civic/docs/rovas-integration.md`.
+
+### Follow-up: OS push on verifier assignment (Phase 4)
+
+Optional later: when `rules_find_verifier` assigns a report to a slot, POST to
+Civic internal webhook so Civic can send Expo push with deep link
+`civic://earn/verify/{slot_nid}`. Civic will register push tokens via
+`POST /push-tokens`. Not blocking in-app notifications.
 
 ## Related Civic docs
 

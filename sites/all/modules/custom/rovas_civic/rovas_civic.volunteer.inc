@@ -545,11 +545,14 @@ function rovas_civic_pending_verify_slot_count($uid) {
       ON o.entity_id = n.nid AND o.entity_type = 'node' AND o.deleted = 0
     INNER JOIN {field_data_field_report_to_verify} r
       ON r.entity_id = n.nid AND r.entity_type = 'node' AND r.deleted = 0
+    LEFT JOIN {field_data_field_declined} d
+      ON d.entity_id = n.nid AND d.entity_type = 'node' AND d.deleted = 0
     WHERE n.type = 'verification_slot'
       AND n.status = 1
       AND o.field_slip_owner_target_id = :uid
       AND r.field_report_to_verify_target_id IS NOT NULL
       AND r.field_report_to_verify_target_id > 0
+      AND (d.field_declined_value IS NULL OR d.field_declined_value = 0)
   ";
   return (int) db_query($sql, array(':uid' => $uid))->fetchField();
 }

@@ -109,6 +109,8 @@ function rovas_civic_node_insert($node) {
  * - GET  /rovas/civic_my_projects, civic_projects_search, civic_nace_tree
  * - POST /rovas/civic_create_project, civic_create_work_report
  * - GET  /rovas/civic_work_report_map_config (map proof widget)
+ * - GET  /rovas/civic_pending_verifications, civic_work_report/{nid}
+ * - POST /rovas/civic_submit_verification
  *
  * Note: Services aliases must be slash-free. Do not use aliases like
  * civic/claims — Services treats the first segment as the resource name.
@@ -128,6 +130,11 @@ function rovas_civic_services_resources() {
     'type' => 'inc',
     'module' => 'rovas_civic',
     'name' => 'rovas_civic.geofield',
+  );
+  $verify_file = array(
+    'type' => 'inc',
+    'module' => 'rovas_civic',
+    'name' => 'rovas_civic.verify',
   );
 
   return array(
@@ -600,6 +607,78 @@ function rovas_civic_services_resources() {
           'access callback' => $bearer_auth['access callback'],
           'access arguments' => $bearer_auth['access arguments'],
           'access arguments append' => $bearer_auth['access arguments append'],
+        ),
+      ),
+    ),
+    'civic_pending_verifications' => array(
+      'operations' => array(
+        'index' => array(
+          'help' => 'Pending verification slots assigned to the Bearer user. Optional ?lang=. Bearer required.',
+          'callback' => 'rovas_civic_services_pending_verifications_index',
+          'file' => $verify_file,
+          'access callback' => $bearer_auth['access callback'],
+          'access arguments' => $bearer_auth['access arguments'],
+          'access arguments append' => $bearer_auth['access arguments append'],
+          'args' => array(
+            array(
+              'name' => 'lang',
+              'type' => 'string',
+              'description' => 'Optional content language (sk|en). Maps cs/cz→sk.',
+              'source' => array('param' => 'lang'),
+              'optional' => TRUE,
+              'default value' => '',
+            ),
+          ),
+        ),
+      ),
+    ),
+    'civic_work_report' => array(
+      'operations' => array(
+        'retrieve' => array(
+          'help' => 'Work report detail for Civic verifier UI. Bearer must own an assigned slot. Optional ?lang=.',
+          'callback' => 'rovas_civic_services_work_report_retrieve',
+          'file' => $verify_file,
+          'access callback' => $bearer_auth['access callback'],
+          'access arguments' => $bearer_auth['access arguments'],
+          'access arguments append' => $bearer_auth['access arguments append'],
+          'args' => array(
+            array(
+              'name' => 'nid',
+              'type' => 'int',
+              'description' => 'Work report node nid.',
+              'source' => array('path' => 0),
+              'optional' => FALSE,
+            ),
+            array(
+              'name' => 'lang',
+              'type' => 'string',
+              'description' => 'Optional content language (sk|en). Maps cs/cz→sk.',
+              'source' => array('param' => 'lang'),
+              'optional' => TRUE,
+              'default value' => '',
+            ),
+          ),
+        ),
+      ),
+    ),
+    'civic_submit_verification' => array(
+      'operations' => array(
+        'create' => array(
+          'help' => 'Submit approve/reject/decline for an assigned verification slot. Bearer required.',
+          'callback' => 'rovas_civic_services_submit_verification_create',
+          'file' => $verify_file,
+          'access callback' => $bearer_auth['access callback'],
+          'access arguments' => $bearer_auth['access arguments'],
+          'access arguments append' => $bearer_auth['access arguments append'],
+          'args' => array(
+            array(
+              'name' => 'data',
+              'type' => 'struct',
+              'description' => 'slot_nid, verdict (approve|reject|decline), optional verified_hours and note.',
+              'source' => 'data',
+              'optional' => FALSE,
+            ),
+          ),
         ),
       ),
     ),
@@ -1790,27 +1869,74 @@ function rovas_civic_project_work_reports_fetch($project_nid, $limit, $offset, $
     $node = $nodes[$wr_nid];
     $author_uid = (int) $node->uid;
     $author = isset($authors[$author_uid]) ? $authors[$author_uid] : NULL;
-    $labels = rovas_civic_user_public_labels($author_uid, $author);
-    $hours = rovas_civic_node_float_field($node, 'field_hours_worked');
-    $summary = NULL;
-    $photo_urls = array();
-    if ($include_bodies) {
-      $summary = rovas_civic_plain_teaser(rovas_civic_node_body_value($node, $lang));
-      $photo_urls = rovas_civic_work_report_photo_urls($node);
-    }
-    $items[] = array(
-      'work_report_nid' => (string) ((int) $node->nid),
-      'title' => rovas_civic_node_localized_title($node, $lang),
-      'summary' => $summary,
-      'hours' => $hours,
-      'author_username' => $labels['username'],
-      'author_display_name' => $labels['display_name'],
-      'created_at' => rovas_civic_work_report_created_at($node),
-      'photo_urls' => $photo_urls,
-    );
+    $items[] = rovas_civic_work_report_item($node, $lang, $include_bodies, NULL, $author);
   }
 
   return array('items' => $items);
+}
+
+/**
+ * Build one Civic work-report JSON row (list or verifier detail).
+ *
+ * @param object $node
+ *   work_report node.
+ * @param string|null $lang
+ * @param bool $include_proof
+ *   When TRUE, include summary and photo_urls (list) or full proof bundle (detail).
+ * @param int|null $verifier_uid
+ *   When set, include verifier detail fields (project, web URLs, map, NACE, reward).
+ * @param object|null $author
+ *   Preloaded author account (optional).
+ *
+ * @return array
+ */
+function rovas_civic_work_report_item($node, $lang = NULL, $include_proof = TRUE, $verifier_uid = NULL, $author = NULL) {
+  $author_uid = (int) $node->uid;
+  if ($author === NULL) {
+    $author = user_load($author_uid);
+  }
+  $labels = rovas_civic_user_public_labels($author_uid, $author);
+  $hours = rovas_civic_node_float_field($node, 'field_hours_worked');
+
+  $item = array(
+    'work_report_nid' => (string) ((int) $node->nid),
+    'title' => rovas_civic_node_localized_title($node, $lang),
+    'summary' => NULL,
+    'hours' => $hours,
+    'author_username' => $labels['username'],
+    'author_display_name' => $labels['display_name'],
+    'created_at' => rovas_civic_work_report_created_at($node),
+    'photo_urls' => array(),
+  );
+
+  if ($include_proof) {
+    $item['summary'] = rovas_civic_plain_teaser(rovas_civic_node_body_value($node, $lang));
+    $item['photo_urls'] = rovas_civic_work_report_photo_urls($node);
+  }
+
+  if ($verifier_uid !== NULL && (int) $verifier_uid > 0) {
+    module_load_include('inc', 'rovas_civic', 'rovas_civic.verify');
+    $project_nid = rovas_civic_wr_project_nid($node);
+    $project_name = NULL;
+    if ($project_nid > 0) {
+      $project = node_load($project_nid);
+      if ($project && $project->type === 'project') {
+        $project_name = rovas_civic_node_localized_title($project, $lang);
+      }
+    }
+
+    $nace = rovas_civic_wr_nace_fields($node, $lang);
+    $item['project_nid'] = $project_nid > 0 ? (string) $project_nid : NULL;
+    $item['project_name'] = $project_name;
+    $item['web_urls'] = rovas_civic_wr_web_urls($node);
+    $item['field_location'] = rovas_civic_wr_field_location_geojson($node);
+    $item['nace_tid'] = $nace['nace_tid'];
+    $item['nace_label'] = $nace['nace_label'];
+    $item['reward_kind'] = rovas_civic_wr_reward_kind((int) $node->nid);
+    $item['date_started'] = rovas_civic_wr_date_started($node);
+  }
+
+  return $item;
 }
 
 /**
@@ -2672,6 +2798,31 @@ function rovas_civic_ensure_services_resources() {
   if (empty($endpoint->resources['civic_work_report_map_config'])
     || $endpoint->resources['civic_work_report_map_config'] != $civic_index_resource) {
     $endpoint->resources['civic_work_report_map_config'] = $civic_index_resource;
+    $changed = TRUE;
+  }
+
+  foreach (array('civic_pending_verifications') as $res_name) {
+    if (empty($endpoint->resources[$res_name])
+      || $endpoint->resources[$res_name] != $civic_index_resource) {
+      $endpoint->resources[$res_name] = $civic_index_resource;
+      $changed = TRUE;
+    }
+  }
+
+  $civic_wr_retrieve_resource = array(
+    'operations' => array(
+      'retrieve' => $bearer_op,
+    ),
+  );
+  if (empty($endpoint->resources['civic_work_report'])
+    || $endpoint->resources['civic_work_report'] != $civic_wr_retrieve_resource) {
+    $endpoint->resources['civic_work_report'] = $civic_wr_retrieve_resource;
+    $changed = TRUE;
+  }
+
+  if (empty($endpoint->resources['civic_submit_verification'])
+    || $endpoint->resources['civic_submit_verification'] != $civic_create_resource) {
+    $endpoint->resources['civic_submit_verification'] = $civic_create_resource;
     $changed = TRUE;
   }
 

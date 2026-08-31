@@ -481,3 +481,13 @@ function rovas_civic_update_7012() {
   }
   return t('Civic work-report map config (GET /rovas/civic_work_report_map_config) and field_location on create WR enabled on rovas_endpoint.');
 }
+
+/**
+ * Enable Civic in-app work-report verification APIs.
+ */
+function rovas_civic_update_7013() {
+  if (function_exists('rovas_civic_ensure_services_resources')) {
+    rovas_civic_ensure_services_resources();
+  }
+  return t('Civic WR verification APIs (pending list, work report detail, submit verification) enabled on rovas_endpoint.');
+}
