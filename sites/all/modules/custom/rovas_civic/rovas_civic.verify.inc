@@ -181,6 +181,9 @@ function rovas_civic_pending_verifications($uid, $lang = NULL) {
     if (empty($reports[$wr_nid])) {
       continue;
     }
+    if (rovas_civic_user_verified_work_report($wr_nid, $uid)) {
+      continue;
+    }
     $report = $reports[$wr_nid];
     $author_uid = (int) $report->uid;
     $labels = rovas_civic_user_public_labels($author_uid, isset($authors[$author_uid]) ? $authors[$author_uid] : NULL);
@@ -455,13 +458,13 @@ function rovas_civic_create_verification_node($work_report, $verifier_uid, $appr
     return 0;
   }
 
-  $lang = !empty($verifier->language) ? $verifier->language : LANGUAGE_NONE;
+  $lang = LANGUAGE_NONE;
   $verification = (object) array(
     'type' => 'verification',
     'uid' => $verifier_uid,
     'title' => 'Verification by Civic user',
     'status' => 1,
-    'language' => $lang,
+    'language' => LANGUAGE_NONE,
   );
   node_object_prepare($verification);
 
