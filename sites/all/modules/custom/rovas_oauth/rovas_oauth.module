@@ -330,7 +330,7 @@ function rovas_oauth_me_access() {
  * Services callback: GET /rovas/me.
  *
  * @return array
- *   uid, username, display_name, total_me, created (ISO-8601 or null),
+ *   uid, username, display_name, total_me, total_chr, created (ISO-8601 or null),
  *   language (Drupal langcode or null).
  */
 function rovas_oauth_me_index() {
@@ -375,11 +375,18 @@ function rovas_oauth_me_index() {
     }
   }
 
+  $total_chr = 0.0;
+  $chr_items = field_get_items('user', $account, 'field_chrons_balance');
+  if (!empty($chr_items[0]['value']) && is_numeric($chr_items[0]['value'])) {
+    $total_chr = (float) $chr_items[0]['value'];
+  }
+
   return array(
     'uid' => $uid,
     'username' => $account->name,
     'display_name' => $display_name,
     'total_me' => $total_me,
+    'total_chr' => $total_chr,
     'created' => $created,
     'language' => $language,
   );

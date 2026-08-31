@@ -16,6 +16,8 @@ Civic API); keep both in sync when contracts change.
 [Next work: hide negative Merit users from Civic](#next-work-hide-negative-merit-users-from-civic),
 [Next work: expose account created on /rovas/me](#next-work-expose-account-created-on-rovasme),
 [Next work: expose preferred language on /rovas/me](#next-work-expose-preferred-language-on-rovasme),
+[Next work: Chron balance on /rovas/me](#next-work-chron-balance-on-rovasme),
+[Next work: NACE expertise on users_lookup](#next-work-nace-expertise-on-users_lookup),
 [Next work: localized project and work-report text](#next-work-localized-project-and-work-report-text),
 [Next work: project detail + work reports (Civic modal)](#next-work-project-detail--work-reports-civic-modal),
 [Next work: project shareholders + WR photos](#next-work-project-shareholders--wr-photos),
@@ -48,7 +50,7 @@ not run deploys on their own.
 | Expo login (PKCE) | Civic mobile | **Done** against `dev.rovas.app` |
 | Civic API Bearer introspect | Civic `GET /oauth2/tokens/{token}` | **Done** — resolves Drupal `user_id` (uid) |
 | Services OAuth2 on `rovas_endpoint` | Admin / `rovas_oauth_ensure_civic_resources()` | Server machine name **`civic`**; API-key auth disabled on Civic resources |
-| Home Merits reads | `/rovas/me`, `/rovas/contributions/aggregate`, `/rovas/merit_distribution` | Implemented |
+| Home Merits reads | `/rovas/me`, `/rovas/contributions/aggregate`, `/rovas/merit_distribution` | Implemented; `/rovas/me` includes `total_chr` (Chron wallet) |
 | `rovas_civic` | `sites/all/modules/custom/rovas_civic` | National rates, donor Merit issuance, State Treasury, VAT claim |
 | Claim rule + split claims | `POST /rovas/rules/rules_proxy_claim_vat_receipt` | Implemented in `rovas_civic` (enable via updb / admin) |
 | Claim reads + summary | `GET /rovas/civic_claims`, `…/summary` | Implemented in `rovas_civic` (`rovas_civic_update_7002`); **Civic proxies live** (`GET /receipts`, `/me/contributions/summary`) |
@@ -56,7 +58,7 @@ not run deploys on their own.
 | Received history “From” | `view=received` scanner username | Implemented — `scanner_username` + `scanner_display_name` |
 | National hourly rate read | `GET /rovas/civic_national_hourly_rate` | Implemented in `rovas_civic` (`rovas_civic_update_7003`) |
 | Users search (split typeahead) | `GET /rovas/users_search?query=` | Implemented in `rovas_civic` (`rovas_civic_update_7005`). **Param is `query`, not `q`** — Drupal reserves `$_GET['q']` for the request path. |
-| Users lookup (community profile) | `GET /rovas/users_lookup?username=` | Implemented in `rovas_civic` (`rovas_civic_update_7006`). Exact username; Bearer required. See [users lookup](#next-work-users-lookup-community-public-profile). |
+| Users lookup (community profile) | `GET /rovas/users_lookup?username=` | Implemented in `rovas_civic` (`rovas_civic_update_7006`). Exact username; Bearer required. Includes `nace_expertise[]` via `rovas_meritscope_user_expertise_json()`. |
 | Hide negative Merit users | `users_search` / `users_lookup` | Implemented — `total_me < 0` omitted / 404; search response stays public fields only |
 | Friend invite (Civic) | — | **Civic-client only** (`mailto:`). No Rovas invite endpoint. Signup URL in the email body should work (`/user/register` or OAuth authorize). |
 | Project detail + WR list | `GET /rovas/civic_project/{nid}`, `GET /rovas/civic_project_work_reports` | Implemented (`rovas_civic_update_7007`). Private participation still returns full content — see [private projects are fully readable](#next-work-private-projects-are-fully-readable). |
@@ -68,6 +70,8 @@ not run deploys on their own.
 | AI NACE + title | `POST /rovas/civic_ai_nace` | Implemented in `rovas_ai` (`rovas_ai_update_7001`). Bearer; keep NACE-tree fallback when `unavailable` or module absent. |
 | Work-report map proof | `GET /rovas/civic_work_report_map_config`; `field_location` on create WR | Implemented in `rovas_civic` (`rovas_civic_update_7012`). GeoJSON Point/LineString/Polygon; proof = URL **or** photos **or** map. |
 | Civic WR verification (in-app) | `GET /rovas/civic_pending_verifications`, `civic_work_report/{nid}`, `POST /rovas/civic_submit_verification` | Implemented in `rovas_civic` (`rovas_civic_update_7013`). Pending list + verifier detail + approve/reject/decline. |
+| Chron balance on `/rovas/me` | `GET /rovas/me` → `total_chr` | Pending — see [Chron balance on /rovas/me](#next-work-chron-balance-on-rovasme). |
+| NACE expertise icons | `GET /rovas/users_lookup` → `nace_expertise[]` | Pending — see [NACE expertise on users_lookup](#next-work-nace-expertise-on-users_lookup). |
 
 ## OAuth endpoints (live on dev)
 
@@ -227,6 +231,7 @@ In `rovas_oauth` (`rovas_oauth_me_index()`).
   "username": "sano",
   "display_name": "Alexander Žaťko",
   "total_me": 1248.35,
+  "total_chr": 320.0,
   "created": "2019-03-12T14:22:01+00:00",
   "language": "sk"
 }
@@ -238,6 +243,7 @@ In `rovas_oauth` (`rovas_oauth_me_index()`).
 | `username` | `$user->name` |
 | `display_name` | `field_full_name` if set; else username |
 | `total_me` | `_rovas_merit_distribution_user_merits()` (userpoints + decimal) |
+| `total_chr` | `field_chrons_balance` on the user account (numeric; `0` when empty) |
 | `created` | ISO-8601 from Drupal `$account->created` (`gmdate('c')`); `null` if missing/invalid |
 | `language` | `$account->language` (raw Drupal langcode); `null` if empty/`und` — see [preferred language](#next-work-expose-preferred-language-on-rovasme) |
 #### 3. `GET /rovas/contributions/aggregate` (public) — **implemented**
@@ -1072,6 +1078,7 @@ persist back to `$account->language` (not required for v1).
   "username": "sano",
   "display_name": "Alexander Žaťko",
   "total_me": 1248.35,
+  "total_chr": 320.0,
   "created": "2019-03-12T14:22:01+00:00",
   "language": "sk"
 }
@@ -1102,6 +1109,174 @@ curl -sS https://dev.rovas.app/rovas/me \
 
 Civic API `GET /me` proxies `language` from Rovas. Expo `LocaleProvider`
 applies it after login (unless the user set an explicit Civic override).
+
+## Next work: Chron balance on /rovas/me
+
+**Implemented in `rovas_oauth`.** Civic Profile screen shows the signed-in user's Chron wallet alongside Merits.
+Chrons are stored on the Drupal user as `field_chrons_balance` (suffix `" CH"`).
+Extend the existing Bearer-only home-read — **no new Services resource**.
+
+### Change
+
+In `rovas_oauth` → `rovas_oauth_me_index()`:
+
+1. After loading `$account`, read `field_chrons_balance` via `field_get_items('user', $account, 'field_chrons_balance')`.
+2. Emit `"total_chr"` as a float. Use `0` when the field is empty or missing.
+3. Additive only — existing fields (`uid`, `username`, `display_name`, `total_me`, `created`, `language`) unchanged.
+
+### Response (after)
+
+```json
+{
+  "uid": 42,
+  "username": "sano",
+  "display_name": "Alexander Žaťko",
+  "total_me": 1248.35,
+  "total_chr": 320.0,
+  "created": "2019-03-12T14:22:01+00:00",
+  "language": "sk"
+}
+```
+
+| Field | Source |
+|-------|--------|
+| `total_chr` | `field_chrons_balance` on the user account (numeric value only; omit `" CH"` suffix) |
+
+### Checklist
+
+1. [x] `rovas_oauth_me_index()` returns `total_chr` as number
+2. [x] Missing / empty balance → `0`
+3. [x] Existing clients still work (additive field)
+4. [ ] Deploy to rovdev + `drush74 cc all`
+5. [ ] Smoke-test curl below
+
+### Smoke test (after deploy)
+
+```bash
+# TOKEN = Civic OAuth access token with user_profile scope
+curl -sS https://dev.rovas.app/rovas/me \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Accept: application/json"
+# Expect: "total_chr": <number> (0 when wallet empty)
+```
+
+### Civic will consume
+
+Civic API `GET /me` proxies `total_chr`. Expo Profile screen shows `{total_chr} CHR`
+below the Merit balance. Chron balance is **not** shown on Home in v1.
+
+## Next work: NACE expertise on users_lookup
+
+**Implemented in `rovas_meritscope` + `rovas_civic`.** Civic Home (signed-in) and Community (public profile) show clickable NACE section
+icons beside the user's Merit total — matching the Rovas Merit Index row
+(`rovas_meritscope_display_user_expertise()`). Data comes from `user_expertise`
+nodes grouped by top-level NACE parent.
+
+Extend `rovas_civic_users_lookup()` — **no new Services resource**.
+
+### Path note
+
+Same machine-name path as existing users lookup:
+
+| Method | URL | Auth |
+|--------|-----|------|
+| `GET` | `https://dev.rovas.app/rovas/users_lookup?username=&lang=` | Bearer required (`civic` / `user_profile`) |
+
+### Response addition
+
+Add `nace_expertise` array to the existing `users_lookup` JSON (after
+`by_category`, before `taxes_last_3_months` is fine):
+
+```json
+{
+  "rovas_uid": "42",
+  "username": "anna_nb",
+  "display_name": "Anna Nováková",
+  "total_me": 3410.0,
+  "by_category": {
+    "taxes": 980.0,
+    "charity": 210.0,
+    "volunteer": 148.0
+  },
+  "nace_expertise": [
+    {
+      "section_tid": 942,
+      "section_label": "Construction",
+      "section_letter": "f",
+      "icon_url": "https://dev.rovas.app/sites/default/files/pictures/nace_icons/f.svg",
+      "me": 420.0,
+      "share_percent": 34,
+      "hourly_rate_eur": 12.5
+    }
+  ],
+  "taxes_last_3_months": [],
+  "top_charities": [],
+  "top_volunteer_projects": []
+}
+```
+
+| Field | Rules |
+|-------|--------|
+| `section_tid` | Top-level NACE taxonomy term id (parent section) |
+| `section_label` | Localized parent name with `"X – "` / `"X - "` letter prefix stripped (meritscope uses `substr($parent_label, 2)`) |
+| `section_letter` | Lowercase first character of the **unlocalized** parent name — used for icon file name |
+| `icon_url` | Absolute URL: `{base_url}/sites/default/files/pictures/nace_icons/{section_letter}.svg` |
+| `me` | ME in that section (float, rounded to 2 dp) |
+| `share_percent` | Integer % of total grouped ME across all sections |
+| `hourly_rate_eur` | Parent term `field_hourly_reward`, default **10** when unset (same as Merit Index popover) |
+
+Return `"nace_expertise": []` when the user has no positive expertise rows (do
+not 404). Omitting the field on older deploys is OK — Civic defaults to `[]`.
+
+### Required logic
+
+1. **Extract** a shared JSON builder from `rovas_meritscope_display_user_expertise()`
+   (e.g. `rovas_meritscope_user_expertise_json($uid, $lang)` in
+   `rovas_meritscope.module`). Refactor the HTML renderer to call it so web and
+   Civic stay in sync.
+2. **Fix expert filter:** the current meritscope SQL filters on `node.uid`;
+   expertise nodes use **`field_expert`** (`field_expert_target_id`). The JSON
+   builder must join/filter like `group_nace_merit_sum()` and
+   `rovas_civic_users_lookup_expertise_categories()` — `field_expert_target_id = :uid`.
+3. Load all `user_expertise` nodes with `field_merits > 0` for the user.
+4. Group by **top-level NACE parent** (`taxonomy_get_parents_all`, same index
+   logic as `rovas_meritscope_display_user_expertise()` step 3).
+5. Sum ME per section; apply proportional scaling when userpoints total >
+   summed expertise (meritscope step 4).
+6. Sort descending by `me`.
+7. Honor `?lang=` on `users_lookup` for localized `section_label`
+   (`i18n_string("taxonomy:term:{tid}:name", …)`).
+8. Wire into `rovas_civic_users_lookup()` before return.
+
+### Checklist
+
+1. [x] Shared `rovas_meritscope_user_expertise_json($uid, $lang)` returns array of section objects
+2. [x] HTML merit index row refactored to use the shared builder (no drift)
+3. [x] Expert filter uses `field_expert`, not `node.uid`
+4. [x] `users_lookup` includes `nace_expertise` (empty array when none)
+5. [x] `icon_url` is absolute (uses `$GLOBALS['base_url']` or equivalent)
+6. [ ] Deploy to rovdev + `drush74 cc all`
+7. [ ] Smoke-test curl below
+
+### Smoke test (after deploy)
+
+```bash
+# TOKEN = Civic OAuth access token; USERNAME = user with known user_expertise rows
+curl -sS "https://dev.rovas.app/rovas/users_lookup?username=${USERNAME}&lang=sk" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Accept: application/json"
+# Expect: "nace_expertise": [ { "section_tid", "section_label", "icon_url", "me", ... } ]
+# User with no expertise: "nace_expertise": []
+```
+
+### Civic will consume
+
+Civic API `GET /users/lookup` proxies `nace_expertise`. Expo shows icon row on
+Home (signed-in, via self lookup) and Community profile hero. Icons load from
+`icon_url` returned by Rovas (same SVG assets as Merit Index web UI).
+
+**Out of scope:** Meritscope circular chart, AJAX drill-down, bundling icons
+into the Expo app.
 
 ## Next work: localized project and work-report text
 

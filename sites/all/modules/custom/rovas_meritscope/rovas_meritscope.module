@@ -1148,115 +1148,196 @@ function rovas_meritscope_linear($point1array, $point2array, $indvar) {
  * @param int $limit Number of top categories to display
  * @return string HTML output with expertise icons and popover data
  */
+/**
+ * NACE section expertise for a user (JSON for Civic / shared with Merit Index).
+ *
+ * Groups user_expertise rows by top-level NACE parent, applies the same
+ * userpoints scaling as the Merit Index row, and returns section objects.
+ *
+ * @param int $uid
+ * @param string|null $lang
+ *   Optional langcode for section_label (defaults to current interface language).
+ * @param int|null $limit
+ *   When set, return only the top N sections by ME (Merit Index row uses this).
+ *
+ * @return array
+ *   List of { section_tid, section_label, section_letter, icon_url, me,
+ *   share_percent, hourly_rate_eur }.
+ */
+function rovas_meritscope_user_expertise_json($uid, $lang = NULL, $limit = NULL) {
+  $uid = (int) $uid;
+  if ($uid < 1) {
+    return array();
+  }
+
+  $userpoints_total = (float) db_query("SELECT points FROM {userpoints} WHERE uid = :uid", array(
+    ':uid' => $uid,
+  ))->fetchField();
+
+  $result = db_query("
+    SELECT c.field_category_tid AS tid,
+      SUM(m.field_merits_value) AS merits
+    FROM {node} n
+    INNER JOIN {field_data_field_expert} e
+      ON e.entity_id = n.nid AND e.entity_type = 'node' AND e.deleted = 0
+    INNER JOIN {field_data_field_category} c
+      ON c.entity_id = n.nid AND c.entity_type = 'node' AND c.deleted = 0
+    INNER JOIN {field_data_field_merits} m
+      ON m.entity_id = n.nid AND m.entity_type = 'node' AND m.deleted = 0
+    WHERE n.type = 'user_expertise'
+      AND n.status = 1
+      AND e.field_expert_target_id = :uid
+      AND m.field_merits_value > 0
+    GROUP BY c.field_category_tid
+    ORDER BY merits DESC
+  ", array(':uid' => $uid));
+
+  $terms_data = array();
+  foreach ($result as $row) {
+    if (empty($row->tid) || $row->merits <= 0) {
+      continue;
+    }
+    $terms_data[] = array(
+      'term_id' => (int) $row->tid,
+      'merits' => (float) $row->merits,
+    );
+  }
+
+  if (empty($terms_data)) {
+    return array();
+  }
+
+  usort($terms_data, function ($a, $b) {
+    if ($a['merits'] == $b['merits']) {
+      return 0;
+    }
+    return ($a['merits'] < $b['merits']) ? 1 : -1;
+  });
+
+  $grouped_terms = array();
+  foreach ($terms_data as $term_data) {
+    $term_id = $term_data['term_id'];
+    $merits = $term_data['merits'];
+
+    $cat = taxonomy_get_parents_all($term_id);
+    if (empty($cat)) {
+      continue;
+    }
+    $catindex = count($cat) > 1 ? count($cat) - 2 : 0;
+    $parent = $cat[$catindex];
+    $parent_tid = (int) $parent->tid;
+
+    if (!isset($grouped_terms[$parent_tid])) {
+      $parent_rate = NULL;
+      if (isset($parent->field_hourly_reward[LANGUAGE_NONE][0]['value'])
+        && $parent->field_hourly_reward[LANGUAGE_NONE][0]['value'] !== '') {
+        $parent_rate = $parent->field_hourly_reward[LANGUAGE_NONE][0]['value'];
+      }
+      $grouped_terms[$parent_tid] = array(
+        'parent_tid' => $parent_tid,
+        'parent_name' => $parent->name,
+        'parent_rate' => $parent_rate,
+        'total_merits' => 0,
+      );
+    }
+
+    $grouped_terms[$parent_tid]['total_merits'] += $merits;
+  }
+
+  if (empty($grouped_terms)) {
+    return array();
+  }
+
+  $sum_expertise_merits = array_sum(array_column($grouped_terms, 'total_merits'));
+  if ($sum_expertise_merits > 0 && $userpoints_total > $sum_expertise_merits) {
+    $scaling_factor = $userpoints_total / $sum_expertise_merits;
+    foreach ($grouped_terms as &$term) {
+      $term['total_merits'] *= $scaling_factor;
+    }
+    unset($term);
+  }
+
+  usort($grouped_terms, function ($a, $b) {
+    if ($a['total_merits'] == $b['total_merits']) {
+      return 0;
+    }
+    return ($a['total_merits'] < $b['total_merits']) ? 1 : -1;
+  });
+
+  $total_user_merits = array_sum(array_column($grouped_terms, 'total_merits'));
+
+  if ($limit !== NULL && (int) $limit > 0) {
+    $grouped_terms = array_slice($grouped_terms, 0, (int) $limit);
+  }
+
+  if ($lang === NULL || $lang === '') {
+    $lang = isset($GLOBALS['language']->language) ? $GLOBALS['language']->language : 'en';
+  }
+
+  $base_url = !empty($GLOBALS['base_url']) ? rtrim($GLOBALS['base_url'], '/') : '';
+  $out = array();
+
+  foreach ($grouped_terms as $term_data) {
+    $parent_tid = (int) $term_data['parent_tid'];
+    $parent_name = $term_data['parent_name'];
+    $parent_rate = $term_data['parent_rate'];
+    $total_merits = (float) $term_data['total_merits'];
+
+    $percentage = $total_user_merits > 0 ? (int) round(($total_merits / $total_user_merits) * 100) : 0;
+    $parent_label = function_exists('i18n_string')
+      ? i18n_string("taxonomy:term:$parent_tid:name", $parent_name, array('langcode' => $lang))
+      : $parent_name;
+    $section_label = drupal_substr($parent_label, 2);
+    $section_letter = strtolower(drupal_substr($parent_name, 0, 1));
+    $img_name = $section_letter . '.svg';
+    $icon_path = '/sites/default/files/pictures/nace_icons/' . $img_name;
+    $icon_url = $base_url !== '' ? $base_url . $icon_path : url($icon_path, array('absolute' => TRUE));
+
+    $hourly_rate = 10.0;
+    if ($parent_rate !== NULL && $parent_rate !== '' && is_numeric($parent_rate)) {
+      $hourly_rate = (float) $parent_rate;
+    }
+
+    $out[] = array(
+      'section_tid' => $parent_tid,
+      'section_label' => $section_label,
+      'section_letter' => $section_letter,
+      'icon_url' => $icon_url,
+      'me' => round($total_merits, 2),
+      'share_percent' => $percentage,
+      'hourly_rate_eur' => $hourly_rate,
+    );
+  }
+
+  return $out;
+}
+
 function rovas_meritscope_display_user_expertise($uid, $limit = NULL) {
-
-    // Step 1: Get total userpoints from the Userpoints module
-    $userpoints_total = db_query("SELECT points FROM {userpoints} WHERE uid = :uid", [':uid' => $uid])->fetchField();
-    $userpoints_total = floatval($userpoints_total);
-
-    // Step 2: Get category-based merits from user_expertise nodes
-    $query = "SELECT field_data_field_category.field_category_tid AS field_data_field_category_field_category_tid, 
-                     MIN(node.nid) AS nid, 
-                     'node' AS field_data_field_category_node_entity_type, 
-                     'node' AS field_data_field_merits_node_entity_type, 
-                     SUM(field_data_field_merits.field_merits_value) AS field_data_field_merits_field_merits_value
-              FROM {node} node
-              LEFT JOIN {field_data_field_category} field_data_field_category ON node.nid = field_data_field_category.entity_id AND (field_data_field_category.entity_type = 'node' AND field_data_field_category.deleted = '0')
-              LEFT JOIN {field_data_field_merits} field_data_field_merits ON node.nid = field_data_field_merits.entity_id AND (field_data_field_merits.entity_type = 'node' AND field_data_field_merits.deleted = '0')
-              WHERE (( (node.uid = :uid ) )AND(( (node.status = '1') AND (node.type IN  ('user_expertise')) )))
-              GROUP BY field_data_field_category_node_entity_type, field_data_field_category_field_category_tid, field_data_field_merits_node_entity_type
-              ORDER BY field_data_field_merits_field_merits_value DESC";
-    
-    $result = db_query($query, [':uid' => $uid]);
-    
-    $terms_data = [];
-    foreach ($result as $row) {
-        if ($row->field_data_field_category_field_category_tid && $row->field_data_field_merits_field_merits_value) {
-            $terms_data[] = [
-                'term_id' => $row->field_data_field_category_field_category_tid,
-                'merits' => floatval($row->field_data_field_merits_field_merits_value)
-            ];
-        }
-    }
-
-    // Sort by merits in descending order
-    usort($terms_data, function($a, $b) {
-        if ($a['merits'] == $b['merits']) {
-            return 0;
-        }
-        return ($a['merits'] < $b['merits']) ? 1 : -1;
-    });
-
-    // Step 3: Group by parent category
-    $grouped_terms = [];
-    foreach ($terms_data as $term_data) {
-        $term_id = $term_data['term_id'];
-        $merits = $term_data['merits'];
-        
-        $cat = taxonomy_get_parents_all($term_id);
-        $catindex = count($cat) > 1 ? count($cat) - 2 : 0;
-        $parent_tid = $cat[$catindex]->tid;
-
-        if (!isset($grouped_terms[$parent_tid])) {
-            $grouped_terms[$parent_tid] = [
-                'parent_tid' => $parent_tid,
-                'parent_name' => $cat[$catindex]->name,
-                'parent_rate' => isset($cat[$catindex]->field_hourly_reward[LANGUAGE_NONE][0]['value']) ? $cat[$catindex]->field_hourly_reward[LANGUAGE_NONE][0]['value'] : null,
-                'total_merits' => 0
-            ];
-        }
-
-        $grouped_terms[$parent_tid]['total_merits'] += $merits;
-    }
-
-    // Step 4: Proportional adjustment of merits if userpoints > summed merits
-    $sum_expertise_merits = array_sum(array_column($grouped_terms, 'total_merits'));
-
-    if ($sum_expertise_merits > 0 && $userpoints_total > $sum_expertise_merits) {
-        $scaling_factor = $userpoints_total / $sum_expertise_merits;
-        foreach ($grouped_terms as &$term) {
-            $term['total_merits'] *= $scaling_factor;
-        }
-        unset($term); // Avoid reference bugs
-    }
-
-    // Sort grouped terms by total merits
-    usort($grouped_terms, function($a, $b) {
-        if ($a['total_merits'] == $b['total_merits']) {
-            return 0;
-        }
-        return ($a['total_merits'] < $b['total_merits']) ? 1 : -1;
-    });
-    
-    $top_terms = $limit ? array_slice($grouped_terms, 0, $limit) : $grouped_terms;
-
-    $total_user_merits = array_sum(array_column($grouped_terms, 'total_merits'));
-
-    // Build HTML
     $language = $GLOBALS['language']->language;
+    $sections = rovas_meritscope_user_expertise_json($uid, $language, $limit);
+
+    if (empty($sections)) {
+      return '<div style="min-width: 45px;white-space:nowrap;"></div>';
+    }
+
     $output = '<div style="min-width: 45px;white-space:nowrap;">';
 
-    foreach ($top_terms as $term_data) {
-        $parent_tid = $term_data['parent_tid'];
-        $parent_name = $term_data['parent_name'];
-        $parent_rate = $term_data['parent_rate'];
-        $total_merits = $term_data['total_merits'];
-
-        $percentage = $total_user_merits > 0 ? round(($total_merits / $total_user_merits) * 100) : 0;
-
-        $parent_label = i18n_string("taxonomy:term:$parent_tid:name", $parent_name, ['langcode' => $language]);
-
-        $img_name = strtolower(substr($parent_name, 0, 1)) . '.svg';
-
-        $popup = '<strong>' . substr($parent_label, 2) . '</strong><br/>';
-        $popup .= round($total_merits) . ' ' . t('ME', [], ['context' => 'merit index']) . ' (' . $percentage . '%)';
+    foreach ($sections as $section) {
+        $popup = '<strong>' . check_plain($section['section_label']) . '</strong><br/>';
+        $popup .= round($section['me']) . ' ' . t('ME', array(), array('context' => 'merit index')) . ' (' . $section['share_percent'] . '%)';
         $popup .= '<div style="font-size: smaller;">';
-        $popup .= ($parent_rate ? t('Estimated rate') . ': ' . $parent_rate : t('Default rate') . ': 10') . ' ' . t('€/hour');
+        if ($section['hourly_rate_eur'] != 10) {
+          $popup .= t('Estimated rate') . ': ' . $section['hourly_rate_eur'];
+        }
+        else {
+          $popup .= t('Default rate') . ': 10';
+        }
+        $popup .= ' ' . t('€/hour');
         $popup .= '</div>';
 
-        $title = substr($parent_label, 2) . ' | ' . round($total_merits) . ' ' . t('ME', [], ['context' => 'merit index']) . ' | ' . $percentage . '%';
+        $title = check_plain($section['section_label']) . ' | ' . round($section['me']) . ' ' . t('ME', array(), array('context' => 'merit index')) . ' | ' . $section['share_percent'] . '%';
 
-        $icon = '<img style="max-width:20px;margin-right:5px;" src="/sites/default/files/pictures/nace_icons/' . $img_name . '" title="' . $title . '">';
+        $icon = '<img style="max-width:20px;margin-right:5px;" src="/sites/default/files/pictures/nace_icons/' . check_plain($section['section_letter']) . '.svg" title="' . $title . '">';
         $icon_container = '<div style="display: inline-block; width: 25px; height: 30px; text-align: center; line-height: 30px; vertical-align: middle;">' . $icon . '</div>';
 
         $output .= '<div style="display:inline;">';
