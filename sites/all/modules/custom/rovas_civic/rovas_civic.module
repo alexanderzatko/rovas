@@ -114,6 +114,7 @@ function rovas_civic_node_insert($node) {
  * - GET  /rovas/civic_pending_verifications, civic_work_report/{nid}
  * - POST /rovas/civic_submit_verification
  * - GET  /rovas/civic_merit_index (Prínos / Merit Index leaderboard)
+ * - GET  /rovas/civic_merit_index_countries (Prínos country filter dropdown)
  *
  * Note: Services aliases must be slash-free. Do not use aliases like
  * civic/claims — Services treats the first segment as the resource name.
@@ -786,7 +787,7 @@ function rovas_civic_services_resources() {
             array(
               'name' => 'source_category',
               'type' => 'string',
-              'description' => 'Dominant ME source: taxes|charity|volunteer.',
+              'description' => 'ME source filter: users with by_category.{taxes|charity|volunteer} > 0.',
               'source' => array('param' => 'source_category'),
               'optional' => TRUE,
               'default value' => '',
@@ -795,6 +796,28 @@ function rovas_civic_services_resources() {
               'name' => 'lang',
               'type' => 'string',
               'description' => 'Optional content language (sk|en) for country_label and nace_expertise.',
+              'source' => array('param' => 'lang'),
+              'optional' => TRUE,
+              'default value' => '',
+            ),
+          ),
+        ),
+      ),
+    ),
+    'civic_merit_index_countries' => array(
+      'operations' => array(
+        'index' => array(
+          'help' => 'Distinct countries for Merit Index users (Prínos country dropdown). Optional ?lang=. Bearer required.',
+          'callback' => 'rovas_civic_services_merit_index_countries_index',
+          'file' => $merit_index_file,
+          'access callback' => $bearer_auth['access callback'],
+          'access arguments' => $bearer_auth['access arguments'],
+          'access arguments append' => $bearer_auth['access arguments append'],
+          'args' => array(
+            array(
+              'name' => 'lang',
+              'type' => 'string',
+              'description' => 'Optional content language (sk|en) for country labels.',
               'source' => array('param' => 'lang'),
               'optional' => TRUE,
               'default value' => '',
@@ -2956,6 +2979,13 @@ function rovas_civic_ensure_services_resources() {
   if (empty($endpoint->resources['civic_merit_index'])
     || $endpoint->resources['civic_merit_index'] != $civic_index_resource) {
     $endpoint->resources['civic_merit_index'] = $civic_index_resource;
+    $changed = TRUE;
+  }
+
+  // GET /rovas/civic_merit_index_countries — Prínos country dropdown (Bearer).
+  if (empty($endpoint->resources['civic_merit_index_countries'])
+    || $endpoint->resources['civic_merit_index_countries'] != $civic_index_resource) {
+    $endpoint->resources['civic_merit_index_countries'] = $civic_index_resource;
     $changed = TRUE;
   }
 

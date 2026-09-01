@@ -24,6 +24,7 @@ Civic API); keep both in sync when contracts change.
 [Next work: private projects are fully readable](#next-work-private-projects-are-fully-readable),
 [Next work: merit history (profile ledger)](#next-work-merit-history-profile-ledger),
 [Next work: merit index (Civic Prínos / ranks screen)](#next-work-merit-index-civic-prínos--ranks-screen),
+[Next work: merit index Prínos filter fixes](#next-work-merit-index-prínos-filter-fixes),
 [Next work: volunteer report (Civic deferred form)](#next-work-volunteer-report-civic-deferred-form),
 [Next work: pending verifications gate (assigned slots only)](#next-work-pending-verifications-gate-assigned-slots-only),
 [Next work: Civic WR verification (in-app)](#next-work-civic-wr-verification-in-app),
@@ -72,7 +73,7 @@ not run deploys on their own.
 | AI NACE + title                      | `POST /rovas/civic_ai_nace`                                                                                                                | Implemented in `rovas_ai` (`rovas_ai_update_7001`). Bearer; keep NACE-tree fallback when `unavailable` or module absent.                                                               |
 | Work-report map proof                | `GET /rovas/civic_work_report_map_config`; `field_location` on create WR                                                                   | Implemented in `rovas_civic` (`rovas_civic_update_7012`). GeoJSON Point/LineString/Polygon; proof = URL **or** photos **or** map.                                                      |
 | Civic WR verification (in-app)       | `GET /rovas/civic_pending_verifications`, `civic_work_report/{nid}`, `POST /rovas/civic_submit_verification`                               | Implemented in `rovas_civic` (`rovas_civic_update_7013`). Pending list + verifier detail + approve/reject/decline.                                                                     |
-| Merit index (Civic Prínos / ranks)   | `GET /rovas/civic_merit_index`                                                                                                             | Implemented in `rovas_civic` (`rovas_civic_update_7014`). Leaderboard + `by_category` ME-source shares; Bearer required.                                                            |
+| Merit index (Civic Prínos / ranks)   | `GET /rovas/civic_merit_index`, `civic_merit_index_countries`                                                                             | Implemented in `rovas_civic` (`7014`–`7015`). Leaderboard + countries dropdown; `source_category` = any ME in category.                                                            |
 | Chron balance on `/rovas/me`         | `GET /rovas/me` → `total_chr`                                                                                                              | Pending — see [Chron balance on /rovas/me](#next-work-chron-balance-on-rovasme).                                                                                                       |
 | NACE expertise icons                 | `GET /rovas/users_lookup` → `nace_expertise[]`                                                                                             | Pending — see [NACE expertise on users_lookup](#next-work-nace-expertise-on-users_lookup).                                                                                             |
 
@@ -2647,7 +2648,7 @@ Do **not** scrape HTML or call `views_get_view()`. Mirror the view with SQL
 
 
 Web exposed filters: `**country_iso2**`, **From date** (`since_from`). Civic
-adds numeric ME/€ ranges, NACE section, and dominant source category.
+adds numeric ME/€ ranges, NACE section, and ME source category filter.
 
 ### Endpoint
 
@@ -2671,7 +2672,7 @@ Machine-name path only.
 | `min_me` / `max_me`               | Optional floats on `total_me`                                                                                                        |
 | `min_value_eur` / `max_value_eur` | Optional floats on `value_eur`                                                                                                       |
 | `nace_section_tid`                | Top-level NACE section tid; user must have expertise in that section                                                                 |
-| `source_category`                 | Dominant ME source: `taxes` | `charity` | `volunteer` (max of `by_category`; tie-break taxes → charity → volunteer)                  |
+| `source_category`                 | ME source filter: users with `by_category.{taxes\|charity\|volunteer} > 0`; default sort → `{category}_me` desc when `sort=total_me`                  |
 | `lang`                            | Optional `sk` | `en` — localized `country_label` + `nace_expertise[].section_label`                                                  |
 
 
@@ -2760,6 +2761,110 @@ curl -sS "https://dev.rovas.app/rovas/civic_merit_index?source_category=taxes&li
 column filters on all columns except `@username`
 
 See `~/Documents/homeProjects/civic/docs/rovas-integration.md`.
+
+## Next work: merit index Prínos filter fixes
+
+**Implemented in `rovas_civic`.** Civic **Prínos** tab filter UX is wired; three Rovas fixes are required for
+correct behaviour. Civic API proxies are ready (`GET /rank/index/countries` →
+`civic_merit_index_countries`).
+
+### 1. `source_category` — include any ME in category (not dominant only)
+
+**Bug:** `rovas_civic_merit_index_page()` filters with
+`rovas_civic_merit_index_dominant_category()` — only users whose **largest**
+`by_category` bucket matches are returned. Civic expects users with **any**
+Merits in that source (e.g. filter `taxes` → all users with `by_category.taxes > 0`).
+
+**Example:** `@sano` has 338 ME from taxes on his profile but is omitted when
+filtering `source_category=taxes` because another category dominates.
+
+**Change** in `rovas_civic.merit_index.inc`:
+
+```php
+// Replace dominant check with:
+if (!empty($opts['source_category'])) {
+  $cat = $opts['source_category'];
+  if (empty($by_category[$cat]) || (float) $by_category[$cat] <= 0) {
+    continue;
+  }
+}
+```
+
+When `source_category` is set and `sort` is still `total_me`, default sort to
+`{category}_me` desc (or document that Civic already sends `sort=taxes_me` etc.).
+
+**Smoke test:**
+
+```bash
+curl -sS "https://dev.rovas.app/rovas/civic_merit_index?source_category=taxes&limit=50&sort=taxes_me&order=desc" \
+  -H "Authorization: Bearer $TOKEN" -H "Accept: application/json"
+# Expect: @sano (and every user with taxes ME > 0), each item by_category.taxes > 0
+```
+
+### 2. `GET /rovas/civic_merit_index_countries`
+
+Distinct countries for Merit Index users (`total_me > 0`, same eligibility as
+index). Civic Prínos country dropdown — default “all countries”.
+
+| Method | URL | Auth |
+|--------|-----|------|
+| `GET` | `https://dev.rovas.app/rovas/civic_merit_index_countries` | Bearer required |
+
+| Param | Rules |
+|-------|-------|
+| `lang` | Optional `sk` \| `en` — localized `label` |
+
+**200 response:**
+
+```json
+{
+  "countries": [
+    { "iso2": "SK", "label": "Slovensko", "user_count": 142 },
+    { "iso2": "CZ", "label": "Česko", "user_count": 8 }
+  ]
+}
+```
+
+- Only ISO-2 codes present on at least one eligible user with `total_me > 0`.
+- Sort by `label` ascending (locale-aware if easy; else `label` string).
+- Reuse `field_country` / `rovas_civic_merit_index_country_label()` for labels.
+
+**Checklist:**
+
+1. [x] Services resource `civic_merit_index_countries` in `rovas_civic`
+2. [x] SQL: distinct `country_iso2` from same base query as merit index
+3. [x] OAuth2-only; updb hook + `rovas_civic_ensure_services_resources()`
+4. [ ] Deploy rovdev + smoke curl
+
+```bash
+curl -sS "https://dev.rovas.app/rovas/civic_merit_index_countries?lang=sk" \
+  -H "Authorization: Bearer $TOKEN" -H "Accept: application/json"
+```
+
+### 3. `nace_section_tid` — letter sections (A–U), not vocabulary root
+
+**Bug risk:** Civic filter picker uses **letter sections** (children of the NACE
+vocabulary root, e.g. “F — Stavebníctvo”), matching
+`rovas_meritscope_user_expertise_json()` `section_tid` and
+`rovas_civic_merit_index_nace_section_tid()`.
+
+Confirm `nace_section_tid` filter matches the **section letter term tid** (one
+level below root “Pracovné činnosti”), not the vocabulary root tid. If
+`rovas_civic_merit_index_nace_section_tid()` returns the wrong ancestor depth,
+align with Meritscope section tid used in `nace_expertise[].section_tid`.
+
+**Smoke test:** pick section tid from a row’s `nace_expertise[0].section_tid`;
+same user must appear when filtering `nace_section_tid={that_tid}`.
+
+**Checklist:**
+
+1. [x] `rovas_civic_merit_index_nace_section_tid()` matches Meritscope `section_tid` depth
+2. [ ] Deploy rovdev + smoke test with `nace_section_tid` from a row’s `nace_expertise[0]`
+
+### Civic will consume
+
+- `GET /rank/index/countries` (already proxied)
+- Existing `source_category` + `nace_section_tid` params once fixed above
 
 ## Related Civic docs
 

@@ -501,3 +501,13 @@ function rovas_civic_update_7014() {
   }
   return t('Civic Merit Index API (GET /rovas/civic_merit_index) enabled on rovas_endpoint.');
 }
+
+/**
+ * Enable Civic Merit Index countries + Prínos filter fixes (re-save resources).
+ */
+function rovas_civic_update_7015() {
+  if (function_exists('rovas_civic_ensure_services_resources')) {
+    rovas_civic_ensure_services_resources();
+  }
+  return t('Civic Merit Index countries API (GET /rovas/civic_merit_index_countries) enabled on rovas_endpoint.');
+}

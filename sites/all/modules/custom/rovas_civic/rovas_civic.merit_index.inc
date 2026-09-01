@@ -81,6 +81,13 @@ function rovas_civic_services_merit_index_index(
     if (!in_array($source_category, $allowed_source, TRUE)) {
       return services_error(t('Invalid source_category; use taxes, charity, or volunteer.'), 400);
     }
+    // When filtering by ME source, default sort to that category unless caller chose another column.
+    if ($sort === 'total_me') {
+      $sort = $source_category . '_me';
+      if ($order === '') {
+        $order = 'desc';
+      }
+    }
   }
 
   $nace_section_tid = ($nace_section_tid === NULL || $nace_section_tid === '')
@@ -176,8 +183,8 @@ function rovas_civic_merit_index_page(array $opts) {
       : array('taxes' => 0.0, 'charity' => 0.0, 'volunteer' => 0.0);
 
     if (!empty($opts['source_category'])) {
-      $dominant = rovas_civic_merit_index_dominant_category($by_category);
-      if ($dominant !== $opts['source_category']) {
+      $cat = $opts['source_category'];
+      if (empty($by_category[$cat]) || (float) $by_category[$cat] <= 0) {
         continue;
       }
     }
@@ -371,7 +378,9 @@ function rovas_civic_merit_index_expertise_by_uid(array $uids) {
 }
 
 /**
- * Top-level NACE section tid for a category tid.
+ * Top-level NACE letter-section tid for a category tid.
+ *
+ * Same ancestor depth as rovas_meritscope_user_expertise_json() section_tid.
  *
  * @param int $tid
  *
@@ -382,43 +391,65 @@ function rovas_civic_merit_index_nace_section_tid($tid) {
   if ($tid < 1) {
     return 0;
   }
-  if (function_exists('get_nth_parent_term_name')) {
-    $parent = get_nth_parent_term_name($tid, 1);
-    if (!empty($parent['tid'])) {
-      return (int) $parent['tid'];
-    }
-  }
-  $parents = taxonomy_get_parents_all($tid);
-  if (empty($parents)) {
+  $cat = taxonomy_get_parents_all($tid);
+  if (empty($cat)) {
     return 0;
   }
-  $parents = array_reverse($parents);
-  $index = count($parents) > 1 ? count($parents) - 2 : 0;
-  return isset($parents[$index]->tid) ? (int) $parents[$index]->tid : 0;
+  $catindex = count($cat) > 1 ? count($cat) - 2 : 0;
+  return isset($cat[$catindex]->tid) ? (int) $cat[$catindex]->tid : 0;
 }
 
 /**
- * Dominant ME source category (tie-break: taxes → charity → volunteer).
- *
- * @param array $by_category
- *
- * @return string|null
+ * Services callback: GET /rovas/civic_merit_index_countries.
  */
-function rovas_civic_merit_index_dominant_category(array $by_category) {
-  $max = max(
-    (float) $by_category['taxes'],
-    (float) $by_category['charity'],
-    (float) $by_category['volunteer']
-  );
-  if ($max <= 0) {
-    return NULL;
+function rovas_civic_services_merit_index_countries_index($lang = '') {
+  $uid = rovas_civic_request_uid();
+  if ($uid < 1) {
+    return services_error(t('Authentication required'), 401);
   }
-  foreach (array('taxes', 'charity', 'volunteer') as $key) {
-    if ((float) $by_category[$key] >= $max) {
-      return $key;
+
+  return rovas_civic_merit_index_countries(rovas_civic_request_lang($lang));
+}
+
+/**
+ * Distinct countries for Merit Index users with total_me > 0.
+ *
+ * @param string|null $lang
+ *
+ * @return array
+ *   { countries: [ { iso2, label, user_count }, … ] } sorted by label asc.
+ */
+function rovas_civic_merit_index_countries($lang = NULL) {
+  $rows = rovas_civic_merit_index_base_rows();
+  $counts = array();
+  foreach ($rows as $row) {
+    if ((float) $row->total_me <= 0) {
+      continue;
     }
+    $iso2 = drupal_strtoupper(trim((string) $row->country_iso2));
+    if ($iso2 === '' || strlen($iso2) !== 2) {
+      continue;
+    }
+    if (!isset($counts[$iso2])) {
+      $counts[$iso2] = 0;
+    }
+    $counts[$iso2]++;
   }
-  return NULL;
+
+  $countries = array();
+  foreach ($counts as $iso2 => $user_count) {
+    $countries[] = array(
+      'iso2' => $iso2,
+      'label' => rovas_civic_merit_index_country_label($iso2, $lang),
+      'user_count' => (int) $user_count,
+    );
+  }
+
+  usort($countries, function ($a, $b) {
+    return strcasecmp($a['label'], $b['label']);
+  });
+
+  return array('countries' => $countries);
 }
 
 /**
