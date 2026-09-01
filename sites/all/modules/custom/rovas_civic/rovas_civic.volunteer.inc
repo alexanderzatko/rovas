@@ -169,10 +169,6 @@ function rovas_civic_projects_search($q, $lang = NULL, $uid = 0) {
  * Services callback: GET /rovas/civic_nace_tree?lang=
  */
 function rovas_civic_services_nace_tree_index($lang = '') {
-  $uid = rovas_civic_request_uid();
-  if ($uid < 1) {
-    return rovas_civic_volunteer_error(401, 'unauthorized', 'Authentication required');
-  }
   return rovas_civic_nace_tree(rovas_civic_request_lang($lang));
 }
 

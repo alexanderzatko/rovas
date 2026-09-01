@@ -514,6 +514,7 @@ function rovas_civic_update_7015() {
 
 /**
  * Merit Index + NACE tree + countries: public read on rovas_endpoint (no Bearer).
+ * Also drops uid checks in merit_index + nace_tree Services callbacks.
  */
 function rovas_civic_update_7016() {
   if (function_exists('rovas_civic_ensure_services_resources')) {

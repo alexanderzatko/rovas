@@ -25,11 +25,6 @@ function rovas_civic_services_merit_index_index(
   $source_category = '',
   $lang = ''
 ) {
-  $uid = rovas_civic_request_uid();
-  if ($uid < 1) {
-    return services_error(t('Authentication required'), 401);
-  }
-
   $pager = rovas_civic_normalize_pager(
     $limit,
     $offset,
@@ -403,11 +398,6 @@ function rovas_civic_merit_index_nace_section_tid($tid) {
  * Services callback: GET /rovas/civic_merit_index_countries.
  */
 function rovas_civic_services_merit_index_countries_index($lang = '') {
-  $uid = rovas_civic_request_uid();
-  if ($uid < 1) {
-    return services_error(t('Authentication required'), 401);
-  }
-
   return rovas_civic_merit_index_countries(rovas_civic_request_lang($lang));
 }
 

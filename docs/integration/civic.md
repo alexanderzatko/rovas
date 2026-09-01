@@ -2737,7 +2737,7 @@ Machine-name path only.
 
 1. [x] `GET /rovas/civic_merit_index` Services resource in `rovas_civic`
 2. [x] SQL base list + PHP enrich/sort/filter/paginate
-3. [x] OAuth2 optional on resource (`require_authentication` 0 via `rovas_civic_update_7016` + `rovas_civic_ensure_services_resources()` — **not** only `services_access_menu` in the resource definition)
+3. [x] Public read: `services_access_menu` + `oauth2_server.require_authentication=0` on `rovas_endpoint` (`7016`) **and** no `rovas_civic_request_uid()` gate in Services callbacks
 4. [x] `rovas_civic_update_7014` + ensure helper
 5. [ ] Deploy to rovdev + `drush74 cc all`
 6. [ ] Smoke-test curl below
