@@ -30,7 +30,8 @@ Civic API); keep both in sync when contracts change.
 [Next work: Civic WR verification (in-app)](#next-work-civic-wr-verification-in-app),
 [AI NACE + title from work-report text](#ai-nace--title-from-work-report-text),
 [CHR to ME on WR verification](#chr-to-me-on-wr-verification),
-and [Next work: geofield on Civic work reports](#next-work-geofield-on-civic-work-reports).
+[Next work: geofield on Civic work reports](#next-work-geofield-on-civic-work-reports),
+and [Next work: OAuth session persistence](#next-work-oauth-session-persistence).
 Do not rely on reading the Civic tree unless you need Expo/API details.
 
 **Dev target (until told otherwise):** all Civic integration work targets
@@ -2865,6 +2866,45 @@ same user must appear when filtering `nace_section_tid={that_tid}`.
 
 - `GET /rank/index/countries` (already proxied)
 - Existing `source_category` + `nace_section_tid` params once fixed above
+
+## Next work: OAuth session persistence
+
+**Problem:** Civic mobile users were logged out after ~1 hour of inactivity. Rovas
+access tokens expire after **3600s**. The OAuth server consumed refresh tokens
+on use (`unset_refresh_token_after_use`) but did **not** issue replacements
+(`always_issue_new_refresh_token: false`), so the mobile app could not refresh
+after the first token rotation. Authorization codes also defaulted to **30s**,
+causing “authorization code has expired” when re-login was delayed.
+
+**Change (implemented in `rovas_oauth_ensure_server()`):**
+
+1. Set `always_issue_new_refresh_token` = **TRUE** on the `civic` OAuth server.
+2. Set `auth_code_lifetime` = **120** seconds (minimum; idempotent upgrade).
+
+Existing servers are updated on the next `rovas_oauth_ensure_server()` call
+(admin bootstrap or deploy hook).
+
+**Checklist:**
+
+1. [x] `always_issue_new_refresh_token` in `rovas_oauth_ensure_server()` (create + migrate)
+2. [x] `auth_code_lifetime` = 120 in same helper
+3. [ ] Deploy rovdev + run ensure (visit OAuth admin or `drush php-eval "rovas_oauth_ensure_server();"`)
+
+**Smoke test:**
+
+```bash
+# 1. Login in Civic mobile — note refresh_token from token response (or DB).
+# 2. Refresh access token:
+curl -sS -X POST "https://dev.rovas.app/oauth2/token" \
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  -d "grant_type=refresh_token&client_id=civic&refresh_token=PASTE_REFRESH_TOKEN"
+# Expect 200 with NEW access_token AND refresh_token in JSON body.
+# Old refresh_token must no longer work (one-time use).
+```
+
+Civic mobile (`apps/mobile/lib/auth.tsx`) preserves `refreshToken` when the
+server omits it, refreshes on app foreground, and only clears the session on
+`invalid_grant` (not transient network errors).
 
 ## Related Civic docs
 

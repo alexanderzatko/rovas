@@ -156,9 +156,23 @@ function rovas_oauth_annotate_login_form(&$form) {
 function rovas_oauth_ensure_server() {
   $server = oauth2_server_load(ROVAS_OAUTH_SERVER);
   if ($server) {
+    $needs_save = FALSE;
     // Keep PKCE enforced if an older export lacked it.
     if (empty($server->settings['enforce_pkce'])) {
       $server->settings['enforce_pkce'] = TRUE;
+      $needs_save = TRUE;
+    }
+    // Civic mobile needs a new refresh token on each use (14-day lifetime).
+    if (empty($server->settings['always_issue_new_refresh_token'])) {
+      $server->settings['always_issue_new_refresh_token'] = TRUE;
+      $needs_save = TRUE;
+    }
+    // Authorization codes default to 30s; allow time for mobile code exchange.
+    if (empty($server->settings['auth_code_lifetime']) || (int) $server->settings['auth_code_lifetime'] < 120) {
+      $server->settings['auth_code_lifetime'] = 120;
+      $needs_save = TRUE;
+    }
+    if ($needs_save) {
       $server->save();
     }
     return $server;
@@ -182,6 +196,8 @@ function rovas_oauth_ensure_server() {
       ),
       'access_lifetime' => 3600,
       'refresh_token_lifetime' => 1209600,
+      'always_issue_new_refresh_token' => TRUE,
+      'auth_code_lifetime' => 120,
     ),
   ));
   $server->save();
