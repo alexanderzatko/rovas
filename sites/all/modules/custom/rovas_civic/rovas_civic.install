@@ -491,3 +491,13 @@ function rovas_civic_update_7013() {
   }
   return t('Civic WR verification APIs (pending list, work report detail, submit verification) enabled on rovas_endpoint.');
 }
+
+/**
+ * Enable Civic Merit Index Services resource (Prínos / ranks screen).
+ */
+function rovas_civic_update_7014() {
+  if (function_exists('rovas_civic_ensure_services_resources')) {
+    rovas_civic_ensure_services_resources();
+  }
+  return t('Civic Merit Index API (GET /rovas/civic_merit_index) enabled on rovas_endpoint.');
+}

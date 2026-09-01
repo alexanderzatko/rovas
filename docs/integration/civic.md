@@ -23,6 +23,7 @@ Civic API); keep both in sync when contracts change.
 [Next work: project shareholders + WR photos](#next-work-project-shareholders--wr-photos),
 [Next work: private projects are fully readable](#next-work-private-projects-are-fully-readable),
 [Next work: merit history (profile ledger)](#next-work-merit-history-profile-ledger),
+[Next work: merit index (Civic Prínos / ranks screen)](#next-work-merit-index-civic-prínos--ranks-screen),
 [Next work: volunteer report (Civic deferred form)](#next-work-volunteer-report-civic-deferred-form),
 [Next work: pending verifications gate (assigned slots only)](#next-work-pending-verifications-gate-assigned-slots-only),
 [Next work: Civic WR verification (in-app)](#next-work-civic-wr-verification-in-app),
@@ -32,7 +33,7 @@ and [Next work: geofield on Civic work reports](#next-work-geofield-on-civic-wor
 Do not rely on reading the Civic tree unless you need Expo/API details.
 
 **Dev target (until told otherwise):** all Civic integration work targets
-**`/var/www/rovdev`** (`https://dev.rovas.app`). Do **not** change prod
+`**/var/www/rovdev**` (`https://dev.rovas.app`). Do **not** change prod
 `/var/www/rovas` (`rovas.app`) unless explicitly asked.
 
 **Deployment:** the human deploys unless they ask the agent to. Agents should
@@ -41,37 +42,40 @@ not run deploys on their own.
 
 ## Status
 
-| Piece | Location | Notes |
-|-------|----------|--------|
-| `oauth2_server` 7.x-1.7 | `sites/all/modules/contrib/oauth2_server` | + PKCE patch [#3015065-7](https://www.drupal.org/project/oauth2_server/issues/3015065) in `patches/oauth2_server-3015065-pkce-support-7.patch` |
-| `xautoload` 7.x-5.9 | `sites/all/modules/contrib/xautoload` | Required by oauth2_server |
-| `oauth2-server-php` **v1.14.2** | `sites/all/libraries/oauth2-server-php` | Module README lists ≤1.8; **1.14.2 required for PKCE** |
-| `rovas_oauth` | `sites/all/modules/custom/rovas_oauth` | Bootstrap Civic server/client, login copy, Bearer helpers, `/me` + `/contributions/aggregate` |
-| Expo login (PKCE) | Civic mobile | **Done** against `dev.rovas.app` |
-| Civic API Bearer introspect | Civic `GET /oauth2/tokens/{token}` | **Done** — resolves Drupal `user_id` (uid) |
-| Services OAuth2 on `rovas_endpoint` | Admin / `rovas_oauth_ensure_civic_resources()` | Server machine name **`civic`**; API-key auth disabled on Civic resources |
-| Home Merits reads | `/rovas/me`, `/rovas/contributions/aggregate`, `/rovas/merit_distribution` | Implemented; `/rovas/me` includes `total_chr` (Chron wallet) |
-| `rovas_civic` | `sites/all/modules/custom/rovas_civic` | National rates, donor Merit issuance, State Treasury, VAT claim |
-| Claim rule + split claims | `POST /rovas/rules/rules_proxy_claim_vat_receipt` | Implemented in `rovas_civic` (enable via updb / admin) |
-| Claim reads + summary | `GET /rovas/civic_claims`, `…/summary` | Implemented in `rovas_civic` (`rovas_civic_update_7002`); **Civic proxies live** (`GET /receipts`, `/me/contributions/summary`) |
-| Claim status by receipt | `GET /rovas/civic_claims?receipt_uid=` | Implemented — `{ claimed, receipt_uid }` only (no scanner) |
-| Received history “From” | `view=received` scanner username | Implemented — `scanner_username` + `scanner_display_name` |
-| National hourly rate read | `GET /rovas/civic_national_hourly_rate` | Implemented in `rovas_civic` (`rovas_civic_update_7003`) |
-| Users search (split typeahead) | `GET /rovas/users_search?query=` | Implemented in `rovas_civic` (`rovas_civic_update_7005`). **Param is `query`, not `q`** — Drupal reserves `$_GET['q']` for the request path. |
-| Users lookup (community profile) | `GET /rovas/users_lookup?username=` | Implemented in `rovas_civic` (`rovas_civic_update_7006`). Exact username; Bearer required. Includes `nace_expertise[]` via `rovas_meritscope_user_expertise_json()`. |
-| Hide negative Merit users | `users_search` / `users_lookup` | Implemented — `total_me < 0` omitted / 404; search response stays public fields only |
-| Friend invite (Civic) | — | **Civic-client only** (`mailto:`). No Rovas invite endpoint. Signup URL in the email body should work (`/user/register` or OAuth authorize). |
-| Project detail + WR list | `GET /rovas/civic_project/{nid}`, `GET /rovas/civic_project_work_reports` | Implemented (`rovas_civic_update_7007`). Private participation still returns full content — see [private projects are fully readable](#next-work-private-projects-are-fully-readable). |
-| Project shareholders + WR photos | `GET /rovas/civic_project_shareholders`, WR `photo_urls[]` | Implemented in `rovas_civic` (`rovas_civic_update_7008`). |
-| Localized project / WR / lookup text | `?lang=` on `civic_project`, `civic_project_work_reports`, `users_lookup` | Implemented — Entity Translation / `title_field` / `body` with source fallback. |
-| Merit history (profile ledger) | `GET /rovas/civic_merit_history` | Implemented in `rovas_civic` (`rovas_civic_update_7009`). JSON of Views `merit_history` / `page_1` for the Bearer user. |
-| Volunteer report (deferred form) | `GET /rovas/civic_my_projects`, `civic_projects_search`, `civic_nace_tree`; `POST /rovas/civic_create_project`, `civic_create_work_report` | Implemented in `rovas_civic` (`rovas_civic_update_7010`). Bearer only — do **not** call the partner API-KEY rules from Civic. |
-| CHR→ME on WR verification | `{civic_work_report_reward}` + verification hook | Implemented in `rovas_civic` (`rovas_civic_update_7011`). When `reward_kind=merits`, A6 converts the Chron grant after approval. |
-| AI NACE + title | `POST /rovas/civic_ai_nace` | Implemented in `rovas_ai` (`rovas_ai_update_7001`). Bearer; keep NACE-tree fallback when `unavailable` or module absent. |
-| Work-report map proof | `GET /rovas/civic_work_report_map_config`; `field_location` on create WR | Implemented in `rovas_civic` (`rovas_civic_update_7012`). GeoJSON Point/LineString/Polygon; proof = URL **or** photos **or** map. |
-| Civic WR verification (in-app) | `GET /rovas/civic_pending_verifications`, `civic_work_report/{nid}`, `POST /rovas/civic_submit_verification` | Implemented in `rovas_civic` (`rovas_civic_update_7013`). Pending list + verifier detail + approve/reject/decline. |
-| Chron balance on `/rovas/me` | `GET /rovas/me` → `total_chr` | Pending — see [Chron balance on /rovas/me](#next-work-chron-balance-on-rovasme). |
-| NACE expertise icons | `GET /rovas/users_lookup` → `nace_expertise[]` | Pending — see [NACE expertise on users_lookup](#next-work-nace-expertise-on-users_lookup). |
+
+| Piece                                | Location                                                                                                                                   | Notes                                                                                                                                                                                  |
+| ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `oauth2_server` 7.x-1.7              | `sites/all/modules/contrib/oauth2_server`                                                                                                  | + PKCE patch [#3015065-7](https://www.drupal.org/project/oauth2_server/issues/3015065) in `patches/oauth2_server-3015065-pkce-support-7.patch`                                         |
+| `xautoload` 7.x-5.9                  | `sites/all/modules/contrib/xautoload`                                                                                                      | Required by oauth2_server                                                                                                                                                              |
+| `oauth2-server-php` **v1.14.2**      | `sites/all/libraries/oauth2-server-php`                                                                                                    | Module README lists ≤1.8; **1.14.2 required for PKCE**                                                                                                                                 |
+| `rovas_oauth`                        | `sites/all/modules/custom/rovas_oauth`                                                                                                     | Bootstrap Civic server/client, login copy, Bearer helpers, `/me` + `/contributions/aggregate`                                                                                          |
+| Expo login (PKCE)                    | Civic mobile                                                                                                                               | **Done** against `dev.rovas.app`                                                                                                                                                       |
+| Civic API Bearer introspect          | Civic `GET /oauth2/tokens/{token}`                                                                                                         | **Done** — resolves Drupal `user_id` (uid)                                                                                                                                             |
+| Services OAuth2 on `rovas_endpoint`  | Admin / `rovas_oauth_ensure_civic_resources()`                                                                                             | Server machine name `**civic**`; API-key auth disabled on Civic resources                                                                                                              |
+| Home Merits reads                    | `/rovas/me`, `/rovas/contributions/aggregate`, `/rovas/merit_distribution`                                                                 | Implemented; `/rovas/me` includes `total_chr` (Chron wallet)                                                                                                                           |
+| `rovas_civic`                        | `sites/all/modules/custom/rovas_civic`                                                                                                     | National rates, donor Merit issuance, State Treasury, VAT claim                                                                                                                        |
+| Claim rule + split claims            | `POST /rovas/rules/rules_proxy_claim_vat_receipt`                                                                                          | Implemented in `rovas_civic` (enable via updb / admin)                                                                                                                                 |
+| Claim reads + summary                | `GET /rovas/civic_claims`, `…/summary`                                                                                                     | Implemented in `rovas_civic` (`rovas_civic_update_7002`); **Civic proxies live** (`GET /receipts`, `/me/contributions/summary`)                                                        |
+| Claim status by receipt              | `GET /rovas/civic_claims?receipt_uid=`                                                                                                     | Implemented — `{ claimed, receipt_uid }` only (no scanner)                                                                                                                             |
+| Received history “From”              | `view=received` scanner username                                                                                                           | Implemented — `scanner_username` + `scanner_display_name`                                                                                                                              |
+| National hourly rate read            | `GET /rovas/civic_national_hourly_rate`                                                                                                    | Implemented in `rovas_civic` (`rovas_civic_update_7003`)                                                                                                                               |
+| Users search (split typeahead)       | `GET /rovas/users_search?query=`                                                                                                           | Implemented in `rovas_civic` (`rovas_civic_update_7005`). **Param is `query`, not `q`** — Drupal reserves `$_GET['q']` for the request path.                                           |
+| Users lookup (community profile)     | `GET /rovas/users_lookup?username=`                                                                                                        | Implemented in `rovas_civic` (`rovas_civic_update_7006`). Exact username; Bearer required. Includes `nace_expertise[]` via `rovas_meritscope_user_expertise_json()`.                   |
+| Hide negative Merit users            | `users_search` / `users_lookup`                                                                                                            | Implemented — `total_me < 0` omitted / 404; search response stays public fields only                                                                                                   |
+| Friend invite (Civic)                | —                                                                                                                                          | **Civic-client only** (`mailto:`). No Rovas invite endpoint. Signup URL in the email body should work (`/user/register` or OAuth authorize).                                           |
+| Project detail + WR list             | `GET /rovas/civic_project/{nid}`, `GET /rovas/civic_project_work_reports`                                                                  | Implemented (`rovas_civic_update_7007`). Private participation still returns full content — see [private projects are fully readable](#next-work-private-projects-are-fully-readable). |
+| Project shareholders + WR photos     | `GET /rovas/civic_project_shareholders`, WR `photo_urls[]`                                                                                 | Implemented in `rovas_civic` (`rovas_civic_update_7008`).                                                                                                                              |
+| Localized project / WR / lookup text | `?lang=` on `civic_project`, `civic_project_work_reports`, `users_lookup`                                                                  | Implemented — Entity Translation / `title_field` / `body` with source fallback.                                                                                                        |
+| Merit history (profile ledger)       | `GET /rovas/civic_merit_history`                                                                                                           | Implemented in `rovas_civic` (`rovas_civic_update_7009`). JSON of Views `merit_history` / `page_1` for the Bearer user.                                                                |
+| Volunteer report (deferred form)     | `GET /rovas/civic_my_projects`, `civic_projects_search`, `civic_nace_tree`; `POST /rovas/civic_create_project`, `civic_create_work_report` | Implemented in `rovas_civic` (`rovas_civic_update_7010`). Bearer only — do **not** call the partner API-KEY rules from Civic.                                                          |
+| CHR→ME on WR verification            | `{civic_work_report_reward}` + verification hook                                                                                           | Implemented in `rovas_civic` (`rovas_civic_update_7011`). When `reward_kind=merits`, A6 converts the Chron grant after approval.                                                       |
+| AI NACE + title                      | `POST /rovas/civic_ai_nace`                                                                                                                | Implemented in `rovas_ai` (`rovas_ai_update_7001`). Bearer; keep NACE-tree fallback when `unavailable` or module absent.                                                               |
+| Work-report map proof                | `GET /rovas/civic_work_report_map_config`; `field_location` on create WR                                                                   | Implemented in `rovas_civic` (`rovas_civic_update_7012`). GeoJSON Point/LineString/Polygon; proof = URL **or** photos **or** map.                                                      |
+| Civic WR verification (in-app)       | `GET /rovas/civic_pending_verifications`, `civic_work_report/{nid}`, `POST /rovas/civic_submit_verification`                               | Implemented in `rovas_civic` (`rovas_civic_update_7013`). Pending list + verifier detail + approve/reject/decline.                                                                     |
+| Merit index (Civic Prínos / ranks)   | `GET /rovas/civic_merit_index`                                                                                                             | Implemented in `rovas_civic` (`rovas_civic_update_7014`). Leaderboard + `by_category` ME-source shares; Bearer required.                                                            |
+| Chron balance on `/rovas/me`         | `GET /rovas/me` → `total_chr`                                                                                                              | Pending — see [Chron balance on /rovas/me](#next-work-chron-balance-on-rovasme).                                                                                                       |
+| NACE expertise icons                 | `GET /rovas/users_lookup` → `nace_expertise[]`                                                                                             | Pending — see [NACE expertise on users_lookup](#next-work-nace-expertise-on-users_lookup).                                                                                             |
+
 
 ## OAuth endpoints (live on dev)
 
@@ -82,11 +86,13 @@ not run deploys on their own.
 
 ## Civic home-read APIs (live on dev after enable)
 
-| Method | URL | Auth |
-|--------|-----|------|
-| `GET` | `https://dev.rovas.app/rovas/me` | Bearer required (`user_profile`) |
-| `GET` | `https://dev.rovas.app/rovas/contributions/aggregate` | Public |
-| `GET` | `https://dev.rovas.app/rovas/merit_distribution` | Public; Bearer optional for `user_*` |
+
+| Method | URL                                                   | Auth                                 |
+| ------ | ----------------------------------------------------- | ------------------------------------ |
+| `GET`  | `https://dev.rovas.app/rovas/me`                      | Bearer required (`user_profile`)     |
+| `GET`  | `https://dev.rovas.app/rovas/contributions/aggregate` | Public                               |
+| `GET`  | `https://dev.rovas.app/rovas/merit_distribution`      | Public; Bearer optional for `user_*` |
+
 
 Enable / re-sync on rovdev: **Configuration → Web services → Rovas OAuth (Civic)** →
 **Enable Civic home API resources**, or `drush74 updb` after deploy (`rovas_oauth_update_7001`).
@@ -101,15 +107,17 @@ Admin UI: **Configuration → Web services → Rovas OAuth (Civic)**
 
 Click **Bootstrap Civic OAuth server + client**. That creates:
 
-| Field | Value |
-|-------|--------|
-| Server machine name | `civic` |
-| Enforce PKCE | yes |
-| Grant types | authorization_code, refresh_token |
-| Client ID | `civic` |
-| Client secret | *(empty — public native client)* |
-| Redirect URI | `civic://oauth/callback` (+ optional Expo proxy URI) |
-| Default scope | `user_profile` |
+
+| Field               | Value                                                |
+| ------------------- | ---------------------------------------------------- |
+| Server machine name | `civic`                                              |
+| Enforce PKCE        | yes                                                  |
+| Grant types         | authorization_code, refresh_token                    |
+| Client ID           | `civic`                                              |
+| Client secret       | *(empty — public native client)*                     |
+| Redirect URI        | `civic://oauth/callback` (+ optional Expo proxy URI) |
+| Default scope       | `user_profile`                                       |
+
 
 HybridAuth (Google / Facebook / Drupal login) already attaches to `user_login`.
 `oauth2_server` redirects anonymous authorize requests to
@@ -141,15 +149,15 @@ drush74 cc all -y
 Docroot mapping: **dev.rovas.app** → `/var/www/rovdev` (not prod `/var/www/rovas`).
 
 Outgoing email on dev is logged, not sent (`DevelMailLog`). See
-[`docs/dev-setup.md`](../dev-setup.md#outgoing-email-disabled-on-dev).
+`[docs/dev-setup.md](../dev-setup.md#outgoing-email-disabled-on-dev)`.
 
 ### Services OAuth2 (rovas_endpoint)
 
 - Admin: **Structure → Services → rovas_endpoint → Authentication**
-- Enable **OAuth2 authentication**, server machine name **`civic`**
+- Enable **OAuth2 authentication**, server machine name `**civic`**
 - Prefer **Enable Civic home API resources** on the Rovas OAuth admin form so
-  Civic resources get `disable_authentication` on API keys (Bearer-only callers
-  otherwise fail at the API-keys plugin).
+Civic resources get `disable_authentication` on API keys (Bearer-only callers
+otherwise fail at the API-keys plugin).
 
 To mirror on prod later: same UI steps, or run
 `rovas_oauth_ensure_civic_resources()` via drush php-eval after deploy.
@@ -207,11 +215,13 @@ Home-read endpoints below are **implemented**; claim reads are under
 
 ### Why existing endpoints are not enough
 
-| Existing | Auth today | Problem for Civic |
-|----------|------------|-------------------|
-| `POST /rovas/rules/rules_user_s_merits` | User **API-KEY + TOKEN** | Mobile has OAuth Bearer only, not the user’s API key pair |
-| `GET …/rovas_merit_distribution` | API-KEY + TOKEN; returns SVG + `meta` | Same auth issue; Civic needs **JSON buckets**, not SVG |
-| Community total | — | Covered by `/rovas/contributions/aggregate` |
+
+| Existing                                | Auth today                            | Problem for Civic                                         |
+| --------------------------------------- | ------------------------------------- | --------------------------------------------------------- |
+| `POST /rovas/rules/rules_user_s_merits` | User **API-KEY + TOKEN**              | Mobile has OAuth Bearer only, not the user’s API key pair |
+| `GET …/rovas_merit_distribution`        | API-KEY + TOKEN; returns SVG + `meta` | Same auth issue; Civic needs **JSON buckets**, not SVG    |
+| Community total                         | —                                     | Covered by `/rovas/contributions/aggregate`               |
+
 
 ### Priority order
 
@@ -237,15 +247,18 @@ In `rovas_oauth` (`rovas_oauth_me_index()`).
 }
 ```
 
-| Field | Source |
-|-------|--------|
-| `uid` | Bearer → Drupal uid |
-| `username` | `$user->name` |
-| `display_name` | `field_full_name` if set; else username |
-| `total_me` | `_rovas_merit_distribution_user_merits()` (userpoints + decimal) |
-| `total_chr` | `field_chrons_balance` on the user account (numeric; `0` when empty) |
-| `created` | ISO-8601 from Drupal `$account->created` (`gmdate('c')`); `null` if missing/invalid |
-| `language` | `$account->language` (raw Drupal langcode); `null` if empty/`und` — see [preferred language](#next-work-expose-preferred-language-on-rovasme) |
+
+| Field          | Source                                                                                                                                        |
+| -------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| `uid`          | Bearer → Drupal uid                                                                                                                           |
+| `username`     | `$user->name`                                                                                                                                 |
+| `display_name` | `field_full_name` if set; else username                                                                                                       |
+| `total_me`     | `_rovas_merit_distribution_user_merits()` (userpoints + decimal)                                                                              |
+| `total_chr`    | `field_chrons_balance` on the user account (numeric; `0` when empty)                                                                          |
+| `created`      | ISO-8601 from Drupal `$account->created` (`gmdate('c')`); `null` if missing/invalid                                                           |
+| `language`     | `$account->language` (raw Drupal langcode); `null` if empty/`und` — see [preferred language](#next-work-expose-preferred-language-on-rovasme) |
+
+
 #### 3. `GET /rovas/contributions/aggregate` (public) — **implemented**
 
 In `rovas_oauth` (`rovas_oauth_contributions_retrieve()`). Uses the cached
@@ -282,7 +295,7 @@ Reuses `_rovas_merit_distribution_collect_merits()` /
 }
 ```
 
-When **no** Bearer: omit `user_*` fields. When Bearer present: fill them.
+When **no** Bearer: omit `user_`* fields. When Bearer present: fill them.
 
 ## Next work: solo VAT claim
 
@@ -298,29 +311,31 @@ donor). Split-claim typeahead is a separate task — see
 2. [x] Auth: OAuth2 Bearer (`civic` / `user_profile`); reject anonymous
 3. [x] Tables `{civic_claims}` + `{civic_claim_shares}` (UNIQUE `receipt_uid`)
 4. [x] Atomic multi-beneficiary grant via shared donor issuer
-   (`purchase_receipt` + `merits_disbursement` for `/user/*/merits`,
+  (`purchase_receipt` + `merits_disbursement` for `/user/*/merits`,
    `rules_give_merits_to_user`, `project_merit_updater`, expertise NACE
    share, `{rovas_merit_issuance}` A3); each share = separate donor attribution
 5. [x] Enable: `drush74 en rovas_civic -y && drush74 updb -y`, or admin
-   **Configuration → Rovas Civic → Enable Civic VAT claim API**
+  **Configuration → Rovas Civic → Enable Civic VAT claim API**
 6. [ ] Smoke-test with curl using a Civic OAuth access token (after human deploy)
 
 ### Path-1 donor Merit (subtask, also in `rovas_civic`)
 
 - EUR project rewards (`/rewpro` Stripe + bank success paths) now issue **donor
-  Merits** to the payer at the base-fund indicative hourly rate:
-  `ME = (net_eur / rate) × 10`.
+Merits** to the payer at the base-fund indicative hourly rate:
+`ME = (net_eur / rate) × 10`.
 - Admin: **Configuration → Rovas Civic** — national hourly rates (SK seeded)
-  and State Treasury project bootstrap.
+and State Treasury project bootstrap.
 - Formula for VAT claims (decided):  
-  **`ME = (vat_slice_eur / national_hourly_rate_eur) × 10`**  
-  Rovas owns the math; Civic `total_merits` / `hourly_wage_eur` are preview/audit only.
+`**ME = (vat_slice_eur / national_hourly_rate_eur) × 10**`  
+Rovas owns the math; Civic `total_merits` / `hourly_wage_eur` are preview/audit only.
 
 ### Endpoint
 
-| Method | URL | Auth |
-|--------|-----|------|
+
+| Method | URL                                                               | Auth            |
+| ------ | ----------------------------------------------------------------- | --------------- |
 | `POST` | `https://dev.rovas.app/rovas/rules/rules_proxy_claim_vat_receipt` | Bearer required |
+
 
 ### Request body
 
@@ -339,14 +354,16 @@ donor). Split-claim typeahead is a separate task — see
 }
 ```
 
-| Field | Notes |
-|-------|--------|
-| `receipt_uid` | eKasa online UID (`O-` + 32 hex); global unique claim key |
-| `vat_eur` | Verified by Civic against Finančná správa; Rovas grant basis |
-| `total_merits` | Civic preview only — **ignored for grant** |
-| `merchant_name` / `purchase_at` | Audit metadata (nullable OK) |
-| `hourly_wage_eur` | Civic preview; grant uses admin **national** rate (SK) |
-| `shares` | ≥1; each entry is a **donor** to State Treasury for their VAT slice; `share_pct` sums to ~100; **scanner must be included** |
+
+| Field                           | Notes                                                                                                                       |
+| ------------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| `receipt_uid`                   | eKasa online UID (`O-` + 32 hex); global unique claim key                                                                   |
+| `vat_eur`                       | Verified by Civic against Finančná správa; Rovas grant basis                                                                |
+| `total_merits`                  | Civic preview only — **ignored for grant**                                                                                  |
+| `merchant_name` / `purchase_at` | Audit metadata (nullable OK)                                                                                                |
+| `hourly_wage_eur`               | Civic preview; grant uses admin **national** rate (SK)                                                                      |
+| `shares`                        | ≥1; each entry is a **donor** to State Treasury for their VAT slice; `share_pct` sums to ~100; **scanner must be included** |
+
 
 ### Required logic
 
@@ -354,10 +371,10 @@ donor). Split-claim typeahead is a separate task — see
 2. **Dedup** on `receipt_uid` → `result` 409 / `duplicate_receipt`
 3. Validate `shares` (distinct uids, sum ≈ 100, users exist, scanner included)
 4. Per share: `vat_slice` + `ME = (vat_slice / national_rate) × 10`; floor 2dp;
-   **residue to scanner**
+  **residue to scanner**
 5. One Drupal transaction: for each share call donor Merit issuer
-   (`purchase_receipt` + `merits_disbursement` + `rules_give_merits_to_user`
-   + project ME bump + expertise + `{rovas_merit_issuance}`) targeting State
+  (`purchase_receipt` + `merits_disbursement` + `rules_give_merits_to_user`
+  - project ME bump + expertise + `{rovas_merit_issuance}`) targeting State
    Treasury project; persist claim + share rows
 6. Return:
 
@@ -439,9 +456,11 @@ the friendly `q` on its own API and maps it to Rovas `query`.
 Drupal Services resource aliases **cannot contain slashes**. Use the
 machine-name path:
 
-| Method | URL | Auth |
-|--------|-----|------|
-| `GET` | `https://dev.rovas.app/rovas/users_search?query=` | Bearer required (`civic` / `user_profile`) |
+
+| Method | URL                                               | Auth                                       |
+| ------ | ------------------------------------------------- | ------------------------------------------ |
+| `GET`  | `https://dev.rovas.app/rovas/users_search?query=` | Bearer required (`civic` / `user_profile`) |
+
 
 Do **not** register `/rovas/users/search` (slash in alias). Civic API calls
 `/rovas/users_search?query=`.
@@ -453,10 +472,12 @@ dblog Services entries). Use `query`.
 
 ### Query
 
-| Param | Rules |
-|-------|--------|
-| `query` | Required; trim; **≥ 3** characters; reject shorter with 400. **Never `q`.** |
-| (implicit) | Max **10** results |
+
+| Param      | Rules                                                                       |
+| ---------- | --------------------------------------------------------------------------- |
+| `query`    | Required; trim; **≥ 3** characters; reject shorter with 400. **Never `q`.** |
+| (implicit) | Max **10** results                                                          |
+
 
 ### Response
 
@@ -473,11 +494,13 @@ contributions:
 ]
 ```
 
-| Field | Notes |
-|-------|--------|
-| `rovas_uid` | Drupal uid as string |
-| `username` | Rovas username |
+
+| Field          | Notes                                               |
+| -------------- | --------------------------------------------------- |
+| `rovas_uid`    | Drupal uid as string                                |
+| `username`     | Rovas username                                      |
 | `display_name` | Prefer real name / display; fall back to `username` |
+
 
 Empty match → `[]` (200).
 
@@ -486,10 +509,10 @@ Empty match → `[]` (200).
 1. Resolve caller from Bearer (reject anonymous)
 2. Match `query` case-insensitively against username and display name
 3. Exclude blocked / inactive users; exclude the caller (optional but
-   preferred — scanner is always injected client-side)
+  preferred — scanner is always injected client-side)
 4. Cap at 10 rows, stable order (username ASC is fine)
 5. **Phase 3+:** honour a per-user “not searchable / don’t include me in
-   split claims” preference — stub as no-op for v1 (`rovas_civic_user_is_searchable`)
+  split claims” preference — stub as no-op for v1 (`rovas_civic_user_is_searchable`)
 
 ### Checklist
 
@@ -527,18 +550,22 @@ rank ladder are computed on **Civic** from `/rovas/merit_distribution` +
 Drupal Services resource aliases **cannot contain slashes**. Use the
 machine-name path:
 
-| Method | URL | Auth |
-|--------|-----|------|
-| `GET` | `https://dev.rovas.app/rovas/users_lookup?username=` | Bearer required (`civic` / `user_profile`) |
+
+| Method | URL                                                  | Auth                                       |
+| ------ | ---------------------------------------------------- | ------------------------------------------ |
+| `GET`  | `https://dev.rovas.app/rovas/users_lookup?username=` | Bearer required (`civic` / `user_profile`) |
+
 
 Do **not** register `/rovas/users/lookup` (slash in alias). Civic API calls
 `/rovas/users_lookup?username=`.
 
 ### Query
 
-| Param | Rules |
-|-------|--------|
+
+| Param      | Rules                                                                                          |
+| ---------- | ---------------------------------------------------------------------------------------------- |
 | `username` | Required; trim; exact match, case-insensitive against `users.name`. Reject empty with **400**. |
+
 
 ### Response
 
@@ -567,26 +594,30 @@ Do **not** register `/rovas/users/lookup` (slash in alias). Civic API calls
 }
 ```
 
-| Field | Notes |
-|-------|--------|
-| `rovas_uid` | Drupal uid as string |
-| `username` | Canonical Rovas username |
-| `display_name` | Prefer `field_full_name`; fall back to `username` |
-| `total_me` | Same source as `/rovas/me` for that uid (`_rovas_merit_distribution_user_merits` or fallback) |
-| `by_category.taxes` | `user_expertise` Merits on fallback NACE `ROVAS_CIVIC_FALLBACK_NACE_TID` (64.99 / tid **1601**) only — exclusive source |
-| `by_category.charity` | `user_expertise` Merits on `ROVAS_CIVIC_CHARITY_NACE_TID` when that constant is a positive tid; **0** until a dedicated charity NACE is configured |
-| `by_category.volunteer` | Sum of `user_expertise` Merits whose NACE is **neither** the fallback tid nor the charity tid |
-| `taxes_last_3_months` | Last **3 calendar months** (including current) of VAT-claim Merits for this uid, keyed `YYYY-MM`; omit zero months or include with `me: 0` — prefer only months with activity; max 3 rows; `[]` if none |
-| `top_charities` | Up to **3** `{ project_nid, name, me }` from `{rovas_merit_issuance}` rows with `source_type = project_reward_order` (Path-1 donor Merits from project donations). **Not** raw `purchase_receipt` Merit spends. Exclude State Treasury. Empty until real charity donations exist. |
-| `top_volunteer_projects` | Up to **3** `{ project_nid, name, me }` from `project_merit_allocation` / `co_worker_merit_allocation` labor Merits (aggregated by project nid) |
+
+| Field                    | Notes                                                                                                                                                                                                                                                                             |
+| ------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `rovas_uid`              | Drupal uid as string                                                                                                                                                                                                                                                              |
+| `username`               | Canonical Rovas username                                                                                                                                                                                                                                                          |
+| `display_name`           | Prefer `field_full_name`; fall back to `username`                                                                                                                                                                                                                                 |
+| `total_me`               | Same source as `/rovas/me` for that uid (`_rovas_merit_distribution_user_merits` or fallback)                                                                                                                                                                                     |
+| `by_category.taxes`      | `user_expertise` Merits on fallback NACE `ROVAS_CIVIC_FALLBACK_NACE_TID` (64.99 / tid **1601**) only — exclusive source                                                                                                                                                           |
+| `by_category.charity`    | `user_expertise` Merits on `ROVAS_CIVIC_CHARITY_NACE_TID` when that constant is a positive tid; **0** until a dedicated charity NACE is configured                                                                                                                                |
+| `by_category.volunteer`  | Sum of `user_expertise` Merits whose NACE is **neither** the fallback tid nor the charity tid                                                                                                                                                                                     |
+| `taxes_last_3_months`    | Last **3 calendar months** (including current) of VAT-claim Merits for this uid, keyed `YYYY-MM`; omit zero months or include with `me: 0` — prefer only months with activity; max 3 rows; `[]` if none                                                                           |
+| `top_charities`          | Up to **3** `{ project_nid, name, me }` from `{rovas_merit_issuance}` rows with `source_type = project_reward_order` (Path-1 donor Merits from project donations). **Not** raw `purchase_receipt` Merit spends. Exclude State Treasury. Empty until real charity donations exist. |
+| `top_volunteer_projects` | Up to **3** `{ project_nid, name, me }` from `project_merit_allocation` / `co_worker_merit_allocation` labor Merits (aggregated by project nid)                                                                                                                                   |
+
 
 ### Errors
 
-| Status | When |
-|--------|------|
-| 401 | No / invalid Bearer |
-| 400 | Empty / missing `username` |
-| 404 | Unknown username, blocked/inactive user, or not searchable (privacy) |
+
+| Status | When                                                                 |
+| ------ | -------------------------------------------------------------------- |
+| 401    | No / invalid Bearer                                                  |
+| 400    | Empty / missing `username`                                           |
+| 404    | Unknown username, blocked/inactive user, or not searchable (privacy) |
+
 
 ### Required logic
 
@@ -638,10 +669,12 @@ balances are fine. Search response shape is unchanged
 
 ### Endpoints
 
-| Endpoint | Behaviour when `total_me < 0` |
-|----------|-------------------------------|
-| `GET /rovas/users_search?query=` | Omit the user from the result list (oversample so the 10-row cap still fills) |
-| `GET /rovas/users_lookup?username=` | Treat as not found → **404** (same as unknown / not searchable) |
+
+| Endpoint                            | Behaviour when `total_me < 0`                                                 |
+| ----------------------------------- | ----------------------------------------------------------------------------- |
+| `GET /rovas/users_search?query=`    | Omit the user from the result list (oversample so the 10-row cap still fills) |
+| `GET /rovas/users_lookup?username=` | Treat as not found → **404** (same as unknown / not searchable)               |
+
 
 ### Checklist
 
@@ -649,7 +682,7 @@ balances are fine. Search response shape is unchanged
 2. [x] `users_lookup` returns 404 for negative-ME usernames
 3. [x] Shared Merit helper (`rovas_civic_user_total_me`)
 4. [ ] Smoke-test: search a known negative-ME user → absent; lookup → 404;
-      positive-ME user still works
+  positive-ME user still works
 5. [ ] Deploy to rovdev when human asks (`ops/deploy_rovdev.sh` / targeted rsync)
 
 ### Smoke test
@@ -701,14 +734,14 @@ items include `scanner_username` / `scanner_display_name` for the From column
 ### Checklist
 
 1. [x] `GET /rovas/civic_claims?view=submitted` — Bearer; claims where caller
-   is the scanner
+  is the scanner
 2. [x] `GET /rovas/civic_claims?view=received` — Bearer; share rows where
-   caller is a beneficiary
+  caller is a beneficiary
 3. [x] Pagination: `limit` / `offset` (default 50, max 100)
 4. [x] `GET /rovas/civic_claims/summary` — `receipt_count`, `total_vat_eur`,
-   `taxes_me` (all **received**)
+  `taxes_me` (all **received**)
 5. [x] `GET /rovas/civic_claims?receipt_uid=` — `{ claimed, receipt_uid }`
-   global SoT lookup (no scanner identity; ignores view/limit/offset)
+  global SoT lookup (no scanner identity; ignores view/limit/offset)
 6. [x] Services + OAuth2 (`civic` / `user_profile`); reject anonymous
 7. [x] Enable / register resources (`rovas_civic_update_7002` / admin)
 8. [x] Dev clear: out of band (phpMyAdmin) — Merits not reversed
@@ -716,12 +749,14 @@ items include `scanner_username` / `scanner_display_name` for the From column
 
 ### Endpoints
 
-| Method | URL | Auth |
-|--------|-----|------|
-| `GET` | `https://dev.rovas.app/rovas/civic_claims?view=submitted` | Bearer required |
-| `GET` | `https://dev.rovas.app/rovas/civic_claims?view=received` | Bearer required |
-| `GET` | `https://dev.rovas.app/rovas/civic_claims?receipt_uid=O-…` | Bearer required — `{ claimed, receipt_uid }` |
-| `GET` | `https://dev.rovas.app/rovas/civic_claims/summary` | Bearer required |
+
+| Method | URL                                                        | Auth                                         |
+| ------ | ---------------------------------------------------------- | -------------------------------------------- |
+| `GET`  | `https://dev.rovas.app/rovas/civic_claims?view=submitted`  | Bearer required                              |
+| `GET`  | `https://dev.rovas.app/rovas/civic_claims?view=received`   | Bearer required                              |
+| `GET`  | `https://dev.rovas.app/rovas/civic_claims?receipt_uid=O-…` | Bearer required — `{ claimed, receipt_uid }` |
+| `GET`  | `https://dev.rovas.app/rovas/civic_claims/summary`         | Bearer required                              |
+
 
 ### Claim status (`?receipt_uid=`)
 
@@ -736,7 +771,7 @@ Lookup is `{civic_claims}` by UNIQUE `receipt_uid`. No scanner / share data.
 Implemented as `rovas_civic_claim_status_by_receipt_uid()`.
 
 Civic calls this via `fetchClaimStatus` (optional Bearer → `already_claimed`
-locks split UI + claim). Related: `users_search` uses param **`query`**, never
+locks split UI + claim). Related: `users_search` uses param `**query**`, never
 `q` (Drupal path conflict) — see [users search](#next-work-users-search-split-typeahead).
 
 ```bash
@@ -751,7 +786,7 @@ curl -sS "https://dev.rovas.app/rovas/civic_claims?receipt_uid=O-<unknown>" \
 
 ### Response shapes
 
-**`view=submitted`** — successful claims the caller scanned (not every QR
+`**view=submitted**` — successful claims the caller scanned (not every QR
 attempt; failures stay in Civic `claim_attempts`):
 
 ```json
@@ -780,7 +815,7 @@ attempt; failures stay in Civic `claim_attempts`):
 }
 ```
 
-**`view=received`** — shares credited to the caller (may include claims
+`**view=received**` — shares credited to the caller (may include claims
 scanned by someone else):
 
 ```json
@@ -805,7 +840,7 @@ scanned by someone else):
 }
 ```
 
-**`GET …/summary`** (received-based — matches Civic home “taxes”):
+`**GET …/summary**` (received-based — matches Civic home “taxes”):
 
 ```json
 {
@@ -815,11 +850,13 @@ scanned by someone else):
 }
 ```
 
-| Field | Meaning |
-|-------|---------|
-| `receipt_count` | Distinct claims where caller is a beneficiary |
-| `total_vat_eur` | Sum of caller’s `vat_slice` |
-| `taxes_me` | Sum of caller’s `merits_awarded` from VAT shares |
+
+| Field           | Meaning                                          |
+| --------------- | ------------------------------------------------ |
+| `receipt_count` | Distinct claims where caller is a beneficiary    |
+| `total_vat_eur` | Sum of caller’s `vat_slice`                      |
+| `taxes_me`      | Sum of caller’s `merits_awarded` from VAT shares |
+
 
 ### Out of scope for this Rovas slice
 
@@ -925,9 +962,11 @@ verify-preview, home € equivalent, and claim audit fields match the grant.
 
 ### Endpoint
 
-| Method | URL | Auth |
-|--------|-----|------|
-| `GET` | `https://dev.rovas.app/rovas/civic_national_hourly_rate?country=SK` | **Public** (no Bearer) |
+
+| Method | URL                                                                 | Auth                   |
+| ------ | ------------------------------------------------------------------- | ---------------------- |
+| `GET`  | `https://dev.rovas.app/rovas/civic_national_hourly_rate?country=SK` | **Public** (no Bearer) |
+
 
 Default `country` = `ROVAS_CIVIC_DEFAULT_COUNTRY` (`SK`). Unknown / missing
 row → **404** with a clear error body.
@@ -944,13 +983,15 @@ row → **404** with a clear error body.
 }
 ```
 
-| Field | Source |
-|-------|--------|
-| `country_code` | Request / row PK |
+
+| Field             | Source                                  |
+| ----------------- | --------------------------------------- |
+| `country_code`    | Request / row PK                        |
 | `hourly_wage_eur` | `{rovas_national_hourly_rate}.rate_eur` |
-| `merits_per_hour` | `ROVAS_CIVIC_ME_PER_HOUR` (10) |
-| `source` | Row `source` (may be empty string) |
-| `updated` | Row `updated` as ISO-8601 (or `null`) |
+| `merits_per_hour` | `ROVAS_CIVIC_ME_PER_HOUR` (10)          |
+| `source`          | Row `source` (may be empty string)      |
+| `updated`         | Row `updated` as ISO-8601 (or `null`)   |
+
 
 ### Checklist
 
@@ -994,9 +1035,9 @@ In `rovas_oauth` → `rovas_oauth_me_index()`:
 1. Read Drupal `$account->created` (Unix seconds).
 2. Emit ISO-8601 via `gmdate('c', (int) $account->created)` (or equivalent).
 3. Include `"created"` in the JSON response alongside `uid`, `username`,
-   `display_name`, `total_me`.
+  `display_name`, `total_me`.
 4. If `created` is empty/invalid, return `null` (Civic treats null as missing
-   and rejects the claim with `rejected_account_age`).
+  and rejects the claim with `rejected_account_age`).
 
 No new Services resource — extend the existing `/rovas/me` payload only.
 
@@ -1012,9 +1053,11 @@ No new Services resource — extend the existing `/rovas/me` payload only.
 }
 ```
 
-| Field | Source |
-|-------|--------|
+
+| Field     | Source                                             |
+| --------- | -------------------------------------------------- |
 | `created` | `$account->created` → ISO-8601 (UTC/`gmdate('c')`) |
+
 
 ### Checklist
 
@@ -1047,11 +1090,13 @@ and an in-app override on the Civic profile screen.
 
 ### Mapping Civic applies (do not change without Civic agreement)
 
-| Rovas / device code | Civic UI |
-|---------------------|----------|
-| `sk` | `sk` |
-| `cs` / `cz` | `sk` (until Civic ships a Czech catalog) |
-| anything else | `en` |
+
+| Rovas / device code | Civic UI                                 |
+| ------------------- | ---------------------------------------- |
+| `sk`                | `sk`                                     |
+| `cs` / `cz`         | `sk` (until Civic ships a Czech catalog) |
+| anything else       | `en`                                     |
+
 
 Same spirit as `rovas_base_map_partner_user_language()` (cs/cz → sk).
 
@@ -1061,10 +1106,10 @@ In `rovas_oauth` → `rovas_oauth_me_index()`:
 
 1. Read Drupal `$account->language` (user preferred interface language).
 2. Include `"language"` in the JSON response (raw Drupal langcode string,
-   e.g. `sk`, `en`, `cs`). Empty / unset → `null` or omit (Civic falls back
+  e.g. `sk`, `en`, `cs`). Empty / unset → `null` or omit (Civic falls back
    to device language).
 3. Do **not** map cs→sk on the Rovas side for this field — emit the stored
-   account language; Civic maps for its catalog.
+  account language; Civic maps for its catalog.
 
 No new Services resource — extend the existing `/rovas/me` payload only.
 Optional later: a write endpoint so the Civic profile language switcher can
@@ -1084,9 +1129,11 @@ persist back to `$account->language` (not required for v1).
 }
 ```
 
-| Field | Source |
-|-------|--------|
+
+| Field      | Source                                                                 |
+| ---------- | ---------------------------------------------------------------------- |
 | `language` | `$account->language` (Drupal user preferred language); `null` if empty |
+
 
 ### Checklist
 
@@ -1138,9 +1185,11 @@ In `rovas_oauth` → `rovas_oauth_me_index()`:
 }
 ```
 
-| Field | Source |
-|-------|--------|
+
+| Field       | Source                                                                               |
+| ----------- | ------------------------------------------------------------------------------------ |
 | `total_chr` | `field_chrons_balance` on the user account (numeric value only; omit `" CH"` suffix) |
+
 
 ### Checklist
 
@@ -1178,9 +1227,11 @@ Extend `rovas_civic_users_lookup()` — **no new Services resource**.
 
 Same machine-name path as existing users lookup:
 
-| Method | URL | Auth |
-|--------|-----|------|
-| `GET` | `https://dev.rovas.app/rovas/users_lookup?username=&lang=` | Bearer required (`civic` / `user_profile`) |
+
+| Method | URL                                                        | Auth                                       |
+| ------ | ---------------------------------------------------------- | ------------------------------------------ |
+| `GET`  | `https://dev.rovas.app/rovas/users_lookup?username=&lang=` | Bearer required (`civic` / `user_profile`) |
+
 
 ### Response addition
 
@@ -1215,15 +1266,17 @@ Add `nace_expertise` array to the existing `users_lookup` JSON (after
 }
 ```
 
-| Field | Rules |
-|-------|--------|
-| `section_tid` | Top-level NACE taxonomy term id (parent section) |
-| `section_label` | Localized parent name with `"X – "` / `"X - "` letter prefix stripped (meritscope uses `substr($parent_label, 2)`) |
-| `section_letter` | Lowercase first character of the **unlocalized** parent name — used for icon file name |
-| `icon_url` | Absolute URL: `{base_url}/sites/default/files/pictures/nace_icons/{section_letter}.svg` |
-| `me` | ME in that section (float, rounded to 2 dp) |
-| `share_percent` | Integer % of total grouped ME across all sections |
-| `hourly_rate_eur` | Parent term `field_hourly_reward`, default **10** when unset (same as Merit Index popover) |
+
+| Field             | Rules                                                                                                              |
+| ----------------- | ------------------------------------------------------------------------------------------------------------------ |
+| `section_tid`     | Top-level NACE taxonomy term id (parent section)                                                                   |
+| `section_label`   | Localized parent name with `"X – "` / `"X - "` letter prefix stripped (meritscope uses `substr($parent_label, 2)`) |
+| `section_letter`  | Lowercase first character of the **unlocalized** parent name — used for icon file name                             |
+| `icon_url`        | Absolute URL: `{base_url}/sites/default/files/pictures/nace_icons/{section_letter}.svg`                            |
+| `me`              | ME in that section (float, rounded to 2 dp)                                                                        |
+| `share_percent`   | Integer % of total grouped ME across all sections                                                                  |
+| `hourly_rate_eur` | Parent term `field_hourly_reward`, default **10** when unset (same as Merit Index popover)                         |
+
 
 Return `"nace_expertise": []` when the user has no positive expertise rows (do
 not 404). Omitting the field on older deploys is OK — Civic defaults to `[]`.
@@ -1231,21 +1284,21 @@ not 404). Omitting the field on older deploys is OK — Civic defaults to `[]`.
 ### Required logic
 
 1. **Extract** a shared JSON builder from `rovas_meritscope_display_user_expertise()`
-   (e.g. `rovas_meritscope_user_expertise_json($uid, $lang)` in
+  (e.g. `rovas_meritscope_user_expertise_json($uid, $lang)` in
    `rovas_meritscope.module`). Refactor the HTML renderer to call it so web and
    Civic stay in sync.
 2. **Fix expert filter:** the current meritscope SQL filters on `node.uid`;
-   expertise nodes use **`field_expert`** (`field_expert_target_id`). The JSON
+  expertise nodes use `**field_expert**` (`field_expert_target_id`). The JSON
    builder must join/filter like `group_nace_merit_sum()` and
    `rovas_civic_users_lookup_expertise_categories()` — `field_expert_target_id = :uid`.
 3. Load all `user_expertise` nodes with `field_merits > 0` for the user.
 4. Group by **top-level NACE parent** (`taxonomy_get_parents_all`, same index
-   logic as `rovas_meritscope_display_user_expertise()` step 3).
+  logic as `rovas_meritscope_display_user_expertise()` step 3).
 5. Sum ME per section; apply proportional scaling when userpoints total >
-   summed expertise (meritscope step 4).
+  summed expertise (meritscope step 4).
 6. Sort descending by `me`.
 7. Honor `?lang=` on `users_lookup` for localized `section_label`
-   (`i18n_string("taxonomy:term:{tid}:name", …)`).
+  (`i18n_string("taxonomy:term:{tid}:name", …)`).
 8. Wire into `rovas_civic_users_lookup()` before return.
 
 ### Checklist
@@ -1287,48 +1340,54 @@ match the Civic language when a translation exists.
 
 ### Civic → Rovas contract (already live on Civic side)
 
-| Civic API | Forwards to Rovas |
-|-----------|-------------------|
-| `GET /projects/:nid?lang=` | `GET /rovas/civic_project/{nid}?lang=` |
-| `GET /projects/:nid/work-reports?lang=` | `GET /rovas/civic_project_work_reports?project_nid=&lang=` |
-| `GET /users/lookup?username=&lang=` | `GET /rovas/users_lookup?username=&lang=` |
 
-| Param | Rules |
-|-------|--------|
+| Civic API                               | Forwards to Rovas                                          |
+| --------------------------------------- | ---------------------------------------------------------- |
+| `GET /projects/:nid?lang=`              | `GET /rovas/civic_project/{nid}?lang=`                     |
+| `GET /projects/:nid/work-reports?lang=` | `GET /rovas/civic_project_work_reports?project_nid=&lang=` |
+| `GET /users/lookup?username=&lang=`     | `GET /rovas/users_lookup?username=&lang=`                  |
+
+
+
+| Param  | Rules                                                                                                                                |
+| ------ | ------------------------------------------------------------------------------------------------------------------------------------ |
 | `lang` | Optional. Civic sends `sk` or `en` only. Treat `cs`/`cz` as `sk` if ever received. Missing → keep current behavior (source/default). |
+
 
 Shareholders endpoint stays language-agnostic (no translated copy).
 
 ### Fields that must respect `lang`
 
-| Endpoint | Fields |
-|----------|--------|
-| `civic_project` | `title`, `summary`; embedded `work_reports.items[].title`, `.summary` |
-| `civic_project_work_reports` | `items[].title`, `items[].summary` |
-| `users_lookup` | `top_charities[].name`, `top_volunteer_projects[].name` |
+
+| Endpoint                     | Fields                                                                |
+| ---------------------------- | --------------------------------------------------------------------- |
+| `civic_project`              | `title`, `summary`; embedded `work_reports.items[].title`, `.summary` |
+| `civic_project_work_reports` | `items[].title`, `items[].summary`                                    |
+| `users_lookup`               | `top_charities[].name`, `top_volunteer_projects[].name`               |
+
 
 ### Required logic (`rovas_civic`)
 
 1. Resolve requested langcode from `$_GET['lang']` (primary). Optionally also
-   accept `Accept-Language` if `lang` is absent — same mapping as above.
+  accept `Accept-Language` if `lang` is absent — same mapping as above.
 2. Constrain to an **enabled** Drupal interface/content language (reuse
-   `rovas_base_normalize_to_enabled_language()` when available).
+  `rovas_base_normalize_to_enabled_language()` when available).
 3. For each project / work_report node:
-   - **Title:** prefer `title_field[$lang][0]['value']` when Title + Entity
-     Translation are enabled; else fall back to `$node->title`. If the
-     requested lang has no title translation, fall back to Entity Translation
-     source language (`rovas_base_translation_node_source_language()` /
-     `rovas_base_translation_pick_source_text($node, 'title_field')`), then
-     `$node->title`.
-   - **Body / summary:** read `body` for `$lang` (via `field_get_items` with
-     language, or direct `$node->body[$lang]`), then source, then
-     `LANGUAGE_NONE`. Keep existing `rovas_civic_plain_teaser()` rules.
+  - **Title:** prefer `title_field[$lang][0]['value']` when Title + Entity
+   Translation are enabled; else fall back to `$node->title`. If the
+   requested lang has no title translation, fall back to Entity Translation
+   source language (`rovas_base_translation_node_source_language()` /
+   `rovas_base_translation_pick_source_text($node, 'title_field')`), then
+   `$node->title`.
+  - **Body / summary:** read `body` for `$lang` (via `field_get_items` with
+  language, or direct `$node->body[$lang]`), then source, then
+  `LANGUAGE_NONE`. Keep existing `rovas_civic_plain_teaser()` rules.
 4. For `users_lookup` top project rows: today SQL uses `{node}.title`. After
-   aggregating nids, `node_load_multiple` and resolve each `name` with the
+  aggregating nids, `node_load_multiple` and resolve each `name` with the
    same title picker as above (do not leave SQL `pn.title` as the only
    source when `lang` is set).
 5. Do **not** fail the request when a translation is missing — always return
-   a string with source fallback.
+  a string with source fallback.
 6. Additive only: omitting `lang` must behave as today.
 
 ### Checklist
@@ -1362,6 +1421,7 @@ curl -sS "https://dev.rovas.app/rovas/users_lookup?username=sano&lang=en" \
 Expo sends `lang` from the active Civic locale on lookup + project + WR
 fetches. Civic API proxies it. No further Civic change needed once Rovas
 honors the param.
+
 ## Next work: project detail + work reports (Civic modal)
 
 **Implemented in `rovas_civic`** (enable on rovdev: `drush74 updb -y`, or admin
@@ -1381,10 +1441,12 @@ clients that ignore unknown fields.
 
 ### Endpoints
 
-| Method | URL | Notes |
-|--------|-----|------|
-| `GET` | `https://dev.rovas.app/rovas/civic_project/{nid}` | Project summary + first page of work reports |
-| `GET` | `https://dev.rovas.app/rovas/civic_project_work_reports?project_nid=&limit=&offset=` | Paginated work reports for a project |
+
+| Method | URL                                                                                  | Notes                                        |
+| ------ | ------------------------------------------------------------------------------------ | -------------------------------------------- |
+| `GET`  | `https://dev.rovas.app/rovas/civic_project/{nid}`                                    | Project summary + first page of work reports |
+| `GET`  | `https://dev.rovas.app/rovas/civic_project_work_reports?project_nid=&limit=&offset=` | Paginated work reports for a project         |
+
 
 Machine-name paths only (no slash aliases).
 
@@ -1424,16 +1486,18 @@ Machine-name paths only (no slash aliases).
 }
 ```
 
-| Field | Source / rules |
-|-------|----------------|
-| `summary` | `strip_tags` + decode entities on `body`; max ~800 chars; `null` if empty. Always include for published projects (do **not** omit for Private participation). |
-| `is_public` | Informational only: `field_participation` ∈ {Public (1), Public-dependent (2)}. **Private (0) is still fully readable** — it only means the owner controls who may join as a shareholder (not “hide from Civic”). Full summary, WR list, photos, and shareholders for all published projects. |
-| `total_hours` | `field_project_total_hours` (float or null) |
-| `total_me` | `field_merit_reward` (float or null) |
-| `work_report_count` / `work_reports.total` | Count of published `work_report` nodes with `field_project` → this nid |
-| `created_at` (WR) | Prefer `field_date` unix; else node `created` → ISO-8601 |
-| `hours` (WR) | `field_hours_worked` |
-| `summary` (WR) | Same plain-text teaser rules as project body |
+
+| Field                                      | Source / rules                                                                                                                                                                                                                                                                                |
+| ------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `summary`                                  | `strip_tags` + decode entities on `body`; max ~800 chars; `null` if empty. Always include for published projects (do **not** omit for Private participation).                                                                                                                                 |
+| `is_public`                                | Informational only: `field_participation` ∈ {Public (1), Public-dependent (2)}. **Private (0) is still fully readable** — it only means the owner controls who may join as a shareholder (not “hide from Civic”). Full summary, WR list, photos, and shareholders for all published projects. |
+| `total_hours`                              | `field_project_total_hours` (float or null)                                                                                                                                                                                                                                                   |
+| `total_me`                                 | `field_merit_reward` (float or null)                                                                                                                                                                                                                                                          |
+| `work_report_count` / `work_reports.total` | Count of published `work_report` nodes with `field_project` → this nid                                                                                                                                                                                                                        |
+| `created_at` (WR)                          | Prefer `field_date` unix; else node `created` → ISO-8601                                                                                                                                                                                                                                      |
+| `hours` (WR)                               | `field_hours_worked`                                                                                                                                                                                                                                                                          |
+| `summary` (WR)                             | Same plain-text teaser rules as project body                                                                                                                                                                                                                                                  |
+
 
 **404** — unknown nid, wrong type, or unpublished (`status != 1`).
 
@@ -1441,11 +1505,13 @@ Default first WR page: `limit=20` (max 50), `offset=0`.
 
 ### `GET /rovas/civic_project_work_reports`
 
-| Param | Rules |
-|-------|--------|
+
+| Param         | Rules                 |
+| ------------- | --------------------- |
 | `project_nid` | Required positive int |
-| `limit` | Default 20, max 50 |
-| `offset` | Default 0 |
+| `limit`       | Default 20, max 50    |
+| `offset`      | Default 0             |
+
 
 Return full published WR pages for **any** published project (including Private participation). Return **404** only if project missing/unpublished.
 
@@ -1517,15 +1583,19 @@ On both `GET /rovas/civic_project/{nid}` embedded `work_reports.items[]` and
 ]
 ```
 
-| Field | Rules |
-|-------|--------|
+
+| Field        | Rules                                                                                                                                                                                                                                                                                   |
+| ------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `photo_urls` | Absolute HTTPS URLs from `field_photos` via `file_create_url` (or equivalent). Empty array when none. Include for Private participation projects too. Omit broken/missing files. Prefer image styles only if a stable public style already exists; otherwise original file URL is fine. |
+
 
 ### Endpoint: shareholders
 
-| Method | URL | Notes |
-|--------|-----|------|
-| `GET` | `https://dev.rovas.app/rovas/civic_project_shareholders?project_nid=&limit=&offset=` | Paginated; machine-name path |
+
+| Method | URL                                                                                  | Notes                        |
+| ------ | ------------------------------------------------------------------------------------ | ---------------------------- |
+| `GET`  | `https://dev.rovas.app/rovas/civic_project_shareholders?project_nid=&limit=&offset=` | Paginated; machine-name path |
+
 
 Also embed the **first page** on `GET /rovas/civic_project/{nid}` as
 `shareholders` (same page shape) plus `shareholder_count`.
@@ -1555,12 +1625,14 @@ Also embed the **first page** on `GET /rovas/civic_project/{nid}` as
 }
 ```
 
-| Field | Source / rules (match Rovas shareholder view logic) |
-|-------|--------|
-| `username` | Rovas **username** (not full name). From coworker user for worker shares; skip pure project-as-shareholder rows **or** omit them from Civic (Civic only needs user usernames linkable to Komunita). |
-| `share_kind` | `"percent"` when `field_merit_allocation` > 0; else `"time_based"` (Rovas view prints “work time share”). |
-| `share_percent` | `field_merit_allocation` when percent; else `null`. |
-| `hours` | `field_total_hours_worked` (float or null) — especially meaningful for time-based shares. |
+
+| Field           | Source / rules (match Rovas shareholder view logic)                                                                                                                                                 |
+| --------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `username`      | Rovas **username** (not full name). From coworker user for worker shares; skip pure project-as-shareholder rows **or** omit them from Civic (Civic only needs user usernames linkable to Komunita). |
+| `share_kind`    | `"percent"` when `field_merit_allocation` > 0; else `"time_based"` (Rovas view prints “work time share”).                                                                                           |
+| `share_percent` | `field_merit_allocation` when percent; else `null`.                                                                                                                                                 |
+| `hours`         | `field_total_hours_worked` (float or null) — especially meaningful for time-based shares.                                                                                                           |
+
 
 Visibility: same as project detail — return shareholders for any **published**
 project (including Private participation). **404** only if project
@@ -1609,14 +1681,14 @@ summary, work ledgers, photos, or shareholders are secret.
 ### Fix in `rovas_civic`
 
 1. `GET /rovas/civic_project/{nid}` — return full payload for all published
-   projects regardless of `field_participation`. Keep `is_public` as an
+  projects regardless of `field_participation`. Keep `is_public` as an
    informational boolean only.
 2. `GET /rovas/civic_project_work_reports` — return WR pages for Private
-   projects too (do not empty `items` when private).
+  projects too (do not empty `items` when private).
 3. `GET /rovas/civic_project_shareholders` — same; include Private projects.
 4. `photo_urls` — include when photos exist on Private projects.
 5. Update any helpers that currently strip body / WRs / shareholders when
-   `rovas_civic_project_is_public()` is false.
+  `rovas_civic_project_is_public()` is false.
 6. Deploy + `drush74 cc all` (updb only if a new schema hook is needed).
 
 ### Checklist
@@ -1638,7 +1710,7 @@ curl -sS "https://dev.rovas.app/rovas/civic_project/$PRIVATE_NID" \
 
 **Implemented in `rovas_civic`** (enable on rovdev: `drush74 updb -y`, or admin
 enable APIs). Civic’s **Profil** screen needs the same Merit ledger Rovas already shows at
-`/user/<uid>/merits` — Views **`merit_history`**, display **`page_1`**.
+`/user/<uid>/merits` — Views `**merit_history**`, display `**page_1**`.
 
 Do **not** scrape HTML or call `views_get_view()` / `views_embed_view()`. Add a
 JSON Services resource in `rovas_civic` that **mirrors that view with SQL**
@@ -1650,14 +1722,16 @@ query param (do not expose another user’s ledger).
 
 ### What the view shows (parity)
 
-| Views field | Role | Civic JSON |
-|-------------|------|------------|
-| `nid` (Receipt Id) | Disbursement / penalty node | `disbursement_nid` |
-| `created` (Date) | Node created | `created_at` ISO-8601 |
-| PHP **Source** | See rules below | `source_kind` + `source_title` + nids |
-| `field_reward_amount` (Reward) | ME credited (can be negative) | `merits` |
-| `field_receipt_project` (hidden) | Project on parent `purchase_receipt` | `project_nid` |
-| `field_rewarded_report` (hidden) | Work report on parent receipt | `work_report_nid` |
+
+| Views field                      | Role                                 | Civic JSON                            |
+| -------------------------------- | ------------------------------------ | ------------------------------------- |
+| `nid` (Receipt Id)               | Disbursement / penalty node          | `disbursement_nid`                    |
+| `created` (Date)                 | Node created                         | `created_at` ISO-8601                 |
+| PHP **Source**                   | See rules below                      | `source_kind` + `source_title` + nids |
+| `field_reward_amount` (Reward)   | ME credited (can be negative)        | `merits`                              |
+| `field_receipt_project` (hidden) | Project on parent `purchase_receipt` | `project_nid`                         |
+| `field_rewarded_report` (hidden) | Work report on parent receipt        | `work_report_nid`                     |
+
 
 HTML-only columns Civic does **not** need: Buyer (`field_buyer`), Amount paid
 (`field_amount_paid`). Skip them.
@@ -1668,11 +1742,11 @@ HTML-only columns Civic does **not** need: Buyer (`field_buyer`), Amount paid
 **Source PHP on `page_1` (reproduce exactly, without HTML):**
 
 1. No project **and** no work report → `source_kind: "purchase"`,
-   `source_title: null` (Rovas label *Merits purchase* — Civic i18n’s that).
+  `source_title: null` (Rovas label *Merits purchase* — Civic i18n’s that).
 2. Project, no work report → `source_kind: "project"`,
-   `source_title` = localized project title, `project_nid` set.
+  `source_title` = localized project title, `project_nid` set.
 3. Work report present → `source_kind: "report"`,
-   `source_title` = localized WR title, `work_report_nid` set,
+  `source_title` = localized WR title, `work_report_nid` set,
    `project_nid` still included when known.
 
 VAT claims and charity donations are **project** rows (State Treasury / funded
@@ -1680,17 +1754,21 @@ project). Volunteer work is **report**. Bought Merits are **purchase**.
 
 ### Endpoint
 
-| Method | URL | Auth |
-|--------|-----|------|
-| `GET` | `https://dev.rovas.app/rovas/civic_merit_history` | Bearer required |
+
+| Method | URL                                               | Auth            |
+| ------ | ------------------------------------------------- | --------------- |
+| `GET`  | `https://dev.rovas.app/rovas/civic_merit_history` | Bearer required |
+
 
 Machine-name path only (no slash alias).
 
-| Param | Rules |
-|-------|--------|
-| `limit` | Default **20**, max **50** |
-| `offset` | Default 0 |
-| `lang` | Optional `sk` \| `en` — same Entity Translation / `title_field` rules as `civic_project` (source fallback). Used for `source_title` only. |
+
+| Param    | Rules                                                                                                                                    |
+| -------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| `limit`  | Default **20**, max **50**                                                                                                               |
+| `offset` | Default 0                                                                                                                                |
+| `lang`   | Optional `sk` | `en` — same Entity Translation / `title_field` rules as `civic_project` (source fallback). Used for `source_title` only. |
+
 
 ### 200 response
 
@@ -1734,15 +1812,17 @@ Machine-name path only (no slash alias).
 }
 ```
 
-| Field | Rules |
-|-------|--------|
-| `disbursement_nid` | String nid of the `merits_disbursement` / `merit_penalty` node |
-| `node_type` | `merits_disbursement` or `merit_penalty` |
-| `created_at` | Node `created` → ISO-8601 (`rovas_civic_format_created`) |
-| `merits` | `field_reward_amount` float (negative allowed for penalties) |
-| `source_kind` | `project` \| `report` \| `purchase` only |
-| `source_title` | Localized entity title, or `null` for `purchase` |
-| `project_nid` / `work_report_nid` | String nids or `null` |
+
+| Field                             | Rules                                                          |
+| --------------------------------- | -------------------------------------------------------------- |
+| `disbursement_nid`                | String nid of the `merits_disbursement` / `merit_penalty` node |
+| `node_type`                       | `merits_disbursement` or `merit_penalty`                       |
+| `created_at`                      | Node `created` → ISO-8601 (`rovas_civic_format_created`)       |
+| `merits`                          | `field_reward_amount` float (negative allowed for penalties)   |
+| `source_kind`                     | `project` | `report` | `purchase` only                         |
+| `source_title`                    | Localized entity title, or `null` for `purchase`               |
+| `project_nid` / `work_report_nid` | String nids or `null`                                          |
+
 
 Order: `created` DESC, then nid DESC. Empty ledger → `total: 0`, `items: []`
 (still 200).
@@ -1768,7 +1848,7 @@ Reuse `rovas_civic_node_localized_title()` for project + WR titles. Reuse
 2. Count + page the SQL above
 3. Map Source PHP → `source_kind` / titles / nids
 4. Register `civic_merit_history` **index** on `rovas_endpoint` (Bearer,
-   API-key disabled) via `rovas_civic_ensure_services_resources()`
+  API-key disabled) via `rovas_civic_ensure_services_resources()`
 5. Enable with `rovas_civic_update_7009` + `drush74 updb -y`
 
 ### Checklist
@@ -1800,7 +1880,7 @@ curl -sS "https://dev.rovas.app/rovas/civic_merit_history" \
 
 - Proxy `GET /users/me/merit-history?limit=&offset=&lang=`
 - Expo Profil list: date, source, whole-number ME; project rows open the
-  existing project modal
+existing project modal
 
 ## Next work: volunteer report (Civic deferred form)
 
@@ -1819,19 +1899,23 @@ on reads (same rules as project detail).
 
 ### Reads
 
-| Method | URL | Returns |
-|--------|-----|---------|
-| `GET` | `/rovas/civic_my_projects?lang=` | `{ project_nid, title, is_public, can_report }[]` — up to **3** published projects where the Bearer user authored work reports, ordered by most recent report (`work_report` node `created` DESC). Empty when the user has never reported. `can_report`: owner, shareholder, or public join |
-| `GET` | `/rovas/civic_projects_search?query=&lang=` | Same row shape. `query` ≥ 3 chars, cap 10, published `project` nodes, title LIKE. `can_report` reflects whether the Bearer user may submit (not merely `is_public`) |
-| `GET` | `/rovas/civic_nace_tree?lang=` | Nested `{ tid, code, label, children[] }` from vocabulary `tags` |
+
+| Method | URL                                         | Returns                                                                                                                                                                                                                                                                                     |
+| ------ | ------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `GET`  | `/rovas/civic_my_projects?lang=`            | `{ project_nid, title, is_public, can_report }[]` — up to **3** published projects where the Bearer user authored work reports, ordered by most recent report (`work_report` node `created` DESC). Empty when the user has never reported. `can_report`: owner, shareholder, or public join |
+| `GET`  | `/rovas/civic_projects_search?query=&lang=` | Same row shape. `query` ≥ 3 chars, cap 10, published `project` nodes, title LIKE. `can_report` reflects whether the Bearer user may submit (not merely `is_public`)                                                                                                                         |
+| `GET`  | `/rovas/civic_nace_tree?lang=`              | Nested `{ tid, code, label, children[] }` from vocabulary `tags`                                                                                                                                                                                                                            |
+
 
 ### Writes
 
-| Method | URL | Body / result |
-|--------|-----|----------------|
-| `POST` | `/rovas/civic_create_project` | `{ name, description, url? }` → `{ project_nid }`. Defaults: `project_status=1` (for sale), `project_participation=1` (Public), not a system project. Creator becomes shareholder via existing node-insert rules |
-| `POST` | `/rovas/civic_create_work_report` | See below |
-| `POST` | `/rovas/civic_ai_nace` | See [AI NACE + title](#ai-nace--title-from-work-report-text) — classify from description (Bearer) |
+
+| Method | URL                               | Body / result                                                                                                                                                                                                    |
+| ------ | --------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `POST` | `/rovas/civic_create_project`     | `{ name, description, url? }` → `{ project_nid }`. Defaults: `project_status=1` (for sale), `project_participation=1` (Public), not a system project. Creator becomes shareholder via existing node-insert rules |
+| `POST` | `/rovas/civic_create_work_report` | See below                                                                                                                                                                                                        |
+| `POST` | `/rovas/civic_ai_nace`            | See [AI NACE + title](#ai-nace--title-from-work-report-text) — classify from description (Bearer)                                                                                                                |
+
 
 **Create work report body:**
 
@@ -1851,18 +1935,20 @@ on reads (same rules as project detail).
 }
 ```
 
-| Field | Rules |
-|-------|--------|
-| `project_nid` | Required published project |
-| `date_started` | Unix timestamp; reject if strictly before the author's Rovas `created` |
-| `hours` | Required, `> 0` |
-| `description` | Required non-empty |
-| `title` | Optional; empty → truncated description |
-| `nace_tid` | Required taxonomy tid in vocabulary `tags` |
-| `web_url` | Optional proof URL |
-| `photos` | Optional array of `{ filename, mime, data }` (base64). Max 5, 4 MB decoded each |
-| `field_location` | Optional GeoJSON Geometry (`Point`, `LineString`, `Polygon`); lon/lat order; persisted to `field_location` + map work-evidence bit |
-| `reward_kind` | `merits` or `chrons` (default `chrons`). Persisted in `{civic_work_report_reward}`; when `merits`, converted to ME on verification (A6) |
+
+| Field            | Rules                                                                                                                                   |
+| ---------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| `project_nid`    | Required published project                                                                                                              |
+| `date_started`   | Unix timestamp; reject if strictly before the author's Rovas `created`                                                                  |
+| `hours`          | Required, `> 0`                                                                                                                         |
+| `description`    | Required non-empty                                                                                                                      |
+| `title`          | Optional; empty → truncated description                                                                                                 |
+| `nace_tid`       | Required taxonomy tid in vocabulary `tags`                                                                                              |
+| `web_url`        | Optional proof URL                                                                                                                      |
+| `photos`         | Optional array of `{ filename, mime, data }` (base64). Max 5, 4 MB decoded each                                                         |
+| `field_location` | Optional GeoJSON Geometry (`Point`, `LineString`, `Polygon`); lon/lat order; persisted to `field_location` + map work-evidence bit      |
+| `reward_kind`    | `merits` or `chrons` (default `chrons`). Persisted in `{civic_work_report_reward}`; when `merits`, converted to ME on verification (A6) |
+
 
 At least one of `web_url`, `photos[]`, or `field_location` is required. Photos attach to
 `field_photos` after the WR node exists (partner create-WR required a URL;
@@ -1873,13 +1959,15 @@ shareholder → **403** `{ "error": "not_shareholder" }`.
 
 Typed errors (HTTP + `{ error, message }`):
 
-| `error` | HTTP | Meaning |
-|---------|------|---------|
-| `not_shareholder` | 403 | Private project; caller cannot self-join |
-| `date_before_registration` | 400 | `date_started` before account created |
-| `pending_verifications` | 403 | Caller has at least one verification slot with a report assigned to verify |
-| `invalid_input` | 400 | Missing/invalid fields, no proof, hours ≤ 0 |
-| `project_not_found` | 404 | Unknown / unpublished project |
+
+| `error`                    | HTTP | Meaning                                                                    |
+| -------------------------- | ---- | -------------------------------------------------------------------------- |
+| `not_shareholder`          | 403  | Private project; caller cannot self-join                                   |
+| `date_before_registration` | 400  | `date_started` before account created                                      |
+| `pending_verifications`    | 403  | Caller has at least one verification slot with a report assigned to verify |
+| `invalid_input`            | 400  | Missing/invalid fields, no proof, hours ≤ 0                                |
+| `project_not_found`        | 404  | Unknown / unpublished project                                              |
+
 
 Success: `{ "work_report_nid": "527201", "reward_kind": "merits" }`.
 
@@ -1937,12 +2025,12 @@ assigned).
 **Root cause:** `rovas_civic_pending_verify_slot_count()` in
 `sites/all/modules/custom/rovas_civic/rovas_civic.volunteer.inc` counts slots
 where `field_report_to_verify_target_id IS NULL OR = 0` (empty obligation
-slots). The create gate fires when that count is **`> 1`**.
+slots). The create gate fires when that count is `**> 1**`.
 
 **Required behaviour:** only count slots that have a work report **assigned**
 (`field_report_to_verify_target_id > 0`). Empty obligation slots are not
 actionable and must **not** block new filings. Block when the assigned count is
-**`> 0`** (any pending verification obligation with a report to act on).
+`**> 0**` (any pending verification obligation with a report to act on).
 
 ### Code changes
 
@@ -2015,7 +2103,7 @@ work report.
 3. [ ] Deploy to **rovdev** only (`/var/www/rovdev`)
 4. [ ] Smoke: uid 289 with empty slots only — `POST /rovas/civic_create_work_report` succeeds
 5. [ ] Smoke: manually assign a WR to one of the caller's slots (or wait for
-       `rules_find_verifier`) — same POST returns 403 `pending_verifications`
+  `rules_find_verifier`) — same POST returns 403 `pending_verifications`
 6. [ ] Confirm `pending_verifications` view rows match what blocks create
 
 ### Smoke test (after deploy)
@@ -2074,9 +2162,11 @@ on `rovas_ai_update_7001` / `hook_enable`).
 
 ### Contract
 
-| Method | URL | Auth |
-|--------|-----|------|
+
+| Method | URL                    | Auth                                           |
+| ------ | ---------------------- | ---------------------------------------------- |
 | `POST` | `/rovas/civic_ai_nace` | Bearer (`user_profile`), API-key auth disabled |
+
 
 **Request body:**
 
@@ -2088,12 +2178,14 @@ on `rovas_ai_update_7001` / `hook_enable`).
 }
 ```
 
-| Field | Rules |
-|-------|--------|
-| `description` | Required for a useful result; empty or a bare one-word label (e.g. `Buildings`) → `need_more_info` |
-| `lang` | Optional (`sk`\|`en`; `cs`/`cz` → `sk`). Clarifying questions + title language |
-| `project_nid` | Optional published project. Rovas loads localized title + body and sends them to the LLM as background context (classify the work done, not the whole project) |
-| `project_title` / `project_description` | Optional plain-text overrides or client-side context when `project_nid` is omitted |
+
+| Field                                   | Rules                                                                                                                                                          |
+| --------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `description`                           | Required for a useful result; empty or a bare one-word label (e.g. `Buildings`) → `need_more_info`                                                             |
+| `lang`                                  | Optional (`sk`|`en`; `cs`/`cz` → `sk`). Clarifying questions + title language                                                                                  |
+| `project_nid`                           | Optional published project. Rovas loads localized title + body and sends them to the LLM as background context (classify the work done, not the whole project) |
+| `project_title` / `project_description` | Optional plain-text overrides or client-side context when `project_nid` is omitted                                                                             |
+
 
 **Response** — HTTP **200** with a `status` field (except **401** when unauthenticated). Civic should branch on `status`, not only on HTTP code:
 
@@ -2110,12 +2202,14 @@ on `rovas_ai_update_7001` / `hook_enable`).
 }
 ```
 
-| `status` | Meaning | Civic behaviour |
-|----------|---------|-----------------|
-| `ok` | NACE tid + title ready | Prefill form; user can still edit |
-| `need_more_info` | Ambiguous / low confidence | Show `clarifying_question`; keep NACE tree available |
-| `unavailable` | Not configured, LLM error, budget, empty taxonomy | Fall back to NACE tree; optional soft message |
-| `error` | Unexpected | Fall back to NACE tree |
+
+| `status`         | Meaning                                           | Civic behaviour                                      |
+| ---------------- | ------------------------------------------------- | ---------------------------------------------------- |
+| `ok`             | NACE tid + title ready                            | Prefill form; user can still edit                    |
+| `need_more_info` | Ambiguous / low confidence                        | Show `clarifying_question`; keep NACE tree available |
+| `unavailable`    | Not configured, LLM error, budget, empty taxonomy | Fall back to NACE tree; optional soft message        |
+| `error`          | Unexpected                                        | Fall back to NACE tree                               |
+
 
 `need_more_info` example:
 
@@ -2165,11 +2259,13 @@ for the author. Idempotent via `{civic_work_report_reward}.converted`.
 
 ### Code
 
-| File | Role |
-|------|------|
+
+| File                     | Role                                                                   |
+| ------------------------ | ---------------------------------------------------------------------- |
 | `rovas_civic.reward.inc` | `rovas_civic_maybe_convert_wr_chron_to_merits()`, grant amount helpers |
-| `rovas_civic.module` | `hook_node_insert()` on `verification` |
-| `rovas_civic.install` | `converted` column; `rovas_civic_update_7011`; module weight 21 |
+| `rovas_civic.module`     | `hook_node_insert()` on `verification`                                 |
+| `rovas_civic.install`    | `converted` column; `rovas_civic_update_7011`; module weight 21        |
+
 
 Chron amount: `field_chrons_to_grant` when set, else `field_hours_worked × 10`.
 Requires `rovas_forex` helpers at runtime (`function_exists` guard + watchdog if missing).
@@ -2225,13 +2321,15 @@ when the map-config endpoint is not yet deployed.
 
 ### Read: map widget config
 
-| Method | URL | Auth |
-|--------|-----|------|
-| `GET` | `/rovas/civic_work_report_map_config` | Bearer |
+
+| Method | URL                                   | Auth   |
+| ------ | ------------------------------------- | ------ |
+| `GET`  | `/rovas/civic_work_report_map_config` | Bearer |
+
 
 Export the **same** raster layers, default view, and allowed geometry types as
 the OpenLayers preset used by the `work_report` `field_location` geofield widget
-(on rovdev this is typically the **`freemap`** map export — basemap tiles Civic
+(on rovdev this is typically the `**freemap**` map export — basemap tiles Civic
 should render). Do **not** ship raw Drupal OpenLayers PHP objects; return a small
 JSON DTO Civic can feed to any map SDK.
 
@@ -2255,13 +2353,15 @@ JSON DTO Civic can feed to any map SDK.
 }
 ```
 
-| Field | Rules |
-|-------|--------|
-| `center` | Default map centre (WGS-84 degrees) |
-| `zoom` | Initial zoom (WebMercator / XYZ tile zoom) |
-| `geometry_types` | Subset of `Point`, `LineString`, `Polygon` the widget allows |
-| `raster_layers[]` | At least one XYZ template with `{z}`, `{x}`, `{y}` placeholders |
-| `default_layer_id` | Must match one `raster_layers[].id` |
+
+| Field              | Rules                                                           |
+| ------------------ | --------------------------------------------------------------- |
+| `center`           | Default map centre (WGS-84 degrees)                             |
+| `zoom`             | Initial zoom (WebMercator / XYZ tile zoom)                      |
+| `geometry_types`   | Subset of `Point`, `LineString`, `Polygon` the widget allows    |
+| `raster_layers[]`  | At least one XYZ template with `{z}`, `{x}`, `{y}` placeholders |
+| `default_layer_id` | Must match one `raster_layers[].id`                             |
+
 
 ### Write: `field_location` on create work report
 
@@ -2284,9 +2384,11 @@ Extend `POST /rovas/civic_create_work_report`:
 }
 ```
 
-| Field | Rules |
-|-------|--------|
-| `field_location` | Optional GeoJSON **Geometry** object (`Point`, `LineString`, or `Polygon`). Coordinates **WGS-84**, order **`[longitude, latitude]`** per RFC 7946. Persist to `field_location` on the created `work_report` node (same as the Drupal map widget WKT). Reject self-intersecting polygons / invalid rings with **400** `invalid_input`. |
+
+| Field            | Rules                                                                                                                                                                                                                                                                                                                                  |
+| ---------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `field_location` | Optional GeoJSON **Geometry** object (`Point`, `LineString`, or `Polygon`). Coordinates **WGS-84**, order `**[longitude, latitude]`** per RFC 7946. Persist to `field_location` on the created `work_report` node (same as the Drupal map widget WKT). Reject self-intersecting polygons / invalid rings with **400** `invalid_input`. |
+
 
 **Proof rule (update):** at least one of `web_url`, `photos[]`, or
 `field_location` is required (same as Drupal: any one evidence type suffices).
@@ -2365,11 +2467,13 @@ full report payload.
 }
 ```
 
-| Field | Rules |
-|-------|--------|
+
+| Field     | Rules                                                                                                                                                                    |
+| --------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | Predicate | Same as `rovas_civic_pending_verify_slot_count()` — published `verification_slot`, `field_slip_owner` = Bearer uid, `field_report_to_verify_target_id > 0`, not declined |
-| `total` | Must equal count that blocks `POST /rovas/civic_create_work_report` (403 `pending_verifications`) |
-| `lang` | Optional `sk\|en`; translate WR `title` like `civic_project_work_reports` |
+| `total`   | Must equal count that blocks `POST /rovas/civic_create_work_report` (403 `pending_verifications`)                                                                        |
+| `lang`    | Optional `sk|en`; translate WR `title` like `civic_project_work_reports`                                                                                                 |
+
 
 ### 2. `GET /rovas/civic_work_report/{nid}?lang=`
 
@@ -2377,14 +2481,16 @@ Bearer required. **Reuse** the item builder from
 `rovas_civic_project_work_reports_fetch()` (title, summary, hours, author,
 `created_at`, `photo_urls`) and extend with verifier fields:
 
-| Additional field | Notes |
-|------------------|--------|
-| `project_nid`, `project_name` | From `field_project` |
-| `web_urls[]` | `field_web_address` + content-access token (`cbt=`) like web verify UI |
-| `field_location` | GeoJSON geometry export from `field_location` geofield |
-| `nace_tid`, `nace_label` | From `field_classification` |
-| `reward_kind` | `merits` \| `chrons` from `{civic_work_report_reward}` |
-| `date_started` | Unix timestamp from `field_date` |
+
+| Additional field              | Notes                                                                  |
+| ----------------------------- | ---------------------------------------------------------------------- |
+| `project_nid`, `project_name` | From `field_project`                                                   |
+| `web_urls[]`                  | `field_web_address` + content-access token (`cbt=`) like web verify UI |
+| `field_location`              | GeoJSON geometry export from `field_location` geofield                 |
+| `nace_tid`, `nace_label`      | From `field_classification`                                            |
+| `reward_kind`                 | `merits` | `chrons` from `{civic_work_report_reward}`                  |
+| `date_started`                | Unix timestamp from `field_date`                                       |
+
 
 **Verification context** — include only when Bearer user owns an assigned,
 non-declined slot for this WR:
@@ -2400,13 +2506,14 @@ non-declined slot for this WR:
 }
 ```
 
-| Case | HTTP |
-|------|------|
-| WR not found / unpublished | **404** |
+
+| Case                                    | HTTP                                  |
+| --------------------------------------- | ------------------------------------- |
+| WR not found / unpublished              | **404**                               |
 | Caller has no assigned slot for this WR | **403** `{ "error": "not_assigned" }` |
 
-Prefer shared helper `rovas_civic_work_report_item($node, $lang, $include_proof,
-$verifier_uid)` used by both `civic_project_work_reports` and
+
+Prefer shared helper `rovas_civic_work_report_item($node, $lang, $include_proof, $verifier_uid)` used by both `civic_project_work_reports` and
 `civic_work_report/{nid}`.
 
 ### 3. `POST /rovas/civic_submit_verification`
@@ -2422,28 +2529,32 @@ Bearer required. Body:
 }
 ```
 
-| Field | Rules |
-|-------|--------|
-| `verdict` | `approve` \| `reject` \| `decline` |
+
+| Field            | Rules                                                          |
+| ---------------- | -------------------------------------------------------------- |
+| `verdict`        | `approve` | `reject` | `decline`                               |
 | `verified_hours` | Optional; default = WR `field_hours_worked`; required positive |
-| `note` | Optional for approve; **required for reject** |
+| `note`           | Optional for approve; **required for reject**                  |
+
 
 **Behaviour** (mirror existing Drupal — do not invent new rules):
 
-- **`approve` / `reject`:** `rules_verifiability` + create `verification` node
-  (like `rules_create_verification`) with `field_verdict` boolean,
-  `field_verified_time`, optional `field_verification_note`,
-  `field_verification_source = 1` (triggers `rules_verify_work_report`).
-- **`decline`:** only when slot `field_voluntary`; set `field_declined` on slot
-  (like `node_form_decline` in `rovas_verify.module`); optional note email.
+- `**approve` / `reject`:** `rules_verifiability` + create `verification` node
+(like `rules_create_verification`) with `field_verdict` boolean,
+`field_verified_time`, optional `field_verification_note`,
+`field_verification_source = 1` (triggers `rules_verify_work_report`).
+- `**decline`:** only when slot `field_voluntary`; set `field_declined` on slot
+(like `node_form_decline` in `rovas_verify.module`); optional note email.
 
-| Error | HTTP |
-|-------|------|
-| `not_assigned` | 403 |
-| `already_verified` | 409 |
-| `not_verifiable` | 403 |
-| `cannot_decline` | 403 |
-| `invalid_input` | 400 |
+
+| Error              | HTTP |
+| ------------------ | ---- |
+| `not_assigned`     | 403  |
+| `already_verified` | 409  |
+| `not_verifiable`   | 403  |
+| `cannot_decline`   | 403  |
+| `invalid_input`    | 400  |
+
 
 **Success:**
 
@@ -2509,9 +2620,151 @@ Civic internal webhook so Civic can send Expo push with deep link
 `civic://earn/verify/{slot_nid}`. Civic will register push tokens via
 `POST /push-tokens`. Not blocking in-app notifications.
 
+## Next work: merit index (Civic Prínos / ranks screen)
+
+**Implemented in `rovas_civic`.** Civic’s **Prínos** tab needs a JSON Merit Index
+(leaderboard) matching the Rovas web page `/users-merit-rank` (Views
+`users_merit_rank`), plus Civic-only `**by_category**` ME-source shares for a
+stacked bar column.
+
+Do **not** scrape HTML or call `views_get_view()`. Mirror the view with SQL
+(same merit total as `_base_user_me_rank()` / `rovas_merit_distribution`).
+
+**Auth:** Bearer required (`civic` / `user_profile`). No username filter param.
+
+### Parity with web Merit Index
+
+
+| Views column              | Civic JSON                                      |
+| ------------------------- | ----------------------------------------------- |
+| Position (#)              | `position` (1-based within filtered/sorted set) |
+| Worker + Since            | `username`, `display_name`, `member_since_year` |
+| Merits                    | `total_me`                                      |
+| Value (€)*                | `value_eur`                                     |
+| Country                   | `country_iso2`, `country_label`                 |
+| NACE icons row            | `nace_expertise[]` (top 5, shared builder)      |
+| *(Civic only)* ME sources | `by_category` `{ taxes, charity, volunteer }`   |
+
+
+Web exposed filters: `**country_iso2**`, **From date** (`since_from`). Civic
+adds numeric ME/€ ranges, NACE section, and dominant source category.
+
+### Endpoint
+
+
+| Method | URL                                             | Auth            |
+| ------ | ----------------------------------------------- | --------------- |
+| `GET`  | `https://dev.rovas.app/rovas/civic_merit_index` | Bearer required |
+
+
+Machine-name path only.
+
+
+| Param                             | Rules                                                                                                                                |
+| --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| `limit`                           | Default **50**, max **100**                                                                                                          |
+| `offset`                          | Default 0                                                                                                                            |
+| `sort`                            | `position` | `total_me` | `value_eur` | `member_since` | `country` | `taxes_me` | `charity_me` | `volunteer_me` — default `total_me` |
+| `order`                           | `asc` | `desc` — default `desc`                                                                                                      |
+| `country_iso2`                    | ISO-2 (case-insensitive), parity with web                                                                                            |
+| `since_from`                      | `YYYY-MM-DD` — user `created` ≥ start of that day (UTC)                                                                              |
+| `min_me` / `max_me`               | Optional floats on `total_me`                                                                                                        |
+| `min_value_eur` / `max_value_eur` | Optional floats on `value_eur`                                                                                                       |
+| `nace_section_tid`                | Top-level NACE section tid; user must have expertise in that section                                                                 |
+| `source_category`                 | Dominant ME source: `taxes` | `charity` | `volunteer` (max of `by_category`; tie-break taxes → charity → volunteer)                  |
+| `lang`                            | Optional `sk` | `en` — localized `country_label` + `nace_expertise[].section_label`                                                  |
+
+
+### 200 response
+
+```json
+{
+  "total": 298,
+  "limit": 50,
+  "offset": 0,
+  "sort": "total_me",
+  "order": "desc",
+  "items": [
+    {
+      "position": 1,
+      "rovas_uid": "42",
+      "username": "anna_nb",
+      "display_name": "Anna Nováková",
+      "member_since_year": 2019,
+      "total_me": 3410.0,
+      "value_eur": 2557.5,
+      "country_iso2": "SK",
+      "country_label": "Slovakia",
+      "by_category": {
+        "taxes": 980.0,
+        "charity": 210.0,
+        "volunteer": 148.0
+      },
+      "nace_expertise": [
+        {
+          "section_tid": 942,
+          "section_label": "Construction",
+          "section_letter": "f",
+          "icon_url": "https://dev.rovas.app/sites/default/files/pictures/nace_icons/f.svg",
+          "me": 420.0,
+          "share_percent": 34,
+          "hourly_rate_eur": 12.5
+        }
+      ]
+    }
+  ]
+}
+```
+
+### Required logic
+
+1. Eligible users: `status = 1`, `uid > 1`, `total_me >= 0` (same hide rule as
+  `users_lookup`).
+2. `**total_me`:** `userpoints_total.points + field_merit_decimal_part` (same as
+  `/rovas/me`).
+3. `**value_eur`:** `(total_me / ROVAS_CIVIC_ME_PER_HOUR) *
+  rovas_civic_national_hourly_rate()` hourly wage.
+4. `**by_category`:** `rovas_civic_users_lookup_expertise_categories($uid)`.
+5. `**nace_expertise`:** `rovas_meritscope_user_expertise_json($uid, $lang, 5)`
+  when available; else `[]`.
+6. `**position`:** index in filtered/sorted list (`offset + row_index + 1`).
+7. Sort `position` alias → sort by `total_me` (desc = rank 1 first when
+  `order=asc` on position — Civic sends explicit sort/order).
+
+### Checklist
+
+1. [x] `GET /rovas/civic_merit_index` Services resource in `rovas_civic`
+2. [x] SQL base list + PHP enrich/sort/filter/paginate
+3. [x] OAuth2-only on resource (no API-key auth)
+4. [x] `rovas_civic_update_7014` + ensure helper
+5. [ ] Deploy to rovdev + `drush74 cc all`
+6. [ ] Smoke-test curl below
+
+### Smoke test (after deploy)
+
+```bash
+# TOKEN = Civic OAuth access token with user_profile scope
+curl -sS "https://dev.rovas.app/rovas/civic_merit_index?limit=5&country_iso2=SK&sort=total_me&order=desc" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Accept: application/json"
+# Expect: total, items[] with by_category + nace_expertise
+
+curl -sS "https://dev.rovas.app/rovas/civic_merit_index?source_category=taxes&limit=3" \
+  -H "Authorization: Bearer $TOKEN" -H "Accept: application/json"
+```
+
+### Civic will consume
+
+- Civic API `GET /rank/index` → proxy above (Bearer required)
+- Expo **Prínos** tab: horizontal Merit Index table + ME-source stacked bar;
+column filters on all columns except `@username`
+
+See `~/Documents/homeProjects/civic/docs/rovas-integration.md`.
+
 ## Related Civic docs
 
 - Plan: `~/Documents/homeProjects/civic/docs/plan.md` (§6 claim SoT, §7 split claims, §8b claim rule, §15 phases)
 - NeoFund: `~/Documents/Business/NeoFund_NP/` (State Treasury, Path-1 donor Merit, A12)
 - Civic API/Expo: `~/Documents/homeProjects/civic/docs/rovas-integration.md`
 - Mockup (home UX): `~/Documents/homeProjects/civic/mocs/civic-mockup.canvas.tsx`
+
