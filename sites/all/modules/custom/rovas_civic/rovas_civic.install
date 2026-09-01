@@ -511,3 +511,13 @@ function rovas_civic_update_7015() {
   }
   return t('Civic Merit Index countries API (GET /rovas/civic_merit_index_countries) enabled on rovas_endpoint.');
 }
+
+/**
+ * Merit Index + NACE tree + countries: public read on rovas_endpoint (no Bearer).
+ */
+function rovas_civic_update_7016() {
+  if (function_exists('rovas_civic_ensure_services_resources')) {
+    rovas_civic_ensure_services_resources();
+  }
+  return t('Civic Merit Index and NACE tree APIs set to public read on rovas_endpoint.');
+}

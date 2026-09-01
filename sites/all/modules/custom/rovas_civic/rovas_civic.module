@@ -2917,10 +2917,27 @@ function rovas_civic_ensure_services_resources() {
       'index' => $bearer_op,
     ),
   );
-  foreach (array('civic_my_projects', 'civic_projects_search', 'civic_nace_tree') as $res_name) {
+  foreach (array('civic_my_projects', 'civic_projects_search') as $res_name) {
     if (empty($endpoint->resources[$res_name])
       || $endpoint->resources[$res_name] != $civic_index_resource) {
       $endpoint->resources[$res_name] = $civic_index_resource;
+      $changed = TRUE;
+    }
+  }
+
+  $civic_public_read_resource = array(
+    'operations' => array(
+      'index' => $public_op,
+    ),
+  );
+  foreach (array(
+    'civic_nace_tree',
+    'civic_merit_index',
+    'civic_merit_index_countries',
+  ) as $res_name) {
+    if (empty($endpoint->resources[$res_name])
+      || $endpoint->resources[$res_name] != $civic_public_read_resource) {
+      $endpoint->resources[$res_name] = $civic_public_read_resource;
       $changed = TRUE;
     }
   }
@@ -2966,20 +2983,6 @@ function rovas_civic_ensure_services_resources() {
   if (empty($endpoint->resources['civic_submit_verification'])
     || $endpoint->resources['civic_submit_verification'] != $civic_create_resource) {
     $endpoint->resources['civic_submit_verification'] = $civic_create_resource;
-    $changed = TRUE;
-  }
-
-  // GET /rovas/civic_merit_index — Prínos Merit Index (Bearer).
-  if (empty($endpoint->resources['civic_merit_index'])
-    || $endpoint->resources['civic_merit_index'] != $civic_index_resource) {
-    $endpoint->resources['civic_merit_index'] = $civic_index_resource;
-    $changed = TRUE;
-  }
-
-  // GET /rovas/civic_merit_index_countries — Prínos country dropdown (Bearer).
-  if (empty($endpoint->resources['civic_merit_index_countries'])
-    || $endpoint->resources['civic_merit_index_countries'] != $civic_index_resource) {
-    $endpoint->resources['civic_merit_index_countries'] = $civic_index_resource;
     $changed = TRUE;
   }
 

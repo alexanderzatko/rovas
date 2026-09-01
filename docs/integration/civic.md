@@ -74,7 +74,7 @@ not run deploys on their own.
 | AI NACE + title                      | `POST /rovas/civic_ai_nace`                                                                                                                | Implemented in `rovas_ai` (`rovas_ai_update_7001`). Bearer; keep NACE-tree fallback when `unavailable` or module absent.                                                               |
 | Work-report map proof                | `GET /rovas/civic_work_report_map_config`; `field_location` on create WR                                                                   | Implemented in `rovas_civic` (`rovas_civic_update_7012`). GeoJSON Point/LineString/Polygon; proof = URL **or** photos **or** map.                                                      |
 | Civic WR verification (in-app)       | `GET /rovas/civic_pending_verifications`, `civic_work_report/{nid}`, `POST /rovas/civic_submit_verification`                               | Implemented in `rovas_civic` (`rovas_civic_update_7013`). Pending list + verifier detail + approve/reject/decline.                                                                     |
-| Merit index (Civic Prínos / ranks)   | `GET /rovas/civic_merit_index`, `civic_merit_index_countries`                                                                             | Implemented in `rovas_civic` (`7014`–`7015`). Public read (`services_access_menu`); leaderboard + countries dropdown; `source_category` = any ME in category.                         |
+| Merit index (Civic Prínos / ranks)   | `GET /rovas/civic_merit_index`, `civic_merit_index_countries`                                                                             | Implemented in `rovas_civic` (`7014`–`7016`). Public read: `services_access_menu` + `oauth2_server.require_authentication=0` on `rovas_endpoint`. Leaderboard + countries dropdown; `source_category` = any ME in category. |
 | Chron balance on `/rovas/me`         | `GET /rovas/me` → `total_chr`                                                                                                              | Pending — see [Chron balance on /rovas/me](#next-work-chron-balance-on-rovasme).                                                                                                       |
 | NACE expertise icons                 | `GET /rovas/users_lookup` → `nace_expertise[]`                                                                                             | Pending — see [NACE expertise on users_lookup](#next-work-nace-expertise-on-users_lookup).                                                                                             |
 
@@ -2737,7 +2737,7 @@ Machine-name path only.
 
 1. [x] `GET /rovas/civic_merit_index` Services resource in `rovas_civic`
 2. [x] SQL base list + PHP enrich/sort/filter/paginate
-3. [x] OAuth2-only on resource (no API-key auth)
+3. [x] OAuth2 optional on resource (`require_authentication` 0 via `rovas_civic_update_7016` + `rovas_civic_ensure_services_resources()` — **not** only `services_access_menu` in the resource definition)
 4. [x] `rovas_civic_update_7014` + ensure helper
 5. [ ] Deploy to rovdev + `drush74 cc all`
 6. [ ] Smoke-test curl below
@@ -2745,6 +2745,16 @@ Machine-name path only.
 ### Smoke test (after deploy)
 
 ```bash
+# Anonymous (Prínos without sign-in)
+curl -sS "https://dev.rovas.app/rovas/civic_merit_index?limit=5&min_me=1&sort=total_me&order=desc" \
+  -H "Accept: application/json"
+# Expect: 200, total + items[]
+
+curl -sS "https://dev.rovas.app/rovas/civic_merit_index_countries?lang=sk" \
+  -H "Accept: application/json"
+# Expect: 200, countries[]
+
+# Signed-in (still works with Bearer)
 # TOKEN = Civic OAuth access token with user_profile scope
 curl -sS "https://dev.rovas.app/rovas/civic_merit_index?limit=5&country_iso2=SK&sort=total_me&order=desc" \
   -H "Authorization: Bearer $TOKEN" \
@@ -2757,7 +2767,7 @@ curl -sS "https://dev.rovas.app/rovas/civic_merit_index?source_category=taxes&li
 
 ### Civic will consume
 
-- Civic API `GET /rank/index` → proxy above (Bearer required)
+- Civic API `GET /rank/index` → proxy above (optional Bearer; anonymous OK after `7016`)
 - Expo **Prínos** tab: horizontal Merit Index table + ME-source stacked bar;
 column filters on all columns except `@username`
 
