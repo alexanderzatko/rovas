@@ -74,7 +74,7 @@ not run deploys on their own.
 | AI NACE + title                      | `POST /rovas/civic_ai_nace`                                                                                                                | Implemented in `rovas_ai` (`rovas_ai_update_7001`). Bearer; keep NACE-tree fallback when `unavailable` or module absent.                                                               |
 | Work-report map proof                | `GET /rovas/civic_work_report_map_config`; `field_location` on create WR                                                                   | Implemented in `rovas_civic` (`rovas_civic_update_7012`). GeoJSON Point/LineString/Polygon; proof = URL **or** photos **or** map.                                                      |
 | Civic WR verification (in-app)       | `GET /rovas/civic_pending_verifications`, `civic_work_report/{nid}`, `POST /rovas/civic_submit_verification`                               | Implemented in `rovas_civic` (`rovas_civic_update_7013`). Pending list + verifier detail + approve/reject/decline.                                                                     |
-| Merit index (Civic Prínos / ranks)   | `GET /rovas/civic_merit_index`, `civic_merit_index_countries`                                                                             | Implemented in `rovas_civic` (`7014`–`7015`). Leaderboard + countries dropdown; `source_category` = any ME in category.                                                            |
+| Merit index (Civic Prínos / ranks)   | `GET /rovas/civic_merit_index`, `civic_merit_index_countries`                                                                             | Implemented in `rovas_civic` (`7014`–`7015`). Public read (`services_access_menu`); leaderboard + countries dropdown; `source_category` = any ME in category.                         |
 | Chron balance on `/rovas/me`         | `GET /rovas/me` → `total_chr`                                                                                                              | Pending — see [Chron balance on /rovas/me](#next-work-chron-balance-on-rovasme).                                                                                                       |
 | NACE expertise icons                 | `GET /rovas/users_lookup` → `nace_expertise[]`                                                                                             | Pending — see [NACE expertise on users_lookup](#next-work-nace-expertise-on-users_lookup).                                                                                             |
 
@@ -2656,7 +2656,7 @@ adds numeric ME/€ ranges, NACE section, and ME source category filter.
 
 | Method | URL                                             | Auth            |
 | ------ | ----------------------------------------------- | --------------- |
-| `GET`  | `https://dev.rovas.app/rovas/civic_merit_index` | Bearer required |
+| `GET`  | `https://dev.rovas.app/rovas/civic_merit_index` | Public (optional Bearer) |
 
 
 Machine-name path only.
@@ -2809,7 +2809,7 @@ index). Civic Prínos country dropdown — default “all countries”.
 
 | Method | URL | Auth |
 |--------|-----|------|
-| `GET` | `https://dev.rovas.app/rovas/civic_merit_index_countries` | Bearer required |
+| `GET` | `https://dev.rovas.app/rovas/civic_merit_index_countries` | Public (optional Bearer) |
 
 | Param | Rules |
 |-------|-------|

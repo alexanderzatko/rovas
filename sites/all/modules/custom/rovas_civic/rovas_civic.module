@@ -546,12 +546,10 @@ function rovas_civic_services_resources() {
     'civic_nace_tree' => array(
       'operations' => array(
         'index' => array(
-          'help' => 'Nested NACE taxonomy (vocabulary tags) for Civic volunteer form. Optional ?lang=. Bearer required.',
+          'help' => 'Nested NACE taxonomy (vocabulary tags) for Civic volunteer form and Prínos filters. Optional ?lang=. Public read.',
           'callback' => 'rovas_civic_services_nace_tree_index',
           'file' => $volunteer_file,
-          'access callback' => $bearer_auth['access callback'],
-          'access arguments' => $bearer_auth['access arguments'],
-          'access arguments append' => $bearer_auth['access arguments append'],
+          'access callback' => 'services_access_menu',
           'args' => array(
             array(
               'name' => 'lang',
@@ -694,12 +692,10 @@ function rovas_civic_services_resources() {
     'civic_merit_index' => array(
       'operations' => array(
         'index' => array(
-          'help' => 'Merit Index leaderboard for Civic Prínos tab. Filters/sort/pagination; Bearer required.',
+          'help' => 'Merit Index leaderboard for Civic Prínos tab. Filters/sort/pagination; public read.',
           'callback' => 'rovas_civic_services_merit_index_index',
           'file' => $merit_index_file,
-          'access callback' => $bearer_auth['access callback'],
-          'access arguments' => $bearer_auth['access arguments'],
-          'access arguments append' => $bearer_auth['access arguments append'],
+          'access callback' => 'services_access_menu',
           'args' => array(
             array(
               'name' => 'limit',
@@ -807,12 +803,10 @@ function rovas_civic_services_resources() {
     'civic_merit_index_countries' => array(
       'operations' => array(
         'index' => array(
-          'help' => 'Distinct countries for Merit Index users (Prínos country dropdown). Optional ?lang=. Bearer required.',
+          'help' => 'Distinct countries for Merit Index users (Prínos country dropdown). Optional ?lang=. Public read.',
           'callback' => 'rovas_civic_services_merit_index_countries_index',
           'file' => $merit_index_file,
-          'access callback' => $bearer_auth['access callback'],
-          'access arguments' => $bearer_auth['access arguments'],
-          'access arguments append' => $bearer_auth['access arguments append'],
+          'access callback' => 'services_access_menu',
           'args' => array(
             array(
               'name' => 'lang',
