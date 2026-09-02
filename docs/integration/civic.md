@@ -41,7 +41,9 @@ Do not rely on reading the Civic tree unless you need Expo/API details.
 
 **Deployment:** the human deploys unless they ask the agent to. Agents should
 leave code + docs ready for `ops/deploy_rovdev.sh` (or a targeted rsync) and
-not run deploys on their own.
+not run deploys on their own. Full enable checklist for a production clone
+(modules, OAuth/Services, Rules migration, Merit backfill/reconcile, Civic
+env): [`civic-deploy.md`](civic-deploy.md).
 
 ## Status
 
@@ -2982,6 +2984,7 @@ server omits it, refreshes on app foreground, and only clears the session on
 
 ## Related Civic docs
 
+- Deploy / enable on a prod clone: [`civic-deploy.md`](civic-deploy.md)
 - Plan: `~/Documents/homeProjects/civic/docs/plan.md` (§6 claim SoT, §7 split claims, §8b claim rule, §15 phases)
 - NeoFund: `~/Documents/Business/NeoFund_NP/` (State Treasury, Path-1 donor Merit, A12)
 - Civic API/Expo: `~/Documents/homeProjects/civic/docs/rovas-integration.md`
