@@ -1297,39 +1297,73 @@ function _convert_chr_2_merits($chrons) {
 /*
 grant merits to self-rewarding user
 it is expected the @chrons parameter is a negative number, in order to subtract from the user's Chron account
+
+@param object $user
+@param float|int $merits
+@param float $chrons
+  Negative amount to debit from the user's Chron balance.
+@param string|null $merit_source
+  field_merit_source: volunteer (CHR→ME) or charitable_donation (EUR-funded).
+  Defaults to volunteer.
 */
-function _rovas_forex_grant_merits($user,$merits,$chrons) {
+function _rovas_forex_grant_merits($user, $merits, $chrons, $merit_source = NULL) {
 
-	$uid = $user->uid;
+	$uid = (int) $user->uid;
+	$merits = (float) $merits;
+	if ($uid < 1 || $merits == 0) {
+		return;
+	}
 
-	//spend and destroy the Chrons
-	$reschr = rules_invoke_component('rules_update_user_chron_account',$user,$chrons);
+	module_load_include('inc', 'rovas_merit', 'rovas_merit.ledger');
+	if ($merit_source === NULL || $merit_source === '') {
+		$merit_source = ROVAS_MERIT_SOURCE_VOLUNTEER;
+	}
 
-	//grant Merits to the buyer
-	$description = t('Purchase of Merits for Chrons');
-	$rewent = $user; //the user is the REWarded ENTity as they are rewarding themselves
-	$rewent = entity_metadata_wrapper('user', $user);
-	$resmerusr = rules_invoke_component('rules_give_merits_to_user',$user,$merits,$rewent,$description,'Insert');
-	
-	//create Merit purchase record
-	$note = '';
-	$merprec = rules_invoke_component('rules_create_merit_purchase_record',$user,$merits,$note);
+	// Spend / destroy the Chrons (caller may credit an offsetting EUR→CHR amount).
+	rules_invoke_component('rules_update_user_chron_account', $user, $chrons);
 
-	//create Merit disbursement record
-	$merdibrec = rules_invoke_component('rules_create_merit_disbursement', $merprec[0], $uid, $merits, 'volunteer');
+	// Create Merit purchase receipt (parent for the ledger disbursement).
+	$merprec = rules_invoke_component('rules_create_merit_purchase_record', $user, $merits, '');
+	$receipt_id = 0;
+	if (is_array($merprec)) {
+		$receipt_id = isset($merprec['nid']) ? (int) $merprec['nid'] : (int) reset($merprec);
+	}
+	elseif (is_numeric($merprec)) {
+		$receipt_id = (int) $merprec;
+	}
 
-	//update the user expertise
-	$nace_areas = _rb_user_time_in_nace_codes($uid);
-	
-	foreach ($nace_areas as $labl => $nace_tid) {
-		$cat = $labl;
-		$time_share = $nace_tid['percent'];
-		$rndsum = round($merits*$time_share);
-		if ($rndsum > 0){
-			$result = rules_invoke_component('rules_update_user_expertise',$time_share,$merits,$cat,$uid);
+	$description = ($merit_source === ROVAS_MERIT_SOURCE_CHARITABLE_DONATION)
+		? t('Purchase of Merits for Euros')
+		: t('Purchase of Merits for Chrons');
+
+	$nace_tid = function_exists('rovas_merit_financial_nace_tid')
+		? rovas_merit_financial_nace_tid()
+		: 1601;
+	$context = array(
+		'description' => $description,
+		'reward_entity' => $user,
+		'receipt_id' => $receipt_id,
+		'operation' => 'Insert',
+	);
+
+	// Prefer labor mix when the buyer has work-report history; else financial NACE.
+	if (function_exists('_rb_user_time_in_nace_codes')) {
+		$nace_areas = _rb_user_time_in_nace_codes($uid);
+		$categories = array();
+		foreach ($nace_areas as $tid => $row) {
+			$categories[] = (object) array(
+				'cat' => (int) $tid,
+				'hours' => isset($row['hours']) ? (float) $row['hours'] : 0,
+			);
+		}
+		$splits = rovas_merit_nace_splits_from_hours($categories);
+		if (!empty($splits)) {
+			$context['nace_splits'] = $splits;
+			$nace_tid = (int) $splits[0]['tid'];
 		}
 	}
 
+	rovas_merit_apply($uid, $merits, $merit_source, $nace_tid, $context);
 }
 
 //for the current user, deletes the lock and temp basket

@@ -246,7 +246,7 @@
                           },
                           {
                             "php_eval": {
-                              "code": "$chrons = -1*$converted_chrons_paid;\r\n_rovas_forex_grant_merits($merits_buyer,$converted_chrons_paid,$chrons);"
+                              "code": "$chrons = -1*$converted_chrons_paid;\r\n// EUR Commerce buymerits: fund ME via EUR→CHR conversion (charitable_donation).\r\n_rovas_forex_grant_merits($merits_buyer, $converted_chrons_paid, $chrons, 'charitable_donation');"
                             }
                           },
                           {

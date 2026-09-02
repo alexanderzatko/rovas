@@ -114,15 +114,20 @@ function _rovas_merit_ensure_merit_source_field() {
  *
  * @param int $last_nid
  * @param int $limit
+ * @param bool $reclassify
+ *   When TRUE, include nodes that already have a source (for re-inference).
  *
  * @return DatabaseStatementInterface
  */
-function _rovas_merit_backfill_missing_query($last_nid = 0, $limit = ROVAS_MERIT_BACKFILL_BATCH) {
+function _rovas_merit_backfill_missing_query($last_nid = 0, $limit = ROVAS_MERIT_BACKFILL_BATCH, $reclassify = FALSE) {
+  $source_clause = $reclassify
+    ? '1 = 1'
+    : "(src.field_merit_source_value IS NULL OR src.field_merit_source_value = '')";
   return db_query_range("
     SELECT n.nid, n.vid, n.type, n.created,
-      rec.field_reward_recipient_target_id AS uid,
-      amt.field_reward_amount_value AS amount,
-      pr.field_parent_purchase_receipt_target_id AS receipt_nid
+      MAX(rec.field_reward_recipient_target_id) AS uid,
+      MAX(amt.field_reward_amount_value) AS amount,
+      MAX(pr.field_parent_purchase_receipt_target_id) AS receipt_nid
     FROM {node} n
     LEFT JOIN {field_data_field_merit_source} src
       ON src.entity_id = n.nid AND src.entity_type = 'node' AND src.deleted = 0
@@ -135,7 +140,8 @@ function _rovas_merit_backfill_missing_query($last_nid = 0, $limit = ROVAS_MERIT
     WHERE n.status = 1
       AND n.type IN ('merits_disbursement', 'merit_penalty')
       AND n.nid > :last_nid
-      AND (src.field_merit_source_value IS NULL OR src.field_merit_source_value = '')
+      AND $source_clause
+    GROUP BY n.nid, n.vid, n.type, n.created
     ORDER BY n.nid ASC
   ", 0, (int) $limit, array(':last_nid' => (int) $last_nid));
 }
@@ -143,11 +149,21 @@ function _rovas_merit_backfill_missing_query($last_nid = 0, $limit = ROVAS_MERIT
 /**
  * Count ledger nodes still missing field_merit_source.
  *
+ * @param bool $reclassify
+ *
  * @return int
  */
-function _rovas_merit_backfill_missing_count() {
+function _rovas_merit_backfill_missing_count($reclassify = FALSE) {
+  if ($reclassify) {
+    return (int) db_query("
+      SELECT COUNT(DISTINCT n.nid)
+      FROM {node} n
+      WHERE n.status = 1
+        AND n.type IN ('merits_disbursement', 'merit_penalty')
+    ")->fetchField();
+  }
   return (int) db_query("
-    SELECT COUNT(n.nid)
+    SELECT COUNT(DISTINCT n.nid)
     FROM {node} n
     LEFT JOIN {field_data_field_merit_source} src
       ON src.entity_id = n.nid AND src.entity_type = 'node' AND src.deleted = 0
@@ -188,21 +204,31 @@ function _rovas_merit_backfill_sources_sandbox(array &$sandbox) {
     return;
   }
 
+  $reclassify = !empty($sandbox['reclassify']);
+
   if (empty($sandbox['progress'])) {
     $sandbox['progress'] = 0;
     $sandbox['last_nid'] = 0;
-    $sandbox['max'] = _rovas_merit_backfill_missing_count();
+    $sandbox['changed'] = 0;
+    $sandbox['max'] = _rovas_merit_backfill_missing_count($reclassify);
     if ($sandbox['max'] === 0) {
       $sandbox['#finished'] = 1;
       return;
     }
   }
 
-  $result = _rovas_merit_backfill_missing_query($sandbox['last_nid'], ROVAS_MERIT_BACKFILL_BATCH);
+  $result = _rovas_merit_backfill_missing_query($sandbox['last_nid'], ROVAS_MERIT_BACKFILL_BATCH, $reclassify);
   $processed = 0;
   foreach ($result as $row) {
     $source = _rovas_merit_infer_source_from_row($row);
-    _rovas_merit_set_node_merit_source($row->nid, $row->vid, $row->type, $source);
+    $current = db_query("SELECT field_merit_source_value FROM {field_data_field_merit_source}
+      WHERE entity_id = :nid AND entity_type = 'node' AND deleted = 0 LIMIT 1", array(
+      ':nid' => $row->nid,
+    ))->fetchField();
+    if ($current !== $source) {
+      _rovas_merit_set_node_merit_source($row->nid, $row->vid, $row->type, $source);
+      $sandbox['changed']++;
+    }
     $sandbox['last_nid'] = (int) $row->nid;
     $sandbox['progress']++;
     $processed++;
@@ -212,23 +238,26 @@ function _rovas_merit_backfill_sources_sandbox(array &$sandbox) {
     $sandbox['#finished'] = 1;
   }
   else {
-    $sandbox['#finished'] = min(0.99, $sandbox['progress'] / $sandbox['max']);
+    $sandbox['#finished'] = min(0.99, $sandbox['progress'] / max(1, $sandbox['max']));
   }
 }
 
 /**
  * Backfill field_merit_source on existing ledger nodes (single pass, drush).
  *
+ * @param bool $reclassify
+ *   When TRUE, re-infer sources even when already set.
+ *
  * @return int
- *   Number of nodes updated.
+ *   Number of nodes whose source value changed.
  */
-function _rovas_merit_backfill_sources() {
-  $sandbox = array();
+function _rovas_merit_backfill_sources($reclassify = FALSE) {
+  $sandbox = array('reclassify' => !empty($reclassify));
   do {
     _rovas_merit_backfill_sources_sandbox($sandbox);
   } while (empty($sandbox['#finished']));
   field_cache_clear();
-  return !empty($sandbox['progress']) ? (int) $sandbox['progress'] : 0;
+  return !empty($sandbox['changed']) ? (int) $sandbox['changed'] : 0;
 }
 
 /**
@@ -241,7 +270,7 @@ function rovas_merit_update_7001(&$sandbox) {
     $sandbox['field_done'] = TRUE;
   }
   _rovas_merit_backfill_sources_sandbox($sandbox);
-  if (!empty($sandbox['#finished'])) {
+  if (isset($sandbox['#finished']) && $sandbox['#finished'] == 1) {
     field_cache_clear();
     return t('Merit source field installed; backfilled @count ledger nodes.', array(
       '@count' => !empty($sandbox['progress']) ? $sandbox['progress'] : 0,
@@ -263,7 +292,7 @@ function rovas_merit_update_7002(&$sandbox) {
     $sandbox['field_done'] = TRUE;
   }
   _rovas_merit_backfill_sources_sandbox($sandbox);
-  if (!empty($sandbox['#finished'])) {
+  if (isset($sandbox['#finished']) && $sandbox['#finished'] == 1) {
     field_cache_clear();
     return t('Merit source field ensured (7001 recovery); backfilled @count ledger nodes.', array(
       '@count' => !empty($sandbox['progress']) ? $sandbox['progress'] : 0,

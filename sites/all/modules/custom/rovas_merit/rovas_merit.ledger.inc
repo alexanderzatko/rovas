@@ -89,6 +89,18 @@ function rovas_merit_source_to_category($source) {
 }
 
 /**
+ * Financial / non-labor fallback NACE tid (64.99).
+ *
+ * @return int
+ */
+function rovas_merit_financial_nace_tid() {
+  if (defined('ROVAS_CIVIC_FALLBACK_NACE_TID') && (int) ROVAS_CIVIC_FALLBACK_NACE_TID > 0) {
+    return (int) ROVAS_CIVIC_FALLBACK_NACE_TID;
+  }
+  return (int) ROVAS_MERIT_FINANCIAL_NACE_TID;
+}
+
+/**
  * Resolve governance NACE tid for penalties (94.99).
  *
  * @return int
@@ -294,8 +306,12 @@ function rovas_merit_balance_check($uid) {
   $tol = ROVAS_MERIT_BALANCE_TOLERANCE;
   $delta_e = $total - $expertise;
   $delta_l = $total - $ledger;
+  $expertise_ok = abs($delta_e) <= $tol;
+  $ledger_ok = abs($delta_l) <= $tol;
   return array(
-    'ok' => (abs($delta_e) <= $tol && abs($delta_l) <= $tol),
+    'ok' => ($expertise_ok && $ledger_ok),
+    'expertise_ok' => $expertise_ok,
+    'ledger_ok' => $ledger_ok,
     'total_me' => $total,
     'expertise_sum' => $expertise,
     'ledger_sum' => $ledger,
@@ -398,10 +414,12 @@ function rovas_merit_credit_wallet($account, $delta, $reward_entity, $descriptio
  * @param int $nace_tid
  * @param float $share
  *   When < 1, apply share * delta (labor mix paths).
+ * @param bool $force
+ *   When TRUE, also update banned users (reconcile / repair only).
  *
  * @return bool
  */
-function rovas_merit_adjust_user_expertise($uid, $delta, $nace_tid, $share = 1.0) {
+function rovas_merit_adjust_user_expertise($uid, $delta, $nace_tid, $share = 1.0, $force = FALSE) {
   $uid = (int) $uid;
   $nace_tid = (int) $nace_tid;
   $delta = (float) $delta;
@@ -415,7 +433,7 @@ function rovas_merit_adjust_user_expertise($uid, $delta, $nace_tid, $share = 1.0
     return FALSE;
   }
   $roles = isset($user->roles) ? $user->roles : array();
-  if (in_array(5, array_keys($roles))) {
+  if (!$force && in_array(5, array_keys($roles))) {
     return FALSE;
   }
 
@@ -681,7 +699,142 @@ function rovas_merit_users_lookup_data_batch(array $uids) {
 }
 
 /**
- * Reconcile one user: apply expertise correction on penalty NACE if needed.
+ * Sum of merit_penalty ledger amounts for a user (usually negative or zero).
+ *
+ * @param int $uid
+ *
+ * @return float
+ */
+function rovas_merit_user_penalty_ledger_sum($uid) {
+  $uid = (int) $uid;
+  if ($uid < 1) {
+    return 0.0;
+  }
+  return (float) db_query("
+    SELECT COALESCE(SUM(amt.field_reward_amount_value), 0)
+    FROM {node} n
+    INNER JOIN {field_data_field_reward_recipient} rec
+      ON rec.entity_id = n.nid AND rec.entity_type = 'node' AND rec.deleted = 0
+    INNER JOIN {field_data_field_reward_amount} amt
+      ON amt.entity_id = n.nid AND amt.entity_type = 'node' AND amt.deleted = 0
+    WHERE n.status = 1
+      AND n.type = 'merit_penalty'
+      AND rec.field_reward_recipient_target_id = :uid
+  ", array(':uid' => $uid))->fetchField();
+}
+
+/**
+ * Current user_expertise ME on one NACE category.
+ *
+ * @param int $uid
+ * @param int $nace_tid
+ *
+ * @return float|null
+ *   Merits value, or NULL when no expertise node exists.
+ */
+function rovas_merit_user_expertise_on_nace($uid, $nace_tid) {
+  $uid = (int) $uid;
+  $nace_tid = (int) $nace_tid;
+  if ($uid < 1 || $nace_tid < 1) {
+    return NULL;
+  }
+  $val = db_query("
+    SELECT m.field_merits_value
+    FROM {node} node
+    INNER JOIN {field_data_field_expert} x
+      ON node.nid = x.entity_id AND x.entity_type = 'node' AND x.deleted = 0
+    INNER JOIN {field_data_field_category} c
+      ON node.nid = c.entity_id AND c.entity_type = 'node' AND c.deleted = 0
+    INNER JOIN {field_data_field_merits} m
+      ON node.nid = m.entity_id AND m.entity_type = 'node' AND m.deleted = 0
+    WHERE node.type = 'user_expertise'
+      AND node.status = 1
+      AND x.field_expert_target_id = :uid
+      AND c.field_category_tid = :cat
+    LIMIT 1
+  ", array(':uid' => $uid, ':cat' => $nace_tid))->fetchField();
+  return ($val === FALSE || $val === NULL) ? NULL : (float) $val;
+}
+
+/**
+ * Clamp bogus negative governance-NACE expertise left by the old reconcile bug.
+ *
+ * Old --fix used sign-flipped deltas on 94.99, so buyers with missing expertise
+ * got large negative scores there without matching merit_penalty ledger rows.
+ *
+ * Only clamp when 94.99 is more negative than the penalty ledger explains AND
+ * overall expertise is still below the wallet (the buyer/reconcile artifact case).
+ * Do not touch correctly applied legacy penalty expertise that already matches
+ * total_me.
+ *
+ * @param int $uid
+ * @param bool $apply_fix
+ *
+ * @return array
+ *   keys: clamped (bool), before, after, expected, applied_delta.
+ */
+function rovas_merit_repair_bogus_penalty_expertise($uid, $apply_fix = FALSE) {
+  $uid = (int) $uid;
+  $out = array(
+    'clamped' => FALSE,
+    'before' => NULL,
+    'after' => NULL,
+    'expected' => 0.0,
+    'applied_delta' => 0.0,
+  );
+  $penalty_tid = rovas_merit_penalty_nace_tid();
+  if ($uid < 1 || $penalty_tid < 1) {
+    return $out;
+  }
+
+  $before = rovas_merit_user_expertise_on_nace($uid, $penalty_tid);
+  if ($before === NULL) {
+    return $out;
+  }
+  $out['before'] = $before;
+
+  // Penalty ledger amounts are negative; expertise on 94.99 should not be
+  // more negative than that sum (and never negative with no penalty rows).
+  $expected = rovas_merit_user_penalty_ledger_sum($uid);
+  if ($expected > 0) {
+    $expected = 0.0;
+  }
+  $out['expected'] = $expected;
+
+  if ($before >= ($expected - ROVAS_MERIT_BALANCE_TOLERANCE)) {
+    $out['after'] = $before;
+    return $out;
+  }
+
+  $delta = $expected - $before;
+  // Artifact signature: excess negative on 94.99 while wallet > expertise sum.
+  $check = rovas_merit_balance_check($uid);
+  if ($check['delta_expertise'] <= ROVAS_MERIT_BALANCE_TOLERANCE) {
+    // Expertise already matches (or exceeds) the wallet — leave 94.99 alone.
+    $out['after'] = $before;
+    return $out;
+  }
+
+  $out['applied_delta'] = $delta;
+  if ($apply_fix) {
+    rovas_merit_adjust_user_expertise($uid, $delta, $penalty_tid, 1.0, TRUE);
+    $out['clamped'] = TRUE;
+    $out['after'] = rovas_merit_user_expertise_on_nace($uid, $penalty_tid);
+  }
+  else {
+    $out['after'] = $before;
+  }
+  return $out;
+}
+
+/**
+ * Reconcile one user: close wallet vs expertise drift on the correct NACE.
+ *
+ * - Positive drift (wallet > expertise): credit financial fallback NACE (64.99).
+ * - Negative drift (expertise > wallet): debit governance penalty NACE (94.99)
+ *   for legacy penalties that only hit the wallet.
+ *
+ * Never sign-flips the delta (previous bug parked buyers as −ME on 94.99).
  *
  * @param int $uid
  * @param bool $apply_fix
@@ -693,28 +846,120 @@ function rovas_merit_reconcile_user($uid, $apply_fix = FALSE) {
   $check = rovas_merit_balance_check($uid);
   $result = $check;
   $result['fixed'] = FALSE;
+  $result['repair'] = NULL;
 
-  if ($check['ok'] || !$apply_fix) {
+  if (!$apply_fix) {
     return $result;
+  }
+
+  // First undo bogus negative 94.99 from the previous reconcile implementation.
+  $repair = rovas_merit_repair_bogus_penalty_expertise($uid, TRUE);
+  $result['repair'] = $repair;
+  if (!empty($repair['clamped'])) {
+    $check = rovas_merit_balance_check($uid);
+    $result = array_merge($result, $check);
+    $result['fixed'] = TRUE;
+    $result['repair'] = $repair;
   }
 
   $delta = $check['delta_expertise'];
   if (abs($delta) <= ROVAS_MERIT_BALANCE_TOLERANCE) {
+    $result['after'] = rovas_merit_balance_check($uid);
+    // Expertise is aligned; remaining failure (if any) is ledger-only legacy drift.
     return $result;
   }
 
-  $penalty_tid = rovas_merit_penalty_nace_tid();
-  if ($penalty_tid < 1) {
-    $result['error'] = 'penalty_nace_missing';
-    return $result;
+  if ($delta > 0) {
+    // Expertise too low (e.g. forex grant with no work-report mix).
+    $nace_tid = rovas_merit_financial_nace_tid();
+    if ($nace_tid < 1) {
+      $result['error'] = 'financial_nace_missing';
+      return $result;
+    }
+    if (!rovas_merit_adjust_user_expertise($uid, $delta, $nace_tid, 1.0, TRUE)) {
+      $result['error'] = 'expertise_adjust_failed';
+      return $result;
+    }
+    $result['fixed'] = TRUE;
+    $result['fix_delta'] = $delta;
+    $result['fix_nace'] = $nace_tid;
+  }
+  else {
+    // Expertise too high — legacy wallet-only penalties.
+    $nace_tid = rovas_merit_penalty_nace_tid();
+    if ($nace_tid < 1) {
+      $result['error'] = 'penalty_nace_missing';
+      return $result;
+    }
+    if (!rovas_merit_adjust_user_expertise($uid, $delta, $nace_tid, 1.0, TRUE)) {
+      $result['error'] = 'expertise_adjust_failed';
+      return $result;
+    }
+    $result['fixed'] = TRUE;
+    $result['fix_delta'] = $delta;
+    $result['fix_nace'] = $nace_tid;
   }
 
-  // Adjust expertise on governance NACE to absorb wallet vs expertise drift.
-  rovas_merit_adjust_user_expertise($uid, -1 * $delta, $penalty_tid, 1.0);
-  $result['fixed'] = TRUE;
-  $result['fix_delta'] = -1 * $delta;
   $result['after'] = rovas_merit_balance_check($uid);
   return $result;
+}
+
+/**
+ * Whether a purchase_merits receipt was funded via an EUR Commerce merits order.
+ *
+ * @param int $uid
+ * @param int $created
+ *   Unix timestamp of the purchase_merits / disbursement.
+ * @param float $amount
+ *   ME amount (≈ converted CHR).
+ *
+ * @return bool
+ */
+function _rovas_merit_purchase_merits_was_eur_funded($uid, $created, $amount) {
+  $uid = (int) $uid;
+  $created = (int) $created;
+  if ($uid < 1 || $created < 1 || !db_table_exists('commerce_order')) {
+    return FALSE;
+  }
+
+  $product_id = (int) db_query("SELECT product_id FROM {commerce_product} WHERE sku = :sku", array(
+    ':sku' => 'merits',
+  ))->fetchField();
+  if ($product_id < 1 || !db_table_exists('field_data_commerce_product')) {
+    return FALSE;
+  }
+
+  // Merits EUR orders use product SKU "merits" (see rovas_forex_create_merits_eur_order).
+  $sql = "
+    SELECT o.order_id
+    FROM {commerce_order} o
+    INNER JOIN {field_data_commerce_line_items} fcli
+      ON fcli.entity_id = o.order_id AND fcli.entity_type = 'commerce_order' AND fcli.deleted = 0
+    INNER JOIN {field_data_commerce_product} fcp
+      ON fcp.entity_id = fcli.commerce_line_items_line_item_id
+      AND fcp.entity_type = 'commerce_line_item' AND fcp.deleted = 0
+    WHERE o.uid = :uid
+      AND o.status = 'completed'
+      AND fcp.commerce_product_product_id = :pid
+      AND COALESCE(o.changed, o.created) BETWEEN :lo AND :hi
+  ";
+  $args = array(
+    ':uid' => $uid,
+    ':pid' => $product_id,
+    ':lo' => $created - 600,
+    ':hi' => $created + 600,
+  );
+  if (field_info_field('field_payer_type') && db_table_exists('field_data_field_payer_type')) {
+    $sql .= " AND EXISTS (
+      SELECT 1 FROM {field_data_field_payer_type} pt
+      WHERE pt.entity_id = o.order_id AND pt.entity_type = 'commerce_order'
+        AND pt.deleted = 0 AND pt.field_payer_type_value = 'user'
+    )";
+  }
+  $sql .= ' ORDER BY ABS(COALESCE(o.changed, o.created) - :created) ASC LIMIT 1';
+  $args[':created'] = $created;
+
+  return (bool) db_query($sql, $args)->fetchField();
 }
 
 /**
@@ -759,6 +1004,9 @@ function _rovas_merit_infer_source_from_row($row) {
       ':nid' => $receipt_nid,
     ))->fetchField();
     if ($receipt_type === 'purchase_merits') {
+      if (_rovas_merit_purchase_merits_was_eur_funded($uid, $created, $amount)) {
+        return ROVAS_MERIT_SOURCE_CHARITABLE_DONATION;
+      }
       return ROVAS_MERIT_SOURCE_VOLUNTEER;
     }
     if ($receipt_type) {

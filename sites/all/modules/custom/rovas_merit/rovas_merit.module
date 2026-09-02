@@ -5,7 +5,15 @@
  * Merit ledger: source field, wallet/expertise/disbursement invariant helpers.
  */
 
+/** Governance NACE for penalties (membership organisations n.e.c.). */
 define('ROVAS_MERIT_PENALTY_NACE_CODE', '94.99');
+
+/**
+ * Non-labor / financial fallback NACE (64.99 Other financial service activities).
+ *
+ * Same tid as ROVAS_CIVIC_FALLBACK_NACE_TID / shares_merit_rewarder.
+ */
+define('ROVAS_MERIT_FINANCIAL_NACE_TID', 1601);
 
 /**
  * Implements hook_menu().
