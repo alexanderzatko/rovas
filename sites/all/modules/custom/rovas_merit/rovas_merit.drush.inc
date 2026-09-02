@@ -13,7 +13,7 @@ function rovas_merit_drush_command() {
     'callback' => 'drush_rovas_merit_backfill',
     'description' => dt('Backfill field_merit_source on ledger nodes (batched, low memory).'),
     'options' => array(
-      'reclassify' => dt('Also re-infer sources already set (e.g. EUR-funded purchase_merits wrongly tagged volunteer).'),
+      'reclassify' => dt('Also re-infer sources already set (EUR vs CHR purchases; project-reward earned vs timeshare/%-only shares).'),
     ),
     'examples' => array(
       'drush rovas-merit-backfill' => dt('Backfill missing merit sources.'),

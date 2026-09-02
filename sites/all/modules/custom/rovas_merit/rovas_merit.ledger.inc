@@ -8,7 +8,7 @@
 /** @var float Balance invariant tolerance (ME). */
 define('ROVAS_MERIT_BALANCE_TOLERANCE', 0.02);
 
-/** Merit source: verified volunteer work report reward. */
+/** Merit source: verified volunteer work report reward / earned project share. */
 define('ROVAS_MERIT_SOURCE_VOLUNTEER_WORK', 'volunteer_work');
 
 /** Merit source: CHR→ME purchase (forex). */
@@ -17,7 +17,7 @@ define('ROVAS_MERIT_SOURCE_VOLUNTEER', 'volunteer');
 /** Merit source: VAT / tax claim (Civic). */
 define('ROVAS_MERIT_SOURCE_TAX_PAYMENT', 'tax_payment');
 
-/** Merit source: EUR donation, EUR buy-merits, timeshare ME. */
+/** Merit source: EUR donation, EUR buy-merits, timeshare / %-only project-reward ME. */
 define('ROVAS_MERIT_SOURCE_CHARITABLE_DONATION', 'charitable_donation');
 
 /** Merit source: dispute / compliance penalty. */
@@ -56,11 +56,258 @@ function rovas_merit_source_from_civic_audit($source_type) {
       return ROVAS_MERIT_SOURCE_TAX_PAYMENT;
 
     case 'project_reward_order':
+      // Donor Path-1 ME for paying into a project (not shareholder split).
       return ROVAS_MERIT_SOURCE_CHARITABLE_DONATION;
 
     default:
       return ROVAS_MERIT_SOURCE_LEGACY;
   }
+}
+
+/**
+ * Merit source for ME a user receives when a project is rewarded.
+ *
+ * - Purchased timeshare → always charitable_donation.
+ * - Labor / %-share with earned hours (WR time) → volunteer_work.
+ * - %-determined share only (no earned hours) → charitable_donation.
+ *
+ * @param string $allocation_bundle
+ *   co_worker_merit_allocation|timeshare_merit_allocation.
+ * @param float $hours
+ *   field_total_hours_worked on that allocation.
+ *
+ * @return string
+ *   field_merit_source value.
+ */
+function rovas_merit_source_for_project_share_reward($allocation_bundle, $hours = 0) {
+  if ($allocation_bundle === 'timeshare_merit_allocation') {
+    return ROVAS_MERIT_SOURCE_CHARITABLE_DONATION;
+  }
+  // Earned time (alone or with a % allocation): volunteering.
+  if ((float) $hours > 0) {
+    return ROVAS_MERIT_SOURCE_VOLUNTEER_WORK;
+  }
+  // %-only share, or unknown labor bundle with no hours.
+  return ROVAS_MERIT_SOURCE_CHARITABLE_DONATION;
+}
+
+/**
+ * User co_worker / timeshare allocations on a project.
+ *
+ * @param int $uid
+ * @param int $project_nid
+ *
+ * @return array
+ *   List of objects with bundle, hours, share.
+ */
+function _rovas_merit_user_share_allocs($uid, $project_nid) {
+  $uid = (int) $uid;
+  $project_nid = (int) $project_nid;
+  if ($uid < 1 || $project_nid < 1) {
+    return array();
+  }
+  return db_query("
+    SELECT n.type AS bundle,
+      COALESCE(hw.field_total_hours_worked_value, 0) AS hours,
+      COALESCE(ma.field_merit_allocation_value, 0) AS share
+    FROM {node} n
+    INNER JOIN {field_data_field_project} p
+      ON p.entity_id = n.nid AND p.entity_type = 'node' AND p.deleted = 0
+    INNER JOIN {field_data_field_coworker} cw
+      ON cw.entity_id = n.nid AND cw.entity_type = 'node' AND cw.deleted = 0
+    LEFT JOIN {field_data_field_total_hours_worked} hw
+      ON hw.entity_id = n.nid AND hw.entity_type = 'node' AND hw.deleted = 0
+    LEFT JOIN {field_data_field_merit_allocation} ma
+      ON ma.entity_id = n.nid AND ma.entity_type = 'node' AND ma.deleted = 0
+    WHERE n.status = 1
+      AND p.field_project_target_id = :prid
+      AND n.type IN ('co_worker_merit_allocation', 'timeshare_merit_allocation')
+      AND cw.field_coworker_target_id = :uid
+  ", array(
+    ':prid' => $project_nid,
+    ':uid' => $uid,
+  ))->fetchAll();
+}
+
+/**
+ * Infer shareholder ME source from allocation rows (and amount when dual).
+ *
+ * @param array $allocs
+ * @param float $amount
+ * @param int $receipt_nid
+ * @param int $project_nid
+ *
+ * @return string
+ */
+function _rovas_merit_source_from_share_allocs(array $allocs, $amount, $receipt_nid = 0, $project_nid = 0) {
+  $labor_hours = 0.0;
+  $labor_share = 0.0;
+  $timeshare_hours = 0.0;
+  $timeshare_share = 0.0;
+  $has_labor = FALSE;
+  $has_timeshare = FALSE;
+
+  foreach ($allocs as $row) {
+    $bundle = isset($row->bundle) ? $row->bundle : '';
+    $hours = isset($row->hours) ? (float) $row->hours : 0.0;
+    $share = isset($row->share) ? (float) $row->share : 0.0;
+    if ($bundle === 'timeshare_merit_allocation') {
+      $has_timeshare = TRUE;
+      $timeshare_hours += $hours;
+      $timeshare_share += $share;
+    }
+    elseif ($bundle === 'co_worker_merit_allocation') {
+      $has_labor = TRUE;
+      $labor_hours += $hours;
+      $labor_share += $share;
+    }
+  }
+
+  if ($has_timeshare && !$has_labor) {
+    return ROVAS_MERIT_SOURCE_CHARITABLE_DONATION;
+  }
+  if ($has_labor && !$has_timeshare) {
+    return rovas_merit_source_for_project_share_reward('co_worker_merit_allocation', $labor_hours);
+  }
+  if (!($has_labor && $has_timeshare)) {
+    return ROVAS_MERIT_SOURCE_CHARITABLE_DONATION;
+  }
+
+  // Dual: purchased portion is always charity; labor/earned → volunteer_work.
+  // Match this disbursement amount to the closer expected split.
+  $expected = _rovas_merit_expected_user_share_merits($project_nid, $labor_share, $labor_hours, $timeshare_share, $timeshare_hours, $receipt_nid);
+  if ($expected === NULL) {
+    // Fall back: earned hours present → this row more likely labor if amount
+    // is non-trivial; prefer volunteer when hours exist and we cannot split.
+    return ($labor_hours > 0)
+      ? ROVAS_MERIT_SOURCE_VOLUNTEER_WORK
+      : ROVAS_MERIT_SOURCE_CHARITABLE_DONATION;
+  }
+
+  $d_labor = abs($amount - $expected['labor']);
+  $d_share = abs($amount - $expected['timeshare']);
+  if ($d_share < $d_labor) {
+    return ROVAS_MERIT_SOURCE_CHARITABLE_DONATION;
+  }
+  return rovas_merit_source_for_project_share_reward('co_worker_merit_allocation', $labor_hours);
+}
+
+/**
+ * Expected labor vs timeshare ME for a user from a project-reward receipt.
+ *
+ * Uses the same split as rules_process_purchase_core mrewarder.
+ *
+ * @param int $project_nid
+ * @param float $labor_share
+ * @param float $labor_hours
+ * @param float $timeshare_share
+ * @param float $timeshare_hours
+ * @param int $receipt_nid
+ *
+ * @return array|null
+ *   keys labor, timeshare — or NULL when amount_paid cannot be inferred.
+ */
+function _rovas_merit_expected_user_share_merits($project_nid, $labor_share, $labor_hours, $timeshare_share, $timeshare_hours, $receipt_nid) {
+  $project_nid = (int) $project_nid;
+  $receipt_nid = (int) $receipt_nid;
+  if ($project_nid < 1) {
+    return NULL;
+  }
+
+  // Approximate amount_paid as sum of shareholder disbursements on this receipt.
+  $amount_paid = 0.0;
+  if ($receipt_nid > 0) {
+    $amount_paid = (float) db_query("
+      SELECT COALESCE(SUM(amt.field_reward_amount_value), 0)
+      FROM {node} n
+      INNER JOIN {field_data_field_parent_purchase_receipt} pr
+        ON pr.entity_id = n.nid AND pr.entity_type = 'node' AND pr.deleted = 0
+      INNER JOIN {field_data_field_reward_amount} amt
+        ON amt.entity_id = n.nid AND amt.entity_type = 'node' AND amt.deleted = 0
+      WHERE n.status = 1
+        AND n.type = 'merits_disbursement'
+        AND pr.field_parent_purchase_receipt_target_id = :rid
+        AND amt.field_reward_amount_value > 0
+    ", array(':rid' => $receipt_nid))->fetchField();
+  }
+  if ($amount_paid <= 0) {
+    return NULL;
+  }
+
+  $sum = db_query("
+    SELECT COALESCE(SUM(ma.field_merit_allocation_value), 0) AS shares,
+      COALESCE(SUM(hw.field_total_hours_worked_value), 0) AS hours
+    FROM {node} node
+    INNER JOIN {field_data_field_project} fpr
+      ON node.nid = fpr.entity_id AND fpr.entity_type = 'node' AND fpr.deleted = 0
+    LEFT JOIN {field_data_field_merit_allocation} ma
+      ON node.nid = ma.entity_id AND ma.entity_type = 'node' AND ma.deleted = 0
+    LEFT JOIN {field_data_field_total_hours_worked} hw
+      ON node.nid = hw.entity_id AND hw.entity_type = 'node' AND hw.deleted = 0
+    WHERE fpr.field_project_target_id = :prid
+      AND node.status = 1
+      AND node.type IN ('project_merit_allocation', 'co_worker_merit_allocation', 'timeshare_merit_allocation')
+  ", array(':prid' => $project_nid))->fetchAssoc();
+
+  $tsdiff = 100.0 - (float) $sum['shares'];
+  $total_hours = (float) $sum['hours'];
+
+  $labor = ($labor_share / 100.0) * $amount_paid;
+  $timeshare = ($timeshare_share / 100.0) * $amount_paid;
+  if ($total_hours > 0) {
+    $labor += ($tsdiff / 100.0) * $amount_paid * ($labor_hours / $total_hours);
+    $timeshare += ($tsdiff / 100.0) * $amount_paid * ($timeshare_hours / $total_hours);
+  }
+
+  return array(
+    'labor' => $labor,
+    'timeshare' => $timeshare,
+  );
+}
+
+/**
+ * Infer source for shareholder ME from a project-reward purchase_receipt.
+ *
+ * @param int $uid
+ * @param int $project_nid
+ * @param float $amount
+ * @param int $receipt_nid
+ *
+ * @return string
+ */
+function rovas_merit_infer_project_shareholder_source($uid, $project_nid, $amount, $receipt_nid = 0) {
+  $uid = (int) $uid;
+  $project_nid = (int) $project_nid;
+  $allocs = _rovas_merit_user_share_allocs($uid, $project_nid);
+  if (!empty($allocs)) {
+    return _rovas_merit_source_from_share_allocs($allocs, $amount, $receipt_nid, $project_nid);
+  }
+
+  // Cascade via project_merit_allocation: user holds shares on a shareholder project.
+  $children = db_query("
+    SELECT DISTINCT sh.field_shareholder_project_target_id AS child_nid
+    FROM {node} n
+    INNER JOIN {field_data_field_project} p
+      ON p.entity_id = n.nid AND p.entity_type = 'node' AND p.deleted = 0
+    INNER JOIN {field_data_field_shareholder_project} sh
+      ON sh.entity_id = n.nid AND sh.entity_type = 'node' AND sh.deleted = 0
+    WHERE n.status = 1
+      AND n.type = 'project_merit_allocation'
+      AND p.field_project_target_id = :prid
+  ", array(':prid' => $project_nid));
+  foreach ($children as $child) {
+    $child_nid = (int) $child->child_nid;
+    if ($child_nid < 1 || $child_nid === $project_nid) {
+      continue;
+    }
+    $child_allocs = _rovas_merit_user_share_allocs($uid, $child_nid);
+    if (!empty($child_allocs)) {
+      return _rovas_merit_source_from_share_allocs($child_allocs, $amount, $receipt_nid, $child_nid);
+    }
+  }
+
+  // No allocation found: default charity (capital-like / unknown).
+  return ROVAS_MERIT_SOURCE_CHARITABLE_DONATION;
 }
 
 /**
@@ -1018,13 +1265,15 @@ function _rovas_merit_infer_source_from_row($row) {
       if ($has_report) {
         return ROVAS_MERIT_SOURCE_VOLUNTEER_WORK;
       }
-      $has_project = db_query('SELECT 1 FROM {field_data_field_receipt_project}
+      $project_nid = (int) db_query('SELECT field_receipt_project_target_id
+        FROM {field_data_field_receipt_project}
         WHERE entity_id = :nid AND entity_type = :et AND deleted = 0 LIMIT 1', array(
         ':nid' => $receipt_nid,
         ':et' => 'node',
       ))->fetchField();
-      if ($has_project) {
-        return ROVAS_MERIT_SOURCE_CHARITABLE_DONATION;
+      if ($project_nid > 0) {
+        // Shareholder split from a project reward: earned vs purchased / %-only.
+        return rovas_merit_infer_project_shareholder_source($uid, $project_nid, $amount, $receipt_nid);
       }
     }
   }
