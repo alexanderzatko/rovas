@@ -1316,7 +1316,7 @@ function _rovas_forex_grant_merits($user,$merits,$chrons) {
 	$merprec = rules_invoke_component('rules_create_merit_purchase_record',$user,$merits,$note);
 
 	//create Merit disbursement record
-	$merdibrec = rules_invoke_component('rules_create_merit_disbursement',$merprec[0],$uid,$merits);
+	$merdibrec = rules_invoke_component('rules_create_merit_disbursement', $merprec[0], $uid, $merits, 'volunteer');
 
 	//update the user expertise
 	$nace_areas = _rb_user_time_in_nace_codes($uid);

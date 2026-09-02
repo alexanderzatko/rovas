@@ -3,7 +3,7 @@
     "PLUGIN" : "rule",
     "OWNER" : "rules",
     "TAGS" : [ "dispute" ],
-    "REQUIRES" : [ "rules", "rules_conditional", "userpoints_rules" ],
+    "REQUIRES" : [ "rules", "rules_conditional", "rovas_merit" ],
     "USES VARIABLES" : {
       "reason" : { "label" : "reason", "type" : "text" },
       "dispute" : { "label" : "dispute node", "type" : "node" },
@@ -26,6 +26,11 @@
                   "USING" : { "input_1" : [ "amount" ], "op" : "*", "input_2" : "-1" },
                   "PROVIDE" : { "result" : { "negative_amount" : "negative amount" } }
                 }
+              },
+              { "data_calc" : {
+                  "USING" : { "input_1" : [ "negative-amount" ], "op" : "*", "input_2" : "-1" },
+                  "PROVIDE" : { "result" : { "penalty_amount" : "penalty amount positive" } }
+                }
               }
             ]
           },
@@ -34,45 +39,22 @@
                   "USING" : { "type" : "integer", "value" : [ "amount" ] },
                   "PROVIDE" : { "variable_added" : { "negative_amount" : "negative amount" } }
                 }
+              },
+              { "data_calc" : {
+                  "USING" : { "input_1" : [ "negative-amount" ], "op" : "*", "input_2" : "-1" },
+                  "PROVIDE" : { "result" : { "penalty_amount" : "penalty amount positive" } }
+                }
               }
             ]
           }
         ]
       },
-      { "entity_create" : {
-          "USING" : {
-            "type" : "node",
-            "param_type" : "merit_penalty",
-            "param_title" : "temp",
-            "param_author" : "1"
-          },
-          "PROVIDE" : { "entity_created" : { "merit_penalty" : "merit penalty" } }
-        }
-      },
-      { "data_set" : {
-          "data" : [ "merit-penalty:field-reward-recipient" ],
-          "value" : [ "dispute:field-accused" ]
-        }
-      },
-      { "data_set" : {
-          "data" : [ "merit-penalty:field-reward-amount" ],
-          "value" : [ "negative-amount" ]
-        }
-      },
-      { "data_set" : {
-          "data" : [ "merit-penalty:body:value" ],
-          "value" : "Penalty for failing to rectify a dispute \u003Ca href=\u0022[dispute:url]\u0022\u003E[dispute:title]\u003C\/a\u003E"
-        }
-      },
-      { "userpoints_action_grant_points" : {
+      { "rovas_merit_apply_penalty" : {
           "user" : [ "dispute:field-accused" ],
-          "points" : [ "negative-amount" ],
-          "tid" : "0",
-          "entity" : [ "dispute" ],
-          "description" : "[reason:value]",
-          "operation" : "Remove",
-          "display" : "0",
-          "moderate" : "approved"
+          "amount" : [ "penalty-amount" ],
+          "reason" : [ "reason" ],
+          "body" : "Penalty for failing to rectify a dispute \u003Ca href=\u0022[dispute:url]\u0022\u003E[dispute:title]\u003C\/a\u003E",
+          "dispute" : [ "dispute" ]
         }
       }
     ]

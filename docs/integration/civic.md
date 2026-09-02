@@ -582,6 +582,12 @@ Do **not** register `/rovas/users/lookup` (slash in alias). Civic API calls
     "charity": 210.0,
     "volunteer": 148.0
   },
+  "by_source": {
+    "tax_payment": 980.0,
+    "charitable_donation": 210.0,
+    "volunteer_work": 120.0,
+    "volunteer": 28.0
+  },
   "taxes_last_3_months": [
     { "month": "2026-04", "me": 310.0 },
     { "month": "2026-05", "me": 340.0 },
@@ -603,9 +609,10 @@ Do **not** register `/rovas/users/lookup` (slash in alias). Civic API calls
 | `username`               | Canonical Rovas username                                                                                                                                                                                                                                                          |
 | `display_name`           | Prefer `field_full_name`; fall back to `username`                                                                                                                                                                                                                                 |
 | `total_me`               | Same source as `/rovas/me` for that uid (`_rovas_merit_distribution_user_merits` or fallback)                                                                                                                                                                                     |
-| `by_category.taxes`      | `user_expertise` Merits on fallback NACE `ROVAS_CIVIC_FALLBACK_NACE_TID` (64.99 / tid **1601**) only — exclusive source                                                                                                                                                           |
-| `by_category.charity`    | `user_expertise` Merits on `ROVAS_CIVIC_CHARITY_NACE_TID` when that constant is a positive tid; **0** until a dedicated charity NACE is configured                                                                                                                                |
-| `by_category.volunteer`  | Sum of `user_expertise` Merits whose NACE is **neither** the fallback tid nor the charity tid                                                                                                                                                                                     |
+| `by_category.taxes`      | Sum of ledger `field_merit_source = tax_payment` (positive ME only)                                                                                                                                                                                                                |
+| `by_category.charity`    | Sum of ledger sources `charitable_donation` (EUR donations, EUR merit purchase, timeshare ME)                                                                                                                                                                                      |
+| `by_category.volunteer`  | Sum of ledger sources `volunteer_work` + `volunteer` (work-report rewards + CHR→ME purchase)                                                                                                                                                                                      |
+| `by_source`              | Full breakdown keyed by `field_merit_source` (`volunteer_work`, `volunteer`, `tax_payment`, `charitable_donation`, `penalty`, …); omits zero keys; negative `penalty` included when present                                                                                        |
 | `taxes_last_3_months`    | Last **3 calendar months** (including current) of VAT-claim Merits for this uid, keyed `YYYY-MM`; omit zero months or include with `me: 0` — prefer only months with activity; max 3 rows; `[]` if none                                                                           |
 | `top_charities`          | Up to **3** `{ project_nid, name, me }` from `{rovas_merit_issuance}` rows with `source_type = project_reward_order` (Path-1 donor Merits from project donations). **Not** raw `purchase_receipt` Merit spends. Exclude State Treasury. Empty until real charity donations exist. |
 | `top_volunteer_projects` | Up to **3** `{ project_nid, name, me }` from `project_merit_allocation` / `co_worker_merit_allocation` labor Merits (aggregated by project nid)                                                                                                                                   |
@@ -1821,6 +1828,7 @@ Machine-name path only (no slash alias).
 | `node_type`                       | `merits_disbursement` or `merit_penalty`                       |
 | `created_at`                      | Node `created` → ISO-8601 (`rovas_civic_format_created`)       |
 | `merits`                          | `field_reward_amount` float (negative allowed for penalties)   |
+| `merit_source`                    | `field_merit_source` on the ledger node (`volunteer_work`, `volunteer`, `tax_payment`, `charitable_donation`, `penalty`, …) or `null` when unset (legacy rows) |
 | `source_kind`                     | `project` | `report` | `purchase` only                         |
 | `source_title`                    | Localized entity title, or `null` for `purchase`               |
 | `project_nid` / `work_report_nid` | String nids or `null`                                          |

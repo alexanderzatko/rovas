@@ -1,0 +1,133 @@
+<?php
+
+/**
+ * @file
+ * Merit ledger: source field, wallet/expertise/disbursement invariant helpers.
+ */
+
+define('ROVAS_MERIT_PENALTY_NACE_CODE', '94.99');
+
+/**
+ * Implements hook_menu().
+ */
+function rovas_merit_menu() {
+  $items = array();
+  $items['admin/reports/merit-reconcile'] = array(
+    'title' => 'Merit balance reconcile',
+    'description' => 'Users whose total_me, user_expertise sum, or ledger sum diverge.',
+    'page callback' => 'rovas_merit_reconcile_report_page',
+    'access arguments' => array('access site reports'),
+    'type' => MENU_NORMAL_ITEM,
+  );
+  return $items;
+}
+
+/**
+ * Implements hook_rules_action_info().
+ */
+function rovas_merit_rules_action_info() {
+  return array(
+    'rovas_merit_apply_penalty' => array(
+      'label' => t('Apply Merit penalty (ledger + expertise)'),
+      'group' => t('Rovas'),
+      'parameter' => array(
+        'user' => array(
+          'type' => 'user',
+          'label' => t('Penalized user'),
+        ),
+        'amount' => array(
+          'type' => 'decimal',
+          'label' => t('Merit amount to subtract (positive number)'),
+        ),
+        'reason' => array(
+          'type' => 'text',
+          'label' => t('Reason / userpoints description'),
+          'optional' => TRUE,
+        ),
+        'body' => array(
+          'type' => 'text',
+          'label' => t('Penalty node body HTML'),
+          'optional' => TRUE,
+        ),
+        'dispute' => array(
+          'type' => 'entity',
+          'label' => t('Related entity (e.g. dispute node)'),
+          'optional' => TRUE,
+        ),
+      ),
+      'base' => 'rovas_merit_rules_apply_penalty',
+    ),
+  );
+}
+
+/**
+ * Rules action: apply a Merit penalty through the unified ledger path.
+ */
+function rovas_merit_rules_apply_penalty($user, $amount, $reason = '', $body = '', $dispute = NULL) {
+  module_load_include('inc', 'rovas_merit', 'rovas_merit.ledger');
+  $amount = (float) $amount;
+  if (empty($user->uid) || $amount <= 0) {
+    return FALSE;
+  }
+  $entity = $dispute ? $dispute : $user;
+  return rovas_merit_apply((int) $user->uid, -1 * $amount, ROVAS_MERIT_SOURCE_PENALTY, rovas_merit_penalty_nace_tid(), array(
+    'description' => $reason ? $reason : t('Merit penalty'),
+    'reward_entity' => $entity,
+    'body' => $body,
+    'operation' => 'Remove',
+  ));
+}
+
+/**
+ * Admin report: users with balance drift.
+ */
+function rovas_merit_reconcile_report_page() {
+  module_load_include('inc', 'rovas_merit', 'rovas_merit.ledger');
+  $rows = array();
+  $header = array(
+    t('UID'),
+    t('Username'),
+    t('total_me'),
+    t('expertise sum'),
+    t('ledger sum'),
+    t('Δ wallet vs expertise'),
+    t('Δ wallet vs ledger'),
+  );
+
+  $uids = db_query("
+    SELECT DISTINCT u.uid
+    FROM {users} u
+    WHERE u.uid > 0 AND u.status = 1
+    ORDER BY u.uid ASC
+  ")->fetchCol();
+
+  foreach ($uids as $uid) {
+    $uid = (int) $uid;
+    $check = rovas_merit_balance_check($uid);
+    if (!$check['ok']) {
+      $account = user_load($uid);
+      $rows[] = array(
+        $uid,
+        $account ? $account->name : '—',
+        round($check['total_me'], 2),
+        round($check['expertise_sum'], 2),
+        round($check['ledger_sum'], 2),
+        round($check['delta_expertise'], 4),
+        round($check['delta_ledger'], 4),
+      );
+    }
+  }
+
+  $build = array(
+    '#markup' => '<p>' . t('Users listed below fail the Merit invariant (tolerance @tol ME).', array(
+      '@tol' => ROVAS_MERIT_BALANCE_TOLERANCE,
+    )) . '</p>',
+  );
+  $build['table'] = array(
+    '#theme' => 'table',
+    '#header' => $header,
+    '#rows' => $rows,
+    '#empty' => t('All active users pass the Merit invariant.'),
+  );
+  return $build;
+}

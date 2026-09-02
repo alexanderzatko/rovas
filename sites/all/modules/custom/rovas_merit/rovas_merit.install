@@ -1,0 +1,125 @@
+<?php
+
+/**
+ * @file
+ * Install / update for Rovas Merit ledger.
+ */
+
+/**
+ * Field base definition for field_merit_source.
+ *
+ * @return array
+ */
+function _rovas_merit_field_merit_source_base() {
+  $allowed = array();
+  foreach (array_keys(rovas_merit_source_options()) as $key) {
+    $allowed[$key] = $key;
+  }
+  return array(
+    'field_name' => 'field_merit_source',
+    'type' => 'list_text',
+    'module' => 'list',
+    'active' => 1,
+    'locked' => 0,
+    'cardinality' => 1,
+    'translatable' => 0,
+    'settings' => array(
+      'allowed_values' => $allowed,
+      'allowed_values_function' => '',
+    ),
+  );
+}
+
+/**
+ * Field instances for merits_disbursement and merit_penalty.
+ *
+ * @return array
+ */
+function _rovas_merit_field_merit_source_instances() {
+  $instances = array();
+  foreach (array('merits_disbursement', 'merit_penalty') as $bundle) {
+    $instances[] = array(
+      'field_name' => 'field_merit_source',
+      'entity_type' => 'node',
+      'bundle' => $bundle,
+      'label' => 'Merit source',
+      'required' => 0,
+      'settings' => array(),
+      'widget' => array(
+        'type' => 'options_select',
+        'module' => 'options',
+        'settings' => array(),
+      ),
+      'display' => array(
+        'default' => array(
+          'label' => 'above',
+          'type' => 'list_default',
+          'weight' => 5,
+        ),
+      ),
+    );
+  }
+  return $instances;
+}
+
+/**
+ * Ensure field_merit_source exists on ledger node types.
+ */
+function _rovas_merit_ensure_merit_source_field() {
+  module_load_include('inc', 'rovas_merit', 'rovas_merit.ledger');
+  if (!field_info_field('field_merit_source')) {
+    field_create_field(_rovas_merit_field_merit_source_base());
+  }
+  foreach (_rovas_merit_field_merit_source_instances() as $instance) {
+    if (!field_info_instance('node', 'field_merit_source', $instance['bundle'])) {
+      field_create_instance($instance);
+    }
+  }
+}
+
+/**
+ * Backfill field_merit_source on existing ledger nodes.
+ *
+ * @return int
+ *   Number of nodes updated.
+ */
+function _rovas_merit_backfill_sources() {
+  module_load_include('inc', 'rovas_merit', 'rovas_merit.ledger');
+  if (!field_info_field('field_merit_source')) {
+    return 0;
+  }
+
+  $count = 0;
+  $result = db_query("
+    SELECT n.nid
+    FROM {node} n
+    LEFT JOIN {field_data_field_merit_source} src
+      ON src.entity_id = n.nid AND src.entity_type = 'node' AND src.deleted = 0
+    WHERE n.status = 1
+      AND n.type IN ('merits_disbursement', 'merit_penalty')
+      AND (src.field_merit_source_value IS NULL OR src.field_merit_source_value = '')
+  ");
+  foreach ($result as $row) {
+    $source = rovas_merit_infer_source_for_node((int) $row->nid);
+    $node = node_load($row->nid);
+    if (!$node) {
+      continue;
+    }
+    $node->field_merit_source[LANGUAGE_NONE][0]['value'] = $source;
+    field_attach_update('node', $node);
+    $count++;
+  }
+  return $count;
+}
+
+/**
+ * Add field_merit_source and backfill historical ledger rows.
+ */
+function rovas_merit_update_7001() {
+  module_load_include('inc', 'rovas_merit', 'rovas_merit.ledger');
+  _rovas_merit_ensure_merit_source_field();
+  $count = _rovas_merit_backfill_sources();
+  return t('Merit source field installed; backfilled @count ledger nodes.', array(
+    '@count' => $count,
+  ));
+}

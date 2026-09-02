@@ -7,5 +7,6 @@ dependencies[] = services
 dependencies[] = oauth2_server
 dependencies[] = rovas_oauth
 dependencies[] = userpoints
+dependencies[] = rovas_merit
 
 configure = admin/config/rovas/civic

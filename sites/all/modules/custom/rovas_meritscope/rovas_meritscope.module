@@ -644,7 +644,7 @@ function group_nace_merit_sum ($uid,$n=1,$category=FALSE,$split=TRUE) {
 	WHERE expert.field_expert_target_id = :uid
 	AND node.status = '1'
 	AND node.type = 'user_expertise'
-	AND merits.field_merits_value > 0
+	AND merits.field_merits_value <> 0
 	ORDER BY tid", array(":uid" => $uid));
 
 	$result = $result->fetchAll();
@@ -742,7 +742,7 @@ function group_nace_max_merits ($n = 1,$category=FALSE) {
 	LEFT JOIN {field_data_field_merits} merits ON node.nid = merits.entity_id AND (merits.entity_type = 'node' AND merits.deleted = '0')
 	WHERE node.status = '1'
 	AND node.type = 'user_expertise'
-	AND merits.field_merits_value > 0
+	AND merits.field_merits_value <> 0
 	GROUP BY tid");
 
 	$result = $result->fetchAll();
@@ -1187,14 +1187,14 @@ function rovas_meritscope_user_expertise_json($uid, $lang = NULL, $limit = NULL)
     WHERE n.type = 'user_expertise'
       AND n.status = 1
       AND e.field_expert_target_id = :uid
-      AND m.field_merits_value > 0
+      AND m.field_merits_value <> 0
     GROUP BY c.field_category_tid
     ORDER BY merits DESC
   ", array(':uid' => $uid));
 
   $terms_data = array();
   foreach ($result as $row) {
-    if (empty($row->tid) || $row->merits <= 0) {
+    if (empty($row->tid) || $row->merits == 0) {
       continue;
     }
     $terms_data[] = array(

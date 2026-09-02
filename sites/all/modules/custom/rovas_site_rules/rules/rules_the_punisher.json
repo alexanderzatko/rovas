@@ -6,8 +6,8 @@
       "views_bulk_operations",
       "rules_conditional",
       "rules",
-      "userpoints_rules",
-      "rules_scheduler"
+      "rules_scheduler",
+      "rovas_merit"
     ],
     "DO" : [
       { "views_bulk_operations_action_load_list" : {
@@ -29,43 +29,11 @@
                   },
                   "DO" : [
                     { "data_set" : { "data" : [ "user:field-verification-score" ], "value" : "0" } },
-                    { "userpoints_action_grant_points" : {
+                    { "rovas_merit_apply_penalty" : {
                         "user" : [ "user" ],
-                        "points" : "-10",
-                        "tid" : "0",
-                        "entity" : [ "" ],
-                        "description" : "Merits subtracted due to low compliance score",
-                        "operation" : "remove",
-                        "display" : "1",
-                        "moderate" : "approved"
-                      }
-                    },
-                    { "entity_create" : {
-                        "USING" : {
-                          "type" : "node",
-                          "param_type" : "merit_penalty",
-                          "param_title" : "temp",
-                          "param_author" : "1"
-                        },
-                        "PROVIDE" : { "entity_created" : { "penalty" : "penalty" } }
-                      }
-                    },
-                    { "entity_modify" : {
-                        "entity" : [ "penalty" ],
-                        "properties" : { "value" : {
-                            "field_reward_recipient" : "field_reward_recipient",
-                            "field_reward_amount" : "field_reward_amount",
-                            "language" : "language"
-                          }
-                        },
-                        "param_field_reward_recipient" : [ "user" ],
-                        "param_field_reward_amount" : "-10",
-                        "param_language" : [ "user:language" ]
-                      }
-                    },
-                    { "data_set" : {
-                        "data" : [ "penalty:body:value" ],
-                        "value" : "Penalty for repeated breaking of the NEO rules"
+                        "amount" : "10",
+                        "reason" : "Merits subtracted due to low compliance score",
+                        "body" : "Penalty for repeated breaking of the NEO rules"
                       }
                     },
                     { "mail" : {

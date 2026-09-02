@@ -3,7 +3,7 @@
     "PLUGIN" : "rule",
     "OWNER" : "rules",
     "TAGS" : [ "merits" ],
-    "REQUIRES" : [ "rules", "php", "rules_conditional", "userpoints_rules" ],
+    "REQUIRES" : [ "rules", "php", "rules_conditional", "userpoints_rules", "rovas_merit" ],
     "USES VARIABLES" : {
       "user_object" : { "label" : "User object", "type" : "user" },
       "merits_given" : { "label" : "Merits given", "type" : "decimal" },
@@ -22,72 +22,10 @@
     "DO" : [
       { "variable_add" : {
           "USING" : {
-            "type" : "decimal",
-            "value" : [ "user-object:field-merit-decimal-part" ]
+            "type" : "text",
+            "value" : "\u003C?php\r\nmodule_load_include(\u0027inc\u0027, \u0027rovas_merit\u0027, \u0027rovas_merit.ledger\u0027);\r\n$entity = isset($reward_entity) ? $reward_entity : $user_object;\r\n$op = !empty($operation) ? $operation : \u0027Insert\u0027;\r\n$desc = !empty($description) ? $description : \u0027\u0027;\r\nreturn rovas_merit_credit_wallet($user_object, (float) $merits_given, $entity, $desc, $op) ? 1 : 0;\r\n?\u003E"
           },
-          "PROVIDE" : { "variable_added" : { "merits_decimal_part" : "merits decimal part" } }
-        }
-      },
-      { "data_calc" : {
-          "USING" : {
-            "input_1" : [ "merits-given" ],
-            "op" : "+",
-            "input_2" : [ "merits-decimal-part" ]
-          },
-          "PROVIDE" : { "result" : { "partial_merits" : "decimal part plus merits to add" } }
-        }
-      },
-      { "variable_add" : {
-          "USING" : {
-            "type" : "decimal",
-            "value" : {
-              "select" : "partial-merits",
-              "php" : { "code" : "return fmod($value, 1);" }
-            }
-          },
-          "PROVIDE" : { "variable_added" : { "new_decimal_part" : "new decimal part" } }
-        }
-      },
-      { "data_calc" : {
-          "USING" : {
-            "input_1" : [ "partial-merits" ],
-            "op" : "-",
-            "input_2" : [ "new-decimal-part" ]
-          },
-          "PROVIDE" : { "result" : { "new_whole_merits_decimal" : "new whole merits decimal" } }
-        }
-      },
-      { "data_convert" : {
-          "USING" : {
-            "type" : "integer",
-            "value" : [ "new-whole-merits-decimal" ],
-            "rounding_behavior" : "down"
-          },
-          "PROVIDE" : { "conversion_result" : { "new_whole_merits" : "new whole merits" } }
-        }
-      },
-      { "CONDITIONAL" : [
-          {
-            "IF" : { "data_is" : { "data" : [ "merits-decimal-part" ], "op" : "\u003E", "value" : "0" } },
-            "DO" : [
-              { "data_set" : {
-                  "data" : [ "user-object:field-merit-decimal-part" ],
-                  "value" : [ "new-decimal-part" ]
-                }
-              }
-            ]
-          }
-        ]
-      },
-      { "userpoints_action_grant_points" : {
-          "user" : [ "user-object" ],
-          "points" : [ "new-whole-merits" ],
-          "tid" : "0",
-          "entity" : [ "reward-entity" ],
-          "description" : "[description:value]",
-          "operation" : "[operation:value]",
-          "display" : "0",
-          "moderate" : "approved"
+          "PROVIDE" : { "variable_added" : { "wallet_result" : "wallet result" } }
         }
       }
     ]

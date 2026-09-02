@@ -1,0 +1,11 @@
+name = Rovas Merit Ledger
+description = Merit source field, ledger helpers, and balance invariant (wallet + user_expertise + disbursements).
+core = 7.x
+package = Rovas
+
+dependencies[] = rovas_base
+dependencies[] = userpoints
+
+files[] = rovas_merit.module
+files[] = rovas_merit.ledger.inc
+files[] = rovas_merit.drush.inc

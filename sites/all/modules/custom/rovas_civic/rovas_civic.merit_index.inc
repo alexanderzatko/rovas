@@ -310,6 +310,11 @@ function rovas_civic_merit_index_base_rows() {
  *   uid => { by_category: {taxes,charity,volunteer}, sections: { section_tid: TRUE } }.
  */
 function rovas_civic_merit_index_expertise_by_uid(array $uids) {
+  if (module_exists('rovas_merit') && field_info_field('field_merit_source')) {
+    module_load_include('inc', 'rovas_merit', 'rovas_merit.ledger');
+    return rovas_merit_users_lookup_data_batch($uids);
+  }
+
   $out = array();
   $uids = array_values(array_unique(array_filter(array_map('intval', $uids))));
   if (empty($uids)) {
@@ -341,6 +346,7 @@ function rovas_civic_merit_index_expertise_by_uid(array $uids) {
   foreach ($uids as $uid) {
     $out[$uid] = array(
       'by_category' => array('taxes' => 0.0, 'charity' => 0.0, 'volunteer' => 0.0),
+      'by_source' => array(),
       'sections' => array(),
     );
   }

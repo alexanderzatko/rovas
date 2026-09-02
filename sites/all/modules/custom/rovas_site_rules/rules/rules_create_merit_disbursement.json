@@ -3,11 +3,12 @@
     "PLUGIN" : "rule",
     "OWNER" : "rules",
     "TAGS" : [ "merit", "purchase", "reward" ],
-    "REQUIRES" : [ "rules", "rovas_base" ],
+    "REQUIRES" : [ "rules", "rovas_base", "rovas_merit" ],
     "USES VARIABLES" : {
       "receipt_id" : { "label" : "purchase receipt ID", "type" : "integer" },
       "rewarded_uid" : { "label" : "rewarded user ID", "type" : "integer" },
       "reward_amt" : { "label" : "reward amount", "type" : "decimal" },
+      "merit_source" : { "label" : "Merit source", "type" : "text", "allow null" : true },
       "disburs_id" : { "label" : "disbursement id", "type" : "integer", "parameter" : false }
     },
     "DO" : [
@@ -37,12 +38,14 @@
           "properties" : { "value" : {
               "field_reward_amount" : "field_reward_amount",
               "field_reward_recipient" : "field_reward_recipient",
-              "field_parent_purchase_receipt" : "field_parent_purchase_receipt"
+              "field_parent_purchase_receipt" : "field_parent_purchase_receipt",
+              "field_merit_source" : "field_merit_source"
             }
           },
           "param_field_parent_purchase_receipt" : [ "purchased-receipt-obj" ],
           "param_field_reward_recipient" : [ "rewarded-usr-object" ],
-          "param_field_reward_amount" : [ "reward-amt" ]
+          "param_field_reward_amount" : [ "reward-amt" ],
+          "param_field_merit_source" : [ "merit-source" ]
         }
       },
       { "rules_set_fresh_timestamps" : { "node" : [ "merits-disbursement" ] } },

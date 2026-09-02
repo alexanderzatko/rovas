@@ -83,7 +83,8 @@
                           "USING" : {
                             "receipt_id" : [ "receipt_id" ],
                             "rewarded_uid" : [ "work-report:author:uid" ],
-                            "reward_amt" : [ "reward-amnt" ]
+                            "reward_amt" : [ "reward-amnt" ],
+                            "merit_source" : { "value" : "volunteer_work" }
                           },
                           "PROVIDE" : { "disburs_id" : { "disburs_id" : "disbursement id" } }
                         }

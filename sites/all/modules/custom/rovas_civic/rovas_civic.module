@@ -1261,6 +1261,16 @@ function rovas_civic_users_lookup($username, $lang = NULL) {
   }
 
   $expertise = rovas_civic_users_lookup_expertise_categories($uid);
+  $by_source = array();
+  if (function_exists('rovas_merit_user_by_source')) {
+    module_load_include('inc', 'rovas_merit', 'rovas_merit.ledger');
+    $raw_source = rovas_merit_user_by_source($uid);
+    foreach ($raw_source as $key => $me) {
+      if ($me != 0) {
+        $by_source[$key] = round($me, 2);
+      }
+    }
+  }
   $nace_expertise = array();
   if (function_exists('rovas_meritscope_user_expertise_json')) {
     $nace_expertise = rovas_meritscope_user_expertise_json($uid, $lang);
@@ -1276,6 +1286,7 @@ function rovas_civic_users_lookup($username, $lang = NULL) {
       'charity' => round($expertise['charity'], 2),
       'volunteer' => round($expertise['volunteer'], 2),
     ),
+    'by_source' => $by_source,
     'nace_expertise' => $nace_expertise,
     'taxes_last_3_months' => rovas_civic_users_lookup_taxes_last_3_months($uid),
     'top_charities' => rovas_civic_users_lookup_top_charities($uid, $lang),
@@ -1284,12 +1295,9 @@ function rovas_civic_users_lookup($username, $lang = NULL) {
 }
 
 /**
- * Split user_expertise Merits into taxes / charity / volunteer by NACE.
+ * Split user Merits into taxes / charity / volunteer by ledger source.
  *
- * Exclusive source for users_lookup `by_category`:
- * - tid ROVAS_CIVIC_FALLBACK_NACE_TID (1601 / 64.99) → taxes
- * - tid ROVAS_CIVIC_CHARITY_NACE_TID (when > 0) → charity
- * - any other NACE → volunteering
+ * Falls back to legacy NACE inference when field_merit_source is unavailable.
  *
  * @param int $uid
  *
@@ -1301,6 +1309,11 @@ function rovas_civic_users_lookup_expertise_categories($uid) {
   $out = array('taxes' => 0.0, 'charity' => 0.0, 'volunteer' => 0.0);
   if ($uid < 1) {
     return $out;
+  }
+
+  if (module_exists('rovas_merit') && field_info_field('field_merit_source')) {
+    module_load_include('inc', 'rovas_merit', 'rovas_merit.ledger');
+    return rovas_merit_user_by_category($uid);
   }
 
   $fallback = (int) ROVAS_CIVIC_FALLBACK_NACE_TID;
@@ -2313,6 +2326,7 @@ function rovas_civic_merit_history_fetch($uid, $limit, $offset, $lang = NULL) {
       n.type AS node_type,
       n.created AS created,
       MAX(amt.field_reward_amount_value) AS merits,
+      MAX(src.field_merit_source_value) AS merit_source,
       MAX(proj.field_receipt_project_target_id) AS project_nid,
       MAX(wr.field_rewarded_report_target_id) AS work_report_nid
     FROM {node} n
@@ -2320,6 +2334,8 @@ function rovas_civic_merit_history_fetch($uid, $limit, $offset, $lang = NULL) {
       ON rec.entity_id = n.nid AND rec.entity_type = 'node' AND rec.deleted = 0
     LEFT JOIN {field_data_field_reward_amount} amt
       ON amt.entity_id = n.nid AND amt.entity_type = 'node' AND amt.deleted = 0
+    LEFT JOIN {field_data_field_merit_source} src
+      ON src.entity_id = n.nid AND src.entity_type = 'node' AND src.deleted = 0
     LEFT JOIN {field_data_field_parent_purchase_receipt} parent
       ON parent.entity_id = n.nid AND parent.entity_type = 'node' AND parent.deleted = 0
     LEFT JOIN {field_data_field_receipt_project} proj
@@ -2368,6 +2384,14 @@ function rovas_civic_merit_history_fetch($uid, $limit, $offset, $lang = NULL) {
       $source_title = NULL;
     }
 
+    $merit_source = !empty($row->merit_source) ? (string) $row->merit_source : NULL;
+    if ($merit_source === NULL && module_exists('rovas_merit')) {
+      module_load_include('inc', 'rovas_merit', 'rovas_merit.ledger');
+      if ($node_type === 'merit_penalty') {
+        $merit_source = ROVAS_MERIT_SOURCE_PENALTY;
+      }
+    }
+
     $items[] = array(
       'disbursement_nid' => (string) ((int) $row->disbursement_nid),
       'node_type' => $node_type,
@@ -2375,6 +2399,7 @@ function rovas_civic_merit_history_fetch($uid, $limit, $offset, $lang = NULL) {
       'merits' => isset($row->merits) && $row->merits !== NULL && $row->merits !== ''
         ? (float) $row->merits
         : 0.0,
+      'merit_source' => $merit_source,
       'source_kind' => $source_kind,
       'source_title' => $source_title,
       'project_nid' => $project_nid > 0 ? (string) $project_nid : NULL,
@@ -2523,56 +2548,21 @@ function rovas_civic_issue_donor_merits($account, $merits, $project_nid, $source
     return FALSE;
   }
 
-  // 2) merits_disbursement row listed by Views merit_history.
-  rules_invoke_component(
-    'rules_create_merit_disbursement',
-    $receipt_id,
-    (int) $account->uid,
-    $merits
-  );
-
-  // 3) Credit userpoints / decimal Merits ledger.
-  $config = rules_config_load('rules_give_merits_to_user');
-  if ($config && !empty($config->active)) {
-    rules_invoke_component(
-      'rules_give_merits_to_user',
-      $account,
-      $merits,
-      $reward_entity,
-      $description,
-      'Insert'
-    );
-  }
-  elseif (function_exists('userpoints_userpointsapi')) {
-    // Fallback: integer userpoints only (decimal part skipped).
-    userpoints_userpointsapi(array(
-      'uid' => $account->uid,
-      'points' => (int) floor($merits),
-      'operation' => 'Insert',
-      'description' => $description,
-      'entity_id' => $project_nid,
-      'entity_type' => 'node',
-      'moderate' => FALSE,
-    ));
-  }
-  else {
+  // 2–5) Ledger credit: wallet + user_expertise + disbursement (+ project ME bump).
+  module_load_include('inc', 'rovas_merit', 'rovas_merit.ledger');
+  $merit_source = rovas_merit_source_from_civic_audit($source_type);
+  if (!rovas_merit_apply((int) $account->uid, $merits, $merit_source, ROVAS_CIVIC_FALLBACK_NACE_TID, array(
+    'description' => $description,
+    'reward_entity' => $reward_entity,
+    'receipt_id' => $receipt_id,
+    'project_nid' => $project_nid,
+  ))) {
+    watchdog('rovas_civic', 'Donor Merit: rovas_merit_apply failed for uid @u source @s.', array(
+      '@u' => $account->uid,
+      '@s' => $source_id,
+    ), WATCHDOG_ERROR);
     return FALSE;
   }
-
-  // 4) Bump project field_merit_reward (same as work-report / mrewarder path).
-  if (function_exists('project_merit_updater')) {
-    project_merit_updater($project_nid, $merits);
-  }
-
-  // 5) user_expertise: non-labor donor ME → 64.99 fallback (shares_merit_rewarder).
-  // Do not spread across the donor's work-report NACE mix (e.g. 62.01).
-  rules_invoke_component(
-    'rules_update_user_expertise',
-    1.0,
-    $merits,
-    ROVAS_CIVIC_FALLBACK_NACE_TID,
-    (int) $account->uid
-  );
 
   // 6) A3 audit (NeoFund invariant).
   db_insert('rovas_merit_issuance')
