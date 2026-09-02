@@ -198,6 +198,17 @@ function rovas_civic_merit_index_page(array $opts) {
     }
 
     $country_iso2 = drupal_strtoupper(trim((string) $row->country_iso2));
+    $by_source_raw = isset($expertise[$uid]['by_source']) && is_array($expertise[$uid]['by_source'])
+      ? $expertise[$uid]['by_source']
+      : array();
+    $by_source = array();
+    foreach ($by_source_raw as $source_key => $me) {
+      $me = (float) $me;
+      if ($me != 0) {
+        $by_source[$source_key] = round($me, 2);
+      }
+    }
+
     $items[] = array(
       'rovas_uid' => (string) $uid,
       'username' => $username,
@@ -213,6 +224,7 @@ function rovas_civic_merit_index_page(array $opts) {
         'charity' => round($by_category['charity'], 2),
         'volunteer' => round($by_category['volunteer'], 2),
       ),
+      'by_source' => $by_source,
       'nace_expertise' => array(),
     );
   }
@@ -307,7 +319,11 @@ function rovas_civic_merit_index_base_rows() {
  * @param array $uids
  *
  * @return array
- *   uid => { by_category: {taxes,charity,volunteer}, sections: { section_tid: TRUE } }.
+ *   uid => {
+ *     by_category: {taxes,charity,volunteer},
+ *     by_source: { field_merit_source => float },
+ *     sections: { section_tid: TRUE },
+ *   }.
  */
 function rovas_civic_merit_index_expertise_by_uid(array $uids) {
   if (module_exists('rovas_merit') && field_info_field('field_merit_source')) {

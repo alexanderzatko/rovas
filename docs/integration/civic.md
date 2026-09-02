@@ -25,6 +25,7 @@ Civic API); keep both in sync when contracts change.
 [Next work: merit history (profile ledger)](#next-work-merit-history-profile-ledger),
 [Next work: merit index (Civic Prínos / ranks screen)](#next-work-merit-index-civic-prínos--ranks-screen),
 [Next work: merit index Prínos filter fixes](#next-work-merit-index-prínos-filter-fixes),
+[Next work: by_source on merit index](#next-work-by_source-on-merit-index),
 [Next work: volunteer report (Civic deferred form)](#next-work-volunteer-report-civic-deferred-form),
 [Next work: pending verifications gate (assigned slots only)](#next-work-pending-verifications-gate-assigned-slots-only),
 [Next work: Civic WR verification (in-app)](#next-work-civic-wr-verification-in-app),
@@ -74,7 +75,7 @@ not run deploys on their own.
 | AI NACE + title                      | `POST /rovas/civic_ai_nace`                                                                                                                | Implemented in `rovas_ai` (`rovas_ai_update_7001`). Bearer; keep NACE-tree fallback when `unavailable` or module absent.                                                               |
 | Work-report map proof                | `GET /rovas/civic_work_report_map_config`; `field_location` on create WR                                                                   | Implemented in `rovas_civic` (`rovas_civic_update_7012`). GeoJSON Point/LineString/Polygon; proof = URL **or** photos **or** map.                                                      |
 | Civic WR verification (in-app)       | `GET /rovas/civic_pending_verifications`, `civic_work_report/{nid}`, `POST /rovas/civic_submit_verification`                               | Implemented in `rovas_civic` (`rovas_civic_update_7013`). Pending list + verifier detail + approve/reject/decline.                                                                     |
-| Merit index (Civic Prínos / ranks)   | `GET /rovas/civic_merit_index`, `civic_merit_index_countries`                                                                             | Implemented in `rovas_civic` (`7014`–`7016`). Public read: `services_access_menu` + `oauth2_server.require_authentication=0` on `rovas_endpoint`. Leaderboard + countries dropdown; `source_category` = any ME in category. |
+| Merit index (Civic Prínos / ranks)   | `GET /rovas/civic_merit_index`, `civic_merit_index_countries`                                                                             | Implemented in `rovas_civic` (`7014`–`7016`). Public read; items include `by_category` + `by_source` (ledger sources; Civic remaps penalty→volunteer).                                                                   |
 | Chron balance on `/rovas/me`         | `GET /rovas/me` → `total_chr`                                                                                                              | Pending — see [Chron balance on /rovas/me](#next-work-chron-balance-on-rovasme).                                                                                                       |
 | NACE expertise icons                 | `GET /rovas/users_lookup` → `nace_expertise[]`                                                                                             | Pending — see [NACE expertise on users_lookup](#next-work-nace-expertise-on-users_lookup).                                                                                             |
 
@@ -612,7 +613,7 @@ Do **not** register `/rovas/users/lookup` (slash in alias). Civic API calls
 | `by_category.taxes`      | Sum of ledger `field_merit_source = tax_payment` (positive ME only)                                                                                                                                                                                                                |
 | `by_category.charity`    | Sum of ledger sources `charitable_donation` (EUR donations, EUR merit purchase, timeshare ME)                                                                                                                                                                                      |
 | `by_category.volunteer`  | Sum of ledger sources `volunteer_work` + `volunteer` (work-report rewards + CHR→ME purchase)                                                                                                                                                                                      |
-| `by_source`              | Full breakdown keyed by `field_merit_source` (`volunteer_work`, `volunteer`, `tax_payment`, `charitable_donation`, `penalty`, …); omits zero keys; negative `penalty` included when present                                                                                        |
+| `by_source`              | Full breakdown keyed by `field_merit_source` (`volunteer_work`, `volunteer`, `tax_payment`, `charitable_donation`, `penalty`, …); omits zero keys; negative `penalty` included when present. **Civic** remaps this into its displayed `by_category` with `penalty` folded into `volunteer` (Rovas `by_category` still excludes penalty). |
 | `taxes_last_3_months`    | Last **3 calendar months** (including current) of VAT-claim Merits for this uid, keyed `YYYY-MM`; omit zero months or include with `me: 0` — prefer only months with activity; max 3 rows; `[]` if none                                                                           |
 | `top_charities`          | Up to **3** `{ project_nid, name, me }` from `{rovas_merit_issuance}` rows with `source_type = project_reward_order` (Path-1 donor Merits from project donations). **Not** raw `purchase_receipt` Merit spends. Exclude State Treasury. Empty until real charity donations exist. |
 | `top_volunteer_projects` | Up to **3** `{ project_nid, name, me }` from `project_merit_allocation` / `co_worker_merit_allocation` labor Merits (aggregated by project nid)                                                                                                                                   |
@@ -2884,6 +2885,61 @@ same user must appear when filtering `nace_section_tid={that_tid}`.
 
 - `GET /rank/index/countries` (already proxied)
 - Existing `source_category` + `nace_section_tid` params once fixed above
+
+## Next work: by_source on merit index
+
+**Implemented in `rovas_civic`.** Civic Prínos (Impact) ME-source bars remap ledger sources into Civic
+buckets: `tax_payment`→taxes, `charitable_donation`→charity,
+`volunteer_work`+`volunteer`+`penalty`→volunteer. Rovas `by_category` still
+**excludes** `penalty`. `users_lookup` already returns `by_source`; Merit Index
+items now do too so Civic can apply the same remap on Prínos.
+
+**Already available:** `rovas_merit_users_lookup_data_batch()` / expertise batch
+loads `by_source` per uid; `rovas_civic_merit_index_page()` serializes both
+`by_category` and `by_source`.
+
+### Change
+
+On each `civic_merit_index` item, add `by_source` (same shape as
+`users_lookup.by_source`):
+
+```json
+"by_source": {
+  "tax_payment": 980.0,
+  "charitable_donation": 210.0,
+  "volunteer_work": 120.0,
+  "volunteer": 28.0,
+  "penalty": -15.0
+}
+```
+
+Rules:
+
+- Keyed by `field_merit_source`; omit zero keys
+- Include negative `penalty` when present
+- Round floats like `by_category` (2 dp)
+- Keep existing `by_category` unchanged (Rovas semantics; Civic remaps from
+  `by_source` when present)
+
+### Checklist
+
+1. [x] Include `by_source` from expertise batch on each merit-index item
+2. [x] Omit empty object when user has no sourced ledger rows (`{}` when none)
+3. [ ] Deploy rovdev
+
+### Smoke test
+
+```bash
+curl -sS "https://dev.rovas.app/rovas/civic_merit_index?limit=5" \
+  -H "Accept: application/json"
+# Expect: each item has by_category AND by_source (when ledger sources exist)
+# Pick a uid with merit_penalty rows — by_source.penalty < 0
+```
+
+### Response shape (Civic)
+
+Civic API `GET /rank/index` keeps returning only remapped `by_category` to Expo
+(does not need to forward `by_source` to the client).
 
 ## Next work: OAuth session persistence
 
