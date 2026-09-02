@@ -9,6 +9,13 @@
  * Implements hook_drush_command().
  */
 function rovas_merit_drush_command() {
+  $items['rovas-merit-backfill'] = array(
+    'callback' => 'drush_rovas_merit_backfill',
+    'description' => dt('Backfill field_merit_source on ledger nodes (batched, low memory).'),
+    'examples' => array(
+      'drush rovas-merit-backfill' => dt('Backfill missing merit sources.'),
+    ),
+  );
   $items['rovas-merit-reconcile'] = array(
     'callback' => 'drush_rovas_merit_reconcile',
     'description' => dt('Check or fix Merit invariant drift (total_me vs user_expertise vs ledger).'),
@@ -22,6 +29,19 @@ function rovas_merit_drush_command() {
     ),
   );
   return $items;
+}
+
+/**
+ * Drush callback: backfill field_merit_source on ledger nodes.
+ */
+function drush_rovas_merit_backfill() {
+  module_load_include('install', 'rovas_merit');
+  module_load_include('inc', 'rovas_merit', 'rovas_merit.ledger');
+  _rovas_merit_ensure_merit_source_field();
+  $count = _rovas_merit_backfill_sources();
+  drush_log(dt('Backfilled field_merit_source on @count ledger node(s).', array(
+    '@count' => $count,
+  )), 'success');
 }
 
 /**

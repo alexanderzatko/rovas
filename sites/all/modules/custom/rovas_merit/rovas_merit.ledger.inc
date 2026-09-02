@@ -718,36 +718,27 @@ function rovas_merit_reconcile_user($uid, $apply_fix = FALSE) {
 }
 
 /**
- * Infer merit source for a disbursement/penalty node (backfill).
+ * Infer merit source from ledger row fields (no node_load).
  *
- * @param int $nid
+ * @param object $row
+ *   At least: type, created; for disbursements also uid, amount, receipt_nid.
  *
  * @return string
  */
-function rovas_merit_infer_source_for_node($nid) {
-  $nid = (int) $nid;
-  $node = node_load($nid);
-  if (!$node) {
-    return ROVAS_MERIT_SOURCE_LEGACY;
-  }
-
-  if ($node->type === 'merit_penalty') {
+function _rovas_merit_infer_source_from_row($row) {
+  if ($row->type === 'merit_penalty') {
     return ROVAS_MERIT_SOURCE_PENALTY;
   }
 
-  if ($node->type !== 'merits_disbursement') {
+  if ($row->type !== 'merits_disbursement') {
     return ROVAS_MERIT_SOURCE_LEGACY;
   }
 
-  $uid = 0;
-  if (!empty($node->field_reward_recipient[LANGUAGE_NONE][0]['target_id'])) {
-    $uid = (int) $node->field_reward_recipient[LANGUAGE_NONE][0]['target_id'];
-  }
-  $amount = !empty($node->field_reward_amount[LANGUAGE_NONE][0]['value'])
-    ? (float) $node->field_reward_amount[LANGUAGE_NONE][0]['value'] : 0;
-  $created = (int) $node->created;
+  $uid = !empty($row->uid) ? (int) $row->uid : 0;
+  $amount = isset($row->amount) ? (float) $row->amount : 0;
+  $created = !empty($row->created) ? (int) $row->created : 0;
 
-  if ($uid > 0 && db_table_exists('rovas_merit_issuance')) {
+  if ($uid > 0 && $created > 0 && db_table_exists('rovas_merit_issuance')) {
     $audit = db_query("SELECT source_type FROM {rovas_merit_issuance}
       WHERE uid = :uid AND amount = :amt AND created BETWEEN :lo AND :hi
       ORDER BY ABS(created - :created) ASC LIMIT 1", array(
@@ -762,24 +753,62 @@ function rovas_merit_infer_source_for_node($nid) {
     }
   }
 
-  $receipt_nid = 0;
-  if (!empty($node->field_parent_purchase_receipt[LANGUAGE_NONE][0]['target_id'])) {
-    $receipt_nid = (int) $node->field_parent_purchase_receipt[LANGUAGE_NONE][0]['target_id'];
-  }
+  $receipt_nid = !empty($row->receipt_nid) ? (int) $row->receipt_nid : 0;
   if ($receipt_nid > 0) {
-    $receipt = node_load($receipt_nid);
-    if ($receipt) {
-      if ($receipt->type === 'purchase_merits') {
-        return ROVAS_MERIT_SOURCE_VOLUNTEER;
-      }
-      if (!empty($receipt->field_rewarded_report[LANGUAGE_NONE][0]['target_id'])) {
+    $receipt_type = db_query('SELECT type FROM {node} WHERE nid = :nid', array(
+      ':nid' => $receipt_nid,
+    ))->fetchField();
+    if ($receipt_type === 'purchase_merits') {
+      return ROVAS_MERIT_SOURCE_VOLUNTEER;
+    }
+    if ($receipt_type) {
+      $has_report = db_query('SELECT 1 FROM {field_data_field_rewarded_report}
+        WHERE entity_id = :nid AND entity_type = :et AND deleted = 0 LIMIT 1', array(
+        ':nid' => $receipt_nid,
+        ':et' => 'node',
+      ))->fetchField();
+      if ($has_report) {
         return ROVAS_MERIT_SOURCE_VOLUNTEER_WORK;
       }
-      if (!empty($receipt->field_receipt_project[LANGUAGE_NONE][0]['target_id'])) {
+      $has_project = db_query('SELECT 1 FROM {field_data_field_receipt_project}
+        WHERE entity_id = :nid AND entity_type = :et AND deleted = 0 LIMIT 1', array(
+        ':nid' => $receipt_nid,
+        ':et' => 'node',
+      ))->fetchField();
+      if ($has_project) {
         return ROVAS_MERIT_SOURCE_CHARITABLE_DONATION;
       }
     }
   }
 
   return ROVAS_MERIT_SOURCE_LEGACY;
+}
+
+/**
+ * Infer merit source for a disbursement/penalty node (backfill).
+ *
+ * @param int $nid
+ *
+ * @return string
+ */
+function rovas_merit_infer_source_for_node($nid) {
+  $nid = (int) $nid;
+  $row = db_query("
+    SELECT n.nid, n.type, n.created,
+      rec.field_reward_recipient_target_id AS uid,
+      amt.field_reward_amount_value AS amount,
+      pr.field_parent_purchase_receipt_target_id AS receipt_nid
+    FROM {node} n
+    LEFT JOIN {field_data_field_reward_recipient} rec
+      ON rec.entity_id = n.nid AND rec.entity_type = 'node' AND rec.deleted = 0
+    LEFT JOIN {field_data_field_reward_amount} amt
+      ON amt.entity_id = n.nid AND amt.entity_type = 'node' AND amt.deleted = 0
+    LEFT JOIN {field_data_field_parent_purchase_receipt} pr
+      ON pr.entity_id = n.nid AND pr.entity_type = 'node' AND pr.deleted = 0
+    WHERE n.nid = :nid
+  ", array(':nid' => $nid))->fetchObject();
+  if (!$row) {
+    return ROVAS_MERIT_SOURCE_LEGACY;
+  }
+  return _rovas_merit_infer_source_from_row($row);
 }

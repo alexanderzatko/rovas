@@ -5,6 +5,9 @@
  * Install / update for Rovas Merit ledger.
  */
 
+/** Batch size for field_merit_source backfill (update hooks + drush). */
+define('ROVAS_MERIT_BACKFILL_BATCH', 25);
+
 /**
  * Field base definition for field_merit_source.
  *
@@ -107,50 +110,143 @@ function _rovas_merit_ensure_merit_source_field() {
 }
 
 /**
- * Backfill field_merit_source on existing ledger nodes.
+ * Ledger nodes missing field_merit_source (paginated).
+ *
+ * @param int $last_nid
+ * @param int $limit
+ *
+ * @return DatabaseStatementInterface
+ */
+function _rovas_merit_backfill_missing_query($last_nid = 0, $limit = ROVAS_MERIT_BACKFILL_BATCH) {
+  return db_query_range("
+    SELECT n.nid, n.vid, n.type, n.created,
+      rec.field_reward_recipient_target_id AS uid,
+      amt.field_reward_amount_value AS amount,
+      pr.field_parent_purchase_receipt_target_id AS receipt_nid
+    FROM {node} n
+    LEFT JOIN {field_data_field_merit_source} src
+      ON src.entity_id = n.nid AND src.entity_type = 'node' AND src.deleted = 0
+    LEFT JOIN {field_data_field_reward_recipient} rec
+      ON rec.entity_id = n.nid AND rec.entity_type = 'node' AND rec.deleted = 0
+    LEFT JOIN {field_data_field_reward_amount} amt
+      ON amt.entity_id = n.nid AND amt.entity_type = 'node' AND amt.deleted = 0
+    LEFT JOIN {field_data_field_parent_purchase_receipt} pr
+      ON pr.entity_id = n.nid AND pr.entity_type = 'node' AND pr.deleted = 0
+    WHERE n.status = 1
+      AND n.type IN ('merits_disbursement', 'merit_penalty')
+      AND n.nid > :last_nid
+      AND (src.field_merit_source_value IS NULL OR src.field_merit_source_value = '')
+    ORDER BY n.nid ASC
+  ", 0, (int) $limit, array(':last_nid' => (int) $last_nid));
+}
+
+/**
+ * Count ledger nodes still missing field_merit_source.
  *
  * @return int
- *   Number of nodes updated.
  */
-function _rovas_merit_backfill_sources() {
-  module_load_include('inc', 'rovas_merit', 'rovas_merit.ledger');
-  if (!field_info_field('field_merit_source')) {
-    return 0;
-  }
-
-  $count = 0;
-  $result = db_query("
-    SELECT n.nid
+function _rovas_merit_backfill_missing_count() {
+  return (int) db_query("
+    SELECT COUNT(n.nid)
     FROM {node} n
     LEFT JOIN {field_data_field_merit_source} src
       ON src.entity_id = n.nid AND src.entity_type = 'node' AND src.deleted = 0
     WHERE n.status = 1
       AND n.type IN ('merits_disbursement', 'merit_penalty')
       AND (src.field_merit_source_value IS NULL OR src.field_merit_source_value = '')
-  ");
-  foreach ($result as $row) {
-    $source = rovas_merit_infer_source_for_node((int) $row->nid);
-    $node = node_load($row->nid);
-    if (!$node) {
-      continue;
-    }
-    $node->field_merit_source[LANGUAGE_NONE][0]['value'] = $source;
-    field_attach_update('node', $node);
-    $count++;
+  ")->fetchField();
+}
+
+/**
+ * Write field_merit_source without loading the full node.
+ *
+ * @param int $nid
+ * @param int $vid
+ * @param string $bundle
+ * @param string $source
+ */
+function _rovas_merit_set_node_merit_source($nid, $vid, $bundle, $source) {
+  $entity = (object) array(
+    'nid' => (int) $nid,
+    'vid' => (int) $vid,
+    'type' => $bundle,
+  );
+  $entity->field_merit_source[LANGUAGE_NONE][0]['value'] = $source;
+  field_attach_update('node', $entity);
+  entity_get_controller('node')->resetCache(array((int) $nid));
+}
+
+/**
+ * Batch backfill field_merit_source (sandbox update hook / drush).
+ *
+ * @param array $sandbox
+ */
+function _rovas_merit_backfill_sources_sandbox(array &$sandbox) {
+  module_load_include('inc', 'rovas_merit', 'rovas_merit.ledger');
+  if (!field_info_field('field_merit_source')) {
+    $sandbox['#finished'] = 1;
+    return;
   }
-  return $count;
+
+  if (empty($sandbox['progress'])) {
+    $sandbox['progress'] = 0;
+    $sandbox['last_nid'] = 0;
+    $sandbox['max'] = _rovas_merit_backfill_missing_count();
+    if ($sandbox['max'] === 0) {
+      $sandbox['#finished'] = 1;
+      return;
+    }
+  }
+
+  $result = _rovas_merit_backfill_missing_query($sandbox['last_nid'], ROVAS_MERIT_BACKFILL_BATCH);
+  $processed = 0;
+  foreach ($result as $row) {
+    $source = _rovas_merit_infer_source_from_row($row);
+    _rovas_merit_set_node_merit_source($row->nid, $row->vid, $row->type, $source);
+    $sandbox['last_nid'] = (int) $row->nid;
+    $sandbox['progress']++;
+    $processed++;
+  }
+
+  if ($processed === 0) {
+    $sandbox['#finished'] = 1;
+  }
+  else {
+    $sandbox['#finished'] = min(0.99, $sandbox['progress'] / $sandbox['max']);
+  }
+}
+
+/**
+ * Backfill field_merit_source on existing ledger nodes (single pass, drush).
+ *
+ * @return int
+ *   Number of nodes updated.
+ */
+function _rovas_merit_backfill_sources() {
+  $sandbox = array();
+  do {
+    _rovas_merit_backfill_sources_sandbox($sandbox);
+  } while (empty($sandbox['#finished']));
+  field_cache_clear();
+  return !empty($sandbox['progress']) ? (int) $sandbox['progress'] : 0;
 }
 
 /**
  * Add field_merit_source and backfill historical ledger rows.
  */
-function rovas_merit_update_7001() {
+function rovas_merit_update_7001(&$sandbox) {
   module_load_include('inc', 'rovas_merit', 'rovas_merit.ledger');
-  _rovas_merit_ensure_merit_source_field();
-  $count = _rovas_merit_backfill_sources();
-  return t('Merit source field installed; backfilled @count ledger nodes.', array(
-    '@count' => $count,
-  ));
+  if (empty($sandbox['field_done'])) {
+    _rovas_merit_ensure_merit_source_field();
+    $sandbox['field_done'] = TRUE;
+  }
+  _rovas_merit_backfill_sources_sandbox($sandbox);
+  if (!empty($sandbox['#finished'])) {
+    field_cache_clear();
+    return t('Merit source field installed; backfilled @count ledger nodes.', array(
+      '@count' => !empty($sandbox['progress']) ? $sandbox['progress'] : 0,
+    ));
+  }
 }
 
 /**
@@ -160,11 +256,17 @@ function rovas_merit_update_7001() {
  * when hook_install() was missing. Sites that enabled rovas_merit before
  * hook_install() was added need this idempotent fix.
  */
-function rovas_merit_update_7002() {
+function rovas_merit_update_7002(&$sandbox) {
   module_load_include('inc', 'rovas_merit', 'rovas_merit.ledger');
-  _rovas_merit_ensure_merit_source_field();
-  $count = _rovas_merit_backfill_sources();
-  return t('Merit source field ensured (7001 recovery); backfilled @count ledger nodes.', array(
-    '@count' => $count,
-  ));
+  if (empty($sandbox['field_done'])) {
+    _rovas_merit_ensure_merit_source_field();
+    $sandbox['field_done'] = TRUE;
+  }
+  _rovas_merit_backfill_sources_sandbox($sandbox);
+  if (!empty($sandbox['#finished'])) {
+    field_cache_clear();
+    return t('Merit source field ensured (7001 recovery); backfilled @count ledger nodes.', array(
+      '@count' => !empty($sandbox['progress']) ? $sandbox['progress'] : 0,
+    ));
+  }
 }
