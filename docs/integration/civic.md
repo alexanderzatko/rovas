@@ -2962,7 +2962,7 @@ Existing servers are updated on the next `rovas_oauth_ensure_server()` call
 
 1. [x] `always_issue_new_refresh_token` in `rovas_oauth_ensure_server()` (create + migrate)
 2. [x] `auth_code_lifetime` = 120 in same helper
-3. [ ] Deploy rovdev + run ensure (visit OAuth admin or `drush php-eval "rovas_oauth_ensure_server();"`)
+3. [x] Deploy rovdev + run ensure (2026-09-02: `always_issue_new_refresh_token` was `false` → now `true`; `auth_code_lifetime` = 120)
 
 **Smoke test:**
 
