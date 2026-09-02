@@ -43,11 +43,18 @@ function _rovas_merit_field_merit_source_instances() {
       'entity_type' => 'node',
       'bundle' => $bundle,
       'label' => 'Merit source',
+      'description' => '',
       'required' => 0,
-      'settings' => array(),
+      'deleted' => 0,
+      'default_value' => NULL,
+      'settings' => array(
+        'user_register_form' => FALSE,
+      ),
       'widget' => array(
         'type' => 'options_select',
         'module' => 'options',
+        'active' => 1,
+        'weight' => 5,
         'settings' => array(),
       ),
       'display' => array(
@@ -55,11 +62,32 @@ function _rovas_merit_field_merit_source_instances() {
           'label' => 'above',
           'type' => 'list_default',
           'weight' => 5,
+          'settings' => array(),
+          'module' => 'list',
+        ),
+        'teaser' => array(
+          'type' => 'hidden',
+          'label' => 'above',
+          'weight' => 0,
+          'settings' => array(),
         ),
       ),
     );
   }
   return $instances;
+}
+
+/**
+ * Implements hook_install().
+ *
+ * Drupal 7 sets the schema version to the highest hook_update_N number when a
+ * module is enabled. Without hook_install(), update 7001 would never run on
+ * first enable — the field must be created here.
+ */
+function rovas_merit_install() {
+  module_load_include('inc', 'rovas_merit', 'rovas_merit.ledger');
+  _rovas_merit_ensure_merit_source_field();
+  field_cache_clear();
 }
 
 /**
@@ -75,6 +103,7 @@ function _rovas_merit_ensure_merit_source_field() {
       field_create_instance($instance);
     }
   }
+  field_cache_clear();
 }
 
 /**
@@ -120,6 +149,22 @@ function rovas_merit_update_7001() {
   _rovas_merit_ensure_merit_source_field();
   $count = _rovas_merit_backfill_sources();
   return t('Merit source field installed; backfilled @count ledger nodes.', array(
+    '@count' => $count,
+  ));
+}
+
+/**
+ * Ensure field_merit_source exists when 7001 was skipped on first enable.
+ *
+ * On first enable Drupal 7 sets schema to max(update) without running updates
+ * when hook_install() was missing. Sites that enabled rovas_merit before
+ * hook_install() was added need this idempotent fix.
+ */
+function rovas_merit_update_7002() {
+  module_load_include('inc', 'rovas_merit', 'rovas_merit.ledger');
+  _rovas_merit_ensure_merit_source_field();
+  $count = _rovas_merit_backfill_sources();
+  return t('Merit source field ensured (7001 recovery); backfilled @count ledger nodes.', array(
     '@count' => $count,
   ));
 }
