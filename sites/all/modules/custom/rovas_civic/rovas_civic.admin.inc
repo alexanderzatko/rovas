@@ -71,10 +71,53 @@ function rovas_civic_admin_form($form, &$form_state) {
     '#markup' => '<p>' . l(t('Add country rate'), 'admin/config/rovas/civic/rate/add') . '</p>',
   );
 
+  module_load_include('inc', 'rovas_civic', 'rovas_civic.merit_index');
+  $built = (int) variable_get(ROVAS_CIVIC_MERIT_INDEX_SNAPSHOT_BUILT_VAR, 0);
+  $interval = function_exists('rovas_civic_merit_index_snapshot_interval')
+    ? rovas_civic_merit_index_snapshot_interval()
+    : ROVAS_CIVIC_MERIT_INDEX_SNAPSHOT_INTERVAL;
+  $count = 0;
+  if (function_exists('rovas_civic_merit_index_snapshot_load')) {
+    $snap = rovas_civic_merit_index_snapshot_load();
+    if (!empty($snap['items']) && is_array($snap['items'])) {
+      $count = count($snap['items']);
+    }
+  }
+
+  $form['merit_index'] = array(
+    '#type' => 'fieldset',
+    '#title' => t('Merit Index snapshot (Civic Prínos)'),
+    '#description' => t('Civic Merit Index reads from a cached snapshot. Cron rebuilds it every @hours hours (site cron runs more often). Rebuild after large Merit changes if needed sooner.', array(
+      '@hours' => max(1, (int) round($interval / 3600)),
+    )),
+  );
+  $form['merit_index']['status'] = array(
+    '#type' => 'item',
+    '#title' => t('Last rebuilt'),
+    '#markup' => $built
+      ? t('@when (@count users)', array(
+        '@when' => format_date($built, 'short'),
+        '@count' => $count,
+      ))
+      : t('Never — rebuild now or wait for cron.'),
+  );
+  $form['merit_index']['rovas_civic_merit_index_snapshot_interval_hours'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Rebuild interval (hours)'),
+    '#default_value' => max(1, (int) round($interval / 3600)),
+    '#size' => 4,
+    '#description' => t('Minimum hours between automatic cron rebuilds (default 12).'),
+  );
+  $form['merit_index']['rebuild'] = array(
+    '#type' => 'submit',
+    '#value' => t('Rebuild Merit Index snapshot'),
+    '#submit' => array('rovas_civic_admin_merit_index_rebuild_submit'),
+  );
+
   $form['actions'] = array('#type' => 'actions');
   $form['actions']['save'] = array(
     '#type' => 'submit',
-    '#value' => t('Save Treasury nid'),
+    '#value' => t('Save settings'),
     '#submit' => array('rovas_civic_admin_form_submit'),
   );
   $form['actions']['resources'] = array(
@@ -87,7 +130,7 @@ function rovas_civic_admin_form($form, &$form_state) {
 }
 
 /**
- * Save Treasury nid override.
+ * Save Treasury nid + Merit Index snapshot interval.
  */
 function rovas_civic_admin_form_submit($form, &$form_state) {
   $nid = (int) $form_state['values']['rovas_civic_state_treasury_nid'];
@@ -104,6 +147,30 @@ function rovas_civic_admin_form_submit($form, &$form_state) {
     variable_del('rovas_civic_state_treasury_nid');
     drupal_set_message(t('State Treasury nid cleared.'));
   }
+
+  if (isset($form_state['values']['rovas_civic_merit_index_snapshot_interval_hours'])) {
+    $hours = (int) $form_state['values']['rovas_civic_merit_index_snapshot_interval_hours'];
+    if ($hours < 1) {
+      form_set_error('rovas_civic_merit_index_snapshot_interval_hours', t('Interval must be at least 1 hour.'));
+      return;
+    }
+    variable_set(ROVAS_CIVIC_MERIT_INDEX_SNAPSHOT_INTERVAL_VAR, $hours * 3600);
+    drupal_set_message(t('Merit Index snapshot interval set to @h hours.', array('@h' => $hours)));
+  }
+}
+
+/**
+ * Force-rebuild Merit Index snapshot (admin).
+ */
+function rovas_civic_admin_merit_index_rebuild_submit($form, &$form_state) {
+  module_load_include('inc', 'rovas_civic', 'rovas_civic.merit_index');
+  $started = microtime(TRUE);
+  $n = rovas_civic_merit_index_snapshot_rebuild();
+  $secs = round(microtime(TRUE) - $started, 2);
+  drupal_set_message(t('Merit Index snapshot rebuilt: @count users in @s s.', array(
+    '@count' => $n,
+    '@s' => $secs,
+  )));
 }
 
 /**

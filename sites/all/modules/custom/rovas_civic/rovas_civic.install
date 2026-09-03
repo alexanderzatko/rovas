@@ -522,3 +522,18 @@ function rovas_civic_update_7016() {
   }
   return t('Civic Merit Index and NACE tree APIs set to public read on rovas_endpoint.');
 }
+
+/**
+ * Build initial Merit Index snapshot (Prínos latency fix).
+ */
+function rovas_civic_update_7017() {
+  module_load_include('inc', 'rovas_civic', 'rovas_civic.merit_index');
+  $n = 0;
+  if (function_exists('rovas_civic_merit_index_snapshot_rebuild')) {
+    $n = rovas_civic_merit_index_snapshot_rebuild();
+  }
+  return t('Civic Merit Index snapshot built (@n users); cron rebuilds every @h hours.', array(
+    '@n' => $n,
+    '@h' => 12,
+  ));
+}

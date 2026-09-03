@@ -26,6 +26,7 @@ Civic API); keep both in sync when contracts change.
 [Next work: merit index (Civic Prínos / ranks screen)](#next-work-merit-index-civic-prínos--ranks-screen),
 [Next work: merit index Prínos filter fixes](#next-work-merit-index-prínos-filter-fixes),
 [Next work: by_source on merit index](#next-work-by_source-on-merit-index),
+[Next work: merit index filter latency](#next-work-merit-index-filter-latency),
 [Next work: volunteer report (Civic deferred form)](#next-work-volunteer-report-civic-deferred-form),
 [Next work: pending verifications gate (assigned slots only)](#next-work-pending-verifications-gate-assigned-slots-only),
 [Next work: Civic WR verification (in-app)](#next-work-civic-wr-verification-in-app),
@@ -77,7 +78,7 @@ env): [`civic-deploy.md`](civic-deploy.md).
 | AI NACE + title                      | `POST /rovas/civic_ai_nace`                                                                                                                | Implemented in `rovas_ai` (`rovas_ai_update_7001`). Bearer; keep NACE-tree fallback when `unavailable` or module absent.                                                               |
 | Work-report map proof                | `GET /rovas/civic_work_report_map_config`; `field_location` on create WR                                                                   | Implemented in `rovas_civic` (`rovas_civic_update_7012`). GeoJSON Point/LineString/Polygon; proof = URL **or** photos **or** map.                                                      |
 | Civic WR verification (in-app)       | `GET /rovas/civic_pending_verifications`, `civic_work_report/{nid}`, `POST /rovas/civic_submit_verification`                               | Implemented in `rovas_civic` (`rovas_civic_update_7013`). Pending list + verifier detail + approve/reject/decline.                                                                     |
-| Merit index (Civic Prínos / ranks)   | `GET /rovas/civic_merit_index`, `civic_merit_index_countries`                                                                             | Implemented in `rovas_civic` (`7014`–`7016`). Public read; items include `by_category` + `by_source` (ledger sources; Civic remaps penalty→volunteer).                                                                   |
+| Merit index (Civic Prínos / ranks)   | `GET /rovas/civic_merit_index`, `civic_merit_index_countries`                                                                             | Snapshot-backed (`7017`); cron rebuild every **12h** (configurable) + admin rebuild. Warm reads ≪1s; items include `by_category` + `by_source`.                                                                      |
 | Chron balance on `/rovas/me`         | `GET /rovas/me` → `total_chr`                                                                                                              | Pending — see [Chron balance on /rovas/me](#next-work-chron-balance-on-rovasme).                                                                                                       |
 | NACE expertise icons                 | `GET /rovas/users_lookup` → `nace_expertise[]`                                                                                             | Pending — see [NACE expertise on users_lookup](#next-work-nace-expertise-on-users_lookup).                                                                                             |
 
@@ -2942,6 +2943,57 @@ curl -sS "https://dev.rovas.app/rovas/civic_merit_index?limit=5" \
 
 Civic API `GET /rank/index` keeps returning only remapped `by_category` to Expo
 (does not need to forward `by_source` to the client).
+
+## Next work: merit index filter latency
+
+**Implemented in `rovas_civic` (snapshot).** Civic Prínos filter chips
+(`source_category`, `country_iso2`, `nace_section_tid`) were taking **~6–7s**
+on `dev.rovas.app` because every request rebuilt the full leaderboard in PHP
+(including per-uid ledger aggregates). Baseline (2026-09-03): unfiltered /
+taxes / SK all ~6.5–7.1s even when `taxes` returned only 2 rows.
+
+**Approach:** precompute a **Merit Index snapshot** (all eligible users with
+`by_category`, `by_source`, section tids, `nace_expertise` for `en`+`sk`).
+Request path only filters / sorts / paginates the snapshot. Rebuild:
+
+- On cron when older than interval (default **12 hours**; site cron may run
+  every 5 minutes — the gate skips until due)
+- On admin **Rebuild Merit Index snapshot**
+  (`/admin/config/rovas/civic`)
+- On cache miss (first request after `cc all`)
+- Via `rovas_civic_update_7017` after deploy
+
+Interval is configurable on the admin form (hours). Same public JSON contract.
+
+### Checklist
+
+1. [x] Profiled on rovdev — ~7s cold for filtered and unfiltered first page
+2. [x] Snapshot build + load; request path filters from snapshot only
+3. [x] Precompute `nace_expertise` for sk/en in snapshot (no N+1 on read)
+4. [x] Cron interval gate (default 12h) + admin rebuild button
+5. [ ] Deploy rovdev + `drush74 updb` (7017 builds initial snapshot)
+6. [ ] Re-measure — warm first page should be **≪ 1s**
+
+### Smoke test
+
+```bash
+# After deploy + updb (or admin Rebuild):
+time curl -sS -o /tmp/mi.json -w "%{http_code} %{time_total}\n" \
+  "https://dev.rovas.app/rovas/civic_merit_index?limit=50&min_me=1&sort=total_me&order=desc" \
+  -H "Accept: application/json"
+
+time curl -sS -o /tmp/mi-taxes.json -w "%{http_code} %{time_total}\n" \
+  "https://dev.rovas.app/rovas/civic_merit_index?limit=50&min_me=1&source_category=taxes&sort=taxes_me&order=desc" \
+  -H "Accept: application/json"
+
+# Expect: HTTP 200; time_total well under 1s when snapshot is warm;
+# JSON still has items[].by_category, by_source, nace_expertise, position.
+```
+
+### Civic will consume
+
+No API change required. Civic already proxies `GET /rank/index` → this
+endpoint. Snapshot freshness is up to the rebuild interval (default 12h).
 
 ## Next work: OAuth session persistence
 

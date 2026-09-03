@@ -21,6 +21,11 @@ define('ROVAS_CIVIC_MY_PROJECTS_LIMIT', 3);
 define('ROVAS_CIVIC_TEASER_MAX_CHARS', 800);
 define('ROVAS_CIVIC_MERIT_INDEX_DEFAULT_LIMIT', 50);
 define('ROVAS_CIVIC_MERIT_INDEX_MAX_LIMIT', 100);
+/** Default Merit Index snapshot rebuild interval (12 hours). */
+define('ROVAS_CIVIC_MERIT_INDEX_SNAPSHOT_INTERVAL', 12 * 3600);
+define('ROVAS_CIVIC_MERIT_INDEX_SNAPSHOT_CID', 'rovas_civic:merit_index_snapshot');
+define('ROVAS_CIVIC_MERIT_INDEX_SNAPSHOT_BUILT_VAR', 'rovas_civic_merit_index_snapshot_built');
+define('ROVAS_CIVIC_MERIT_INDEX_SNAPSHOT_INTERVAL_VAR', 'rovas_civic_merit_index_snapshot_interval');
 // 64.99 Other financial service activities… — same fallback as shares_merit_rewarder
 // (timeshare / non-labor Merit attribution when there is no work-report NACE).
 define('ROVAS_CIVIC_FALLBACK_NACE_TID', 1601);
@@ -70,6 +75,19 @@ function rovas_civic_menu() {
     'type' => MENU_CALLBACK,
   );
   return $items;
+}
+
+/**
+ * Implements hook_cron().
+ *
+ * Site cron runs often (~5 min); Merit Index snapshot rebuilds only every
+ * ROVAS_CIVIC_MERIT_INDEX_SNAPSHOT_INTERVAL (default 12h).
+ */
+function rovas_civic_cron() {
+  module_load_include('inc', 'rovas_civic', 'rovas_civic.merit_index');
+  if (function_exists('rovas_civic_merit_index_snapshot_cron')) {
+    rovas_civic_merit_index_snapshot_cron();
+  }
 }
 
 /**

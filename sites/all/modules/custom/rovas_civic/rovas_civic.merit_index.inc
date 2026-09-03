@@ -124,7 +124,7 @@ function rovas_civic_merit_index_optional_float($value) {
 }
 
 /**
- * Build paginated Merit Index response.
+ * Build paginated Merit Index response from the daily/interval snapshot.
  *
  * @param array $opts
  *   Filter/sort/pagination options from the Services callback.
@@ -132,32 +132,27 @@ function rovas_civic_merit_index_optional_float($value) {
  * @return array
  */
 function rovas_civic_merit_index_page(array $opts) {
-  $hourly_rate = rovas_civic_national_hourly_rate(ROVAS_CIVIC_DEFAULT_COUNTRY);
-  $rows = rovas_civic_merit_index_base_rows();
-  if (empty($rows)) {
-    return rovas_civic_merit_index_response($opts, 0, array());
-  }
-
-  $uids = array();
-  foreach ($rows as $row) {
-    $uids[] = (int) $row->uid;
-  }
-  $expertise = rovas_civic_merit_index_expertise_by_uid($uids);
+  $snapshot = rovas_civic_merit_index_snapshot_get();
+  $rows = !empty($snapshot['items']) && is_array($snapshot['items'])
+    ? $snapshot['items']
+    : array();
 
   $country_filter = drupal_strtoupper(trim((string) $opts['country_iso2']));
   $items = array();
   foreach ($rows as $row) {
-    $uid = (int) $row->uid;
-    $total_me = round((float) $row->total_me, 2);
-    $value_eur = round(($total_me / ROVAS_CIVIC_ME_PER_HOUR) * $hourly_rate, 2);
+    if (!is_array($row)) {
+      continue;
+    }
+    $total_me = isset($row['total_me']) ? (float) $row['total_me'] : 0.0;
+    $value_eur = isset($row['value_eur']) ? (float) $row['value_eur'] : 0.0;
 
     if ($country_filter !== '') {
-      $row_iso = drupal_strtoupper(trim((string) $row->country_iso2));
+      $row_iso = drupal_strtoupper(trim((string) (isset($row['country_iso2']) ? $row['country_iso2'] : '')));
       if ($row_iso !== $country_filter) {
         continue;
       }
     }
-    if (!empty($opts['since_ts']) && (int) $row->created < (int) $opts['since_ts']) {
+    if (!empty($opts['since_ts']) && (int) $row['created'] < (int) $opts['since_ts']) {
       continue;
     }
     if ($opts['min_me'] !== NULL && $total_me < $opts['min_me']) {
@@ -173,8 +168,8 @@ function rovas_civic_merit_index_page(array $opts) {
       continue;
     }
 
-    $by_category = isset($expertise[$uid]['by_category'])
-      ? $expertise[$uid]['by_category']
+    $by_category = isset($row['by_category']) && is_array($row['by_category'])
+      ? $row['by_category']
       : array('taxes' => 0.0, 'charity' => 0.0, 'volunteer' => 0.0);
 
     if (!empty($opts['source_category'])) {
@@ -185,19 +180,130 @@ function rovas_civic_merit_index_page(array $opts) {
     }
 
     if (!empty($opts['nace_section_tid'])) {
-      $sections = isset($expertise[$uid]['sections']) ? $expertise[$uid]['sections'] : array();
-      if (empty($sections[(int) $opts['nace_section_tid']])) {
+      $section_tids = isset($row['section_tids']) && is_array($row['section_tids'])
+        ? $row['section_tids']
+        : array();
+      if (!in_array((int) $opts['nace_section_tid'], array_map('intval', $section_tids), TRUE)) {
         continue;
       }
     }
 
-    $username = (string) $row->name;
-    $display_name = $username;
-    if (!empty($row->full_name)) {
-      $display_name = (string) $row->full_name;
-    }
+    $items[] = $row;
+  }
 
-    $country_iso2 = drupal_strtoupper(trim((string) $row->country_iso2));
+  usort($items, function ($a, $b) use ($opts) {
+    return rovas_civic_merit_index_compare_rows($a, $b, $opts['sort'], $opts['order']);
+  });
+
+  $total = count($items);
+  $slice = array_slice($items, (int) $opts['offset'], (int) $opts['limit']);
+  $lang = $opts['lang'];
+
+  $out = array();
+  foreach ($slice as $i => $row) {
+    $country_iso2 = drupal_strtoupper(trim((string) (isset($row['country_iso2']) ? $row['country_iso2'] : '')));
+    $by_source = isset($row['by_source']) && is_array($row['by_source']) ? $row['by_source'] : array();
+    $by_category = isset($row['by_category']) && is_array($row['by_category'])
+      ? $row['by_category']
+      : array('taxes' => 0.0, 'charity' => 0.0, 'volunteer' => 0.0);
+
+    $out[] = array(
+      'position' => (int) $opts['offset'] + $i + 1,
+      'rovas_uid' => (string) $row['rovas_uid'],
+      'username' => (string) $row['username'],
+      'display_name' => (string) $row['display_name'],
+      'member_since_year' => (int) $row['member_since_year'],
+      'total_me' => (float) $row['total_me'],
+      'value_eur' => (float) $row['value_eur'],
+      'country_iso2' => $country_iso2,
+      'country_label' => rovas_civic_merit_index_country_label($country_iso2, $lang),
+      'by_category' => array(
+        'taxes' => round((float) $by_category['taxes'], 2),
+        'charity' => round((float) $by_category['charity'], 2),
+        'volunteer' => round((float) $by_category['volunteer'], 2),
+      ),
+      'by_source' => $by_source,
+      'nace_expertise' => rovas_civic_merit_index_snapshot_nace_for_lang($row, $lang),
+    );
+  }
+
+  return rovas_civic_merit_index_response($opts, $total, $out);
+}
+
+/**
+ * Snapshot rebuild interval in seconds (default 12h).
+ *
+ * @return int
+ */
+function rovas_civic_merit_index_snapshot_interval() {
+  $interval = (int) variable_get(ROVAS_CIVIC_MERIT_INDEX_SNAPSHOT_INTERVAL_VAR, ROVAS_CIVIC_MERIT_INDEX_SNAPSHOT_INTERVAL);
+  return $interval > 0 ? $interval : ROVAS_CIVIC_MERIT_INDEX_SNAPSHOT_INTERVAL;
+}
+
+/**
+ * Cron gate: rebuild snapshot when missing or older than interval.
+ */
+function rovas_civic_merit_index_snapshot_cron() {
+  $built = (int) variable_get(ROVAS_CIVIC_MERIT_INDEX_SNAPSHOT_BUILT_VAR, 0);
+  $interval = rovas_civic_merit_index_snapshot_interval();
+  if ($built > 0 && (REQUEST_TIME - $built) < $interval && rovas_civic_merit_index_snapshot_load()) {
+    return;
+  }
+  rovas_civic_merit_index_snapshot_rebuild();
+}
+
+/**
+ * Load snapshot from cache, or rebuild if missing.
+ *
+ * @return array
+ *   keys: built, items.
+ */
+function rovas_civic_merit_index_snapshot_get() {
+  $snap = rovas_civic_merit_index_snapshot_load();
+  if ($snap) {
+    return $snap;
+  }
+  rovas_civic_merit_index_snapshot_rebuild();
+  $snap = rovas_civic_merit_index_snapshot_load();
+  return $snap ? $snap : array('built' => 0, 'items' => array());
+}
+
+/**
+ * @return array|false
+ */
+function rovas_civic_merit_index_snapshot_load() {
+  $cached = cache_get(ROVAS_CIVIC_MERIT_INDEX_SNAPSHOT_CID);
+  if ($cached && is_array($cached->data) && isset($cached->data['items'])) {
+    return $cached->data;
+  }
+  return FALSE;
+}
+
+/**
+ * Rebuild and persist Merit Index snapshot.
+ *
+ * @return int
+ *   Number of users in the snapshot.
+ */
+function rovas_civic_merit_index_snapshot_rebuild() {
+  $started = microtime(TRUE);
+  $hourly_rate = rovas_civic_national_hourly_rate(ROVAS_CIVIC_DEFAULT_COUNTRY);
+  $rows = rovas_civic_merit_index_base_rows();
+  $uids = array();
+  foreach ($rows as $row) {
+    $uids[] = (int) $row->uid;
+  }
+  $expertise = rovas_civic_merit_index_expertise_by_uid($uids);
+
+  $items = array();
+  foreach ($rows as $row) {
+    $uid = (int) $row->uid;
+    $total_me = round((float) $row->total_me, 2);
+    $value_eur = round(($total_me / ROVAS_CIVIC_ME_PER_HOUR) * $hourly_rate, 2);
+
+    $by_category = isset($expertise[$uid]['by_category'])
+      ? $expertise[$uid]['by_category']
+      : array('taxes' => 0.0, 'charity' => 0.0, 'volunteer' => 0.0);
     $by_source_raw = isset($expertise[$uid]['by_source']) && is_array($expertise[$uid]['by_source'])
       ? $expertise[$uid]['by_source']
       : array();
@@ -209,6 +315,24 @@ function rovas_civic_merit_index_page(array $opts) {
       }
     }
 
+    $section_tids = array();
+    if (!empty($expertise[$uid]['sections']) && is_array($expertise[$uid]['sections'])) {
+      $section_tids = array_map('intval', array_keys($expertise[$uid]['sections']));
+    }
+
+    $username = (string) $row->name;
+    $display_name = $username;
+    if (!empty($row->full_name)) {
+      $display_name = (string) $row->full_name;
+    }
+
+    $nace_by_lang = array();
+    if (function_exists('rovas_meritscope_user_expertise_json')) {
+      foreach (array('en', 'sk') as $langcode) {
+        $nace_by_lang[$langcode] = rovas_meritscope_user_expertise_json($uid, $langcode, 5);
+      }
+    }
+
     $items[] = array(
       'rovas_uid' => (string) $uid,
       'username' => $username,
@@ -217,37 +341,56 @@ function rovas_civic_merit_index_page(array $opts) {
       'created' => (int) $row->created,
       'total_me' => $total_me,
       'value_eur' => $value_eur,
-      'country_iso2' => $country_iso2,
-      'country_label' => rovas_civic_merit_index_country_label($country_iso2, $opts['lang']),
+      'country_iso2' => drupal_strtoupper(trim((string) $row->country_iso2)),
       'by_category' => array(
-        'taxes' => round($by_category['taxes'], 2),
-        'charity' => round($by_category['charity'], 2),
-        'volunteer' => round($by_category['volunteer'], 2),
+        'taxes' => round((float) $by_category['taxes'], 2),
+        'charity' => round((float) $by_category['charity'], 2),
+        'volunteer' => round((float) $by_category['volunteer'], 2),
       ),
       'by_source' => $by_source,
-      'nace_expertise' => array(),
+      'section_tids' => $section_tids,
+      'nace_expertise_by_lang' => $nace_by_lang,
     );
   }
 
-  usort($items, function ($a, $b) use ($opts) {
-    return rovas_civic_merit_index_compare_rows($a, $b, $opts['sort'], $opts['order']);
-  });
+  $payload = array(
+    'built' => REQUEST_TIME,
+    'items' => $items,
+  );
+  cache_set(ROVAS_CIVIC_MERIT_INDEX_SNAPSHOT_CID, $payload, 'cache', CACHE_PERMANENT);
+  variable_set(ROVAS_CIVIC_MERIT_INDEX_SNAPSHOT_BUILT_VAR, REQUEST_TIME);
 
-  $total = count($items);
-  $slice = array_slice($items, (int) $opts['offset'], (int) $opts['limit']);
+  $elapsed = round(microtime(TRUE) - $started, 2);
+  watchdog('rovas_civic', 'Merit Index snapshot rebuilt: @n users in @s s.', array(
+    '@n' => count($items),
+    '@s' => $elapsed,
+  ), WATCHDOG_INFO);
 
-  $lang = $opts['lang'];
-  foreach ($slice as $i => &$item) {
-    $uid = (int) $item['rovas_uid'];
-    if (function_exists('rovas_meritscope_user_expertise_json')) {
-      $item['nace_expertise'] = rovas_meritscope_user_expertise_json($uid, $lang, 5);
-    }
-    unset($item['created']);
-    $item['position'] = (int) $opts['offset'] + $i + 1;
+  return count($items);
+}
+
+/**
+ * Pick precomputed nace_expertise for request language.
+ *
+ * @param array $row
+ * @param string|null $lang
+ *
+ * @return array
+ */
+function rovas_civic_merit_index_snapshot_nace_for_lang(array $row, $lang = NULL) {
+  $by_lang = isset($row['nace_expertise_by_lang']) && is_array($row['nace_expertise_by_lang'])
+    ? $row['nace_expertise_by_lang']
+    : array();
+  if ($lang && isset($by_lang[$lang]) && is_array($by_lang[$lang])) {
+    return $by_lang[$lang];
   }
-  unset($item);
-
-  return rovas_civic_merit_index_response($opts, $total, $slice);
+  if (isset($by_lang['en']) && is_array($by_lang['en'])) {
+    return $by_lang['en'];
+  }
+  if (isset($by_lang['sk']) && is_array($by_lang['sk'])) {
+    return $by_lang['sk'];
+  }
+  return array();
 }
 
 /**
@@ -432,13 +575,16 @@ function rovas_civic_services_merit_index_countries_index($lang = '') {
  *   { countries: [ { iso2, label, user_count }, … ] } sorted by label asc.
  */
 function rovas_civic_merit_index_countries($lang = NULL) {
-  $rows = rovas_civic_merit_index_base_rows();
+  $snapshot = rovas_civic_merit_index_snapshot_get();
+  $rows = !empty($snapshot['items']) && is_array($snapshot['items'])
+    ? $snapshot['items']
+    : array();
   $counts = array();
   foreach ($rows as $row) {
-    if ((float) $row->total_me <= 0) {
+    if (!is_array($row) || (float) $row['total_me'] <= 0) {
       continue;
     }
-    $iso2 = drupal_strtoupper(trim((string) $row->country_iso2));
+    $iso2 = drupal_strtoupper(trim((string) (isset($row['country_iso2']) ? $row['country_iso2'] : '')));
     if ($iso2 === '' || strlen($iso2) !== 2) {
       continue;
     }
