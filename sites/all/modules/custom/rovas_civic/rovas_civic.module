@@ -1294,10 +1294,13 @@ function rovas_civic_users_lookup($username, $lang = NULL) {
     $nace_expertise = rovas_meritscope_user_expertise_json($uid, $lang);
   }
 
+  $created_year = !empty($account->created) ? (int) date('Y', (int) $account->created) : 0;
+
   return array(
     'rovas_uid' => (string) $uid,
     'username' => $labels['username'],
     'display_name' => $labels['display_name'],
+    'member_since_year' => $created_year,
     'total_me' => round($total_me, 2),
     'by_category' => array(
       'taxes' => round($expertise['taxes'], 2),

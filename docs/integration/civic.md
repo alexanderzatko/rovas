@@ -33,7 +33,8 @@ Civic API); keep both in sync when contracts change.
 [AI NACE + title from work-report text](#ai-nace--title-from-work-report-text),
 [CHR to ME on WR verification](#chr-to-me-on-wr-verification),
 [Next work: geofield on Civic work reports](#next-work-geofield-on-civic-work-reports),
-and [Next work: OAuth session persistence](#next-work-oauth-session-persistence).
+and [Next work: OAuth session persistence](#next-work-oauth-session-persistence),
+[Next work: member_since_year on users_lookup](#next-work-member_since_year-on-users_lookup).
 Do not rely on reading the Civic tree unless you need Expo/API details.
 
 **Dev target (until told otherwise):** all Civic integration work targets
@@ -3033,6 +3034,60 @@ curl -sS -X POST "https://dev.rovas.app/oauth2/token" \
 Civic mobile (`apps/mobile/lib/auth.tsx`) preserves `refreshToken` when the
 server omits it, refreshes on app foreground, and only clears the session on
 `invalid_grant` (not transient network errors).
+
+---
+
+## Next work: member_since_year on users_lookup
+
+**Goal:** Civic shows the Rovas account creation year next to `@username` on
+the Home screen and the Community profile screen — identical to the
+`member_since_year` already returned on every Merit Index row.  The field is
+already parsed and displayed in Civic; Rovas just needs to include it in
+`users_lookup`.
+
+**Rovas side — extend `rovas_civic_users_lookup()` in `rovas_civic.module`:**
+
+Add `member_since_year` (integer, the 4-digit year of `{users}.created`) to the
+JSON returned by `GET /rovas/users_lookup?username=`.
+
+```php
+// Inside rovas_civic_users_lookup() before the return, after $account is loaded:
+$created_year = (int) date('Y', $account->created);
+$result['member_since_year'] = $created_year;
+```
+
+No new Services resource is needed — this is an extension of the existing
+`users_lookup` response object.
+
+**Response shape (addition only):**
+
+```json
+{
+  "rovas_uid": "...",
+  "username": "sano",
+  "display_name": "Sano",
+  "total_me": 11578,
+  "member_since_year": 2019,
+  ...
+}
+```
+
+**Checklist:**
+
+- [x] `rovas_civic_users_lookup()` includes `member_since_year` (int) from `{users}.created`
+- [x] Year is present even when the request uses `?lang=sk` or `?lang=en`
+- [x] Zero or null is never returned for valid accounts (`!empty($account->created)` guard)
+- [ ] Deploy rovdev + smoke test
+
+**Smoke test:**
+
+```bash
+TOKEN="..." # valid Civic Bearer token
+curl -sS "https://dev.rovas.app/rovas/users_lookup?username=sano" \
+  -H "Authorization: Bearer $TOKEN" \
+  | python3 -m json.tool | grep member_since_year
+# Expect:  "member_since_year": <YYYY>
+```
 
 ## Related Civic docs
 
