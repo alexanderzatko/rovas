@@ -34,7 +34,8 @@ Civic API); keep both in sync when contracts change.
 [CHR to ME on WR verification](#chr-to-me-on-wr-verification),
 [Next work: geofield on Civic work reports](#next-work-geofield-on-civic-work-reports),
 and [Next work: OAuth session persistence](#next-work-oauth-session-persistence),
-[Next work: member_since_year on users_lookup](#next-work-member_since_year-on-users_lookup).
+[Next work: member_since_year on users_lookup](#next-work-member_since_year-on-users_lookup),
+[Next work: charitable projects (Civic catalog)](#next-work-charitable-projects-civic-catalog).
 Do not rely on reading the Civic tree unless you need Expo/API details.
 
 **Dev target (until told otherwise):** all Civic integration work targets
@@ -3088,6 +3089,193 @@ curl -sS "https://dev.rovas.app/rovas/users_lookup?username=sano" \
   | python3 -m json.tool | grep member_since_year
 # Expect:  "member_since_year": <YYYY>
 ```
+
+---
+
+## Next work: charitable projects (Civic catalog)
+
+**Goal:** Civic’s Charitatívne projekty screen lists NeoFund-**approved**
+charitable projects (public, anonymous), opens them in the existing project
+modal (with donate instructions), and invites orgs via client `mailto:` that
+links to a Rovas enrollment page. **No payments and no donor-Merit minting in
+this increment** — discovery + enrollment only.
+
+Canonical product notes: NeoFund
+`~/Documents/Business/NeoFund_NP/about-us.md` (§ Charitable organizations) and
+`~/Documents/Business/NeoFund_NP/charity-opt-in-project-ledger.md` (§1a EUR
+routing gate). Civic companion:
+`~/Documents/homeProjects/civic/docs/rovas-integration.md`.
+
+### 1. Project type — charitable subsection
+
+On project **create / edit**, checkbox aligned with NeoFund wording, e.g.
+*“This is a project of a registered charity”* / SK equivalent.
+
+When checked, open a subsection:
+
+**Donor-facing** (Entity Translation `sk`/`en`; returned on Civic APIs):
+
+| Field | Notes |
+|-------|--------|
+| Donate instructions | Plain text: how to give (org site, bank, etc.) |
+| Donate URL | Optional absolute URL; Civic opens in the device browser |
+
+**Staff-facing** (NeoFund verification / promote; **not** shown on Civic list):
+
+| Field | Notes |
+|-------|--------|
+| Legal name | Org legal name (search + `organization` on catalog rows) |
+| IČO / registration number | Public-benefit / charity registry id |
+| Country of registered seat | For later national hourly rate |
+| Website | Org home page |
+| Contact email | Staff outreach |
+| SEPA IBAN | Later pass-through remittance |
+
+**Approval:** checking the box queues NeoFund review. Store status
+`pending` → `approved` (and reject/clear as needed). **Only `approved`
+charitable projects** appear in the Civic catalog. Pending: hide from catalog;
+keep EUR donation / share-purchase rails **blocked** (A12).
+
+Do **not** let owners self-serve the approved badge.
+
+### 2. Enrollment page
+
+Create a public page at **`/charity-projects`**
+(`https://dev.rovas.app/charity-projects` on rovdev; prod host later).
+
+Content (SK primary / EN secondary): why charities should enroll; steps —
+create a Rovas project → check charitable → fill org fields → wait for
+NeoFund approval → (later) payment integration + optional site widget.
+
+Civic invite emails and the invite card link here. No Rovas invite API
+(same pattern as friend invite — client `mailto:` only).
+
+### 3. Public catalog API
+
+New Services resource — **anonymous**, API-key auth **disabled**:
+
+| Method | URL |
+|--------|-----|
+| `GET` | `/rovas/civic_charity_projects` |
+
+| Param | Rules |
+|-------|--------|
+| *(none)* | Approved charitable projects only; sort `field_merit_reward` (`total_me`) **DESC**; default **`limit=5`** |
+| `query` | Substring match on project **title** and org **legal name** (case-insensitive); trim; length ≥ 1; same sort; **cap 20** |
+| `limit` | Optional override; default 5 when `query` absent; max 20 |
+| `lang` | Same Entity Translation rules as `civic_project` (`sk`/`en`, source fallback) |
+
+**Do not** reuse `civic_projects_search` (Bearer, all project types, volunteer
+picker).
+
+**200** body:
+
+```json
+{
+  "total": 12,
+  "projects": [
+    {
+      "project_nid": "1998",
+      "title": "Pomoc ľuďom bez domova",
+      "organization": "Príkladová charita, n.o.",
+      "summary": "Plain-text teaser…",
+      "total_me": 980.0,
+      "rovas_url": "https://dev.rovas.app/node/1998"
+    }
+  ]
+}
+```
+
+| Field | Rules |
+|-------|--------|
+| `total` | Count of **all** approved charitable projects (ignore `limit` / `query`) so Civic can hide search when `total < 6` |
+| `organization` | Legal name; fall back to project title if empty |
+| `summary` | Same plain-text teaser rules as `civic_project` |
+| `total_me` | `field_merit_reward` (float; `0` if unset) |
+| `rovas_url` | Absolute node URL |
+
+Empty catalog: `{ "total": 0, "projects": [] }`.
+
+### 4. Anonymous project detail for approved charities
+
+Today `GET /rovas/civic_project/{nid}`,
+`civic_project_work_reports`, and `civic_project_shareholders` require Bearer.
+
+**Change:** allow **unauthenticated** reads when the node is a **published,
+approved charitable** project. Other projects keep Bearer required (401
+without token).
+
+When the project is charitable (approved or pending for Bearer owners), extend
+the `civic_project` JSON:
+
+```json
+{
+  "project_nid": "1998",
+  "title": "…",
+  "is_charity": true,
+  "charity_status": "approved",
+  "organization": "Príkladová charita, n.o.",
+  "donate_instructions": "Prevodom na účet … alebo cez darovaciu stránku.",
+  "donate_url": "https://example.org/donate",
+  "…"
+}
+```
+
+| Field | Rules |
+|-------|--------|
+| `is_charity` | `true` when charitable checkbox is set (any status) |
+| `charity_status` | `"approved"` \| `"pending"` \| omit/`null` when not a charity |
+| `organization` | Legal name or `null` |
+| `donate_instructions` | Plain text or `null` |
+| `donate_url` | Absolute URL or `null` |
+
+Anonymous callers requesting a non-approved / non-charity nid → **401** (same
+as today without Bearer). Published approved charity → **200** with full
+payload (summary, WRs, shareholders, photos) per existing private-readable
+rules.
+
+Enable via `rovas_civic_ensure_services_resources()` + new updb hook.
+
+### Checklist
+
+1. [ ] Project form: charitable checkbox + donor/staff subsection fields
+2. [ ] NeoFund approval workflow (`pending` / `approved`); EUR blocked while pending
+3. [ ] Public page `/charity-projects` (enrollment why + how)
+4. [ ] Services `GET /rovas/civic_charity_projects` (anonymous; API-key off)
+5. [ ] Catalog: approved-only; sort by `total_me` DESC; `total` + `limit`/`query`/`lang`
+6. [ ] Anonymous `civic_project` (+ WR + shareholders) for **approved** charities only
+7. [ ] Charity fields on `civic_project` JSON (`is_charity`, `charity_status`, donate/org)
+8. [ ] updb / ensure helper on rovdev
+9. [ ] Smoke-test curls below
+
+### Smoke test (after deploy)
+
+```bash
+# Catalog — anonymous top 5
+curl -sS "https://dev.rovas.app/rovas/civic_charity_projects?lang=sk" \
+  -H "Accept: application/json" | python3 -m json.tool
+# Expect: total (int), projects[] with project_nid, title, organization, total_me
+
+# Search
+curl -sS "https://dev.rovas.app/rovas/civic_charity_projects?query=pomoc&lang=sk" \
+  -H "Accept: application/json" | python3 -m json.tool
+
+# Anonymous detail — replace NID with an approved charity project
+curl -sS "https://dev.rovas.app/rovas/civic_project/NID?lang=sk" \
+  -H "Accept: application/json" | python3 -m json.tool
+# Expect: is_charity true, charity_status approved, donate_* fields present
+
+# Non-charity without Bearer must still 401
+curl -sS -o /dev/null -w "%{http_code}\n" \
+  "https://dev.rovas.app/rovas/civic_project/1998"
+# Expect: 401 (unless 1998 is an approved charity)
+```
+
+### Civic will consume (after Rovas ships)
+
+- Proxy `GET /charities/projects?type=charity` → `civic_charity_projects`
+- Optional-auth `GET /projects/:nid` (+ WR / shareholders) for guest charity modal
+- Expo charity screen: top 5 / search if `total >= 6` / mailto invite / `ProjectDetailModal` donate block
 
 ## Related Civic docs
 
