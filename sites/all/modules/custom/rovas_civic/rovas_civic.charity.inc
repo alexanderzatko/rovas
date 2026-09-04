@@ -448,7 +448,7 @@ function rovas_civic_form_project_node_form_alter(&$form, &$form_state) {
     ));
   }
 
-  $form['#validate'][] = 'rovas_civic_project_charity_form_validate';
+  $form['#validate'][] = 'rovas_civic_project_node_form_validate';
 }
 
 /**
@@ -566,7 +566,7 @@ function rovas_civic_form_rovas_project_reward_form_alter(&$form, &$form_state) 
     '#markup' => '<div class="messages warning">' . t('EUR donations and EUR share purchases are unavailable until NeoFund approves this project’s charity organization. You can still pay with Chrons.') . '</div>',
     '#weight' => -50,
   );
-  $form['#validate'][] = 'rovas_civic_rewpro_eur_charity_validate';
+  $form['#validate'][] = 'rovas_civic_rewpro_form_validate';
 }
 
 /**

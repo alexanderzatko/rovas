@@ -104,6 +104,22 @@ function rovas_civic_form_alter(&$form, &$form_state, $form_id) {
 }
 
 /**
+ * Project node form validate (must live in .module — submit does not load .inc).
+ */
+function rovas_civic_project_node_form_validate($form, &$form_state) {
+  module_load_include('inc', 'rovas_civic', 'rovas_civic.charity');
+  rovas_civic_project_charity_form_validate($form, $form_state);
+}
+
+/**
+ * Rewpro form validate for A12 EUR charity gate.
+ */
+function rovas_civic_rewpro_form_validate($form, &$form_state) {
+  module_load_include('inc', 'rovas_civic', 'rovas_civic.charity');
+  rovas_civic_rewpro_eur_charity_validate($form, $form_state);
+}
+
+/**
  * Implements hook_node_presave().
  */
 function rovas_civic_node_presave($node) {
