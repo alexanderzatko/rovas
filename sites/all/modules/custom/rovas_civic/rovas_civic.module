@@ -216,11 +216,6 @@ function rovas_civic_services_resources() {
     'access arguments' => array(),
     'access arguments append' => FALSE,
   );
-  $project_read_auth = array(
-    'access callback' => 'rovas_civic_project_read_access',
-    'access arguments' => array(),
-    'access arguments append' => FALSE,
-  );
   $volunteer_file = array(
     'type' => 'inc',
     'module' => 'rovas_civic',
@@ -453,9 +448,11 @@ function rovas_civic_services_resources() {
         'retrieve' => array(
           'help' => 'Civic project detail + first page of work reports and shareholders. Bearer for any published project; anonymous allowed for approved charity projects. Optional ?lang=. is_public is informational only.',
           'callback' => 'rovas_civic_services_project_retrieve',
-          'access callback' => $project_read_auth['access callback'],
-          'access arguments' => $project_read_auth['access arguments'],
-          'access arguments append' => $project_read_auth['access arguments append'],
+          // services_access_menu: always allow; assert_project_readable gates
+          // anonymous vs approved-charity inside the callback. Do not use
+          // rovas_civic_project_read_access here — it lives in charity.inc and
+          // is not loaded before the access check (anonymous → 403).
+          'access callback' => 'services_access_menu',
           'args' => array(
             array(
               'name' => 'nid',
@@ -481,9 +478,7 @@ function rovas_civic_services_resources() {
         'index' => array(
           'help' => 'Paginated work reports for a project. ?project_nid=&limit=&offset=&lang=. Bearer or anonymous for approved charities.',
           'callback' => 'rovas_civic_services_project_work_reports_index',
-          'access callback' => $project_read_auth['access callback'],
-          'access arguments' => $project_read_auth['access arguments'],
-          'access arguments append' => $project_read_auth['access arguments append'],
+          'access callback' => 'services_access_menu',
           'args' => array(
             array(
               'name' => 'project_nid',
@@ -525,9 +520,7 @@ function rovas_civic_services_resources() {
         'index' => array(
           'help' => 'Paginated user shareholders for a project. ?project_nid=&limit=&offset=. Bearer or anonymous for approved charities. Skips project-as-shareholder rows.',
           'callback' => 'rovas_civic_services_project_shareholders_index',
-          'access callback' => $project_read_auth['access callback'],
-          'access arguments' => $project_read_auth['access arguments'],
-          'access arguments append' => $project_read_auth['access arguments append'],
+          'access callback' => 'services_access_menu',
           'args' => array(
             array(
               'name' => 'project_nid',
