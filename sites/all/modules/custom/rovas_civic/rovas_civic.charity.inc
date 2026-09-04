@@ -473,7 +473,7 @@ function rovas_civic_form_charity_organization_node_form_alter(&$form, &$form_st
 /**
  * Validate: charitable projects must link an organization.
  */
-function rovas_civic_project_charity_form_validate($form, &$form_state) {
+function rovas_civic_project_charity_form_validate_impl($form, &$form_state) {
   $values = $form_state['values'];
   $is_charity = 0;
   if (isset($values['field_is_charity'][LANGUAGE_NONE][0]['value'])) {
@@ -572,7 +572,7 @@ function rovas_civic_form_rovas_project_reward_form_alter(&$form, &$form_state) 
 /**
  * Validate: refuse EUR when charity org pending.
  */
-function rovas_civic_rewpro_eur_charity_validate($form, &$form_state) {
+function rovas_civic_rewpro_eur_charity_validate_impl($form, &$form_state) {
   $paytype = isset($form_state['values']['paytype']) ? $form_state['values']['paytype'] : '';
   $currency = isset($form_state['values']['payment-currency']) ? $form_state['values']['payment-currency'] : 'CHR';
   $pid = isset($form_state['values']['recipient']) ? $form_state['values']['recipient'] : 0;

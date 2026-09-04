@@ -105,10 +105,22 @@ function rovas_civic_form_alter(&$form, &$form_state, $form_id) {
 
 /**
  * Project node form validate (must live in .module — submit does not load .inc).
+ *
+ * Also kept under the older callback name so cached form builds from before
+ * the rename still validate after deploy.
  */
 function rovas_civic_project_node_form_validate($form, &$form_state) {
   module_load_include('inc', 'rovas_civic', 'rovas_civic.charity');
-  rovas_civic_project_charity_form_validate($form, $form_state);
+  if (function_exists('rovas_civic_project_charity_form_validate_impl')) {
+    rovas_civic_project_charity_form_validate_impl($form, $form_state);
+  }
+}
+
+/**
+ * @deprecated Cached forms may still reference this name; keep as .module stub.
+ */
+function rovas_civic_project_charity_form_validate($form, &$form_state) {
+  rovas_civic_project_node_form_validate($form, $form_state);
 }
 
 /**
@@ -116,7 +128,16 @@ function rovas_civic_project_node_form_validate($form, &$form_state) {
  */
 function rovas_civic_rewpro_form_validate($form, &$form_state) {
   module_load_include('inc', 'rovas_civic', 'rovas_civic.charity');
-  rovas_civic_rewpro_eur_charity_validate($form, $form_state);
+  if (function_exists('rovas_civic_rewpro_eur_charity_validate_impl')) {
+    rovas_civic_rewpro_eur_charity_validate_impl($form, $form_state);
+  }
+}
+
+/**
+ * @deprecated Cached forms may still reference this name; keep as .module stub.
+ */
+function rovas_civic_rewpro_eur_charity_validate($form, &$form_state) {
+  rovas_civic_rewpro_form_validate($form, $form_state);
 }
 
 /**
