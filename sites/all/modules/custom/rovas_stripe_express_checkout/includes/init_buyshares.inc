@@ -57,6 +57,13 @@ function _rovas_stripe_express_checkout_init_buyshares() {
     drupal_json_output(array('error' => 'This project does not allow buying shares.'));
     drupal_exit();
   }
+  if (function_exists('rovas_civic_project_blocks_eur_rails')) {
+    module_load_include('inc', 'rovas_civic', 'rovas_civic.charity');
+  }
+  if (function_exists('rovas_civic_project_blocks_eur_rails') && rovas_civic_project_blocks_eur_rails($proj)) {
+    drupal_json_output(array('error' => t('EUR share purchases are blocked until NeoFund approves this charity organization.')));
+    drupal_exit();
+  }
 
   $proj_wrap = entity_metadata_wrapper('node', $proj);
   $share = rovas_purchase_shares_compute_share_hours_for_payment($proj_wrap, 'EUR', $paid_eur);

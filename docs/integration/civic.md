@@ -81,6 +81,7 @@ env): [`civic-deploy.md`](civic-deploy.md).
 | Work-report map proof                | `GET /rovas/civic_work_report_map_config`; `field_location` on create WR                                                                   | Implemented in `rovas_civic` (`rovas_civic_update_7012`). GeoJSON Point/LineString/Polygon; proof = URL **or** photos **or** map.                                                      |
 | Civic WR verification (in-app)       | `GET /rovas/civic_pending_verifications`, `civic_work_report/{nid}`, `POST /rovas/civic_submit_verification`                               | Implemented in `rovas_civic` (`rovas_civic_update_7013`). Pending list + verifier detail + approve/reject/decline.                                                                     |
 | Merit index (Civic Prínos / ranks)   | `GET /rovas/civic_merit_index`, `civic_merit_index_countries`                                                                             | Snapshot-backed (`7017`); cron rebuild every **12h** (configurable) + admin rebuild. Warm reads ≪1s; items include `by_category` + `by_source`.                                                                      |
+| Charitable projects catalog          | `GET /rovas/civic_charity_projects`; org type `charity_organization`; `/charity-projects`                                                  | Implemented in `rovas_civic` (`rovas_civic_update_7018`). Org content type + project link; anonymous catalog; optional-auth project detail for approved orgs.                                                        |
 | Chron balance on `/rovas/me`         | `GET /rovas/me` → `total_chr`                                                                                                              | Pending — see [Chron balance on /rovas/me](#next-work-chron-balance-on-rovasme).                                                                                                       |
 | NACE expertise icons                 | `GET /rovas/users_lookup` → `nace_expertise[]`                                                                                             | Pending — see [NACE expertise on users_lookup](#next-work-nace-expertise-on-users_lookup).                                                                                             |
 
@@ -3097,8 +3098,9 @@ curl -sS "https://dev.rovas.app/rovas/users_lookup?username=sano" \
 **Goal:** Civic’s Charitatívne projekty screen lists NeoFund-**approved**
 charitable projects (public, anonymous), opens them in the existing project
 modal (with donate instructions), and invites orgs via client `mailto:` that
-links to a Rovas enrollment page. **No payments and no donor-Merit minting in
-this increment** — discovery + enrollment only.
+links to a Rovas enrollment page. Org identity lives on a reusable
+**`charity_organization`** content type; projects link to it. **No payments
+and no donor-Merit minting in this increment** — discovery + enrollment only.
 
 Canonical product notes: NeoFund
 `~/Documents/Business/NeoFund_NP/about-us.md` (§ Charitable organizations) and
@@ -3106,37 +3108,64 @@ Canonical product notes: NeoFund
 routing gate). Civic companion:
 `~/Documents/homeProjects/civic/docs/rovas-integration.md`.
 
-### 1. Project type — charitable subsection
+### 1. Content model — charity org + project link
+
+Org identity is **not** duplicated on every project. A new content type
+holds the charity once; projects link to it. One org can run many projects
+without re-entering legal / bank / contact data.
+
+#### 1a. Content type `charity_organization`
+
+Machine name: **`charity_organization`** (label: Charitable organization).
+Owned/edited by the org’s Rovas account(s); NeoFund staff can approve.
+
+**Staff-facing** (NeoFund verification; **not** shown as raw fields on Civic
+list — only `organization` / donate copy surfaces via APIs):
+
+| Field | Notes |
+|-------|--------|
+| Title / legal name | Org legal name (search + `organization` on catalog rows) |
+| IČO / registration number | Public-benefit / charity registry id |
+| Country of registered seat | For later national hourly rate |
+| Website | Org home page |
+| Contact email | Staff outreach |
+| SEPA IBAN | Later pass-through remittance |
+| Default donate instructions | Plain text; ET `sk`/`en`; fallback when project has none |
+| Default donate URL | Optional absolute URL; same fallback rule |
+| Approval status | `pending` → `approved` (staff only; reject/clear as needed) |
+
+**Approval lives on the organization**, not on each project. Checking the
+project checkbox (and linking/creating an org) queues NeoFund review of that
+org. Until the org is `approved`, linked projects stay out of the Civic
+catalog and EUR donation / share-purchase rails stay **blocked** (A12).
+
+Do **not** let owners self-serve the approved badge.
+
+#### 1b. Project type — charitable subsection
 
 On project **create / edit**, checkbox aligned with NeoFund wording, e.g.
 *“This is a project of a registered charity”* / SK equivalent.
 
 When checked, open a subsection:
 
-**Donor-facing** (Entity Translation `sk`/`en`; returned on Civic APIs):
-
 | Field | Notes |
 |-------|--------|
-| Donate instructions | Plain text: how to give (org site, bank, etc.) |
-| Donate URL | Optional absolute URL; Civic opens in the device browser |
+| Charity organization | Entity reference → `charity_organization` (required when checked). Autocomplete: orgs the user may use (own + shared); “create new” when first enroll |
+| Donate instructions | Optional plain text; ET `sk`/`en`; overrides org default for this project |
+| Donate URL | Optional absolute URL; overrides org default |
 
-**Staff-facing** (NeoFund verification / promote; **not** shown on Civic list):
+Unchecking clears the reference (or leaves it but treats the project as
+non-charitable — prefer clear + validate).
 
-| Field | Notes |
-|-------|--------|
-| Legal name | Org legal name (search + `organization` on catalog rows) |
-| IČO / registration number | Public-benefit / charity registry id |
-| Country of registered seat | For later national hourly rate |
-| Website | Org home page |
-| Contact email | Staff outreach |
-| SEPA IBAN | Later pass-through remittance |
+**Catalog / EUR gate:** project is charitable when the checkbox is on **and**
+a org is linked. It appears in Civic and may accept EUR only when that org’s
+status is **`approved`**. Pending org → hide from catalog; block EUR rails.
 
-**Approval:** checking the box queues NeoFund review. Store status
-`pending` → `approved` (and reject/clear as needed). **Only `approved`
-charitable projects** appear in the Civic catalog. Pending: hide from catalog;
-keep EUR donation / share-purchase rails **blocked** (A12).
+#### 1c. Why not fields-on-project only
 
-Do **not** let owners self-serve the approved badge.
+Re-entering IČO / IBAN / legal name per project is error-prone and blocks
+multi-project charities. Org node = single source of truth; projects only
+opt in and optionally override donor-facing donate copy.
 
 ### 2. Enrollment page
 
@@ -3144,8 +3173,10 @@ Create a public page at **`/charity-projects`**
 (`https://dev.rovas.app/charity-projects` on rovdev; prod host later).
 
 Content (SK primary / EN secondary): why charities should enroll; steps —
-create a Rovas project → check charitable → fill org fields → wait for
-NeoFund approval → (later) payment integration + optional site widget.
+create a Rovas project → check charitable → create or select a charity
+organization → fill org fields once → wait for NeoFund approval → attach
+further projects to the same org → (later) payment integration + optional
+site widget.
 
 Civic invite emails and the invite card link here. No Rovas invite API
 (same pattern as friend invite — client `mailto:` only).
@@ -3160,7 +3191,7 @@ New Services resource — **anonymous**, API-key auth **disabled**:
 
 | Param | Rules |
 |-------|--------|
-| *(none)* | Approved charitable projects only; sort `field_merit_reward` (`total_me`) **DESC**; default **`limit=5`** |
+| *(none)* | Projects with charitable checkbox on, linked to an **`approved`** `charity_organization`; sort `field_merit_reward` (`total_me`) **DESC**; default **`limit=5`** |
 | `query` | Substring match on project **title** and org **legal name** (case-insensitive); trim; length ≥ 1; same sort; **cap 20** |
 | `limit` | Optional override; default 5 when `query` absent; max 20 |
 | `lang` | Same Entity Translation rules as `civic_project` (`sk`/`en`, source fallback) |
@@ -3188,8 +3219,8 @@ picker).
 
 | Field | Rules |
 |-------|--------|
-| `total` | Count of **all** approved charitable projects (ignore `limit` / `query`) so Civic can hide search when `total < 6` |
-| `organization` | Legal name; fall back to project title if empty |
+| `total` | Count of **all** approved-org charitable projects (ignore `limit` / `query`) so Civic can hide search when `total < 6` |
+| `organization` | Linked org legal name; fall back to project title if empty |
 | `summary` | Same plain-text teaser rules as `civic_project` |
 | `total_me` | `field_merit_reward` (float; `0` if unset) |
 | `rovas_url` | Absolute node URL |
@@ -3201,12 +3232,12 @@ Empty catalog: `{ "total": 0, "projects": [] }`.
 Today `GET /rovas/civic_project/{nid}`,
 `civic_project_work_reports`, and `civic_project_shareholders` require Bearer.
 
-**Change:** allow **unauthenticated** reads when the node is a **published,
-approved charitable** project. Other projects keep Bearer required (401
-without token).
+**Change:** allow **unauthenticated** reads when the node is a **published
+project** linked to an **`approved`** `charity_organization` (charitable
+checkbox on). Other projects keep Bearer required (401 without token).
 
-When the project is charitable (approved or pending for Bearer owners), extend
-the `civic_project` JSON:
+When the project is charitable (linked org present — any status — for
+Bearer callers), extend the `civic_project` JSON:
 
 ```json
 {
@@ -3223,30 +3254,32 @@ the `civic_project` JSON:
 
 | Field | Rules |
 |-------|--------|
-| `is_charity` | `true` when charitable checkbox is set (any status) |
-| `charity_status` | `"approved"` \| `"pending"` \| omit/`null` when not a charity |
-| `organization` | Legal name or `null` |
-| `donate_instructions` | Plain text or `null` |
-| `donate_url` | Absolute URL or `null` |
+| `is_charity` | `true` when charitable checkbox is on and an org is linked |
+| `charity_status` | Org approval: `"approved"` \| `"pending"`; omit/`null` when not a charity |
+| `organization` | Linked org legal name or `null` |
+| `donate_instructions` | Project override, else org default, else `null` |
+| `donate_url` | Project override, else org default, else `null` |
 
 Anonymous callers requesting a non-approved / non-charity nid → **401** (same
-as today without Bearer). Published approved charity → **200** with full
-payload (summary, WRs, shareholders, photos) per existing private-readable
-rules.
+as today without Bearer). Published project with **approved** org → **200**
+with full payload (summary, WRs, shareholders, photos) per existing
+private-readable rules.
 
 Enable via `rovas_civic_ensure_services_resources()` + new updb hook.
 
 ### Checklist
 
-1. [ ] Project form: charitable checkbox + donor/staff subsection fields
-2. [ ] NeoFund approval workflow (`pending` / `approved`); EUR blocked while pending
-3. [ ] Public page `/charity-projects` (enrollment why + how)
-4. [ ] Services `GET /rovas/civic_charity_projects` (anonymous; API-key off)
-5. [ ] Catalog: approved-only; sort by `total_me` DESC; `total` + `limit`/`query`/`lang`
-6. [ ] Anonymous `civic_project` (+ WR + shareholders) for **approved** charities only
-7. [ ] Charity fields on `civic_project` JSON (`is_charity`, `charity_status`, donate/org)
-8. [ ] updb / ensure helper on rovdev
-9. [ ] Smoke-test curls below
+1. [x] Content type `charity_organization` + fields (legal/IČO/country/web/email/IBAN, default donate_*, approval status)
+2. [x] Project fields: charitable checkbox + entityreference to org + optional per-project donate_* overrides
+3. [x] Project form: checkbox subsection — select/create org; staff-only approval on org (no owner self-approve)
+4. [x] NeoFund approval on org (`pending` / `approved`); EUR blocked on linked projects while org pending (A12)
+5. [x] Public page `/charity-projects` (enrollment why + how; create org once, reuse on further projects)
+6. [x] Services `GET /rovas/civic_charity_projects` (anonymous; API-key off)
+7. [x] Catalog: approved-org only; sort by `total_me` DESC; `total` + `limit`/`query`/`lang`
+8. [x] Anonymous `civic_project` (+ WR + shareholders) for projects with **approved** org only
+9. [x] Charity fields on `civic_project` JSON (`is_charity`, `charity_status`, donate/org from link + overrides)
+10. [x] updb / ensure helper (`rovas_civic_update_7018` + `rovas_civic_ensure_charity_content()`)
+11. [ ] Deploy rovdev + smoke-test curls below
 
 ### Smoke test (after deploy)
 
@@ -3260,7 +3293,7 @@ curl -sS "https://dev.rovas.app/rovas/civic_charity_projects?lang=sk" \
 curl -sS "https://dev.rovas.app/rovas/civic_charity_projects?query=pomoc&lang=sk" \
   -H "Accept: application/json" | python3 -m json.tool
 
-# Anonymous detail — replace NID with an approved charity project
+# Anonymous detail — replace NID with a project linked to an approved org
 curl -sS "https://dev.rovas.app/rovas/civic_project/NID?lang=sk" \
   -H "Accept: application/json" | python3 -m json.tool
 # Expect: is_charity true, charity_status approved, donate_* fields present
@@ -3268,7 +3301,7 @@ curl -sS "https://dev.rovas.app/rovas/civic_project/NID?lang=sk" \
 # Non-charity without Bearer must still 401
 curl -sS -o /dev/null -w "%{http_code}\n" \
   "https://dev.rovas.app/rovas/civic_project/1998"
-# Expect: 401 (unless 1998 is an approved charity)
+# Expect: 401 (unless 1998 is linked to an approved charity org)
 ```
 
 ### Civic will consume (after Rovas ships)

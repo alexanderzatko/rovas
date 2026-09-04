@@ -190,8 +190,12 @@ function rovas_civic_admin_bootstrap_treasury_submit($form, &$form_state) {
  * Enable Services Civic resources on rovas_endpoint (claims, rates, users, project, shareholders, merit history).
  */
 function rovas_civic_admin_resources_submit($form, &$form_state) {
+  module_load_include('inc', 'rovas_civic', 'rovas_civic.charity_setup');
+  if (function_exists('rovas_civic_ensure_charity_content')) {
+    rovas_civic_ensure_charity_content();
+  }
   if (rovas_civic_ensure_services_resources()) {
-    drupal_set_message(t('Civic APIs enabled on rovas_endpoint (claims, rates, users, project, shareholders, merit history).'));
+    drupal_set_message(t('Civic APIs enabled on rovas_endpoint (claims, rates, users, project, charity catalog, shareholders, merit history).'));
   }
   else {
     drupal_set_message(t('Could not update Services endpoint.'), 'error');

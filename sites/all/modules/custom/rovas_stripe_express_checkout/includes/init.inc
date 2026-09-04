@@ -99,6 +99,15 @@ function _rovas_stripe_express_checkout_init() {
 			'paytype' => isset($_GET['paytype']) ? $_GET['paytype'] : 'none', //project|wreport|user
 		];
 
+    if ($metadata['paytype'] === 'project' && is_numeric($metadata['project_id'])) {
+      module_load_include('inc', 'rovas_civic', 'rovas_civic.charity');
+      $proj = node_load((int) $metadata['project_id']);
+      if (function_exists('rovas_civic_project_blocks_eur_rails') && rovas_civic_project_blocks_eur_rails($proj)) {
+        drupal_json_output(array('error' => t('EUR donations are blocked until NeoFund approves this charity organization.')));
+        drupal_exit();
+      }
+    }
+
 		// Critical for webhook-side 3rd-party notification: Stripe webhooks run
 		// without browser session context (and rovas_stripe_webhooks suppresses
 		// session writes). Persist the callback token/expiration on the PaymentIntent

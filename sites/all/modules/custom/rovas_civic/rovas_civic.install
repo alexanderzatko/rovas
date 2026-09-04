@@ -323,6 +323,15 @@ function rovas_civic_enable() {
       watchdog_exception('rovas_civic', $e);
     }
   }
+  module_load_include('inc', 'rovas_civic', 'rovas_civic.charity_setup');
+  if (function_exists('rovas_civic_ensure_charity_content')) {
+    try {
+      rovas_civic_ensure_charity_content();
+    }
+    catch (Exception $e) {
+      watchdog_exception('rovas_civic', $e);
+    }
+  }
   if (function_exists('rovas_civic_ensure_services_resources')) {
     try {
       rovas_civic_ensure_services_resources();
@@ -536,4 +545,18 @@ function rovas_civic_update_7017() {
     '@n' => $n,
     '@h' => 12,
   ));
+}
+
+/**
+ * Charity organization type + Civic charity catalog / optional-auth project reads.
+ */
+function rovas_civic_update_7018() {
+  module_load_include('inc', 'rovas_civic', 'rovas_civic.charity_setup');
+  if (function_exists('rovas_civic_ensure_charity_content')) {
+    rovas_civic_ensure_charity_content();
+  }
+  if (function_exists('rovas_civic_ensure_services_resources')) {
+    rovas_civic_ensure_services_resources();
+  }
+  return t('Charitable organization content type, project charity fields, /charity-projects page, and GET /rovas/civic_charity_projects enabled; civic_project reads allow anonymous for approved charities.');
 }

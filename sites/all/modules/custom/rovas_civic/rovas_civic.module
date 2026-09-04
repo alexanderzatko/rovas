@@ -32,6 +32,8 @@ define('ROVAS_CIVIC_FALLBACK_NACE_TID', 1601);
 // Charity donations will use a dedicated NACE (not the Merit-purchase fallback).
 // 0 = not configured yet → no expertise rows classified as charity.
 define('ROVAS_CIVIC_CHARITY_NACE_TID', 0);
+define('ROVAS_CIVIC_CHARITY_CATALOG_DEFAULT_LIMIT', 5);
+define('ROVAS_CIVIC_CHARITY_CATALOG_MAX_LIMIT', 20);
 
 /**
  * Implements hook_permission().
@@ -74,7 +76,39 @@ function rovas_civic_menu() {
     'file' => 'rovas_civic.admin.inc',
     'type' => MENU_CALLBACK,
   );
+  $items['charity-projects'] = array(
+    'title' => 'Charitable projects',
+    'description' => 'Enroll a registered charity on Rovas for the Civic catalog.',
+    'page callback' => 'rovas_civic_charity_projects_page',
+    'access callback' => TRUE,
+    'file' => 'rovas_civic.charity.inc',
+    'type' => MENU_NORMAL_ITEM,
+  );
   return $items;
+}
+
+/**
+ * Implements hook_form_alter().
+ */
+function rovas_civic_form_alter(&$form, &$form_state, $form_id) {
+  module_load_include('inc', 'rovas_civic', 'rovas_civic.charity');
+  if ($form_id === 'project_node_form') {
+    rovas_civic_form_project_node_form_alter($form, $form_state);
+  }
+  elseif ($form_id === 'charity_organization_node_form') {
+    rovas_civic_form_charity_organization_node_form_alter($form, $form_state);
+  }
+  elseif ($form_id === 'rovas_project_reward_form') {
+    rovas_civic_form_rovas_project_reward_form_alter($form, $form_state);
+  }
+}
+
+/**
+ * Implements hook_node_presave().
+ */
+function rovas_civic_node_presave($node) {
+  module_load_include('inc', 'rovas_civic', 'rovas_civic.charity');
+  rovas_civic_charity_node_presave($node);
 }
 
 /**
@@ -133,13 +167,20 @@ function rovas_civic_node_insert($node) {
  * - POST /rovas/civic_submit_verification
  * - GET  /rovas/civic_merit_index (Prínos / Merit Index leaderboard)
  * - GET  /rovas/civic_merit_index_countries (Prínos country filter dropdown)
+ * - GET  /rovas/civic_charity_projects (public approved-charity catalog)
  *
  * Note: Services aliases must be slash-free. Do not use aliases like
  * civic/claims — Services treats the first segment as the resource name.
  */
 function rovas_civic_services_resources() {
+  module_load_include('inc', 'rovas_civic', 'rovas_civic.charity');
   $bearer_auth = array(
     'access callback' => 'rovas_civic_claim_access',
+    'access arguments' => array(),
+    'access arguments append' => FALSE,
+  );
+  $project_read_auth = array(
+    'access callback' => 'rovas_civic_project_read_access',
     'access arguments' => array(),
     'access arguments append' => FALSE,
   );
@@ -162,6 +203,11 @@ function rovas_civic_services_resources() {
     'type' => 'inc',
     'module' => 'rovas_civic',
     'name' => 'rovas_civic.merit_index',
+  );
+  $charity_file = array(
+    'type' => 'inc',
+    'module' => 'rovas_civic',
+    'name' => 'rovas_civic.charity',
   );
 
   return array(
@@ -368,11 +414,11 @@ function rovas_civic_services_resources() {
     'civic_project' => array(
       'operations' => array(
         'retrieve' => array(
-          'help' => 'Civic project detail + first page of work reports and shareholders. Bearer required. Optional ?lang= for title/summary. is_public is informational only (Private still returns full content).',
+          'help' => 'Civic project detail + first page of work reports and shareholders. Bearer for any published project; anonymous allowed for approved charity projects. Optional ?lang=. is_public is informational only.',
           'callback' => 'rovas_civic_services_project_retrieve',
-          'access callback' => $bearer_auth['access callback'],
-          'access arguments' => $bearer_auth['access arguments'],
-          'access arguments append' => $bearer_auth['access arguments append'],
+          'access callback' => $project_read_auth['access callback'],
+          'access arguments' => $project_read_auth['access arguments'],
+          'access arguments append' => $project_read_auth['access arguments append'],
           'args' => array(
             array(
               'name' => 'nid',
@@ -396,11 +442,11 @@ function rovas_civic_services_resources() {
     'civic_project_work_reports' => array(
       'operations' => array(
         'index' => array(
-          'help' => 'Paginated work reports for a project. ?project_nid=&limit=&offset=&lang=. Bearer required.',
+          'help' => 'Paginated work reports for a project. ?project_nid=&limit=&offset=&lang=. Bearer or anonymous for approved charities.',
           'callback' => 'rovas_civic_services_project_work_reports_index',
-          'access callback' => $bearer_auth['access callback'],
-          'access arguments' => $bearer_auth['access arguments'],
-          'access arguments append' => $bearer_auth['access arguments append'],
+          'access callback' => $project_read_auth['access callback'],
+          'access arguments' => $project_read_auth['access arguments'],
+          'access arguments append' => $project_read_auth['access arguments append'],
           'args' => array(
             array(
               'name' => 'project_nid',
@@ -440,11 +486,11 @@ function rovas_civic_services_resources() {
     'civic_project_shareholders' => array(
       'operations' => array(
         'index' => array(
-          'help' => 'Paginated user shareholders for a project. ?project_nid=&limit=&offset=. Bearer required. Skips project-as-shareholder rows.',
+          'help' => 'Paginated user shareholders for a project. ?project_nid=&limit=&offset=. Bearer or anonymous for approved charities. Skips project-as-shareholder rows.',
           'callback' => 'rovas_civic_services_project_shareholders_index',
-          'access callback' => $bearer_auth['access callback'],
-          'access arguments' => $bearer_auth['access arguments'],
-          'access arguments append' => $bearer_auth['access arguments append'],
+          'access callback' => $project_read_auth['access callback'],
+          'access arguments' => $project_read_auth['access arguments'],
+          'access arguments append' => $project_read_auth['access arguments append'],
           'args' => array(
             array(
               'name' => 'project_nid',
@@ -830,6 +876,42 @@ function rovas_civic_services_resources() {
               'name' => 'lang',
               'type' => 'string',
               'description' => 'Optional content language (sk|en) for country labels.',
+              'source' => array('param' => 'lang'),
+              'optional' => TRUE,
+              'default value' => '',
+            ),
+          ),
+        ),
+      ),
+    ),
+    'civic_charity_projects' => array(
+      'operations' => array(
+        'index' => array(
+          'help' => 'Public catalog of NeoFund-approved charitable projects. Optional ?query=&limit=&lang=. Anonymous; API-key off.',
+          'callback' => 'rovas_civic_services_charity_projects_index',
+          'file' => $charity_file,
+          'access callback' => 'services_access_menu',
+          'args' => array(
+            array(
+              'name' => 'query',
+              'type' => 'string',
+              'description' => 'Substring match on project title or org legal name (min 1). Param must not be "q".',
+              'source' => array('param' => 'query'),
+              'optional' => TRUE,
+              'default value' => '',
+            ),
+            array(
+              'name' => 'limit',
+              'type' => 'int',
+              'description' => 'Page size (default 5, max 20).',
+              'source' => array('param' => 'limit'),
+              'optional' => TRUE,
+              'default value' => ROVAS_CIVIC_CHARITY_CATALOG_DEFAULT_LIMIT,
+            ),
+            array(
+              'name' => 'lang',
+              'type' => 'string',
+              'description' => 'Optional content language (sk|en). Maps cs/cz→sk.',
               'source' => array('param' => 'lang'),
               'optional' => TRUE,
               'default value' => '',
@@ -1622,14 +1704,16 @@ function rovas_civic_users_lookup_taxes_last_3_months($uid) {
  * Services callback: GET /rovas/civic_project/{nid}
  */
 function rovas_civic_services_project_retrieve($nid, $lang = '') {
-  $uid = rovas_civic_request_uid();
-  if ($uid < 1) {
-    return services_error(t('Authentication required'), 401);
-  }
+  module_load_include('inc', 'rovas_civic', 'rovas_civic.charity');
 
   $project = rovas_civic_load_published_project((int) $nid);
   if (!$project) {
     return services_error(t('Project not found'), 404);
+  }
+
+  $gate = rovas_civic_assert_project_readable($project);
+  if ($gate !== TRUE) {
+    return $gate;
   }
 
   return rovas_civic_project_detail($project, ROVAS_CIVIC_WR_DEFAULT_LIMIT, 0, rovas_civic_request_lang($lang));
@@ -1639,10 +1723,7 @@ function rovas_civic_services_project_retrieve($nid, $lang = '') {
  * Services callback: GET /rovas/civic_project_work_reports
  */
 function rovas_civic_services_project_work_reports_index($project_nid, $limit = ROVAS_CIVIC_WR_DEFAULT_LIMIT, $offset = 0, $lang = '') {
-  $uid = rovas_civic_request_uid();
-  if ($uid < 1) {
-    return services_error(t('Authentication required'), 401);
-  }
+  module_load_include('inc', 'rovas_civic', 'rovas_civic.charity');
 
   $project_nid = (int) $project_nid;
   if ($project_nid < 1) {
@@ -1652,6 +1733,11 @@ function rovas_civic_services_project_work_reports_index($project_nid, $limit = 
   $project = rovas_civic_load_published_project($project_nid);
   if (!$project) {
     return services_error(t('Project not found'), 404);
+  }
+
+  $gate = rovas_civic_assert_project_readable($project);
+  if ($gate !== TRUE) {
+    return $gate;
   }
 
   $pager = rovas_civic_normalize_pager($limit, $offset, ROVAS_CIVIC_WR_DEFAULT_LIMIT, ROVAS_CIVIC_WR_MAX_LIMIT);
@@ -1662,10 +1748,7 @@ function rovas_civic_services_project_work_reports_index($project_nid, $limit = 
  * Services callback: GET /rovas/civic_project_shareholders
  */
 function rovas_civic_services_project_shareholders_index($project_nid, $limit = ROVAS_CIVIC_WR_DEFAULT_LIMIT, $offset = 0) {
-  $uid = rovas_civic_request_uid();
-  if ($uid < 1) {
-    return services_error(t('Authentication required'), 401);
-  }
+  module_load_include('inc', 'rovas_civic', 'rovas_civic.charity');
 
   $project_nid = (int) $project_nid;
   if ($project_nid < 1) {
@@ -1675,6 +1758,11 @@ function rovas_civic_services_project_shareholders_index($project_nid, $limit = 
   $project = rovas_civic_load_published_project($project_nid);
   if (!$project) {
     return services_error(t('Project not found'), 404);
+  }
+
+  $gate = rovas_civic_assert_project_readable($project);
+  if ($gate !== TRUE) {
+    return $gate;
   }
 
   $pager = rovas_civic_normalize_pager($limit, $offset, ROVAS_CIVIC_WR_DEFAULT_LIMIT, ROVAS_CIVIC_WR_MAX_LIMIT);
@@ -1929,6 +2017,8 @@ function rovas_civic_project_work_report_count($project_nid) {
  * @return array
  */
 function rovas_civic_project_detail($project, $limit = ROVAS_CIVIC_WR_DEFAULT_LIMIT, $offset = 0, $lang = NULL) {
+  module_load_include('inc', 'rovas_civic', 'rovas_civic.charity');
+
   $nid = (int) $project->nid;
   $is_public = rovas_civic_project_is_public($project);
   $owner = user_load((int) $project->uid);
@@ -1941,12 +2031,18 @@ function rovas_civic_project_detail($project, $limit = ROVAS_CIVIC_WR_DEFAULT_LI
   $summary = rovas_civic_plain_teaser(rovas_civic_node_body_value($project, $lang));
   $page = rovas_civic_project_work_reports_fetch($nid, $pager['limit'], $pager['offset'], TRUE, $lang);
   $sh_page = rovas_civic_project_shareholders_fetch($nid, $pager['limit'], $pager['offset']);
+  $charity = rovas_civic_project_charity_json($project, $lang);
 
   return array(
     'project_nid' => (string) $nid,
     'title' => rovas_civic_node_localized_title($project, $lang),
     'summary' => $summary,
     'is_public' => $is_public,
+    'is_charity' => $charity['is_charity'],
+    'charity_status' => $charity['charity_status'],
+    'organization' => $charity['organization'],
+    'donate_instructions' => $charity['donate_instructions'],
+    'donate_url' => $charity['donate_url'],
     'owner_username' => $labels['username'],
     'owner_display_name' => $labels['display_name'],
     'total_hours' => rovas_civic_node_float_field($project, 'field_project_total_hours'),
@@ -2875,10 +2971,10 @@ function rovas_civic_ensure_services_resources() {
     $changed = TRUE;
   }
 
-  // GET /rovas/civic_project/{nid} — project modal detail (Bearer).
+  // GET /rovas/civic_project/{nid} — Bearer or anonymous (approved charity).
   $civic_project_resource = array(
     'operations' => array(
-      'retrieve' => $bearer_op,
+      'retrieve' => $public_op,
     ),
   );
   if (empty($endpoint->resources['civic_project'])
@@ -2887,10 +2983,10 @@ function rovas_civic_ensure_services_resources() {
     $changed = TRUE;
   }
 
-  // GET /rovas/civic_project_work_reports?project_nid= — WR pages (Bearer).
+  // GET /rovas/civic_project_work_reports?project_nid= — same optional auth.
   $civic_wr_resource = array(
     'operations' => array(
-      'index' => $bearer_op,
+      'index' => $public_op,
     ),
   );
   if (empty($endpoint->resources['civic_project_work_reports'])
@@ -2899,10 +2995,10 @@ function rovas_civic_ensure_services_resources() {
     $changed = TRUE;
   }
 
-  // GET /rovas/civic_project_shareholders?project_nid= — user shareholders (Bearer).
+  // GET /rovas/civic_project_shareholders?project_nid= — same optional auth.
   $civic_sh_resource = array(
     'operations' => array(
-      'index' => $bearer_op,
+      'index' => $public_op,
     ),
   );
   if (empty($endpoint->resources['civic_project_shareholders'])
@@ -2945,6 +3041,7 @@ function rovas_civic_ensure_services_resources() {
     'civic_nace_tree',
     'civic_merit_index',
     'civic_merit_index_countries',
+    'civic_charity_projects',
   ) as $res_name) {
     if (empty($endpoint->resources[$res_name])
       || $endpoint->resources[$res_name] != $civic_public_read_resource) {
