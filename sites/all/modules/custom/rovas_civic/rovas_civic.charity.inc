@@ -415,19 +415,53 @@ function rovas_civic_charity_projects_page() {
 }
 
 /**
- * Form alter: project charitable subsection + #states.
+ * Form alter: project charitable subsection in a collapsible fieldset.
  */
 function rovas_civic_form_project_node_form_alter(&$form, &$form_state) {
   if (!isset($form['field_is_charity'])) {
     return;
   }
 
+  $is_charity = FALSE;
+  if (!empty($form['field_is_charity'][LANGUAGE_NONE]['#default_value'])) {
+    $is_charity = (bool) $form['field_is_charity'][LANGUAGE_NONE]['#default_value'];
+  }
+  elseif (!empty($form['#entity']->field_is_charity[LANGUAGE_NONE][0]['value'])) {
+    $is_charity = TRUE;
+  }
+
+  $weight = isset($form['field_is_charity']['#weight'])
+    ? $form['field_is_charity']['#weight']
+    : 35;
+
   $form['field_is_charity'][LANGUAGE_NONE]['#title'] = t('This is a project of a registered charity');
   $form['field_is_charity'][LANGUAGE_NONE]['#description'] = t('When checked, link a charity organization. NeoFund must approve the organization before the project appears in Civic and before EUR donations or share purchases are allowed.');
 
-  // options_onoff uses …[und][value]; also accept radios-style name.
+  // Same pattern as project ownership / purchasing-shares: collapsible fieldset
+  // + #states on the dependent block (id selector matches options_onoff).
+  $form['charity_project'] = array(
+    '#type' => 'fieldset',
+    '#title' => t('Charitable project'),
+    '#collapsible' => TRUE,
+    '#collapsed' => !$is_charity,
+    '#weight' => $weight,
+    '#attributes' => array('class' => array('field-group-fieldset')),
+    '#tree' => FALSE,
+  );
+
+  $form['charity_project']['field_is_charity'] = $form['field_is_charity'];
+  unset($form['field_is_charity']);
+
+  // options_onoff renders id edit-field-is-charity-und (same as allow-purchasing-shares).
   $visible = array(
-    ':input[name="field_is_charity[' . LANGUAGE_NONE . '][value]"]' => array('checked' => TRUE),
+    ':input[id="edit-field-is-charity-und"]' => array('checked' => TRUE),
+  );
+
+  $form['charity_project']['charity_details'] = array(
+    '#type' => 'container',
+    '#states' => array(
+      'visible' => $visible,
+    ),
   );
 
   foreach (array(
@@ -436,12 +470,13 @@ function rovas_civic_form_project_node_form_alter(&$form, &$form_state) {
     'field_charity_donate_url',
   ) as $fname) {
     if (isset($form[$fname])) {
-      $form[$fname]['#states'] = array('visible' => $visible);
+      $form['charity_project']['charity_details'][$fname] = $form[$fname];
+      unset($form[$fname]);
     }
   }
 
-  if (isset($form['field_charity_organization'])) {
-    $form['field_charity_organization'][LANGUAGE_NONE][0]['target_id']['#description'] = t('Select an organization you manage, or !create first.', array(
+  if (isset($form['charity_project']['charity_details']['field_charity_organization'])) {
+    $form['charity_project']['charity_details']['field_charity_organization'][LANGUAGE_NONE][0]['target_id']['#description'] = t('Select an organization you manage, or !create first.', array(
       '!create' => l(t('create a charity organization'), 'node/add/' . ROVAS_CIVIC_CHARITY_BUNDLE, array(
         'query' => array('destination' => current_path()),
       )),
