@@ -189,7 +189,7 @@ function rovas_civic_node_text_field($node, $field_name, $lang = NULL) {
  * @return string|null
  */
 function rovas_civic_project_donate_instructions($project, $org = NULL, $lang = NULL) {
-  $override = rovas_civic_node_text_field($project, 'field_charity_donate_instructions', $lang);
+  $override = rovas_civic_node_text_field($project, 'field_charity_donate_text', $lang);
   if ($override !== NULL && $override !== '') {
     return $override;
   }
@@ -197,7 +197,7 @@ function rovas_civic_project_donate_instructions($project, $org = NULL, $lang = 
     $org = rovas_civic_project_charity_org($project);
   }
   if ($org) {
-    return rovas_civic_node_text_field($org, 'field_charity_donate_instructions', $lang);
+    return rovas_civic_node_text_field($org, 'field_charity_donate_text', $lang);
   }
   return NULL;
 }
@@ -432,7 +432,7 @@ function rovas_civic_form_project_node_form_alter(&$form, &$form_state) {
 
   foreach (array(
     'field_charity_organization',
-    'field_charity_donate_instructions',
+    'field_charity_donate_text',
     'field_charity_donate_url',
   ) as $fname) {
     if (isset($form[$fname])) {

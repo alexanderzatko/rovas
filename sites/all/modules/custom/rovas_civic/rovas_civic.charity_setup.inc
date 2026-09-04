@@ -168,8 +168,8 @@ function _rovas_civic_ensure_charity_field_bases() {
         'max_length' => 34,
       ),
     ),
-    'field_charity_donate_instructions' => array(
-      'field_name' => 'field_charity_donate_instructions',
+    'field_charity_donate_text' => array(
+      'field_name' => 'field_charity_donate_text',
       'type' => 'text_long',
       'module' => 'text',
       'active' => 1,
@@ -317,7 +317,7 @@ function _rovas_civic_ensure_charity_field_instances() {
       ),
       'description' => 'For later pass-through remittance. Not shown in Civic catalog.',
     ),
-    'field_charity_donate_instructions' => array(
+    'field_charity_donate_text' => array(
       'label' => 'Default donate instructions',
       'required' => 0,
       'widget' => array(
@@ -414,7 +414,7 @@ function _rovas_civic_ensure_charity_field_instances() {
       ),
       'description' => 'Required when the charitable checkbox is on. Create the organization once and reuse it.',
     ),
-    'field_charity_donate_instructions' => array(
+    'field_charity_donate_text' => array(
       'label' => 'Donate instructions (project override)',
       'required' => 0,
       'widget' => array(
