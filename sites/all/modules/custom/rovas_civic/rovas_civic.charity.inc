@@ -578,6 +578,116 @@ function rovas_civic_charity_node_presave($node) {
 }
 
 /**
+ * Email site mail when a charity_organization is created (pending review).
+ *
+ * Recipient and From use variable site_mail (default site email).
+ *
+ * @param object $node
+ *   Newly inserted charity_organization node.
+ *
+ * @return bool
+ */
+function rovas_civic_notify_charity_org_pending($node) {
+  if (empty($node) || empty($node->nid) || $node->type !== ROVAS_CIVIC_CHARITY_BUNDLE) {
+    return FALSE;
+  }
+
+  $to = variable_get('site_mail', '');
+  if ($to === '' || $to === NULL) {
+    $su = user_load(1);
+    if (!empty($su->mail)) {
+      $to = $su->mail;
+    }
+  }
+  if (empty($to)) {
+    watchdog('rovas_civic', 'Charity org @nid pending but site_mail is empty; no review email sent.', array(
+      '@nid' => (int) $node->nid,
+    ), WATCHDOG_WARNING);
+    return FALSE;
+  }
+
+  $owner = user_load((int) $node->uid);
+  $owner_name = $owner ? format_username($owner) : t('Unknown');
+  $owner_mail = $owner && !empty($owner->mail) ? $owner->mail : '—';
+
+  $ico = rovas_civic_node_text_field($node, 'field_charity_ico');
+  $country = rovas_civic_node_text_field($node, 'field_charity_country');
+  $website = rovas_civic_node_text_field($node, 'field_charity_website');
+  $contact = NULL;
+  $email_items = field_get_items('node', $node, 'field_charity_contact_email');
+  if (!empty($email_items[0]['email'])) {
+    $contact = $email_items[0]['email'];
+  }
+  elseif (!empty($email_items[0]['value'])) {
+    $contact = $email_items[0]['value'];
+  }
+
+  $admin_url = url('admin/config/rovas/civic/charities', array('absolute' => TRUE));
+  $node_url = url('node/' . (int) $node->nid . '/edit', array('absolute' => TRUE));
+
+  $lines = array(
+    t('A new charity organization was submitted and is pending NeoFund review.'),
+    '',
+    t('Legal name: @title', array('@title' => $node->title)),
+    t('Node: @nid', array('@nid' => (int) $node->nid)),
+    t('Owner: @name (@mail)', array('@name' => $owner_name, '@mail' => $owner_mail)),
+    t('IČO / registration: @v', array('@v' => $ico ? $ico : '—')),
+    t('Country: @v', array('@v' => $country ? $country : '—')),
+    t('Website: @v', array('@v' => $website ? $website : '—')),
+    t('Contact email: @v', array('@v' => $contact ? $contact : '—')),
+    '',
+    t('Review list: @url', array('@url' => $admin_url)),
+    t('Edit organization: @url', array('@url' => $node_url)),
+  );
+
+  $lang = language_default();
+  $langcode = !empty($lang->language) ? $lang->language : 'en';
+  $from = variable_get('site_mail', $to);
+
+  drupal_mail(
+    'rovas_civic',
+    'charity_org_pending',
+    $to,
+    $langcode,
+    array(
+      'subject' => t('Rovas: New charity organization pending review — @title', array(
+        '@title' => $node->title,
+      )),
+      'body' => implode("\n", $lines),
+    ),
+    $from
+  );
+
+  watchdog('rovas_civic', 'Sent charity review email for org @nid to @to.', array(
+    '@nid' => (int) $node->nid,
+    '@to' => $to,
+  ), WATCHDOG_NOTICE);
+
+  return TRUE;
+}
+
+/**
+ * Set charity organization approval status (staff).
+ *
+ * @param object $node
+ * @param string $status
+ *   pending|approved
+ *
+ * @return bool
+ */
+function rovas_civic_charity_org_set_status($node, $status) {
+  if (empty($node) || $node->type !== ROVAS_CIVIC_CHARITY_BUNDLE) {
+    return FALSE;
+  }
+  if ($status !== ROVAS_CIVIC_CHARITY_STATUS_PENDING && $status !== ROVAS_CIVIC_CHARITY_STATUS_APPROVED) {
+    return FALSE;
+  }
+  $node->field_charity_status[LANGUAGE_NONE][0]['value'] = $status;
+  node_save($node);
+  return TRUE;
+}
+
+/**
  * Form alter: block EUR on rewpro when charity org is pending (A12).
  */
 function rovas_civic_form_rovas_project_reward_form_alter(&$form, &$form_state) {

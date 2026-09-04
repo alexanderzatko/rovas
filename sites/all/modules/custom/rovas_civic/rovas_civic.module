@@ -76,6 +76,16 @@ function rovas_civic_menu() {
     'file' => 'rovas_civic.admin.inc',
     'type' => MENU_CALLBACK,
   );
+  $items['admin/config/rovas/civic/charities'] = array(
+    'title' => 'Charity organizations',
+    'description' => 'Review and approve charity organizations for the Civic catalog.',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('rovas_civic_admin_charities_form'),
+    'access arguments' => array('administer rovas civic'),
+    'file' => 'rovas_civic.admin.inc',
+    'type' => MENU_LOCAL_TASK,
+    'weight' => 5,
+  );
   $items['charity-projects'] = array(
     'title' => 'Charitable projects',
     'description' => 'Enroll a registered charity on Rovas for the Civic catalog.',
@@ -85,6 +95,20 @@ function rovas_civic_menu() {
     'type' => MENU_NORMAL_ITEM,
   );
   return $items;
+}
+
+/**
+ * Implements hook_mail().
+ */
+function rovas_civic_mail($key, &$message, $params) {
+  if ($key !== 'charity_org_pending') {
+    return;
+  }
+  $message['headers']['Content-Type'] = 'text/plain; charset=UTF-8; format=flowed';
+  $message['subject'] = isset($params['subject'])
+    ? $params['subject']
+    : t('Rovas: New charity organization pending review');
+  $message['body'][] = isset($params['body']) ? $params['body'] : '';
 }
 
 /**
@@ -165,9 +189,17 @@ function rovas_civic_cron() {
  * Implements hook_node_insert().
  *
  * Runs after Rules (module weight 21) so verification Chron grants exist before
- * Civic CHR→ME conversion.
+ * Civic CHR→ME conversion. Also notifies site mail on new charity orgs.
  */
 function rovas_civic_node_insert($node) {
+  if ($node->type === 'charity_organization') {
+    module_load_include('inc', 'rovas_civic', 'rovas_civic.charity');
+    if (function_exists('rovas_civic_notify_charity_org_pending')) {
+      rovas_civic_notify_charity_org_pending($node);
+    }
+    return;
+  }
+
   if ($node->type !== 'verification') {
     return;
   }

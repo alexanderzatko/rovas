@@ -3139,6 +3139,12 @@ project checkbox (and linking/creating an org) queues NeoFund review of that
 org. Until the org is `approved`, linked projects stay out of the Civic
 catalog and EUR donation / share-purchase rails stay **blocked** (A12).
 
+**Notify:** on `charity_organization` insert, email **`site_mail`** (default
+site email; falls back to uid 1 mail if empty) with org summary + link to
+**Configuration → Rovas Civic → Charity organizations**
+(`/admin/config/rovas/civic/charities`). Staff approve or set pending there
+(or on the org node edit form).
+
 Do **not** let owners self-serve the approved badge.
 
 #### 1b. Project type — charitable subsection
@@ -3273,6 +3279,7 @@ Enable via `rovas_civic_ensure_services_resources()` + new updb hook.
 2. [x] Project fields: charitable checkbox + entityreference to org + optional per-project donate_* overrides
 3. [x] Project form: checkbox subsection — select/create org; staff-only approval on org (no owner self-approve)
 4. [x] NeoFund approval on org (`pending` / `approved`); EUR blocked on linked projects while org pending (A12)
+4b. [x] Email `site_mail` on new charity org; admin list at `/admin/config/rovas/civic/charities`
 5. [x] Public page `/charity-projects` (enrollment why + how; create org once, reuse on further projects)
 6. [x] Services `GET /rovas/civic_charity_projects` (anonymous; API-key off)
 7. [x] Catalog: approved-org only; sort by `total_me` DESC; `total` + `limit`/`query`/`lang`
