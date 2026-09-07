@@ -16,6 +16,7 @@ rsync -az --delete \
   --exclude 'sites/*/private/' \
   --exclude 'sites/*/tmp/' \
   --exclude 'sites/*/settings.php' \
+  --exclude 'sites/*/settings.local.php' \
   ./ "$TARGET:$DEST/"
 
 # First deploy after moving modules into contrib/custom requires cache rebuild.

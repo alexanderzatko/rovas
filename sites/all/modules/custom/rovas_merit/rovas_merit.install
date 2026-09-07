@@ -6,7 +6,7 @@
  */
 
 /** Batch size for field_merit_source backfill (update hooks + drush). */
-define('ROVAS_MERIT_BACKFILL_BATCH', 25);
+define('ROVAS_MERIT_BACKFILL_BATCH', 500);
 
 /**
  * Field base definition for field_merit_source.
@@ -255,7 +255,9 @@ function _rovas_merit_backfill_sources($reclassify = FALSE) {
   $sandbox = array('reclassify' => !empty($reclassify));
   do {
     _rovas_merit_backfill_sources_sandbox($sandbox);
-  } while (empty($sandbox['#finished']));
+    // #finished is a float in (0, 1) while in progress; only 1 means done.
+    // empty(0.001) is FALSE in PHP, so do not use empty() here.
+  } while (!isset($sandbox['#finished']) || $sandbox['#finished'] < 1);
   field_cache_clear();
   return !empty($sandbox['changed']) ? (int) $sandbox['changed'] : 0;
 }

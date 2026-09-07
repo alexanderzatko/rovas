@@ -13,6 +13,11 @@ unless explicitly requested.
 and clears caches. It does **not** overwrite `sites/*/settings.php` or
 `sites/*/files/`.
 
+To refresh rovdev as a full production clone (code/modules/libraries + DB +
+files) before a deploy rehearsal, see
+[`clone-prod-to-rovdev.md`](clone-prod-to-rovdev.md). Civic cutover steps on
+that clone: [`integration/civic-deploy.md`](integration/civic-deploy.md).
+
 ## Outgoing email (disabled on dev)
 
 Event mail (work reports, verifications, Rules notifications, etc.) must **not**

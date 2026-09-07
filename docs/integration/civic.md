@@ -35,7 +35,8 @@ Civic API); keep both in sync when contracts change.
 [Next work: geofield on Civic work reports](#next-work-geofield-on-civic-work-reports),
 and [Next work: OAuth session persistence](#next-work-oauth-session-persistence),
 [Next work: member_since_year on users_lookup](#next-work-member_since_year-on-users_lookup),
-[Next work: charitable projects (Civic catalog)](#next-work-charitable-projects-civic-catalog).
+[Next work: charitable projects (Civic catalog)](#next-work-charitable-projects-civic-catalog),
+[Next work: top_volunteer_projects include WR rewards](#next-work-top_volunteer_projects-include-wr-rewards).
 Do not rely on reading the Civic tree unless you need Expo/API details.
 
 **Dev target (until told otherwise):** all Civic integration work targets
@@ -69,6 +70,7 @@ env): [`civic-deploy.md`](civic-deploy.md).
 | National hourly rate read            | `GET /rovas/civic_national_hourly_rate`                                                                                                    | Implemented in `rovas_civic` (`rovas_civic_update_7003`)                                                                                                                               |
 | Users search (split typeahead)       | `GET /rovas/users_search?query=`                                                                                                           | Implemented in `rovas_civic` (`rovas_civic_update_7005`). **Param is `query`, not `q`** — Drupal reserves `$_GET['q']` for the request path.                                           |
 | Users lookup (community profile)     | `GET /rovas/users_lookup?username=`                                                                                                        | Implemented in `rovas_civic` (`rovas_civic_update_7006`). Exact username; Bearer required. Includes `nace_expertise[]` via `rovas_meritscope_user_expertise_json()`.                   |
+| `top_volunteer_projects` WR rewards  | `users_lookup.top_volunteer_projects`                                                                                                      | **Implemented** — allocations + WR-linked ledger ME; CHR→ME stays unattributed — see [top_volunteer_projects include WR rewards](#next-work-top_volunteer_projects-include-wr-rewards) |
 | Hide negative Merit users            | `users_search` / `users_lookup`                                                                                                            | Implemented — `total_me < 0` omitted / 404; search response stays public fields only                                                                                                   |
 | Friend invite (Civic)                | —                                                                                                                                          | **Civic-client only** (`mailto:`). No Rovas invite endpoint. Signup URL in the email body should work (`/user/register` or OAuth authorize).                                           |
 | Project detail + WR list             | `GET /rovas/civic_project/{nid}`, `GET /rovas/civic_project_work_reports`                                                                  | Implemented (`rovas_civic_update_7007`). Private participation still returns full content — see [private projects are fully readable](#next-work-private-projects-are-fully-readable). |
@@ -622,7 +624,7 @@ Do **not** register `/rovas/users/lookup` (slash in alias). Civic API calls
 | `by_source`              | Full breakdown keyed by `field_merit_source` (`volunteer_work`, `volunteer`, `tax_payment`, `charitable_donation`, `penalty`, …); omits zero keys; negative `penalty` included when present. **Civic** remaps this into its displayed `by_category` with `penalty` folded into `volunteer` (Rovas `by_category` still excludes penalty). |
 | `taxes_last_3_months`    | Last **3 calendar months** (including current) of VAT-claim Merits for this uid, keyed `YYYY-MM`; omit zero months or include with `me: 0` — prefer only months with activity; max 3 rows; `[]` if none                                                                           |
 | `top_charities`          | Up to **3** `{ project_nid, name, me }` from `{rovas_merit_issuance}` rows with `source_type = project_reward_order` (Path-1 donor Merits from project donations). **Not** raw `purchase_receipt` Merit spends. Exclude State Treasury. Empty until real charity donations exist. |
-| `top_volunteer_projects` | Up to **3** `{ project_nid, name, me }` from `project_merit_allocation` / `co_worker_merit_allocation` labor Merits (aggregated by project nid)                                                                                                                                   |
+| `top_volunteer_projects` | Up to **3** `{ project_nid, name, me }` — share allocations **plus** WR-linked ledger Merits (`field_rewarded_report` → WR `field_project`); **exclude** CHR→ME (`source=volunteer` / no rewarded report). See [top_volunteer_projects include WR rewards](#next-work-top_volunteer_projects-include-wr-rewards). |
 
 
 ### Errors
@@ -3316,6 +3318,110 @@ curl -sS -o /dev/null -w "%{http_code}\n" \
 - Proxy `GET /charities/projects?type=charity` → `civic_charity_projects`
 - Optional-auth `GET /projects/:nid` (+ WR / shareholders) for guest charity modal
 - Expo charity screen: top 5 / search if `total >= 6` / mailto invite / `ProjectDetailModal` donate block
+
+## Next work: top_volunteer_projects include WR rewards
+
+**Implemented in `rovas_civic`.** Rovas query change only (no Civic Expo/API
+contract change). Deploy + cache clear on rovdev when ready.
+
+### Problem
+
+Civic Home / Community **Volunteer** tab lists top projects via
+`users_lookup.top_volunteer_projects`. Previously
+`rovas_civic_users_lookup_top_volunteer_projects()` summed only
+`field_merits_earned` on `project_merit_allocation` /
+`co_worker_merit_allocation` (shareholder labor share).
+
+Individually rewarded work reports (`rules_reward_work_report`) credit the
+author’s wallet + ledger (`volunteer_work`, parent receipt has
+`field_rewarded_report`) and bump project `field_merit_reward`, but **do not**
+update allocation `field_merits_earned`. Those ME therefore appear in
+`by_category.volunteer` / `by_source.volunteer_work` but were **not** in the
+per-project rows — e.g. uid **1481** (`Jožo Sečík`): allocations ≈ **447 ME**,
+WR-linked ledger ≈ **+43 ME**, volunteer_work total ≈ **490 ME**.
+
+### Out of scope (do not attribute to projects)
+
+- Direct forex **CHR→ME** (`_rovas_forex_grant_merits`, source `volunteer`)
+- Civic WR verification **reward_kind=merits** (same forex path after Chron
+  grant) — product decision: those ME stay wallet/category only, **not**
+  project-attributed
+
+### Behaviour
+
+`top_volunteer_projects[]` still **up to 3** `{ project_nid, name, me }`,
+sorted by `me` DESC. For each project, `me` =
+
+1. **Share allocations** (unchanged): sum of positive
+   `field_merits_earned` on published `project_merit_allocation` (author =
+   uid) and `co_worker_merit_allocation` (`field_coworker` = uid) for that
+   project
+2. **plus WR-linked ledger Merits:** sum of published
+   `merits_disbursement.field_reward_amount` where
+   - `field_reward_recipient` = uid
+   - parent receipt (`field_parent_purchase_receipt`) has
+     `field_rewarded_report` → a `work_report`
+   - that WR’s `field_project` → the project nid
+   - `field_merit_source` is `volunteer_work` or empty (exclude
+     `volunteer` / rows without a rewarded report)
+
+Aggregate (1)+(2) per project, then take top 3. Localized `name` via existing
+`rovas_civic_project_titles_for_nids($lang)` stays as today.
+
+**No data migration / allocation backfill required** — fixing the lookup
+query is retroactive for historical WR rewards. Do **not** rewrite
+`field_merits_earned` unless some other Rovas UI separately needs it.
+
+Response shape unchanged — Civic already displays whatever `me` Rovas
+returns.
+
+### Implementation notes
+
+- Helper: `rovas_civic_users_lookup_top_volunteer_projects()` in
+  `rovas_civic.module` (called from `users_lookup`).
+- One SQL: UNION ALL of allocation aggregates + WR-ledger aggregate; merge
+  in PHP; avoid N+1.
+- Dedup: a ME amount must not be counted twice if it somehow appears in
+  both buckets (allocations and WR-linked ledger are disjoint today).
+- Project `field_merit_reward` already updated by `rules_reward_work_report`
+  — leave alone.
+
+### Checklist
+
+1. [x] Extend `rovas_civic_users_lookup_top_volunteer_projects()` to add
+      WR-linked ledger ME per project (rules above)
+2. [x] Exclude CHR→ME / forex / Civic verification ME (no
+      `field_rewarded_report`, or source `volunteer`)
+3. [x] Keep envelope `{ project_nid, name, me }` ≤ 3; `lang` titles unchanged
+4. [ ] Smoke-test curl below on rovdev (uid 1481 / username `Jožo Sečík`)
+5. [ ] No Civic code change expected; Expo refresh after Rovas deploy
+
+### Smoke test (after deploy)
+
+```bash
+TOKEN='…'  # OAuth Bearer with user_profile
+
+curl -sS "https://dev.rovas.app/rovas/users_lookup?username=Jo%C5%BEo%20Se%C4%8D%C3%ADk&lang=sk" \
+  -H "Authorization: Bearer $TOKEN" -H "Accept: application/json" \
+  | python3 -c "
+import json,sys
+d=json.load(sys.stdin)
+print('total_me', d.get('total_me'))
+print('by_category', d.get('by_category'))
+print('by_source', d.get('by_source'))
+for p in d.get('top_volunteer_projects') or []:
+  print(p)
+"
+# Expect: top_volunteer_projects me sums much closer to by_source.volunteer_work
+# (≈490 for this user): Pliešovce ≈ allocation+WR rewards, Zalúžok likewise.
+# CHR→ME-only users must not suddenly gain project rows from forex purchases.
+```
+
+### Civic will consume
+
+No API shape change. Home + Community `ContributionBreakdown` already render
+`top_volunteer_projects`. After rovdev deploy, pull-to-refresh / re-open
+profile should show higher per-project ME where WR rewards existed.
 
 ## Related Civic docs
 
