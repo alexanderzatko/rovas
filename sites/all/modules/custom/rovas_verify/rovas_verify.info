@@ -2,3 +2,4 @@ name = Rovas Verify work report actions
 description = Mods of the verification form and verifier-finding algorithm
 core = 7.x
 package = Rovas
+dependencies[] = rovas_base

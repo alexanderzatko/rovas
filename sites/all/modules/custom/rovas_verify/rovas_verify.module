@@ -233,23 +233,14 @@ function rovas_verify_form_alter(&$form, &$form_state, $form_id) {
 
 			$webs = $object->field_web_address->value();
 			$web_proofs = '';
+			$token = $object->field_content_access_token->value();
 			foreach ($webs as $web) {
-
-				$septyp = strpos($web, '?');
-				$doubles = strpos($web, '"');
-
-				if ($septyp) {
-					$separator = '&';
+				$href = rovas_base_proof_web_url($web, $token);
+				if (strpos($web, '"') !== FALSE) {
+					$web_proofs .= "<a href='" . $href . "' target='_blank'>" . $web . "</a><br>";
 				}
 				else {
-					$separator = '?';
-				}
-		
-				if ($doubles) {
-					$web_proofs .= "<a href='". $web . $separator . "cbt=" . $object->field_content_access_token->value() ."' target='_blank'>" . $web . "</a><br>";
-				}
-				else {
-					$web_proofs .= '<a href="'. $web . $separator . 'cbt=' . $object->field_content_access_token->value() .'" target="_blank">' . $web . '</a><br>';
+					$web_proofs .= '<a href="' . $href . '" target="_blank">' . $web . '</a><br>';
 				}
 			}
 

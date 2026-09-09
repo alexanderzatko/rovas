@@ -565,7 +565,7 @@ function rovas_civic_wr_project_nid($work_report) {
 }
 
 /**
- * Proof web URLs with content-access token (cbt=).
+ * Proof web URLs, with content-access token (cbt=) for allowlisted hosts.
  *
  * @param object $node
  *
@@ -592,11 +592,7 @@ function rovas_civic_wr_web_urls($node) {
     if ($web === '') {
       continue;
     }
-    if ($token !== '') {
-      $separator = (strpos($web, '?') !== FALSE) ? '&' : '?';
-      $web .= $separator . 'cbt=' . rawurlencode($token);
-    }
-    $urls[] = $web;
+    $urls[] = rovas_base_proof_web_url($web, $token);
   }
   return $urls;
 }

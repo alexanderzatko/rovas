@@ -1024,3 +1024,81 @@ function rovas_base_process_page(&$variables) {
     ), WATCHDOG_DEBUG);
   }
 }
+
+/**
+ * Partner hosts that consume the content-access token (cbt=) on proof URLs.
+ *
+ * Subdomains of each entry are included (e.g. dev.nabezky.sk).
+ *
+ * @return string[]
+ */
+function rovas_base_proof_cbt_hosts() {
+  return array('nabezky.sk');
+}
+
+/**
+ * Whether a proof URL should receive cbt=/vrfier= query args.
+ *
+ * @param string $url
+ *
+ * @return bool
+ */
+function rovas_base_proof_url_accepts_cbt($url) {
+  $parts = @parse_url($url);
+  if (empty($parts['host'])) {
+    return FALSE;
+  }
+  $host = drupal_strtolower($parts['host']);
+  foreach (rovas_base_proof_cbt_hosts() as $allowed) {
+    $allowed = drupal_strtolower($allowed);
+    if ($host === $allowed || drupal_substr($host, -1 * (drupal_strlen($allowed) + 1)) === '.' . $allowed) {
+      return TRUE;
+    }
+  }
+  return FALSE;
+}
+
+/**
+ * Append content-access token (and optional verifier uid) to a proof web URL.
+ *
+ * Only allowlisted partner hosts (currently nabezky.sk) receive cbt=/vrfier=.
+ * Other URLs are returned unchanged so public viewers (e.g. achavi) keep working.
+ *
+ * @param string $url
+ *   Proof web address from field_web_address.
+ * @param string $token
+ *   Content access token (field_content_access_token).
+ * @param array $options
+ *   - vrfier: int|string verifier uid to append as vrfier=
+ *   - encode_query_special: bool encode { } [ ] " ' in the query string
+ *     (useful for email HTML links that contain OSMCha-style JSON filters)
+ *
+ * @return string
+ */
+function rovas_base_proof_web_url($url, $token = '', $options = array()) {
+  $url = trim((string) $url);
+  if ($url === '') {
+    return '';
+  }
+
+  $token = (string) $token;
+  if ($token !== '' && rovas_base_proof_url_accepts_cbt($url)) {
+    $parts = array('cbt=' . rawurlencode($token));
+    if (isset($options['vrfier']) && $options['vrfier'] !== '' && $options['vrfier'] !== NULL) {
+      $parts[] = 'vrfier=' . rawurlencode((string) $options['vrfier']);
+    }
+    $separator = (strpos($url, '?') !== FALSE) ? '&' : '?';
+    $url .= $separator . implode('&', $parts);
+  }
+
+  if (!empty($options['encode_query_special']) && strpos($url, '?') !== FALSE) {
+    $ary = explode('?', $url, 2);
+    $url = $ary[0] . '?' . str_replace(
+      array('{', '}', '[', ']', '"', "'"),
+      array('%7B', '%7D', '%5B', '%5D', '%22', '%27'),
+      $ary[1]
+    );
+  }
+
+  return $url;
+}

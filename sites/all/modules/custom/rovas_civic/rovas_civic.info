@@ -8,6 +8,7 @@ dependencies[] = oauth2_server
 dependencies[] = rovas_oauth
 dependencies[] = userpoints
 dependencies[] = rovas_merit
+dependencies[] = rovas_base
 dependencies[] = entityreference
 dependencies[] = list
 dependencies[] = options
