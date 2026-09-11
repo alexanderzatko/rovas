@@ -266,7 +266,259 @@ function _rovas_merit_expected_user_share_merits($project_nid, $labor_share, $la
 }
 
 /**
+ * Whether allocation rows include earned labor hours (co_worker with hours > 0).
+ *
+ * @param array $allocs
+ *
+ * @return bool
+ */
+function _rovas_merit_allocs_have_labor_hours(array $allocs) {
+  foreach ($allocs as $row) {
+    $bundle = isset($row->bundle) ? $row->bundle : '';
+    $hours = isset($row->hours) ? (float) $row->hours : 0.0;
+    if ($bundle === 'co_worker_merit_allocation' && $hours > 0) {
+      return TRUE;
+    }
+  }
+  return FALSE;
+}
+
+/**
+ * All co_worker / timeshare projects for a user, keyed by project nid.
+ *
+ * @param int $uid
+ *
+ * @return array
+ *   project_nid => list of alloc objects (bundle, hours, share).
+ */
+function _rovas_merit_user_share_projects_map($uid) {
+  $uid = (int) $uid;
+  $out = array();
+  if ($uid < 1) {
+    return $out;
+  }
+  $result = db_query("
+    SELECT p.field_project_target_id AS project_nid,
+      n.type AS bundle,
+      COALESCE(hw.field_total_hours_worked_value, 0) AS hours,
+      COALESCE(ma.field_merit_allocation_value, 0) AS share
+    FROM {node} n
+    INNER JOIN {field_data_field_project} p
+      ON p.entity_id = n.nid AND p.entity_type = 'node' AND p.deleted = 0
+    INNER JOIN {field_data_field_coworker} cw
+      ON cw.entity_id = n.nid AND cw.entity_type = 'node' AND cw.deleted = 0
+    LEFT JOIN {field_data_field_total_hours_worked} hw
+      ON hw.entity_id = n.nid AND hw.entity_type = 'node' AND hw.deleted = 0
+    LEFT JOIN {field_data_field_merit_allocation} ma
+      ON ma.entity_id = n.nid AND ma.entity_type = 'node' AND ma.deleted = 0
+    WHERE n.status = 1
+      AND n.type IN ('co_worker_merit_allocation', 'timeshare_merit_allocation')
+      AND cw.field_coworker_target_id = :uid
+  ", array(':uid' => $uid));
+  foreach ($result as $row) {
+    $prid = (int) $row->project_nid;
+    if ($prid < 1) {
+      continue;
+    }
+    if (!isset($out[$prid])) {
+      $out[$prid] = array();
+    }
+    $out[$prid][] = (object) array(
+      'bundle' => $row->bundle,
+      'hours' => $row->hours,
+      'share' => $row->share,
+    );
+  }
+  return $out;
+}
+
+/**
+ * project_merit_allocation children for a batch of parent projects.
+ *
+ * @param array $parent_nids
+ *
+ * @return array
+ *   parent_nid => list of child project nids.
+ */
+function _rovas_merit_shareholder_children_map(array $parent_nids) {
+  $out = array();
+  $parent_nids = array_values(array_unique(array_filter(array_map('intval', $parent_nids))));
+  if (empty($parent_nids)) {
+    return $out;
+  }
+  $result = db_query("
+    SELECT p.field_project_target_id AS parent_nid,
+      sh.field_shareholder_project_target_id AS child_nid
+    FROM {node} n
+    INNER JOIN {field_data_field_project} p
+      ON p.entity_id = n.nid AND p.entity_type = 'node' AND p.deleted = 0
+    INNER JOIN {field_data_field_shareholder_project} sh
+      ON sh.entity_id = n.nid AND sh.entity_type = 'node' AND sh.deleted = 0
+    WHERE n.status = 1
+      AND n.type = 'project_merit_allocation'
+      AND p.field_project_target_id IN (:parents)
+  ", array(':parents' => $parent_nids));
+  foreach ($result as $row) {
+    $parent = (int) $row->parent_nid;
+    $child = (int) $row->child_nid;
+    if ($parent < 1 || $child < 1 || $child === $parent) {
+      continue;
+    }
+    if (!isset($out[$parent])) {
+      $out[$parent] = array();
+    }
+    $out[$parent][$child] = $child;
+  }
+  foreach ($out as $parent => $children) {
+    $out[$parent] = array_values($children);
+  }
+  return $out;
+}
+
+/**
+ * Reachable projects where the user has personal share allocs (mirrors mrewarder).
+ *
+ * Walks project_merit_allocation edges with a loop guard. Includes the root
+ * when the user holds shares there directly.
+ *
+ * @param int $uid
+ * @param int $root_project_nid
+ *   Originally rewarded project (receipt field_receipt_project).
+ *
+ * @return array
+ *   List of array(project_nid, allocs).
+ */
+function _rovas_merit_cascade_share_candidates($uid, $root_project_nid) {
+  $uid = (int) $uid;
+  $root_project_nid = (int) $root_project_nid;
+  $candidates = array();
+  if ($uid < 1 || $root_project_nid < 1) {
+    return $candidates;
+  }
+
+  $user_map = _rovas_merit_user_share_projects_map($uid);
+  if (empty($user_map)) {
+    return $candidates;
+  }
+
+  $found = array();
+  if (isset($user_map[$root_project_nid])) {
+    $found[$root_project_nid] = $user_map[$root_project_nid];
+    // Still walk nested project shareholders: same receipt can also pay the
+    // user via a deeper leaf (mrewarder pays co_worker on root and recurses).
+  }
+
+  $visited = array();
+  $queued = array($root_project_nid => TRUE);
+  $queue = array($root_project_nid);
+  $max_nodes = 5000;
+  $seen = 0;
+
+  while (!empty($queue) && $seen < $max_nodes) {
+    $batch = array();
+    foreach ($queue as $nid) {
+      $nid = (int) $nid;
+      if ($nid < 1 || isset($visited[$nid])) {
+        continue;
+      }
+      $visited[$nid] = TRUE;
+      $batch[] = $nid;
+      $seen++;
+    }
+    $queue = array();
+    if (empty($batch)) {
+      break;
+    }
+
+    $children_map = _rovas_merit_shareholder_children_map($batch);
+    foreach ($batch as $parent) {
+      if (empty($children_map[$parent])) {
+        continue;
+      }
+      foreach ($children_map[$parent] as $child) {
+        $child = (int) $child;
+        if ($child < 1 || isset($visited[$child]) || isset($queued[$child])) {
+          continue;
+        }
+        if (isset($user_map[$child]) && !isset($found[$child])) {
+          $found[$child] = $user_map[$child];
+        }
+        // Continue past user leaves: another nested path may also pay them.
+        $queued[$child] = TRUE;
+        $queue[] = $child;
+      }
+    }
+  }
+
+  foreach ($found as $prid => $allocs) {
+    $candidates[] = array(
+      'project_nid' => (int) $prid,
+      'allocs' => $allocs,
+    );
+  }
+  return $candidates;
+}
+
+/**
+ * Pick merit source from one or more cascade leaf candidates.
+ *
+ * When several leaves match, prefer those with earned labor hours (avoids
+ * first-sibling %-only false charity). Among a pool, use existing dual-alloc
+ * amount matching; if sources still disagree, prefer volunteer_work when any
+ * labor hours exist.
+ *
+ * @param array $candidates
+ * @param float $amount
+ * @param int $receipt_nid
+ *
+ * @return string
+ */
+function _rovas_merit_source_from_cascade_candidates(array $candidates, $amount, $receipt_nid = 0) {
+  if (empty($candidates)) {
+    return ROVAS_MERIT_SOURCE_CHARITABLE_DONATION;
+  }
+
+  $labor = array();
+  $other = array();
+  foreach ($candidates as $c) {
+    $allocs = isset($c['allocs']) ? $c['allocs'] : array();
+    if (_rovas_merit_allocs_have_labor_hours($allocs)) {
+      $labor[] = $c;
+    }
+    else {
+      $other[] = $c;
+    }
+  }
+  // Prefer earned-time leaves when present (mirrors live mrewarder tagging).
+  $pool = !empty($labor) ? $labor : $other;
+
+  if (count($pool) === 1) {
+    $c = reset($pool);
+    return _rovas_merit_source_from_share_allocs($c['allocs'], $amount, $receipt_nid, $c['project_nid']);
+  }
+
+  $sources = array();
+  foreach ($pool as $c) {
+    $sources[] = _rovas_merit_source_from_share_allocs($c['allocs'], $amount, $receipt_nid, $c['project_nid']);
+  }
+  $sources = array_values(array_unique($sources));
+  if (count($sources) === 1) {
+    return $sources[0];
+  }
+
+  // Mixed pool: prefer volunteer when any earned hours remain in play.
+  if (!empty($labor)) {
+    return ROVAS_MERIT_SOURCE_VOLUNTEER_WORK;
+  }
+  return ROVAS_MERIT_SOURCE_CHARITABLE_DONATION;
+}
+
+/**
  * Infer source for shareholder ME from a project-reward purchase_receipt.
+ *
+ * Walks the full project_merit_allocation graph (like live mrewarder), not a
+ * single hop. Disbursements only store the top rewarded project on the parent
+ * receipt, so nested labor ME must be recovered by cascade.
  *
  * @param int $uid
  * @param int $project_nid
@@ -278,36 +530,12 @@ function _rovas_merit_expected_user_share_merits($project_nid, $labor_share, $la
 function rovas_merit_infer_project_shareholder_source($uid, $project_nid, $amount, $receipt_nid = 0) {
   $uid = (int) $uid;
   $project_nid = (int) $project_nid;
-  $allocs = _rovas_merit_user_share_allocs($uid, $project_nid);
-  if (!empty($allocs)) {
-    return _rovas_merit_source_from_share_allocs($allocs, $amount, $receipt_nid, $project_nid);
+  $candidates = _rovas_merit_cascade_share_candidates($uid, $project_nid);
+  if (empty($candidates)) {
+    // No allocation found: default charity (capital-like / unknown).
+    return ROVAS_MERIT_SOURCE_CHARITABLE_DONATION;
   }
-
-  // Cascade via project_merit_allocation: user holds shares on a shareholder project.
-  $children = db_query("
-    SELECT DISTINCT sh.field_shareholder_project_target_id AS child_nid
-    FROM {node} n
-    INNER JOIN {field_data_field_project} p
-      ON p.entity_id = n.nid AND p.entity_type = 'node' AND p.deleted = 0
-    INNER JOIN {field_data_field_shareholder_project} sh
-      ON sh.entity_id = n.nid AND sh.entity_type = 'node' AND sh.deleted = 0
-    WHERE n.status = 1
-      AND n.type = 'project_merit_allocation'
-      AND p.field_project_target_id = :prid
-  ", array(':prid' => $project_nid));
-  foreach ($children as $child) {
-    $child_nid = (int) $child->child_nid;
-    if ($child_nid < 1 || $child_nid === $project_nid) {
-      continue;
-    }
-    $child_allocs = _rovas_merit_user_share_allocs($uid, $child_nid);
-    if (!empty($child_allocs)) {
-      return _rovas_merit_source_from_share_allocs($child_allocs, $amount, $receipt_nid, $child_nid);
-    }
-  }
-
-  // No allocation found: default charity (capital-like / unknown).
-  return ROVAS_MERIT_SOURCE_CHARITABLE_DONATION;
+  return _rovas_merit_source_from_cascade_candidates($candidates, $amount, $receipt_nid);
 }
 
 /**
