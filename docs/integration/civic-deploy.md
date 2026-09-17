@@ -374,6 +374,47 @@ drush74 php-eval "print db_query(\"SELECT weight FROM {system} WHERE name='rovas
 
 ---
 
+## Production follow-up (off-peak)
+
+On a live Magura cutover, skip `--reclassify` during the short enable window
+(it can run 30–60+ minutes on a full ledger). Run later off-peak — **no
+maintenance mode required**:
+
+```bash
+# On Magura
+cd /var/www/rovas
+nohup drush74 rovas-merit-backfill --reclassify > /tmp/merit-reclassify-prod.log 2>&1 &
+
+# Watch progress
+tail -f /tmp/merit-reclassify-prod.log
+
+# After it finishes (look for "Backfilled field_merit_source on N ledger node(s)"):
+drush74 rovas-merit-reconcile
+drush74 rovas-merit-reconcile --fix
+drush74 cc all -y
+```
+
+Batch size is **500**; the do-while `#finished` bug is fixed in tree. Expect
+sustained CPU/DB load — prefer quiet hours. Until this runs, Civic
+`by_source` may still show mostly `legacy` for older ledger rows.
+
+For a true prod Civic point after Drupal enable:
+
+```bash
+# /opt/docker/civic-api/.env on VPS
+ROVAS_BASE_URL=https://rovas.app
+# then: cd /opt/docker/civic-api && docker compose up -d
+
+# Local Civic (API + Expo Metro)
+ROVAS_BASE_URL=https://rovas.app
+EXPO_PUBLIC_ROVAS_BASE_URL=https://rovas.app
+```
+
+Verify: `curl -sS https://civic-api.rovas.app/health` →
+`"rovas_base_url":"https://rovas.app"`.
+
+---
+
 ## Notes often missed
 
 - **Libraries / PKCE patch** must already be in the tree before OAuth works.

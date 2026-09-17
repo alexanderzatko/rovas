@@ -393,6 +393,10 @@ function rovas_civic_services_create_work_report($data) {
   $reward_kind = isset($data['reward_kind']) ? drupal_strtolower(trim((string) $data['reward_kind'])) : 'chrons';
   $photos = isset($data['photos']) && is_array($data['photos']) ? $data['photos'] : array();
   $field_location_raw = array_key_exists('field_location', $data) ? $data['field_location'] : NULL;
+  $has_fee_project = array_key_exists('usage_fee_project_id', $data) && $data['usage_fee_project_id'] !== NULL && $data['usage_fee_project_id'] !== '';
+  $has_fee_rate = array_key_exists('usage_fee_rate', $data) && $data['usage_fee_rate'] !== NULL && $data['usage_fee_rate'] !== '';
+  $usage_fee_project_id = 0;
+  $usage_fee_rate = 0.0;
 
   if ($reward_kind !== 'merits' && $reward_kind !== 'chrons') {
     $reward_kind = 'chrons';
@@ -402,6 +406,20 @@ function rovas_civic_services_create_work_report($data) {
   }
   if ($date_started < 1) {
     return rovas_civic_volunteer_error(400, 'invalid_input', 'date_started must be a unix timestamp.');
+  }
+  if ($has_fee_project xor $has_fee_rate) {
+    return rovas_civic_volunteer_error(400, 'invalid_input', 'usage_fee_project_id and usage_fee_rate must both be set or both omitted.');
+  }
+  if ($has_fee_project && $has_fee_rate) {
+    $usage_fee_project_id = (int) $data['usage_fee_project_id'];
+    $usage_fee_rate = (float) $data['usage_fee_rate'];
+    if ($usage_fee_project_id < 1 || $usage_fee_rate <= 0 || $usage_fee_rate > 1) {
+      return rovas_civic_volunteer_error(400, 'invalid_input', 'usage_fee_project_id must be a project nid and usage_fee_rate a fraction in (0, 1].');
+    }
+    $fee_project = rovas_civic_load_published_project($usage_fee_project_id);
+    if (!$fee_project) {
+      return rovas_civic_volunteer_error(400, 'invalid_input', 'usage_fee_project_id is not a published project.');
+    }
   }
 
   $field_location = rovas_civic_parse_field_location_geojson($field_location_raw);
@@ -504,13 +522,19 @@ function rovas_civic_services_create_work_report($data) {
     rovas_civic_attach_wr_field_location($wr, $field_location);
   }
 
+  $reward_fields = array(
+    'reward_kind' => $reward_kind,
+    'uid' => $uid,
+    'created' => REQUEST_TIME,
+  );
+  if (db_field_exists('civic_work_report_reward', 'usage_fee_project_id')) {
+    $reward_fields['usage_fee_project_id'] = $usage_fee_project_id;
+    $reward_fields['usage_fee_rate'] = $usage_fee_rate;
+  }
+
   db_merge('civic_work_report_reward')
     ->key(array('wr_nid' => $wr_nid))
-    ->fields(array(
-      'reward_kind' => $reward_kind,
-      'uid' => $uid,
-      'created' => REQUEST_TIME,
-    ))
+    ->fields($reward_fields)
     ->execute();
 
   return array(

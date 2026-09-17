@@ -4,8 +4,105 @@
  * @file
  * Civic volunteer work-report reward conversion (CHR→ME on verification).
  *
- * See docs/integration/civic.md → CHR to ME on WR verification.
+ * See docs/integration/civic.md → CHR to ME on WR verification /
+ * Next work: Civic WR usage fee (app AUR).
  */
+
+/**
+ * Charge a deferred app usage fee (AUR) for a Civic-filed work report.
+ *
+ * Uses project id + rate stored on {civic_work_report_reward} at create time
+ * (supplied by the app; Rovas does not hardcode Civic's project). Runs after
+ * rules_verify_work_report has credited Chrons and taken the Rovas 1% fee.
+ *
+ * @param object $work_report
+ *   work_report node (approved: field_verification_status = 1).
+ *
+ * @return bool
+ *   TRUE when fee charged, already charged, or not applicable; FALSE on error.
+ */
+function rovas_civic_maybe_charge_wr_usage_fee($work_report) {
+  if (empty($work_report->nid) || $work_report->type !== 'work_report') {
+    return FALSE;
+  }
+  $wr_nid = (int) $work_report->nid;
+
+  if (!rovas_civic_wr_is_fully_verified($work_report)) {
+    return FALSE;
+  }
+  if (!db_table_exists('civic_work_report_reward')
+    || !db_field_exists('civic_work_report_reward', 'usage_fee_project_id')) {
+    return FALSE;
+  }
+
+  $row = db_query(
+    'SELECT usage_fee_project_id, usage_fee_rate, usage_fee_charged FROM {civic_work_report_reward} WHERE wr_nid = :nid',
+    array(':nid' => $wr_nid)
+  )->fetchObject();
+  if (!$row) {
+    return FALSE;
+  }
+  $project_nid = (int) $row->usage_fee_project_id;
+  $rate = (float) $row->usage_fee_rate;
+  if ($project_nid < 1 || $rate <= 0) {
+    return TRUE;
+  }
+  if (!empty($row->usage_fee_charged)) {
+    return TRUE;
+  }
+
+  $gross = rovas_civic_wr_chron_grant_amount($work_report);
+  if ($gross <= 0) {
+    watchdog('rovas_civic', 'App usage fee: no Chron grant amount for work report @nid.', array(
+      '@nid' => $wr_nid,
+    ), WATCHDOG_WARNING);
+    return FALSE;
+  }
+
+  $fee = round($gross * $rate, 2);
+  if ($fee <= 0) {
+    return TRUE;
+  }
+
+  $project = rovas_civic_load_published_project($project_nid);
+  if (!$project) {
+    watchdog('rovas_civic', 'App usage fee: project @pid missing for work report @nid.', array(
+      '@pid' => $project_nid,
+      '@nid' => $wr_nid,
+    ), WATCHDOG_ERROR);
+    return FALSE;
+  }
+
+  $author = user_load($work_report->uid);
+  if (!$author) {
+    return FALSE;
+  }
+
+  if (!function_exists('rules_invoke_component') || !rules_config_load('rules_create_aur')) {
+    watchdog('rovas_civic', 'App usage fee: rules_create_aur unavailable for work report @nid.', array(
+      '@nid' => $wr_nid,
+    ), WATCHDOG_ERROR);
+    return FALSE;
+  }
+
+  $note = 'App usage fee of ' . $fee . ' CH';
+  rules_invoke_component('rules_create_aur', $project, $fee, $author, $note, $work_report);
+
+  db_update('civic_work_report_reward')
+    ->fields(array('usage_fee_charged' => REQUEST_TIME))
+    ->condition('wr_nid', $wr_nid)
+    ->condition('usage_fee_charged', 0)
+    ->execute();
+
+  watchdog('rovas_civic', 'App usage fee: charged @fee CH to project @pid for uid @uid on work report @nid.', array(
+    '@fee' => $fee,
+    '@pid' => $project_nid,
+    '@uid' => (int) $author->uid,
+    '@nid' => $wr_nid,
+  ), WATCHDOG_INFO);
+
+  return TRUE;
+}
 
 /**
  * Convert a verified Civic work-report Chron grant to Merits (NeoFund A6).

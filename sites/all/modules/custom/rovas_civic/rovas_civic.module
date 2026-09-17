@@ -213,6 +213,7 @@ function rovas_civic_node_insert($node) {
   }
   $work_report = node_load((int) $wr_ref[0]['target_id']);
   if ($work_report && $work_report->type === 'work_report') {
+    rovas_civic_maybe_charge_wr_usage_fee($work_report);
     rovas_civic_maybe_convert_wr_chron_to_merits($work_report);
   }
 }
@@ -713,7 +714,7 @@ function rovas_civic_services_resources() {
     'civic_create_work_report' => array(
       'operations' => array(
         'create' => array(
-          'help' => 'Create a work report for the Bearer user. Body: project_nid, date_started, hours, description, nace_tid, optional title/web_url/photos/reward_kind/field_location.',
+          'help' => 'Create a work report for the Bearer user. Body: project_nid, date_started, hours, description, nace_tid, optional title/web_url/photos/reward_kind/field_location/usage_fee_project_id+usage_fee_rate.',
           'callback' => 'rovas_civic_services_create_work_report',
           'file' => $volunteer_file,
           'access callback' => $bearer_auth['access callback'],

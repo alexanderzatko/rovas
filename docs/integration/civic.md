@@ -37,7 +37,8 @@ and [Next work: OAuth session persistence](#next-work-oauth-session-persistence)
 [Next work: member_since_year on users_lookup](#next-work-member_since_year-on-users_lookup),
 [Next work: charitable projects (Civic catalog)](#next-work-charitable-projects-civic-catalog),
 [Next work: top_volunteer_projects include WR rewards](#next-work-top_volunteer_projects-include-wr-rewards),
-[Next work: co_worker %-shares misclassified as charity](#next-work-co_worker-shares-misclassified-as-charity).
+[Next work: co_worker %-shares misclassified as charity](#next-work-co_worker-shares-misclassified-as-charity),
+[Next work: Civic WR usage fee (app AUR)](#next-work-civic-wr-usage-fee-app-aur).
 Do not rely on reading the Civic tree unless you need Expo/API details.
 
 **Dev target (until told otherwise):** all Civic integration work targets
@@ -3518,6 +3519,101 @@ print json_encode(rovas_civic_users_lookup_top_volunteer_projects($uid, "sk"), J
 
 No API shape change. After reclassify, Home/Community tabs remapped from
 `by_source` will show the bulk under Volunteer, matching the project table.
+
+## Next work: Civic WR usage fee (app AUR)
+
+**Deferred app usage fee on Civic-filed work reports.** Pattern matches the
+[Rovas Connector for iD](https://github.com/dp7x/rovas-id-timetracker)
+(`rules_proxy_create_aur` with client-owned project id + ~3% of `hours×10`),
+but Civic uses OAuth Bearer and charges **on approval** (from proceeds), not
+at create from an existing Chron wallet.
+
+Rovas stays **app-agnostic**: no Drupal variables for Civic’s project nid or
+rate. Civic sends fee params on create; Rovas stores them and runs
+`rules_create_aur` after full verification.
+
+### Economics (approved WR)
+
+1. Unchanged: grant `hours × 10` CHR; Rovas platform **1%** AUR → project `1992`.
+2. New: if `{civic_work_report_reward}` has `usage_fee_project_id` +
+   `usage_fee_rate`, AUR `gross × rate` → that project (Merits to its
+   shareholders).
+3. Unchanged: optional CHR→ME when `reward_kind=merits`.
+
+WRs filed on Rovas (no Civic create / no fee columns) → no app fee.
+
+### Contract
+
+`POST /rovas/civic_create_work_report` — optional body fields (both or neither):
+
+| Field | Type | Notes |
+|-------|------|--------|
+| `usage_fee_project_id` | int | Published project nid (AUR owner) |
+| `usage_fee_rate` | decimal | Fraction in `(0, 1]`, e.g. `0.03` |
+
+Invalid combo / unknown project → **400** `invalid_input`.
+
+Stored on `{civic_work_report_reward}`:
+
+| Column | Meaning |
+|--------|---------|
+| `usage_fee_project_id` | `0` = no fee |
+| `usage_fee_rate` | `0` = no fee |
+| `usage_fee_charged` | Unix time when AUR ran (`0` = not yet) |
+
+### Code
+
+
+| File | Role |
+|------|------|
+| `rovas_civic.volunteer.inc` | Validate + persist fee params on create |
+| `rovas_civic.reward.inc` | `rovas_civic_maybe_charge_wr_usage_fee()` |
+| `rovas_civic.module` | Call charge hook before CHR→ME on verification insert |
+| `rovas_civic.install` | Columns + `rovas_civic_update_7019` |
+
+### Checklist
+
+1. [ ] Schema: `usage_fee_project_id`, `usage_fee_rate`, `usage_fee_charged` on `{civic_work_report_reward}`
+2. [ ] Create WR accepts/validates/stores fee params
+3. [ ] On full approval: idempotent `rules_create_aur` using stored params
+4. [ ] Deploy rovdev: `drush74 updb -y`
+5. [ ] Smoke tests below
+
+### Smoke test (after deploy)
+
+```bash
+TOKEN='…'  # Civic OAuth Bearer
+# Replace CIVIC_PROJECT_NID with the Civic app project on Rovas (created in UI).
+
+# 1) Create WR with 3% app fee
+curl -sS -X POST "https://dev.rovas.app/rovas/civic_create_work_report" \
+  -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
+  -d '{
+    "project_nid": "YOUR_VOLUNTEER_PROJECT_NID",
+    "date_started": 1750000000,
+    "hours": 3,
+    "description": "Civic usage fee smoke",
+    "nace_tid": "860",
+    "web_url": "https://example.org/proof",
+    "reward_kind": "chrons",
+    "usage_fee_project_id": CIVIC_PROJECT_NID,
+    "usage_fee_rate": 0.03
+  }'
+# Note work_report_nid
+
+# 2) After two verifiers approve:
+# - Author +30 CHR (gross), −0.3 Rovas 1% AUR (1992), −0.9 Civic 3% AUR
+# - {civic_work_report_reward}.usage_fee_charged > 0
+
+# 3) Create without fee params → approve → no second AUR to Civic project
+```
+
+### Civic will consume
+
+Civic API attaches `usage_fee_project_id` / `usage_fee_rate` from its env
+(`CIVIC_APP_PROJECT_NID`, `WR_USAGE_FEE_RATE`) when the fee is enabled.
+Form disclosure uses Civic `GET /work-reports/fee-info` (no Rovas round-trip).
+One-time: create the Civic project in the Rovas UI; put its nid in Civic env.
 
 ## Related Civic docs
 

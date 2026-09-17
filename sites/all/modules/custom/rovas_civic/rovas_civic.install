@@ -273,6 +273,27 @@ function rovas_civic_schema() {
         'not null' => TRUE,
         'default' => 0,
       ),
+      'usage_fee_project_id' => array(
+        'description' => 'App usage-fee AUR owner project nid (0 = none).',
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+      'usage_fee_rate' => array(
+        'description' => 'App usage-fee fraction of Chron grant (0 = none).',
+        'type' => 'numeric',
+        'precision' => 10,
+        'scale' => 6,
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+      'usage_fee_charged' => array(
+        'description' => 'Unix time when app usage-fee AUR ran (0 = not yet).',
+        'type' => 'int',
+        'not null' => TRUE,
+        'default' => 0,
+      ),
     ),
     'primary key' => array('wr_nid'),
     'indexes' => array(
@@ -559,4 +580,40 @@ function rovas_civic_update_7018() {
     rovas_civic_ensure_services_resources();
   }
   return t('Charitable organization content type, project charity fields, /charity-projects page, and GET /rovas/civic_charity_projects enabled; civic_project reads allow anonymous for approved charities.');
+}
+
+/**
+ * App usage fee on Civic WR: store project/rate on create; AUR on approval.
+ */
+function rovas_civic_update_7019() {
+  if (db_table_exists('civic_work_report_reward')) {
+    if (!db_field_exists('civic_work_report_reward', 'usage_fee_project_id')) {
+      db_add_field('civic_work_report_reward', 'usage_fee_project_id', array(
+        'description' => 'App usage-fee AUR owner project nid (0 = none).',
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 0,
+      ));
+    }
+    if (!db_field_exists('civic_work_report_reward', 'usage_fee_rate')) {
+      db_add_field('civic_work_report_reward', 'usage_fee_rate', array(
+        'description' => 'App usage-fee fraction of Chron grant (0 = none).',
+        'type' => 'numeric',
+        'precision' => 10,
+        'scale' => 6,
+        'not null' => TRUE,
+        'default' => 0,
+      ));
+    }
+    if (!db_field_exists('civic_work_report_reward', 'usage_fee_charged')) {
+      db_add_field('civic_work_report_reward', 'usage_fee_charged', array(
+        'description' => 'Unix time when app usage-fee AUR ran (0 = not yet).',
+        'type' => 'int',
+        'not null' => TRUE,
+        'default' => 0,
+      ));
+    }
+  }
+  return t('Civic WR app usage-fee columns on {civic_work_report_reward} (project id, rate, charged).');
 }
