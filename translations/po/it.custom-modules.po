@@ -100,3 +100,75 @@ msgstr "Accedi per autorizzare <strong>@app</strong>. Usa Google, Facebook o il 
 #: sites/all/modules/custom/rovas_oauth/rovas_oauth.module:159
 msgid "Read your Rovas username and grant Merits on your behalf."
 msgstr "Leggere il tuo nome utente Rovas e assegnare Meriti per tuo conto."
+
+#: sites/all/modules/custom/rovas_civic/rovas_civic.charity.inc
+msgid "Charitable project"
+msgstr "Progetto benefico"
+
+#: sites/all/modules/custom/rovas_civic/rovas_civic.charity.inc
+msgid "This is a project of a registered charity"
+msgstr "Questo è un progetto di un’organizzazione benefica registrata"
+
+#: sites/all/modules/custom/rovas_civic/rovas_civic.charity.inc
+msgid "When checked, link a charity organization. NeoFund must approve the organization before the project appears in Civic and before EUR donations or share purchases are allowed."
+msgstr "Se selezionato, collega un’organizzazione benefica. NeoFund deve approvare l’organizzazione prima che il progetto compaia in Civic e prima che siano consentite donazioni in euro o acquisti di quote."
+
+#: sites/all/modules/custom/rovas_civic/rovas_civic.charity.inc
+msgid "Charity organization"
+msgstr "Organizzazione benefica"
+
+#: sites/all/modules/custom/rovas_civic/rovas_civic.charity.inc
+msgid "Select an organization you manage, or !create first."
+msgstr "Seleziona un’organizzazione che gestisci, oppure !create prima."
+
+#: sites/all/modules/custom/rovas_civic/rovas_civic.charity.inc
+msgid "create a charity organization"
+msgstr "crea un’organizzazione benefica"
+
+#: sites/all/modules/custom/rovas_civic/rovas_civic.charity.inc
+msgid "Donate instructions (project override)"
+msgstr "Istruzioni per donare (sostituzione per il progetto)"
+
+#: sites/all/modules/custom/rovas_civic/rovas_civic.charity.inc
+msgid "Optional. Overrides the organization's default donate instructions for this project."
+msgstr "Facoltativo. Sostituisce le istruzioni predefinite dell’organizzazione per le donazioni di questo progetto."
+
+#: sites/all/modules/custom/rovas_civic/rovas_civic.charity.inc
+msgid "Donate URL (project override)"
+msgstr "URL per donare (sostituzione per il progetto)"
+
+#: sites/all/modules/custom/rovas_civic/rovas_civic.charity.inc
+msgid "Optional absolute URL. Overrides the organization's default donate URL."
+msgstr "URL assoluto facoltativo. Sostituisce l’URL predefinito dell’organizzazione per le donazioni."
+
+#: sites/all/modules/custom/rovas_civic/rovas_civic.charity.inc
+msgid "Select or create a charity organization for this charitable project."
+msgstr "Seleziona o crea un’organizzazione benefica per questo progetto benefico."
+
+#: sites/all/modules/custom/rovas_civic/rovas_civic.charity.inc
+msgid "Invalid charity organization."
+msgstr "Organizzazione benefica non valida."
+
+#: sites/all/modules/custom/rovas_civic/rovas_civic.charity.inc
+msgid "You may only link charity organizations you own."
+msgstr "Puoi collegare solo organizzazioni benefiche di cui sei proprietario."
+
+#: sites/all/modules/custom/rovas_civic/rovas_civic.charity.inc
+msgid "Register a charity organization"
+msgstr "Registra un’organizzazione benefica"
+
+#: sites/all/modules/custom/rovas_civic/rovas_civic.charity.inc
+msgid "Legal name"
+msgstr "Ragione sociale"
+
+#: sites/all/modules/custom/rovas_civic/rovas_civic.charity.inc
+msgid "Official registered name of the charity / public-benefit organization."
+msgstr "Nome ufficiale registrato dell’organizzazione benefica / di pubblica utilità."
+
+#: sites/all/modules/custom/rovas_civic/rovas_civic.charity.inc
+msgid "EUR donations and EUR share purchases are unavailable until NeoFund approves this project’s charity organization. You can still pay with Chrons."
+msgstr "Le donazioni in euro e gli acquisti di quote in euro non sono disponibili finché NeoFund non approva l’organizzazione benefica di questo progetto. Puoi comunque pagare con Chron."
+
+#: sites/all/modules/custom/rovas_civic/rovas_civic.charity.inc
+msgid "EUR payments are blocked until NeoFund approves this charity organization."
+msgstr "I pagamenti in euro sono bloccati finché NeoFund non approva questa organizzazione benefica."

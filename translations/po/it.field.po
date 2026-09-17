@@ -2358,3 +2358,43 @@ msgstr "Nome breve dell'attività"
 msgctxt "title_field:work_report:label"
 msgid "Activity"
 msgstr "Attività"
+
+#: field:field_is_charity:project:label
+msgctxt "field_is_charity:project:label"
+msgid "Charitable project"
+msgstr "Progetto benefico"
+
+#: field:field_is_charity:project:description
+msgctxt "field_is_charity:project:description"
+msgid "This is a project of a registered charity."
+msgstr "Questo è un progetto di un’organizzazione benefica registrata."
+
+#: field:field_charity_organization:project:label
+msgctxt "field_charity_organization:project:label"
+msgid "Charity organization"
+msgstr "Organizzazione benefica"
+
+#: field:field_charity_organization:project:description
+msgctxt "field_charity_organization:project:description"
+msgid "Required when the charitable checkbox is on. Create the organization once and reuse it."
+msgstr "Obbligatorio quando è selezionata l’opzione benefica. Crea l’organizzazione una volta e riutilizzala."
+
+#: field:field_charity_donate_text:project:label
+msgctxt "field_charity_donate_text:project:label"
+msgid "Donate instructions (project override)"
+msgstr "Istruzioni per donare (sostituzione per il progetto)"
+
+#: field:field_charity_donate_text:project:description
+msgctxt "field_charity_donate_text:project:description"
+msgid "Optional. Overrides the organization’s default donate instructions for this project."
+msgstr "Facoltativo. Sostituisce le istruzioni predefinite dell’organizzazione per le donazioni di questo progetto."
+
+#: field:field_charity_donate_url:project:label
+msgctxt "field_charity_donate_url:project:label"
+msgid "Donate URL (project override)"
+msgstr "URL per donare (sostituzione per il progetto)"
+
+#: field:field_charity_donate_url:project:description
+msgctxt "field_charity_donate_url:project:description"
+msgid "Optional absolute URL. Overrides the organization’s default donate URL."
+msgstr "URL assoluto facoltativo. Sostituisce l’URL predefinito dell’organizzazione per le donazioni."
