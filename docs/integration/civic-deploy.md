@@ -268,9 +268,9 @@ inference — including the distinction between:
 
 | Ledger source | Counts toward | Typical origin |
 | --- | --- | --- |
-| `volunteer_work` | volunteer | Work-report rewards |
-| `volunteer` | volunteer | Project-reward ME to **earned / labor** shareholders; CHR→ME purchase |
-| `charitable_donation` | charity | EUR donations / EUR merit purchase; timeshare ME; project-reward ME to **%-only** shareholders |
+| `volunteer_work` | volunteer | Work-report rewards; project-reward ME to **co_worker** shareholders (any hours) |
+| `volunteer` | volunteer | CHR→ME purchase |
+| `charitable_donation` | charity | EUR donations / EUR merit purchase; purchased **timeshare** ME |
 | `tax_payment` | taxes | Civic VAT claims |
 | `penalty` | (Rovas `by_category` excludes; Civic UI folds into volunteer) | Merit penalties |
 

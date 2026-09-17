@@ -36,7 +36,8 @@ Civic API); keep both in sync when contracts change.
 and [Next work: OAuth session persistence](#next-work-oauth-session-persistence),
 [Next work: member_since_year on users_lookup](#next-work-member_since_year-on-users_lookup),
 [Next work: charitable projects (Civic catalog)](#next-work-charitable-projects-civic-catalog),
-[Next work: top_volunteer_projects include WR rewards](#next-work-top_volunteer_projects-include-wr-rewards).
+[Next work: top_volunteer_projects include WR rewards](#next-work-top_volunteer_projects-include-wr-rewards),
+[Next work: co_worker %-shares misclassified as charity](#next-work-co_worker-shares-misclassified-as-charity).
 Do not rely on reading the Civic tree unless you need Expo/API details.
 
 **Dev target (until told otherwise):** all Civic integration work targets
@@ -71,6 +72,7 @@ env): [`civic-deploy.md`](civic-deploy.md).
 | Users search (split typeahead)       | `GET /rovas/users_search?query=`                                                                                                           | Implemented in `rovas_civic` (`rovas_civic_update_7005`). **Param is `query`, not `q`** — Drupal reserves `$_GET['q']` for the request path.                                           |
 | Users lookup (community profile)     | `GET /rovas/users_lookup?username=`                                                                                                        | Implemented in `rovas_civic` (`rovas_civic_update_7006`). Exact username; Bearer required. Includes `nace_expertise[]` via `rovas_meritscope_user_expertise_json()`.                   |
 | `top_volunteer_projects` WR rewards  | `users_lookup.top_volunteer_projects`                                                                                                      | **Implemented** — allocations + WR-linked ledger ME; CHR→ME stays unattributed — see [top_volunteer_projects include WR rewards](#next-work-top_volunteer_projects-include-wr-rewards) |
+| co_worker %-shares → volunteer         | ledger `field_merit_source` + `users_lookup` tabs                                                                                          | **Implemented** — co_worker (0h included) → `volunteer_work`; timeshare → charity — see [co_worker %-shares misclassified as charity](#next-work-co_worker-shares-misclassified-as-charity) |
 | Hide negative Merit users            | `users_search` / `users_lookup`                                                                                                            | Implemented — `total_me < 0` omitted / 404; search response stays public fields only                                                                                                   |
 | Friend invite (Civic)                | —                                                                                                                                          | **Civic-client only** (`mailto:`). No Rovas invite endpoint. Signup URL in the email body should work (`/user/register` or OAuth authorize).                                           |
 | Project detail + WR list             | `GET /rovas/civic_project/{nid}`, `GET /rovas/civic_project_work_reports`                                                                  | Implemented (`rovas_civic_update_7007`). Private participation still returns full content — see [private projects are fully readable](#next-work-private-projects-are-fully-readable). |
@@ -619,12 +621,12 @@ Do **not** register `/rovas/users/lookup` (slash in alias). Civic API calls
 | `display_name`           | Prefer `field_full_name`; fall back to `username`                                                                                                                                                                                                                                 |
 | `total_me`               | Same source as `/rovas/me` for that uid (`_rovas_merit_distribution_user_merits` or fallback)                                                                                                                                                                                     |
 | `by_category.taxes`      | Sum of ledger `field_merit_source = tax_payment` (positive ME only)                                                                                                                                                                                                                |
-| `by_category.charity`    | Sum of ledger sources `charitable_donation` (EUR donations, EUR merit purchase, timeshare ME, project-reward ME to %-only shareholders)                                                                                                                                           |
-| `by_category.volunteer`  | Sum of ledger sources `volunteer_work` + `volunteer` (work-report rewards, project-reward ME to earned/labor shareholders, CHR→ME purchase)                                                                                                                                       |
+| `by_category.charity`    | Sum of ledger sources `charitable_donation` (EUR donations, EUR merit purchase, timeshare ME)                                                                                                                                                                                      |
+| `by_category.volunteer`  | Sum of ledger sources `volunteer_work` + `volunteer` (work-report rewards, project-reward ME to co_worker shareholders incl. 0h %-shares, CHR→ME purchase)                                                                                                                          |
 | `by_source`              | Full breakdown keyed by `field_merit_source` (`volunteer_work`, `volunteer`, `tax_payment`, `charitable_donation`, `penalty`, …); omits zero keys; negative `penalty` included when present. **Civic** remaps this into its displayed `by_category` with `penalty` folded into `volunteer` (Rovas `by_category` still excludes penalty). |
 | `taxes_last_3_months`    | Last **3 calendar months** (including current) of VAT-claim Merits for this uid, keyed `YYYY-MM`; omit zero months or include with `me: 0` — prefer only months with activity; max 3 rows; `[]` if none                                                                           |
-| `top_charities`          | Up to **3** `{ project_nid, name, me }` from `{rovas_merit_issuance}` rows with `source_type = project_reward_order` (Path-1 donor Merits from project donations). **Not** raw `purchase_receipt` Merit spends. Exclude State Treasury. Empty until real charity donations exist. |
-| `top_volunteer_projects` | Up to **3** `{ project_nid, name, me }` — share allocations **plus** WR-linked ledger Merits (`field_rewarded_report` → WR `field_project`); **exclude** CHR→ME (`source=volunteer` / no rewarded report). See [top_volunteer_projects include WR rewards](#next-work-top_volunteer_projects-include-wr-rewards). |
+| `top_charities`          | Up to **3** `{ project_nid, name, me }` from `{rovas_merit_issuance}` / `project_reward_order` (Path-1 donor Merits). Exclude State Treasury. Not %-only co_worker shares (those are volunteer — see [co_worker %-shares…](#next-work-co_worker-shares-misclassified-as-charity)). |
+| `top_volunteer_projects` | Up to **3** `{ project_nid, name, me }` — co_worker / project share allocations **plus** WR-linked ledger Merits; **exclude** CHR→ME. See [top_volunteer_projects include WR rewards](#next-work-top_volunteer_projects-include-wr-rewards). Tab totals align after [co_worker %-shares…](#next-work-co_worker-shares-misclassified-as-charity). |
 
 
 ### Errors
@@ -3422,6 +3424,100 @@ for p in d.get('top_volunteer_projects') or []:
 No API shape change. Home + Community `ContributionBreakdown` already render
 `top_volunteer_projects`. After rovdev deploy, pull-to-refresh / re-open
 profile should show higher per-project ME where WR rewards existed.
+
+## Next work: co_worker %-shares misclassified as charity
+
+**Rovas ledger inference + `--reclassify`.** No Civic Expo/API contract change.
+Product intent (confirmed 2026-09-11): Merits from **co_worker** project shares
+are volunteering, even when `field_total_hours_worked` is 0. Only purchased
+**timeshare** (and EUR donation / EUR buy-merits) belong in charity.
+
+### Problem
+
+Civic Home shows `by_category` from ledger `by_source`, while the Volunteer
+project list comes from allocation `field_merits_earned`. For users whose
+trail / maintenance shares are `co_worker_merit_allocation` at **100% with
+0 hours**, those diverge badly.
+
+**Repro (rovdev, uid 487 / `Jaro Struhár`, 2026-09-11):**
+
+| Field | Value |
+|-------|-------|
+| `by_source` | `charitable_donation` **94.47**, `volunteer_work` **0.70** |
+| UI tabs | Charity **94 ME**, Volunteer **1 ME** |
+| `top_volunteer_projects` | Na bežky **75.98** + Zabudišová… (**~81** total) — looks like volunteering |
+| `top_charities` | `[]` |
+
+Share map for this uid: **20** co_worker projects, only **2** with hours > 0
+(0.45 h total). Project **82225** (Na bežky) is `co_worker` **s=100%, h=0**.
+
+Today’s cascade fix (`54aca67f`, nested `project_merit_allocation` walk) is
+**deployed on rovdev** but did **not** fix the tabs alone: dry re-inference of
+all **619** `charitable_donation` disbursements for uid 487 flipped **0** rows
+while co_worker+0h still mapped to charity. Root cause was the hours gate
+below — fixed by treating all `co_worker` as `volunteer_work`.
+
+Root rule (before fix) in `rovas_merit_source_for_project_share_reward()` /
+`_rovas_merit_source_from_share_allocs()`: co_worker with **hours == 0** →
+`charitable_donation`. That tagged trail %-shares as charity, but those
+co_worker rows are the volunteer contribution the product wants in
+`by_category.volunteer` / the Volunteer tab.
+
+The Volunteer project list is closer to product truth; the **tab total is
+wrong** because ledger sources are wrong.
+
+### Intended behaviour
+
+| Allocation / path | `field_merit_source` |
+|-------------------|----------------------|
+| `co_worker_merit_allocation` (any hours, including 0) | `volunteer_work` |
+| `timeshare_merit_allocation` | `charitable_donation` |
+| WR-linked individual reward (`field_rewarded_report`) | `volunteer_work` (unchanged) |
+| EUR donation / EUR buy-merits | `charitable_donation` (unchanged) |
+| CHR→ME forex | `volunteer` (unchanged) |
+
+Update `rovas_merit_source_for_project_share_reward()` and any callers /
+cascade helpers so **hours > 0 is no longer required** for co_worker →
+volunteer. Dual labor+timeshare amount matching can stay for mixed leaves;
+pure co_worker %-only must not default to charity.
+
+Then re-tag historical ledger rows:
+
+```bash
+cd /var/www/rovdev
+drush74 rovas-merit-backfill --reclassify
+# optional: rebuild merit-index snapshot if by_source bars should match
+```
+
+`top_volunteer_projects` can keep summing co_worker (+ WR) allocations — after
+reclassify, tab volunteer ME should align with those project rows. Do **not**
+move %-only co_worker ME into `top_charities`.
+
+### Checklist
+
+1. [x] Change inference: co_worker (0h included) → `volunteer_work`; timeshare → `charitable_donation`
+2. [x] Adjust cascade / dual-share helpers so %-only co_worker is not preferred as charity
+3. [x] `drush rovas-merit-backfill --reclassify` on rovdev
+4. [x] Smoke-test uid 487 below
+5. [x] No Civic code change; Expo pull-to-refresh after reclassify
+
+### Smoke test
+
+```bash
+cd /var/www/rovdev && drush php-eval '
+$uid = 487;
+module_load_include("inc", "rovas_merit", "rovas_merit.ledger");
+print json_encode(rovas_merit_user_by_source($uid), JSON_PRETTY_PRINT), "\n";
+print json_encode(rovas_civic_users_lookup_top_volunteer_projects($uid, "sk"), JSON_PRETTY_PRINT), "\n";
+'
+# Expect: volunteer_work ≈ total_me (~95+), charitable_donation near 0 (unless real EUR/timeshare)
+# top_volunteer still lists Na bežky ~76; Volunteer tab ME ≈ project list (modulo CHR→ME / rounding)
+```
+
+### Civic will consume
+
+No API shape change. After reclassify, Home/Community tabs remapped from
+`by_source` will show the bulk under Volunteer, matching the project table.
 
 ## Related Civic docs
 

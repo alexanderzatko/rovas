@@ -17,7 +17,7 @@ define('ROVAS_MERIT_SOURCE_VOLUNTEER', 'volunteer');
 /** Merit source: VAT / tax claim (Civic). */
 define('ROVAS_MERIT_SOURCE_TAX_PAYMENT', 'tax_payment');
 
-/** Merit source: EUR donation, EUR buy-merits, timeshare / %-only project-reward ME. */
+/** Merit source: EUR donation, EUR buy-merits, purchased timeshare project-reward ME. */
 define('ROVAS_MERIT_SOURCE_CHARITABLE_DONATION', 'charitable_donation');
 
 /** Merit source: dispute / compliance penalty. */
@@ -68,13 +68,12 @@ function rovas_merit_source_from_civic_audit($source_type) {
  * Merit source for ME a user receives when a project is rewarded.
  *
  * - Purchased timeshare → always charitable_donation.
- * - Labor / %-share with earned hours (WR time) → volunteer_work.
- * - %-determined share only (no earned hours) → charitable_donation.
+ * - co_worker shares (any hours, including 0% / %-only trail shares) → volunteer_work.
  *
  * @param string $allocation_bundle
  *   co_worker_merit_allocation|timeshare_merit_allocation.
  * @param float $hours
- *   field_total_hours_worked on that allocation.
+ *   Unused for classification; kept for call-site compatibility.
  *
  * @return string
  *   field_merit_source value.
@@ -83,12 +82,8 @@ function rovas_merit_source_for_project_share_reward($allocation_bundle, $hours 
   if ($allocation_bundle === 'timeshare_merit_allocation') {
     return ROVAS_MERIT_SOURCE_CHARITABLE_DONATION;
   }
-  // Earned time (alone or with a % allocation): volunteering.
-  if ((float) $hours > 0) {
-    return ROVAS_MERIT_SOURCE_VOLUNTEER_WORK;
-  }
-  // %-only share, or unknown labor bundle with no hours.
-  return ROVAS_MERIT_SOURCE_CHARITABLE_DONATION;
+  // co_worker_merit_allocation (and unknown non-timeshare bundles): volunteering.
+  return ROVAS_MERIT_SOURCE_VOLUNTEER_WORK;
 }
 
 /**
@@ -177,11 +172,8 @@ function _rovas_merit_source_from_share_allocs(array $allocs, $amount, $receipt_
   // Match this disbursement amount to the closer expected split.
   $expected = _rovas_merit_expected_user_share_merits($project_nid, $labor_share, $labor_hours, $timeshare_share, $timeshare_hours, $receipt_nid);
   if ($expected === NULL) {
-    // Fall back: earned hours present → this row more likely labor if amount
-    // is non-trivial; prefer volunteer when hours exist and we cannot split.
-    return ($labor_hours > 0)
-      ? ROVAS_MERIT_SOURCE_VOLUNTEER_WORK
-      : ROVAS_MERIT_SOURCE_CHARITABLE_DONATION;
+    // Dual without a reliable amount split: co_worker portion is volunteering.
+    return ROVAS_MERIT_SOURCE_VOLUNTEER_WORK;
   }
 
   $d_labor = abs($amount - $expected['labor']);
@@ -266,17 +258,16 @@ function _rovas_merit_expected_user_share_merits($project_nid, $labor_share, $la
 }
 
 /**
- * Whether allocation rows include earned labor hours (co_worker with hours > 0).
+ * Whether allocation rows include a co_worker (volunteer) share.
  *
  * @param array $allocs
  *
  * @return bool
  */
-function _rovas_merit_allocs_have_labor_hours(array $allocs) {
+function _rovas_merit_allocs_have_coworker(array $allocs) {
   foreach ($allocs as $row) {
     $bundle = isset($row->bundle) ? $row->bundle : '';
-    $hours = isset($row->hours) ? (float) $row->hours : 0.0;
-    if ($bundle === 'co_worker_merit_allocation' && $hours > 0) {
+    if ($bundle === 'co_worker_merit_allocation') {
       return TRUE;
     }
   }
@@ -462,10 +453,9 @@ function _rovas_merit_cascade_share_candidates($uid, $root_project_nid) {
 /**
  * Pick merit source from one or more cascade leaf candidates.
  *
- * When several leaves match, prefer those with earned labor hours (avoids
- * first-sibling %-only false charity). Among a pool, use existing dual-alloc
- * amount matching; if sources still disagree, prefer volunteer_work when any
- * labor hours exist.
+ * When several leaves match, prefer co_worker leaves over timeshare-only
+ * (avoids purchased-share siblings forcing charity). Dual labor+timeshare
+ * amount matching still applies within a leaf.
  *
  * @param array $candidates
  * @param float $amount
@@ -478,19 +468,19 @@ function _rovas_merit_source_from_cascade_candidates(array $candidates, $amount,
     return ROVAS_MERIT_SOURCE_CHARITABLE_DONATION;
   }
 
-  $labor = array();
+  $coworker = array();
   $other = array();
   foreach ($candidates as $c) {
     $allocs = isset($c['allocs']) ? $c['allocs'] : array();
-    if (_rovas_merit_allocs_have_labor_hours($allocs)) {
-      $labor[] = $c;
+    if (_rovas_merit_allocs_have_coworker($allocs)) {
+      $coworker[] = $c;
     }
     else {
       $other[] = $c;
     }
   }
-  // Prefer earned-time leaves when present (mirrors live mrewarder tagging).
-  $pool = !empty($labor) ? $labor : $other;
+  // Prefer co_worker leaves when present (volunteering, including 0h %-shares).
+  $pool = !empty($coworker) ? $coworker : $other;
 
   if (count($pool) === 1) {
     $c = reset($pool);
@@ -506,8 +496,8 @@ function _rovas_merit_source_from_cascade_candidates(array $candidates, $amount,
     return $sources[0];
   }
 
-  // Mixed pool: prefer volunteer when any earned hours remain in play.
-  if (!empty($labor)) {
+  // Mixed pool: prefer volunteer when any co_worker leaf remains in play.
+  if (!empty($coworker)) {
     return ROVAS_MERIT_SOURCE_VOLUNTEER_WORK;
   }
   return ROVAS_MERIT_SOURCE_CHARITABLE_DONATION;
@@ -1500,7 +1490,7 @@ function _rovas_merit_infer_source_from_row($row) {
         ':et' => 'node',
       ))->fetchField();
       if ($project_nid > 0) {
-        // Shareholder split from a project reward: earned vs purchased / %-only.
+        // Shareholder split from a project reward: co_worker vs timeshare.
         return rovas_merit_infer_project_shareholder_source($uid, $project_nid, $amount, $receipt_nid);
       }
     }
