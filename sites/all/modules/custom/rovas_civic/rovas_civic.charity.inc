@@ -485,12 +485,26 @@ function rovas_civic_form_project_node_form_alter(&$form, &$form_state) {
     }
   }
 
-  if (isset($form['charity_project']['charity_details']['field_charity_organization'])) {
-    $form['charity_project']['charity_details']['field_charity_organization'][LANGUAGE_NONE][0]['target_id']['#description'] = t('Select an organization you manage, or !create first.', array(
+  if (isset($form['charity_project']['charity_details']['field_charity_organization'][LANGUAGE_NONE][0]['target_id'])) {
+    $org_widget = &$form['charity_project']['charity_details']['field_charity_organization'][LANGUAGE_NONE][0]['target_id'];
+    $org_widget['#title'] = t('Charity organization');
+    $org_widget['#description'] = t('Select an organization you manage, or !create first.', array(
       '!create' => l(t('create a charity organization'), 'node/add/' . ROVAS_CIVIC_CHARITY_BUNDLE, array(
         'query' => array('destination' => current_path()),
       )),
     ));
+  }
+
+  if (isset($form['charity_project']['charity_details']['field_charity_donate_text'][LANGUAGE_NONE][0]['value'])) {
+    $donate_text = &$form['charity_project']['charity_details']['field_charity_donate_text'][LANGUAGE_NONE][0]['value'];
+    $donate_text['#title'] = t('Donate instructions (project override)');
+    $donate_text['#description'] = t("Optional. Overrides the organization's default donate instructions for this project.");
+  }
+
+  if (isset($form['charity_project']['charity_details']['field_charity_donate_url'][LANGUAGE_NONE][0]['value'])) {
+    $donate_url = &$form['charity_project']['charity_details']['field_charity_donate_url'][LANGUAGE_NONE][0]['value'];
+    $donate_url['#title'] = t('Donate URL (project override)');
+    $donate_url['#description'] = t("Optional absolute URL. Overrides the organization's default donate URL.");
   }
 
   $form['#validate'][] = 'rovas_civic_project_node_form_validate';

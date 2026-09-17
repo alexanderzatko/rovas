@@ -100,3 +100,75 @@ msgstr "Přihlaste se a autorizujte <strong>@app</strong>. Použijte Google, Fac
 #: sites/all/modules/custom/rovas_oauth/rovas_oauth.module:159
 msgid "Read your Rovas username and grant Merits on your behalf."
 msgstr "Číst vaše uživatelské jméno v Rováši a přidělovat Merity vaším jménem."
+
+#: sites/all/modules/custom/rovas_civic/rovas_civic.charity.inc
+msgid "Charitable project"
+msgstr "Charitativní projekt"
+
+#: sites/all/modules/custom/rovas_civic/rovas_civic.charity.inc
+msgid "This is a project of a registered charity"
+msgstr "Toto je projekt registrované charity"
+
+#: sites/all/modules/custom/rovas_civic/rovas_civic.charity.inc
+msgid "When checked, link a charity organization. NeoFund must approve the organization before the project appears in Civic and before EUR donations or share purchases are allowed."
+msgstr "Po zaškrtnutí propojte charitativní organizaci. NeoFund musí organizaci schválit, než se projekt zobrazí v Civic a než budou povoleny dary v eurech nebo nákup podílů."
+
+#: sites/all/modules/custom/rovas_civic/rovas_civic.charity.inc
+msgid "Charity organization"
+msgstr "Charitativní organizace"
+
+#: sites/all/modules/custom/rovas_civic/rovas_civic.charity.inc
+msgid "Select an organization you manage, or !create first."
+msgstr "Vyberte organizaci, kterou spravujete, nebo nejprve !create."
+
+#: sites/all/modules/custom/rovas_civic/rovas_civic.charity.inc
+msgid "create a charity organization"
+msgstr "vytvořte charitativní organizaci"
+
+#: sites/all/modules/custom/rovas_civic/rovas_civic.charity.inc
+msgid "Donate instructions (project override)"
+msgstr "Pokyny k darování (přepsání pro projekt)"
+
+#: sites/all/modules/custom/rovas_civic/rovas_civic.charity.inc
+msgid "Optional. Overrides the organization's default donate instructions for this project."
+msgstr "Volitelné. Přepíše výchozí pokyny k darování organizace pro tento projekt."
+
+#: sites/all/modules/custom/rovas_civic/rovas_civic.charity.inc
+msgid "Donate URL (project override)"
+msgstr "URL pro darování (přepsání pro projekt)"
+
+#: sites/all/modules/custom/rovas_civic/rovas_civic.charity.inc
+msgid "Optional absolute URL. Overrides the organization's default donate URL."
+msgstr "Volitelná absolutní URL. Přepíše výchozí URL pro darování organizace."
+
+#: sites/all/modules/custom/rovas_civic/rovas_civic.charity.inc
+msgid "Select or create a charity organization for this charitable project."
+msgstr "Vyberte nebo vytvořte charitativní organizaci pro tento charitativní projekt."
+
+#: sites/all/modules/custom/rovas_civic/rovas_civic.charity.inc
+msgid "Invalid charity organization."
+msgstr "Neplatná charitativní organizace."
+
+#: sites/all/modules/custom/rovas_civic/rovas_civic.charity.inc
+msgid "You may only link charity organizations you own."
+msgstr "Můžete propojit jen charitativní organizace, které vlastníte."
+
+#: sites/all/modules/custom/rovas_civic/rovas_civic.charity.inc
+msgid "Register a charity organization"
+msgstr "Registrovat charitativní organizaci"
+
+#: sites/all/modules/custom/rovas_civic/rovas_civic.charity.inc
+msgid "Legal name"
+msgstr "Právní název"
+
+#: sites/all/modules/custom/rovas_civic/rovas_civic.charity.inc
+msgid "Official registered name of the charity / public-benefit organization."
+msgstr "Oficiální registrovaný název charity / veřejně prospěšné organizace."
+
+#: sites/all/modules/custom/rovas_civic/rovas_civic.charity.inc
+msgid "EUR donations and EUR share purchases are unavailable until NeoFund approves this project’s charity organization. You can still pay with Chrons."
+msgstr "Dary v eurech a nákup podílů za eura nejsou dostupné, dokud NeoFund neschválí charitativní organizaci tohoto projektu. Stále můžete platit chrony."
+
+#: sites/all/modules/custom/rovas_civic/rovas_civic.charity.inc
+msgid "EUR payments are blocked until NeoFund approves this charity organization."
+msgstr "Platby v eurech jsou zablokované, dokud NeoFund neschválí tuto charitativní organizaci."

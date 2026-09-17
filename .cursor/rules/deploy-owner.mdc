@@ -1,0 +1,12 @@
+---
+description: User deploys to servers; agents must not deploy or import on VPS
+alwaysApply: true
+---
+
+# Deploy ownership
+
+The user deploys code and runs server-side imports (Drush, PO locale import, cache clear, rsync) themselves.
+
+- Do **not** upload, rsync, SFTP, or SSH-deploy changes to `/var/www/rovas`, `/var/www/rovdev`, or other hosts unless the user explicitly asks in that turn.
+- Do **not** run remote Drush/import/cache-clear on the VPS unless explicitly asked.
+- Finish work in the local repo (code, docs, `translations/po/*.po`). Say what to deploy/import when relevant; leave execution to the user.

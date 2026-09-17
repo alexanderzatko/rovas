@@ -2341,3 +2341,43 @@ msgstr "Krátký název činnosti"
 msgctxt "title_field:work_report:label"
 msgid "Activity"
 msgstr "Činnost"
+
+#: field:field_is_charity:project:label
+msgctxt "field_is_charity:project:label"
+msgid "Charitable project"
+msgstr "Charitativní projekt"
+
+#: field:field_is_charity:project:description
+msgctxt "field_is_charity:project:description"
+msgid "This is a project of a registered charity."
+msgstr "Toto je projekt registrované charity."
+
+#: field:field_charity_organization:project:label
+msgctxt "field_charity_organization:project:label"
+msgid "Charity organization"
+msgstr "Charitativní organizace"
+
+#: field:field_charity_organization:project:description
+msgctxt "field_charity_organization:project:description"
+msgid "Required when the charitable checkbox is on. Create the organization once and reuse it."
+msgstr "Povinné, pokud je zaškrtnuto charitativní políčko. Organizaci vytvořte jednou a použijte ji opakovaně."
+
+#: field:field_charity_donate_text:project:label
+msgctxt "field_charity_donate_text:project:label"
+msgid "Donate instructions (project override)"
+msgstr "Pokyny k darování (přepsání pro projekt)"
+
+#: field:field_charity_donate_text:project:description
+msgctxt "field_charity_donate_text:project:description"
+msgid "Optional. Overrides the organization’s default donate instructions for this project."
+msgstr "Volitelné. Přepíše výchozí pokyny k darování organizace pro tento projekt."
+
+#: field:field_charity_donate_url:project:label
+msgctxt "field_charity_donate_url:project:label"
+msgid "Donate URL (project override)"
+msgstr "URL pro darování (přepsání pro projekt)"
+
+#: field:field_charity_donate_url:project:description
+msgctxt "field_charity_donate_url:project:description"
+msgid "Optional absolute URL. Overrides the organization’s default donate URL."
+msgstr "Volitelná absolutní URL. Přepíše výchozí URL pro darování organizace."

@@ -2404,3 +2404,43 @@ msgctxt "title_field:work_report:label"
 msgid "Activity"
 msgstr "Činnosť"
 
+#: field:field_is_charity:project:label
+msgctxt "field_is_charity:project:label"
+msgid "Charitable project"
+msgstr "Charitatívny projekt"
+
+#: field:field_is_charity:project:description
+msgctxt "field_is_charity:project:description"
+msgid "This is a project of a registered charity."
+msgstr "Toto je projekt registrovanej charity."
+
+#: field:field_charity_organization:project:label
+msgctxt "field_charity_organization:project:label"
+msgid "Charity organization"
+msgstr "Charitatívna organizácia"
+
+#: field:field_charity_organization:project:description
+msgctxt "field_charity_organization:project:description"
+msgid "Required when the charitable checkbox is on. Create the organization once and reuse it."
+msgstr "Povinné, keď je zaškrtnuté charitatívne políčko. Organizáciu vytvorte raz a použite ju opakovane."
+
+#: field:field_charity_donate_text:project:label
+msgctxt "field_charity_donate_text:project:label"
+msgid "Donate instructions (project override)"
+msgstr "Pokyny na darovanie (prepísanie pre projekt)"
+
+#: field:field_charity_donate_text:project:description
+msgctxt "field_charity_donate_text:project:description"
+msgid "Optional. Overrides the organization’s default donate instructions for this project."
+msgstr "Voliteľné. Prepíše predvolené pokyny na darovanie organizácie pre tento projekt."
+
+#: field:field_charity_donate_url:project:label
+msgctxt "field_charity_donate_url:project:label"
+msgid "Donate URL (project override)"
+msgstr "URL na darovanie (prepísanie pre projekt)"
+
+#: field:field_charity_donate_url:project:description
+msgctxt "field_charity_donate_url:project:description"
+msgid "Optional absolute URL. Overrides the organization’s default donate URL."
+msgstr "Voliteľná absolútna URL. Prepíše predvolenú URL na darovanie organizácie."
+
