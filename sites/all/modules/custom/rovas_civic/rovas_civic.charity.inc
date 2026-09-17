@@ -450,7 +450,13 @@ function rovas_civic_form_project_node_form_alter(&$form, &$form_state) {
   );
 
   $form['charity_project']['field_is_charity'] = $form['field_is_charity'];
-  unset($form['field_is_charity']);
+  // Keep a top-level #language stub: locale_field_entity_form_submit() reads
+  // $form[$field_name]['#language'] for every instance (Drupal core #2356283).
+  $form['field_is_charity'] = array(
+    '#language' => isset($form['charity_project']['field_is_charity']['#language'])
+      ? $form['charity_project']['field_is_charity']['#language']
+      : LANGUAGE_NONE,
+  );
 
   // options_onoff renders id edit-field-is-charity-und (same as allow-purchasing-shares).
   $visible = array(
@@ -471,7 +477,11 @@ function rovas_civic_form_project_node_form_alter(&$form, &$form_state) {
   ) as $fname) {
     if (isset($form[$fname])) {
       $form['charity_project']['charity_details'][$fname] = $form[$fname];
-      unset($form[$fname]);
+      $form[$fname] = array(
+        '#language' => isset($form['charity_project']['charity_details'][$fname]['#language'])
+          ? $form['charity_project']['charity_details'][$fname]['#language']
+          : LANGUAGE_NONE,
+      );
     }
   }
 
