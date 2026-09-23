@@ -31894,7 +31894,7 @@ msgid "Type"
 msgstr "Tipo"
 
 msgid "Author"
-msgstr "L'autore"
+msgstr "Autore"
 
 msgid "Replies"
 msgstr "Risponderà"

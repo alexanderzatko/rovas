@@ -1321,7 +1321,7 @@ msgstr ""
 #: field:field_date:work_report:label
 msgctxt "field_date:work_report:label"
 msgid "Date"
-msgstr "La data"
+msgstr "Data"
 
 #: field:field_date_published:project:label
 msgctxt "field_date_published:project:label"
@@ -1395,7 +1395,7 @@ msgstr "Converti chron in euro"
 #: field:field_hours_worked:work_report:label
 msgctxt "field_hours_worked:work_report:label"
 msgid "Time worked"
-msgstr "Il tempo ha funzionato"
+msgstr "Tempo di lavoro"
 
 #: field:field_input_amount:forex_transaction:label
 msgctxt "field_input_amount:forex_transaction:label"
