@@ -12,7 +12,9 @@
  */
 function oauth2_server_init() {
   $item = menu_get_item();
-  if ($item['access'] && strpos($item['path'], 'admin/structure/oauth2-servers') === 0) {
+  // menu_get_item() is FALSE for paths with no router item (missing files,
+  // favicon requests that fall through to index.php, and similar).
+  if (!empty($item['access']) && strpos($item['path'], 'admin/structure/oauth2-servers') === 0) {
     $path = oauth2_server_get_library_path();
     // Check for the existence of one file from the library.
     if (!$path || !file_exists($path . '/src/OAuth2/Server.php')) {

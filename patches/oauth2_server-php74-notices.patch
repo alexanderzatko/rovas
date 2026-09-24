@@ -1,0 +1,33 @@
+diff --git a/includes/oauth2_server.services_auth.inc b/includes/oauth2_server.services_auth.inc
+index 30756ff7..7def93bd 100644
+--- a/includes/oauth2_server.services_auth.inc
++++ b/includes/oauth2_server.services_auth.inc
+@@ -25,8 +25,12 @@ function oauth2_server_services_authenticate_call($auth_settings) {
+     return TRUE;
+   }
+ 
++  // Scope is optional. Services only merges it in when the resource has
++  // controller settings; an omitted key means "do not check scope".
++  $scope = isset($auth_settings['scope']) ? $auth_settings['scope'] : NULL;
++
+   // Check access.
+-  $result = oauth2_server_check_access($auth_settings['server'], $auth_settings['scope']);
++  $result = oauth2_server_check_access($auth_settings['server'], $scope);
+   if (is_array($result) && !empty($result['user_id'])) {
+     // The check was successful. If it matches with a user account, then switch
+     // the current user to it.
+diff --git a/oauth2_server.module b/oauth2_server.module
+index 2db3c1ad..f8b869a1 100644
+--- a/oauth2_server.module
++++ b/oauth2_server.module
+@@ -12,7 +12,9 @@
+  */
+ function oauth2_server_init() {
+   $item = menu_get_item();
+-  if ($item['access'] && strpos($item['path'], 'admin/structure/oauth2-servers') === 0) {
++  // menu_get_item() is FALSE for paths with no router item (missing files,
++  // favicon requests that fall through to index.php, and similar).
++  if (!empty($item['access']) && strpos($item['path'], 'admin/structure/oauth2-servers') === 0) {
+     $path = oauth2_server_get_library_path();
+     // Check for the existence of one file from the library.
+     if (!$path || !file_exists($path . '/src/OAuth2/Server.php')) {

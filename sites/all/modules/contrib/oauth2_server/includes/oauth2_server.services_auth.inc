@@ -25,8 +25,12 @@ function oauth2_server_services_authenticate_call($auth_settings) {
     return TRUE;
   }
 
+  // Scope is optional. Services only merges it in when the resource has
+  // controller settings; an omitted key means "do not check scope".
+  $scope = isset($auth_settings['scope']) ? $auth_settings['scope'] : NULL;
+
   // Check access.
-  $result = oauth2_server_check_access($auth_settings['server'], $auth_settings['scope']);
+  $result = oauth2_server_check_access($auth_settings['server'], $scope);
   if (is_array($result) && !empty($result['user_id'])) {
     // The check was successful. If it matches with a user account, then switch
     // the current user to it.
