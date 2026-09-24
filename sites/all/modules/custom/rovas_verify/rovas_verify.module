@@ -873,8 +873,8 @@ function _find_verifier_core($category,$uid,$per) {
 
 		$result =  db_query($query,array(':classif' => $parent->tid, ':uid' => $uid,':date' => $per));
 		$record = $result->fetchAssoc();
-
-		$ver_uid = $record['vuid'];
+		// No matching verifier for this classification: fetchAssoc() is FALSE.
+		$ver_uid = (is_array($record) && isset($record['vuid'])) ? $record['vuid'] : NULL;
 //	watchdog('rule','rules_find_verifier - classif: ' . $parent->tid . ' | excluded: ' . print_r($uid,1) . ' | user: ' . print_r($record,TRUE));
 
 		//if a suitable verifier is found, terminate the search
