@@ -3377,8 +3377,9 @@ commons.
 
 ```bash
 # Enrollment page — expect public-benefit / nonprofit wording (not charity-only)
+# SK title: "Neziskové projekty v Rováši" (accented Rováš); EN: Merits + today/later framing
 curl -sS "https://dev.rovas.app/charity-projects" | head -c 4000
-# Also open in browser (sk + en) and confirm eligibility + exclusions
+# Also open in browser (sk + cs + en) and confirm eligibility + exclusions
 
 # Project form: create/edit a project — checkbox label matches NeoFund wording
 # Admin: Configuration → Rovas Civic — org list label uses nonprofit / public-benefit framing

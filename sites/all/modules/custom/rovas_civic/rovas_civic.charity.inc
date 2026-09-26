@@ -367,57 +367,78 @@ function rovas_civic_charity_projects_catalog($query = '', $limit = ROVAS_CIVIC_
 
 /**
  * Public enrollment page: /charity-projects
+ *
+ * Audience: a public-benefit / nonprofit org (often linked here by a donor)
+ * that is new to Rovas / Civic / Merit. Locale affects wording only — content
+ * stays country-agnostic. SK/CS use accented Rováš.
  */
 function rovas_civic_charity_projects_page() {
-  $lang = $GLOBALS['language']->language;
-  $is_sk = (drupal_strtolower(substr($lang, 0, 2)) === 'sk' || drupal_strtolower(substr($lang, 0, 2)) === 'cs');
+  $lang = drupal_strtolower(substr($GLOBALS['language']->language, 0, 2));
 
-  if ($is_sk) {
-    $title = 'Neziskové projekty na Rovase';
+  if ($lang === 'sk') {
+    $title = 'Neziskové projekty v Rováši';
     drupal_set_title($title);
-    $intro = '<p>Rovas umožňuje overeným <strong>verejnoprospešným / neziskovým organizáciám</strong> zverejniť projekty v aplikácii Civic (cesta Dary) — bez poplatkov za zápis. Darovanie v eurách a súvisiace Merit prídu neskôr; teraz ide o objavenie projektov a zápis organizácie.</p>';
-    $elig_title = 'Kto sa môže zapojiť';
-    $elig = '<p>Spôsobilosť majú charity, občianske združenia (<em>o.z.</em>), neziskové organizácie poskytujúce verejnoprospešné služby (<em>n.o.</em>), nadácie, neinvestičné fondy (<em>n.f.</em>), cirkevné právnické osoby pri verejnoprospešnej činnosti, kultúrne a vzdelávacie neziskovky, environmentálne a advokačné organizácie, organizácie digitálneho commons a podobné subjekty, ktoré môžu zákonne prijímať dary pre spoločné dobro.</p><p><strong>Nezahŕňa:</strong> jednotlivcov, politické strany a komerčný predaj.</p>';
-    $steps_title = 'Ako sa zapojiť';
-    $steps = array(
-      'Vytvorte projekt na Rovase (alebo použite existujúci).',
-      'Pri úprave projektu zaškrtnite „Toto je projekt registrovanej verejnoprospešnej (neziskovej) organizácie“.',
-      'Vytvorte alebo vyberte organizáciu (právny názov, IČO, kontakt, IBAN) — údaje zadáte raz a môžete ich použiť na viacerých projektoch.',
-      'Pošlite na schválenie NeoFundu. Kým nie je organizácia schválená, projekt sa v Civic katalógu nezobrazí a EUR platby sú blokované.',
-      'Ďalšie projekty pripojte k tej istej organizácii — nemusíte znova vypĺňať IČO ani účet.',
-      'Neskôr: platobná integrácia a voliteľný widget na vašom webe.',
-    );
-    $cta = '<p>' . l(t('Create a project'), 'node/add/project') . ' · ' . l(t('Register a public-benefit / nonprofit organization'), 'node/add/' . ROVAS_CIVIC_CHARITY_BUNDLE) . '</p>';
+    $body = ''
+      . '<p>Ak vám niekto poslal odkaz na túto stránku, zvyčajne ide o darcu, ktorý chce podporiť vašu organizáciu a zároveň získať <strong>Merity</strong> — nefinančné uznanie za prínos spoločnosti. Merity nie sú peniaze; nedajú sa predať ani vymeniť za hotovosť. Vznikajú napríklad darom, dobrovoľníckou prácou alebo platením daní.</p>'
+      . '<p><strong>Rováš</strong> je platforma, na ktorej organizácie vedú projekty. <strong>Civic</strong> je mobilná aplikácia, v ktorej darcovia projekty hľadajú a podporujú. <strong>NeoFund</strong> je verejnoprospešný fond, ktorý organizácie overuje a neskôr bude sprostredkúvať peňažné dary tak, aby darca dostal Merity a vaša organizácia prostriedky.</p>'
+      . '<p><strong>Čo platí dnes:</strong> po overení NeoFundom sa váš projekt môže zobraziť v Civic a darcovia uvidia pokyny na darovanie (napríklad bankový prevod alebo odkaz na vašu darovaciu stránku). <strong>Čo príde neskôr:</strong> dary priamo cez NeoFund / Civic s automatickým udelením Meritov darcovi. Zápis organizácie a projektu je bez poplatku a pripraví vás na oboje.</p>'
+      . '<h2>Kto sa môže zapísať</h2>'
+      . '<p>Registrované verejnoprospešné a neziskové organizácie, ktoré môžu zákonne prijímať dary na spoločné dobro — bez ohľadu na krajinu sídla. Typicky ide o charity, občianske združenia, nadácie, fondy, cirkevné právnické osoby pri verejnoprospešnej činnosti, kultúrne a vzdelávacie neziskovky, environmentálne a advokačné organizácie a podobné subjekty.</p>'
+      . '<p><strong>Nezahŕňa:</strong> jednotlivcov, politické strany a komerčný predaj.</p>'
+      . '<h2>Ako sa zapísať</h2>'
+      . '<ol>'
+      . '<li>Vytvorte si účet v Rováši (ak ešte nemáte) a založte projekt — alebo použite existujúci.</li>'
+      . '<li>Pri úprave projektu zaškrtnite „Toto je projekt registrovanej verejnoprospešnej (neziskovej) organizácie“.</li>'
+      . '<li>Vytvorte alebo vyberte záznam organizácie (právny názov, registračné číslo, kontakt, IBAN). Údaje zadáte raz a môžete ich použiť na viacerých projektoch.</li>'
+      . '<li>Počkajte na schválenie NeoFundom. Kým nie je organizácia schválená, projekt sa v Civic nezobrazí.</li>'
+      . '<li>Po schválení doplňte pokyny na darovanie (text alebo URL), aby darcovia vedeli, ako vás podporiť už teraz. Ďalšie projekty pripojte k tej istej organizácii.</li>'
+      . '</ol>';
+  }
+  elseif ($lang === 'cs') {
+    $title = 'Neziskové projekty v Rováši';
+    drupal_set_title($title);
+    $body = ''
+      . '<p>Pokud vám někdo poslal odkaz na tuto stránku, obvykle jde o dárce, který chce podpořit vaši organizaci a zároveň získat <strong>Merity</strong> — nefinanční uznání za přínos společnosti. Merity nejsou peníze; nedají se prodat ani vyměnit za hotovost. Vznikají například darem, dobrovolnickou prací nebo placením daní.</p>'
+      . '<p><strong>Rováš</strong> je platforma, na které organizace vedou projekty. <strong>Civic</strong> je mobilní aplikace, ve které dárci projekty hledají a podporují. <strong>NeoFund</strong> je veřejně prospěšný fond, který organizace ověřuje a později bude zprostředkovávat peněžní dary tak, aby dárce dostal Merity a vaše organizace prostředky.</p>'
+      . '<p><strong>Co platí dnes:</strong> po ověření NeoFundem se váš projekt může zobrazit v Civic a dárci uvidí pokyny k darování (například bankovní převod nebo odkaz na vaši darovací stránku). <strong>Co přijde později:</strong> dary přímo přes NeoFund / Civic s automatickým udělením Meritů dárci. Zápis organizace a projektu je bez poplatku a připraví vás na obojí.</p>'
+      . '<h2>Kdo se může zapsat</h2>'
+      . '<p>Registrované veřejně prospěšné a neziskové organizace, které mohou zákonně přijímat dary pro společné dobro — bez ohledu na zemi sídla. Typicky jde o charity, spolky, nadace, fondy, církevní právnické osoby při veřejně prospěšné činnosti, kulturní a vzdělávací neziskovky, environmentální a advokační organizace a podobné subjekty.</p>'
+      . '<p><strong>Nezahrnuje:</strong> jednotlivce, politické strany a komerční prodej.</p>'
+      . '<h2>Jak se zapsat</h2>'
+      . '<ol>'
+      . '<li>Vytvořte si účet v Rováši (pokud ještě nemáte) a založte projekt — nebo použijte existující.</li>'
+      . '<li>Při úpravě projektu zaškrtněte „Toto je projekt registrované veřejně prospěšné (neziskové) organizace“.</li>'
+      . '<li>Vytvořte nebo vyberte záznam organizace (právní název, registrační číslo, kontakt, IBAN). Údaje zadáte jednou a můžete je použít u více projektů.</li>'
+      . '<li>Počkejte na schválení NeoFundem. Dokud není organizace schválena, projekt se v Civic nezobrazí.</li>'
+      . '<li>Po schválení doplňte pokyny k darování (text nebo URL), aby dárci věděli, jak vás podpořit už teď. Další projekty připojte ke stejné organizaci.</li>'
+      . '</ol>';
   }
   else {
+    // English and other locales (country-agnostic).
     $title = 'Nonprofit projects on Rovas';
     drupal_set_title($title);
-    $intro = '<p>Rovas lets verified <strong>public-benefit / nonprofit organizations</strong> list projects in the Civic app (Gifts path) — no listing fee. EUR donations and related Merit come later; this step is discovery and enrollment only.</p>';
-    $elig_title = 'Who is eligible';
-    $elig = '<p>Eligible recipients include charities, civic associations (<em>o.z.</em>), public-benefit service providers (<em>n.o.</em>), foundations, non-investment funds (<em>n.f.</em>), church legal entities for public-benefit activity, cultural and educational nonprofits, environmental and advocacy NGOs, digital-commons organizations, and similar entities that lawfully receive gifts for the commons.</p><p><strong>Excluded:</strong> individuals, political parties, and commercial sales.</p>';
-    $steps_title = 'How to enroll';
-    $steps = array(
-      'Create a Rovas project (or use an existing one).',
-      'On the project form, check “This is a project of a registered public-benefit organization (nonprofit).”',
-      'Create or select a public-benefit / nonprofit organization (legal name, registration id, contact, IBAN) — enter once, reuse across projects.',
-      'Wait for NeoFund approval. Until the organization is approved, the project stays out of the Civic catalog and EUR rails stay blocked.',
-      'Attach further projects to the same organization — no need to re-enter legal or bank details.',
-      'Later: payment integration and an optional site widget.',
-    );
-    $cta = '<p>' . l(t('Create a project'), 'node/add/project') . ' · ' . l(t('Register a public-benefit / nonprofit organization'), 'node/add/' . ROVAS_CIVIC_CHARITY_BUNDLE) . '</p>';
+    $body = ''
+      . '<p>If someone sent you this link, it is usually a donor who wants to support your organization and also earn <strong>Merits</strong> — non-financial recognition for contribution to the commons. Merits are not money; they cannot be sold or cashed out. People earn them by giving, volunteering, paying taxes, and similar contributions.</p>'
+      . '<p><strong>Rovas</strong> is the platform where organizations list projects. <strong>Civic</strong> is the mobile app where donors discover and support those projects. <strong>NeoFund</strong> is the public-benefit foundation that verifies organizations and will later channel monetary gifts so the donor receives Merits and your organization receives the funds.</p>'
+      . '<p><strong>What works today:</strong> after NeoFund verifies your organization, your project can appear in Civic and donors will see your donate instructions (for example a bank transfer or a link to your donation page). <strong>What comes later:</strong> gifts paid through NeoFund / Civic with Merits awarded to the donor automatically. Enrolling your organization and project is free and prepares you for both.</p>'
+      . '<h2>Who can enroll</h2>'
+      . '<p>Registered public-benefit and nonprofit organizations that may lawfully receive gifts for the commons — regardless of country of registration. Typical examples include charities, civic associations, foundations, funds, church legal entities for public-benefit activity, cultural and educational nonprofits, environmental and advocacy groups, and similar entities.</p>'
+      . '<p><strong>Excluded:</strong> individuals, political parties, and commercial sales.</p>'
+      . '<h2>How to enroll</h2>'
+      . '<ol>'
+      . '<li>Create a Rovas account (if you do not have one) and a project — or use an existing project.</li>'
+      . '<li>On the project form, check “This is a project of a registered public-benefit organization (nonprofit).”</li>'
+      . '<li>Create or select an organization record (legal name, registration number, contact, IBAN). Enter the details once and reuse them on further projects.</li>'
+      . '<li>Wait for NeoFund approval. Until the organization is approved, the project does not appear in Civic.</li>'
+      . '<li>After approval, add donate instructions (text or URL) so donors can support you already. Attach further projects to the same organization.</li>'
+      . '</ol>';
   }
 
-  $list = '<ol>';
-  foreach ($steps as $step) {
-    $list .= '<li>' . check_plain($step) . '</li>';
-  }
-  $list .= '</ol>';
+  $cta = '<p>' . l(t('Create a project'), 'node/add/project') . ' · ' . l(t('Register a public-benefit / nonprofit organization'), 'node/add/' . ROVAS_CIVIC_CHARITY_BUNDLE) . '</p>';
 
   return array(
     '#type' => 'markup',
-    '#markup' => $intro
-      . '<h2>' . check_plain($elig_title) . '</h2>' . $elig
-      . '<h2>' . check_plain($steps_title) . '</h2>' . $list . $cta,
+    '#markup' => $body . $cta,
   );
 }
 
