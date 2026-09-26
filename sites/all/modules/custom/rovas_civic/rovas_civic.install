@@ -617,3 +617,16 @@ function rovas_civic_update_7019() {
   }
   return t('Civic WR app usage-fee columns on {civic_work_report_reward} (project id, rate, charged).');
 }
+
+/**
+ * Broaden Gifts path user-facing labels (public-benefit / nonprofit).
+ *
+ * Wire identifiers (charity_organization, is_charity, API paths) unchanged.
+ */
+function rovas_civic_update_7020() {
+  module_load_include('inc', 'rovas_civic', 'rovas_civic.charity_setup');
+  if (function_exists('rovas_civic_ensure_charity_content')) {
+    rovas_civic_ensure_charity_content();
+  }
+  return t('Public-benefit / nonprofit labels refreshed on charity_organization type, project fields, menu, and enrollment copy.');
+}

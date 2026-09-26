@@ -4,7 +4,7 @@
  * @file
  * Civic / NeoFund Path-1: donor Merit, national rates, State Treasury, VAT claims.
  *
- * See NeoFund_NP charity-opt-in-project-ledger.md and docs/integration/civic.md.
+ * See NeoFund_NP gift-opt-in-project-ledger.md and docs/integration/civic.md.
  */
 
 define('ROVAS_CIVIC_STATE_TREASURY_VAR', 'rovas_civic_state_treasury_nid');
@@ -77,8 +77,8 @@ function rovas_civic_menu() {
     'type' => MENU_CALLBACK,
   );
   $items['admin/config/rovas/civic/charities'] = array(
-    'title' => 'Charity organizations',
-    'description' => 'Review and approve charity organizations for the Civic catalog.',
+    'title' => 'Public-benefit / nonprofit organizations',
+    'description' => 'Review and approve public-benefit / nonprofit organizations for the Civic catalog.',
     'page callback' => 'drupal_get_form',
     'page arguments' => array('rovas_civic_admin_charities_form'),
     'access arguments' => array('administer rovas civic'),
@@ -87,8 +87,8 @@ function rovas_civic_menu() {
     'weight' => 5,
   );
   $items['charity-projects'] = array(
-    'title' => 'Charitable projects',
-    'description' => 'Enroll a registered charity on Rovas for the Civic catalog.',
+    'title' => 'Nonprofit projects',
+    'description' => 'Enroll a public-benefit / nonprofit organization on Rovas for the Civic catalog.',
     'page callback' => 'rovas_civic_charity_projects_page',
     'access callback' => TRUE,
     'file' => 'rovas_civic.charity.inc',
@@ -107,7 +107,7 @@ function rovas_civic_mail($key, &$message, $params) {
   $message['headers']['Content-Type'] = 'text/plain; charset=UTF-8; format=flowed';
   $message['subject'] = isset($params['subject'])
     ? $params['subject']
-    : t('Rovas: New charity organization pending review');
+    : t('Rovas: New public-benefit / nonprofit organization pending review');
   $message['body'][] = isset($params['body']) ? $params['body'] : '';
 }
 

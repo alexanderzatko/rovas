@@ -2406,23 +2406,23 @@ msgstr "Činnosť"
 
 #: field:field_is_charity:project:label
 msgctxt "field_is_charity:project:label"
-msgid "Charitable project"
-msgstr "Charitatívny projekt"
+msgid "Public-benefit / nonprofit project"
+msgstr "Verejnoprospešný / neziskový projekt"
 
 #: field:field_is_charity:project:description
 msgctxt "field_is_charity:project:description"
-msgid "This is a project of a registered charity."
-msgstr "Toto je projekt registrovanej charity."
+msgid "This is a project of a registered public-benefit organization (nonprofit)."
+msgstr "Toto je projekt registrovanej verejnoprospešnej (neziskovej) organizácie."
 
 #: field:field_charity_organization:project:label
 msgctxt "field_charity_organization:project:label"
-msgid "Charity organization"
-msgstr "Charitatívna organizácia"
+msgid "Public-benefit / nonprofit organization"
+msgstr "Verejnoprospešná / nezisková organizácia"
 
 #: field:field_charity_organization:project:description
 msgctxt "field_charity_organization:project:description"
-msgid "Required when the charitable checkbox is on. Create the organization once and reuse it."
-msgstr "Povinné, keď je zaškrtnuté charitatívne políčko. Organizáciu vytvorte raz a použite ju opakovane."
+msgid "Required when the public-benefit / nonprofit checkbox is on. Create the organization once and reuse it."
+msgstr "Povinné, keď je zaškrtnuté políčko verejnoprospešnej / neziskovej organizácie. Organizáciu vytvorte raz a použite ju opakovane."
 
 #: field:field_charity_donate_text:project:label
 msgctxt "field_charity_donate_text:project:label"

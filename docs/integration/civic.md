@@ -36,6 +36,7 @@ Civic API); keep both in sync when contracts change.
 and [Next work: OAuth session persistence](#next-work-oauth-session-persistence),
 [Next work: member_since_year on users_lookup](#next-work-member_since_year-on-users_lookup),
 [Next work: charitable projects (Civic catalog)](#next-work-charitable-projects-civic-catalog),
+[Next work: broaden Gifts path labels (public-benefit orgs)](#next-work-broaden-gifts-path-labels-public-benefit-orgs),
 [Next work: top_volunteer_projects include WR rewards](#next-work-top_volunteer_projects-include-wr-rewards),
 [Next work: co_worker %-shares misclassified as charity](#next-work-co_worker-shares-misclassified-as-charity),
 [Next work: Civic WR usage fee (app AUR)](#next-work-civic-wr-usage-fee-app-aur).
@@ -86,7 +87,7 @@ env): [`civic-deploy.md`](civic-deploy.md).
 | Work-report map proof                | `GET /rovas/civic_work_report_map_config`; `field_location` on create WR                                                                   | Implemented in `rovas_civic` (`rovas_civic_update_7012`). GeoJSON Point/LineString/Polygon; proof = URL **or** photos **or** map.                                                      |
 | Civic WR verification (in-app)       | `GET /rovas/civic_pending_verifications`, `civic_work_report/{nid}`, `POST /rovas/civic_submit_verification`                               | Implemented in `rovas_civic` (`rovas_civic_update_7013`). Pending list + verifier detail + approve/reject/decline.                                                                     |
 | Merit index (Civic Prínos / ranks)   | `GET /rovas/civic_merit_index`, `civic_merit_index_countries`                                                                             | Snapshot-backed (`7017`); cron rebuild every **12h** (configurable) + admin rebuild. Warm reads ≪1s; items include `by_category` + `by_source`.                                                                      |
-| Charitable projects catalog          | `GET /rovas/civic_charity_projects`; org type `charity_organization`; `/charity-projects`                                                  | Implemented in `rovas_civic` (`rovas_civic_update_7018`). Org content type + project link; anonymous catalog; optional-auth project detail for approved orgs.                                                        |
+| Charitable projects catalog          | `GET /rovas/civic_charity_projects`; org type `charity_organization`; `/charity-projects`                                                  | Catalog API implemented (`7018`). Product framing → Gifts / public-benefit orgs — see [broaden Gifts path labels](#next-work-broaden-gifts-path-labels-public-benefit-orgs).          |
 | Chron balance on `/rovas/me`         | `GET /rovas/me` → `total_chr`                                                                                                              | Pending — see [Chron balance on /rovas/me](#next-work-chron-balance-on-rovasme).                                                                                                       |
 | NACE expertise icons                 | `GET /rovas/users_lookup` → `nace_expertise[]`                                                                                             | Pending — see [NACE expertise on users_lookup](#next-work-nace-expertise-on-users_lookup).                                                                                             |
 
@@ -3100,17 +3101,21 @@ curl -sS "https://dev.rovas.app/rovas/users_lookup?username=sano" \
 
 ## Next work: charitable projects (Civic catalog)
 
-**Goal:** Civic’s Charitatívne projekty screen lists NeoFund-**approved**
-charitable projects (public, anonymous), opens them in the existing project
-modal (with donate instructions), and invites orgs via client `mailto:` that
-links to a Rovas enrollment page. Org identity lives on a reusable
-**`charity_organization`** content type; projects link to it. **No payments
-and no donor-Merit minting in this increment** — discovery + enrollment only.
+**Goal:** Civic’s Gifts path (Neziskové projekty / Nonprofit projects) lists
+NeoFund-**approved** public-benefit / nonprofit projects (public, anonymous),
+opens them in the existing project modal (with donate instructions), and
+invites orgs via client `mailto:` that links to a Rovas enrollment page. Org
+identity lives on a reusable **`charity_organization`** content type; projects
+link to it. **No payments and no donor-Merit minting in this increment** —
+discovery + enrollment only. Wire names stay `charity_*` / `is_charity`;
+product framing is Gifts / Dary — see
+[Next work: broaden Gifts path labels (public-benefit orgs)](#next-work-broaden-gifts-path-labels-public-benefit-orgs).
 
 Canonical product notes: NeoFund
-`~/Documents/Business/NeoFund_NP/about-us.md` (§ Charitable organizations) and
-`~/Documents/Business/NeoFund_NP/charity-opt-in-project-ledger.md` (§1a EUR
-routing gate). Civic companion:
+`~/Documents/Business/NeoFund_NP/about-us.md` (§ Gifts / public-benefit
+organizations) and
+`~/Documents/Business/NeoFund_NP/gift-opt-in-project-ledger.md` (EUR routing
+gate). Civic companion:
 `~/Documents/homeProjects/civic/docs/rovas-integration.md`.
 
 ### 1. Content model — charity org + project link
@@ -3121,7 +3126,10 @@ without re-entering legal / bank / contact data.
 
 #### 1a. Content type `charity_organization`
 
-Machine name: **`charity_organization`** (label: Charitable organization).
+Machine name: **`charity_organization`** (human label: Public-benefit /
+nonprofit organization — see
+[Next work: broaden Gifts path labels (public-benefit orgs)](#next-work-broaden-gifts-path-labels-public-benefit-orgs)
+if the UI still says “Charitable organization”).
 Owned/edited by the org’s Rovas account(s); NeoFund staff can approve.
 
 **Staff-facing** (NeoFund verification; **not** shown as raw fields on Civic
@@ -3146,7 +3154,7 @@ catalog and EUR donation / share-purchase rails stay **blocked** (A12).
 
 **Notify:** on `charity_organization` insert, email **`site_mail`** (default
 site email; falls back to uid 1 mail if empty) with org summary + link to
-**Configuration → Rovas Civic → Charity organizations**
+**Configuration → Rovas Civic → Public-benefit / nonprofit organizations**
 (`/admin/config/rovas/civic/charities`). Staff approve or set pending there
 (or on the org node edit form).
 
@@ -3155,7 +3163,10 @@ Do **not** let owners self-serve the approved badge.
 #### 1b. Project type — charitable subsection
 
 On project **create / edit**, checkbox aligned with NeoFund wording, e.g.
-*“This is a project of a registered charity”* / SK equivalent.
+*“This is a project of a registered public-benefit organization (nonprofit)”* /
+SK *„Toto je projekt registrovanej verejnoprospešnej (neziskovej) organizácie“*
+— see [Next work: broaden Gifts path labels (public-benefit orgs)](#next-work-broaden-gifts-path-labels-public-benefit-orgs)
+if live copy still says charity-only.
 
 When checked, open a subsection:
 
@@ -3320,7 +3331,74 @@ curl -sS -o /dev/null -w "%{http_code}\n" \
 
 - Proxy `GET /charities/projects?type=charity` → `civic_charity_projects`
 - Optional-auth `GET /projects/:nid` (+ WR / shareholders) for guest charity modal
-- Expo charity screen: top 5 / search if `total >= 6` / mailto invite / `ProjectDetailModal` donate block
+- Expo Gifts / nonprofit screen: top 5 / search if `total >= 6` / mailto invite / `ProjectDetailModal` donate block
+
+## Next work: broaden Gifts path labels (public-benefit orgs)
+
+**Goal:** Align Rovas **user-facing** copy with NeoFund’s broadened Gifts /
+Dary path — verified **public-benefit / nonprofit** organisations, not only
+colloquial “charities.” Civic locales already say Gifts / Dary; Rovas
+checkbox, enrollment page, and admin UI still say charity-only in places.
+
+**Do not rename wire identifiers** in this increment: machine name
+`charity_organization`, JSON `is_charity` / `charity_status`, Services path
+`/rovas/civic_charity_projects`, and page path `/charity-projects` stay as-is
+unless a later task deliberately breaks them.
+
+Canonical product notes: NeoFund
+`~/Documents/Business/NeoFund_NP/about-us.md` (§ Gifts — public-benefit /
+nonprofit organizations) and
+`~/Documents/Business/NeoFund_NP/about-us-sk.md` (§ Verejnoprospešné
+organizácie / cesta **Dary**). Civic companion:
+`~/Documents/homeProjects/civic/docs/rovas-integration.md`.
+
+### Eligibility (copy + staff guidance)
+
+Eligible recipients include charities, civic associations (*o.z.*),
+public-benefit service providers (*n.o.*), foundations, non-investment funds
+(*n.f.*), church legal entities for public-benefit activity, cultural and
+educational nonprofits, environmental and advocacy NGOs, digital-commons
+organizations, and similar entities that lawfully receive gifts for the
+commons.
+
+**Excluded:** individuals, political parties, commercial sales.
+
+### Checklist
+
+1. [x] Project create/edit checkbox label (EN + SK) → e.g. *“This is a project of a registered public-benefit organization (nonprofit)”* / *„Toto je projekt registrovanej verejnoprospešnej (neziskovej) organizácie“* (replace charity-only wording)
+2. [x] Content type `charity_organization` **human** label → Public-benefit / nonprofit organization (EN) and Slovak equivalent; machine name unchanged
+3. [x] Admin UI strings that say “Charity organizations” only (e.g. Configuration → Rovas Civic → Charity organizations) → public-benefit / nonprofit framing
+4. [x] Public page `/charity-projects`: why/how + eligibility list + exclusions (EN + SK); keep URL path
+5. [x] Staff approval help text / email notify copy: review for public-benefit nonprofit eligibility, not charity-only
+6. [x] Point any remaining doc links at `about-us.md` § Gifts / public-benefit (not old “Charitable organizations” heading)
+7. [ ] Deploy rovdev + smoke-test below (`rovas_civic_update_7020` + import `sk.custom-modules.po` / `sk.field.po`)
+
+### Smoke test (after deploy)
+
+```bash
+# Enrollment page — expect public-benefit / nonprofit wording (not charity-only)
+curl -sS "https://dev.rovas.app/charity-projects" | head -c 4000
+# Also open in browser (sk + en) and confirm eligibility + exclusions
+
+# Project form: create/edit a project — checkbox label matches NeoFund wording
+# Admin: Configuration → Rovas Civic — org list label uses nonprofit / public-benefit framing
+
+# Catalog unchanged (wire)
+curl -sS "https://dev.rovas.app/rovas/civic_charity_projects?lang=sk" \
+  -H "Accept: application/json" | python3 -m json.tool
+# Expect: same shape as before (total, projects[], is_charity fields on detail)
+```
+
+### Response shape
+
+No JSON field renames. Civic continues to consume `is_charity`,
+`charity_status`, `organization`, `donate_*` as today.
+
+### Civic already done
+
+- Expo locales: path **Gifts** / **Dary**; catalog **Nonprofit projects** /
+  **Neziskové projekty**; invite + three-path blurbs updated
+- Docs: README, `docs/plan.md`, `docs/rovas-integration.md` cite this Next work
 
 ## Next work: top_volunteer_projects include WR rewards
 

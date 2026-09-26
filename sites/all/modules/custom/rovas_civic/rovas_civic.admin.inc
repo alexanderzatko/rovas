@@ -116,11 +116,11 @@ function rovas_civic_admin_form($form, &$form_state) {
 
   $form['charities'] = array(
     '#type' => 'fieldset',
-    '#title' => t('Charity organizations'),
-    '#description' => t('NeoFund review queue for organizations linked from charitable projects.'),
+    '#title' => t('Public-benefit / nonprofit organizations'),
+    '#description' => t('NeoFund review queue for organizations linked from public-benefit / nonprofit projects.'),
   );
   $form['charities']['link'] = array(
-    '#markup' => '<p>' . l(t('Review charity organizations'), 'admin/config/rovas/civic/charities') . '</p>',
+    '#markup' => '<p>' . l(t('Review public-benefit / nonprofit organizations'), 'admin/config/rovas/civic/charities') . '</p>',
   );
 
   $form['actions'] = array('#type' => 'actions');
@@ -310,7 +310,7 @@ function rovas_civic_admin_charities_form($form, &$form_state) {
       $node = node_load($nid);
       if ($node && function_exists('rovas_civic_charity_org_set_status')
         && rovas_civic_charity_org_set_status($node, ROVAS_CIVIC_CHARITY_STATUS_APPROVED)) {
-        drupal_set_message(t('Approved charity organization @title.', array('@title' => $node->title)));
+        drupal_set_message(t('Approved public-benefit / nonprofit organization @title.', array('@title' => $node->title)));
       }
       drupal_goto('admin/config/rovas/civic/charities', array('query' => array('status' => $status_filter)));
     }
@@ -422,7 +422,7 @@ function rovas_civic_admin_charities_form($form, &$form_state) {
     '#markup' => theme('table', array(
       'header' => $header,
       'rows' => $rows,
-      'empty' => t('No charity organizations match this filter.'),
+      'empty' => t('No public-benefit / nonprofit organizations match this filter.'),
     )),
   );
   $form['pager'] = array('#theme' => 'pager');

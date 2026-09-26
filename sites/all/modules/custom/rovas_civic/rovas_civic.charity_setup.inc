@@ -16,6 +16,7 @@ function rovas_civic_ensure_charity_content() {
   _rovas_civic_ensure_charity_organization_type();
   _rovas_civic_ensure_charity_field_bases();
   _rovas_civic_ensure_charity_field_instances();
+  _rovas_civic_refresh_charity_user_labels();
   _rovas_civic_ensure_charity_permissions();
   _rovas_civic_ensure_charity_entity_translation();
   field_cache_clear();
@@ -23,18 +24,77 @@ function rovas_civic_ensure_charity_content() {
 }
 
 /**
- * Node type charity_organization.
+ * Update human labels on existing charity type + project field instances.
+ *
+ * Wire names stay charity_*; product framing is public-benefit / nonprofit.
+ */
+function _rovas_civic_refresh_charity_user_labels() {
+  $updates = array(
+    array(
+      'entity_type' => 'node',
+      'bundle' => 'project',
+      'field_name' => 'field_is_charity',
+      'label' => 'Public-benefit / nonprofit project',
+      'description' => 'This is a project of a registered public-benefit organization (nonprofit).',
+    ),
+    array(
+      'entity_type' => 'node',
+      'bundle' => 'project',
+      'field_name' => 'field_charity_organization',
+      'label' => 'Public-benefit / nonprofit organization',
+      'description' => 'Required when the public-benefit / nonprofit checkbox is on. Create the organization once and reuse it.',
+    ),
+    array(
+      'entity_type' => 'node',
+      'bundle' => ROVAS_CIVIC_CHARITY_BUNDLE,
+      'field_name' => 'field_charity_status',
+      'label' => NULL,
+      'description' => 'NeoFund review for public-benefit / nonprofit eligibility. Owners cannot self-approve.',
+    ),
+  );
+  foreach ($updates as $spec) {
+    $instance = field_info_instance($spec['entity_type'], $spec['field_name'], $spec['bundle']);
+    if (!$instance) {
+      continue;
+    }
+    $changed = FALSE;
+    if ($spec['label'] !== NULL && $instance['label'] !== $spec['label']) {
+      $instance['label'] = $spec['label'];
+      $changed = TRUE;
+    }
+    if ($spec['description'] !== NULL
+      && (!isset($instance['description']) || $instance['description'] !== $spec['description'])) {
+      $instance['description'] = $spec['description'];
+      $changed = TRUE;
+    }
+    if ($changed) {
+      field_update_instance($instance);
+    }
+  }
+}
+
+/**
+ * Node type charity_organization (human label: public-benefit / nonprofit).
  */
 function _rovas_civic_ensure_charity_organization_type() {
+  $name = 'Public-benefit / nonprofit organization';
+  $description = 'Verified public-benefit / nonprofit organization. Linked from projects; NeoFund approves once for all linked projects.';
   $types = node_type_get_types();
   if (isset($types[ROVAS_CIVIC_CHARITY_BUNDLE])) {
+    $type = $types[ROVAS_CIVIC_CHARITY_BUNDLE];
+    if ($type->name !== $name || $type->description !== $description) {
+      $type->name = $name;
+      $type->description = $description;
+      node_type_save($type);
+      node_types_rebuild();
+    }
     return;
   }
   $type = array(
     'type' => ROVAS_CIVIC_CHARITY_BUNDLE,
-    'name' => 'Charitable organization',
+    'name' => $name,
     'base' => 'node_content',
-    'description' => 'Registered charity / public-benefit organization. Linked from projects; NeoFund approves once for all linked projects.',
+    'description' => $description,
     'custom' => 1,
     'modified' => 1,
     'locked' => 0,
@@ -237,7 +297,7 @@ function _rovas_civic_ensure_charity_field_instances() {
           'weight' => 1,
         ),
       ),
-      'description' => 'NeoFund review. Owners cannot self-approve.',
+      'description' => 'NeoFund review for public-benefit / nonprofit eligibility. Owners cannot self-approve.',
     ),
     'field_charity_ico' => array(
       'label' => 'IČO / registration number',
@@ -372,7 +432,7 @@ function _rovas_civic_ensure_charity_field_instances() {
 
   $project_instances = array(
     'field_is_charity' => array(
-      'label' => 'Charitable project',
+      'label' => 'Public-benefit / nonprofit project',
       'required' => 0,
       'default_value' => array(
         array('value' => 0),
@@ -391,10 +451,10 @@ function _rovas_civic_ensure_charity_field_instances() {
           'weight' => 35,
         ),
       ),
-      'description' => 'This is a project of a registered charity.',
+      'description' => 'This is a project of a registered public-benefit organization (nonprofit).',
     ),
     'field_charity_organization' => array(
-      'label' => 'Charity organization',
+      'label' => 'Public-benefit / nonprofit organization',
       'required' => 0,
       'widget' => array(
         'type' => 'entityreference_autocomplete',
@@ -412,7 +472,7 @@ function _rovas_civic_ensure_charity_field_instances() {
           'weight' => 36,
         ),
       ),
-      'description' => 'Required when the charitable checkbox is on. Create the organization once and reuse it.',
+      'description' => 'Required when the public-benefit / nonprofit checkbox is on. Create the organization once and reuse it.',
     ),
     'field_charity_donate_text' => array(
       'label' => 'Donate instructions (project override)',

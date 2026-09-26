@@ -2,10 +2,11 @@
 
 /**
  * @file
- * Charitable organizations + Civic catalog / enrollment.
+ * Public-benefit / nonprofit organizations + Civic catalog / enrollment.
  *
  * Content type charity_organization holds org identity; projects link via
- * field_charity_organization. See docs/integration/civic.md.
+ * field_charity_organization. Wire names stay charity_*; product framing is
+ * Gifts / public-benefit. See docs/integration/civic.md.
  */
 
 if (!defined('ROVAS_CIVIC_CHARITY_BUNDLE')) {
@@ -372,34 +373,38 @@ function rovas_civic_charity_projects_page() {
   $is_sk = (drupal_strtolower(substr($lang, 0, 2)) === 'sk' || drupal_strtolower(substr($lang, 0, 2)) === 'cs');
 
   if ($is_sk) {
-    $title = 'Charitatívne projekty na Rovase';
+    $title = 'Neziskové projekty na Rovase';
     drupal_set_title($title);
-    $intro = '<p>Rovas umožňuje registrovaným charitám a verejnoprospešným organizáciám zverejniť projekty v aplikácii Civic — bez poplatkov za zápis. Darovanie v eurách a súvisiace Merit prídu neskôr; teraz ide o objavenie projektov a zápis organizácie.</p>';
+    $intro = '<p>Rovas umožňuje overeným <strong>verejnoprospešným / neziskovým organizáciám</strong> zverejniť projekty v aplikácii Civic (cesta Dary) — bez poplatkov za zápis. Darovanie v eurách a súvisiace Merit prídu neskôr; teraz ide o objavenie projektov a zápis organizácie.</p>';
+    $elig_title = 'Kto sa môže zapojiť';
+    $elig = '<p>Spôsobilosť majú charity, občianske združenia (<em>o.z.</em>), neziskové organizácie poskytujúce verejnoprospešné služby (<em>n.o.</em>), nadácie, neinvestičné fondy (<em>n.f.</em>), cirkevné právnické osoby pri verejnoprospešnej činnosti, kultúrne a vzdelávacie neziskovky, environmentálne a advokačné organizácie, organizácie digitálneho commons a podobné subjekty, ktoré môžu zákonne prijímať dary pre spoločné dobro.</p><p><strong>Nezahŕňa:</strong> jednotlivcov, politické strany a komerčný predaj.</p>';
     $steps_title = 'Ako sa zapojiť';
     $steps = array(
       'Vytvorte projekt na Rovase (alebo použite existujúci).',
-      'Pri úprave projektu zaškrtnite „Toto je projekt registrovanej charity“.',
+      'Pri úprave projektu zaškrtnite „Toto je projekt registrovanej verejnoprospešnej (neziskovej) organizácie“.',
       'Vytvorte alebo vyberte organizáciu (právny názov, IČO, kontakt, IBAN) — údaje zadáte raz a môžete ich použiť na viacerých projektoch.',
       'Pošlite na schválenie NeoFundu. Kým nie je organizácia schválená, projekt sa v Civic katalógu nezobrazí a EUR platby sú blokované.',
       'Ďalšie projekty pripojte k tej istej organizácii — nemusíte znova vypĺňať IČO ani účet.',
       'Neskôr: platobná integrácia a voliteľný widget na vašom webe.',
     );
-    $cta = '<p>' . l(t('Create a project'), 'node/add/project') . ' · ' . l(t('Register a charity organization'), 'node/add/' . ROVAS_CIVIC_CHARITY_BUNDLE) . '</p>';
+    $cta = '<p>' . l(t('Create a project'), 'node/add/project') . ' · ' . l(t('Register a public-benefit / nonprofit organization'), 'node/add/' . ROVAS_CIVIC_CHARITY_BUNDLE) . '</p>';
   }
   else {
-    $title = 'Charitable projects on Rovas';
+    $title = 'Nonprofit projects on Rovas';
     drupal_set_title($title);
-    $intro = '<p>Rovas lets registered charities and public-benefit organizations list projects in the Civic app — no listing fee. EUR donations and related Merit come later; this step is discovery and enrollment only.</p>';
+    $intro = '<p>Rovas lets verified <strong>public-benefit / nonprofit organizations</strong> list projects in the Civic app (Gifts path) — no listing fee. EUR donations and related Merit come later; this step is discovery and enrollment only.</p>';
+    $elig_title = 'Who is eligible';
+    $elig = '<p>Eligible recipients include charities, civic associations (<em>o.z.</em>), public-benefit service providers (<em>n.o.</em>), foundations, non-investment funds (<em>n.f.</em>), church legal entities for public-benefit activity, cultural and educational nonprofits, environmental and advocacy NGOs, digital-commons organizations, and similar entities that lawfully receive gifts for the commons.</p><p><strong>Excluded:</strong> individuals, political parties, and commercial sales.</p>';
     $steps_title = 'How to enroll';
     $steps = array(
       'Create a Rovas project (or use an existing one).',
-      'On the project form, check “This is a project of a registered charity.”',
-      'Create or select a charity organization (legal name, registration id, contact, IBAN) — enter once, reuse across projects.',
+      'On the project form, check “This is a project of a registered public-benefit organization (nonprofit).”',
+      'Create or select a public-benefit / nonprofit organization (legal name, registration id, contact, IBAN) — enter once, reuse across projects.',
       'Wait for NeoFund approval. Until the organization is approved, the project stays out of the Civic catalog and EUR rails stay blocked.',
       'Attach further projects to the same organization — no need to re-enter legal or bank details.',
       'Later: payment integration and an optional site widget.',
     );
-    $cta = '<p>' . l(t('Create a project'), 'node/add/project') . ' · ' . l(t('Register a charity organization'), 'node/add/' . ROVAS_CIVIC_CHARITY_BUNDLE) . '</p>';
+    $cta = '<p>' . l(t('Create a project'), 'node/add/project') . ' · ' . l(t('Register a public-benefit / nonprofit organization'), 'node/add/' . ROVAS_CIVIC_CHARITY_BUNDLE) . '</p>';
   }
 
   $list = '<ol>';
@@ -410,7 +415,9 @@ function rovas_civic_charity_projects_page() {
 
   return array(
     '#type' => 'markup',
-    '#markup' => $intro . '<h2>' . check_plain($steps_title) . '</h2>' . $list . $cta,
+    '#markup' => $intro
+      . '<h2>' . check_plain($elig_title) . '</h2>' . $elig
+      . '<h2>' . check_plain($steps_title) . '</h2>' . $list . $cta,
   );
 }
 
@@ -434,14 +441,14 @@ function rovas_civic_form_project_node_form_alter(&$form, &$form_state) {
     ? $form['field_is_charity']['#weight']
     : 35;
 
-  $form['field_is_charity'][LANGUAGE_NONE]['#title'] = t('This is a project of a registered charity');
-  $form['field_is_charity'][LANGUAGE_NONE]['#description'] = t('When checked, link a charity organization. NeoFund must approve the organization before the project appears in Civic and before EUR donations or share purchases are allowed.');
+  $form['field_is_charity'][LANGUAGE_NONE]['#title'] = t('This is a project of a registered public-benefit organization (nonprofit)');
+  $form['field_is_charity'][LANGUAGE_NONE]['#description'] = t('When checked, link a public-benefit / nonprofit organization. NeoFund must approve the organization before the project appears in Civic and before EUR donations or share purchases are allowed.');
 
   // Same pattern as project ownership / purchasing-shares: collapsible fieldset
   // + #states on the dependent block (id selector matches options_onoff).
   $form['charity_project'] = array(
     '#type' => 'fieldset',
-    '#title' => t('Charitable project'),
+    '#title' => t('Public-benefit / nonprofit project'),
     '#collapsible' => TRUE,
     '#collapsed' => !$is_charity,
     '#weight' => $weight,
@@ -487,9 +494,9 @@ function rovas_civic_form_project_node_form_alter(&$form, &$form_state) {
 
   if (isset($form['charity_project']['charity_details']['field_charity_organization'][LANGUAGE_NONE][0]['target_id'])) {
     $org_widget = &$form['charity_project']['charity_details']['field_charity_organization'][LANGUAGE_NONE][0]['target_id'];
-    $org_widget['#title'] = t('Charity organization');
+    $org_widget['#title'] = t('Public-benefit / nonprofit organization');
     $org_widget['#description'] = t('Select an organization you manage, or !create first.', array(
-      '!create' => l(t('create a charity organization'), 'node/add/' . ROVAS_CIVIC_CHARITY_BUNDLE, array(
+      '!create' => l(t('create a public-benefit / nonprofit organization'), 'node/add/' . ROVAS_CIVIC_CHARITY_BUNDLE, array(
         'query' => array('destination' => current_path()),
       )),
     ));
@@ -517,7 +524,7 @@ function rovas_civic_form_charity_organization_node_form_alter(&$form, &$form_st
   $can_approve = user_access('administer rovas civic');
   if (isset($form['field_charity_status'])) {
     if ($can_approve) {
-      $form['field_charity_status'][LANGUAGE_NONE]['#description'] = t('Only NeoFund staff should set Approved. Owners leave this as Pending.');
+      $form['field_charity_status'][LANGUAGE_NONE]['#description'] = t('Only NeoFund staff should set Approved. Review for public-benefit / nonprofit eligibility (not charity-only). Owners leave this as Pending.');
     }
     else {
       $form['field_charity_status']['#access'] = FALSE;
@@ -525,7 +532,7 @@ function rovas_civic_form_charity_organization_node_form_alter(&$form, &$form_st
   }
   if (isset($form['title'])) {
     $form['title']['#title'] = t('Legal name');
-    $form['title']['#description'] = t('Official registered name of the charity / public-benefit organization.');
+    $form['title']['#description'] = t('Official registered name of the public-benefit / nonprofit organization.');
   }
 }
 
@@ -553,17 +560,17 @@ function rovas_civic_project_charity_form_validate_impl($form, &$form_state) {
     }
   }
   if ($tid < 1) {
-    form_set_error('field_charity_organization', t('Select or create a charity organization for this charitable project.'));
+    form_set_error('field_charity_organization', t('Select or create a public-benefit / nonprofit organization for this project.'));
     return;
   }
   $org = node_load($tid);
   if (!$org || $org->type !== ROVAS_CIVIC_CHARITY_BUNDLE) {
-    form_set_error('field_charity_organization', t('Invalid charity organization.'));
+    form_set_error('field_charity_organization', t('Invalid public-benefit / nonprofit organization.'));
     return;
   }
   global $user;
   if (!user_access('administer rovas civic') && (int) $org->uid !== (int) $user->uid) {
-    form_set_error('field_charity_organization', t('You may only link charity organizations you own.'));
+    form_set_error('field_charity_organization', t('You may only link public-benefit / nonprofit organizations you own.'));
   }
 }
 
@@ -650,7 +657,8 @@ function rovas_civic_notify_charity_org_pending($node) {
   $node_url = url('node/' . (int) $node->nid . '/edit', array('absolute' => TRUE));
 
   $lines = array(
-    t('A new charity organization was submitted and is pending NeoFund review.'),
+    t('A new public-benefit / nonprofit organization was submitted and is pending NeoFund review.'),
+    t('Confirm eligibility for the Gifts path (charities, o.z., n.o., foundations, etc. — not individuals, political parties, or commercial sales).'),
     '',
     t('Legal name: @title', array('@title' => $node->title)),
     t('Node: @nid', array('@nid' => (int) $node->nid)),
@@ -674,7 +682,7 @@ function rovas_civic_notify_charity_org_pending($node) {
     $to,
     $langcode,
     array(
-      'subject' => t('Rovas: New charity organization pending review — @title', array(
+      'subject' => t('Rovas: New public-benefit / nonprofit organization pending review — @title', array(
         '@title' => $node->title,
       )),
       'body' => implode("\n", $lines),
@@ -732,7 +740,7 @@ function rovas_civic_form_rovas_project_reward_form_alter(&$form, &$form_state) 
 
   $form['rovas_civic_eur_blocked'] = array(
     '#type' => 'markup',
-    '#markup' => '<div class="messages warning">' . t('EUR donations and EUR share purchases are unavailable until NeoFund approves this project’s charity organization. You can still pay with Chrons.') . '</div>',
+    '#markup' => '<div class="messages warning">' . t('EUR donations and EUR share purchases are unavailable until NeoFund approves this project’s public-benefit / nonprofit organization. You can still pay with Chrons.') . '</div>',
     '#weight' => -50,
   );
   $form['#validate'][] = 'rovas_civic_rewpro_form_validate';
@@ -750,6 +758,6 @@ function rovas_civic_rewpro_eur_charity_validate_impl($form, &$form_state) {
   }
   $project = node_load((int) $pid);
   if (rovas_civic_project_blocks_eur_rails($project)) {
-    form_set_error('payment', t('EUR payments are blocked until NeoFund approves this charity organization.'));
+    form_set_error('payment', t('EUR payments are blocked until NeoFund approves this public-benefit / nonprofit organization.'));
   }
 }
