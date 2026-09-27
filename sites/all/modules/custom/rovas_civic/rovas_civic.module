@@ -237,6 +237,7 @@ function rovas_civic_node_insert($node) {
  * - POST /rovas/civic_submit_verification
  * - GET  /rovas/civic_merit_index (Prínos / Merit Index leaderboard)
  * - GET  /rovas/civic_merit_index_countries (Prínos country filter dropdown)
+ * - GET  /rovas/civic_merit_spotlight (period leads by Civic area)
  * - GET  /rovas/civic_charity_projects (public approved-charity catalog)
  *
  * Note: Services aliases must be slash-free. Do not use aliases like
@@ -268,6 +269,11 @@ function rovas_civic_services_resources() {
     'type' => 'inc',
     'module' => 'rovas_civic',
     'name' => 'rovas_civic.merit_index',
+  );
+  $merit_spotlight_file = array(
+    'type' => 'inc',
+    'module' => 'rovas_civic',
+    'name' => 'rovas_civic.merit_spotlight',
   );
   $charity_file = array(
     'type' => 'inc',
@@ -939,6 +945,41 @@ function rovas_civic_services_resources() {
               'name' => 'lang',
               'type' => 'string',
               'description' => 'Optional content language (sk|en) for country labels.',
+              'source' => array('param' => 'lang'),
+              'optional' => TRUE,
+              'default value' => '',
+            ),
+          ),
+        ),
+      ),
+    ),
+    'civic_merit_spotlight' => array(
+      'operations' => array(
+        'index' => array(
+          'help' => 'Merit spotlight: period leads by Civic area (taxes/charity/volunteer). ?period=day|week|month required. Optional ?country_iso2=&lang=. Public read; optional Bearer adds you.',
+          'callback' => 'rovas_civic_services_merit_spotlight_index',
+          'file' => $merit_spotlight_file,
+          'access callback' => 'services_access_menu',
+          'args' => array(
+            array(
+              'name' => 'period',
+              'type' => 'string',
+              'description' => 'day|week|month (Europe/Bratislava windows).',
+              'source' => array('param' => 'period'),
+              'optional' => FALSE,
+            ),
+            array(
+              'name' => 'country_iso2',
+              'type' => 'string',
+              'description' => 'Optional ISO-2 country filter (case-insensitive).',
+              'source' => array('param' => 'country_iso2'),
+              'optional' => TRUE,
+              'default value' => '',
+            ),
+            array(
+              'name' => 'lang',
+              'type' => 'string',
+              'description' => 'Optional content language (sk|en). Accepted for consistency; unused in payload.',
               'source' => array('param' => 'lang'),
               'optional' => TRUE,
               'default value' => '',
@@ -3140,6 +3181,7 @@ function rovas_civic_ensure_services_resources() {
     'civic_nace_tree',
     'civic_merit_index',
     'civic_merit_index_countries',
+    'civic_merit_spotlight',
     'civic_charity_projects',
   ) as $res_name) {
     if (empty($endpoint->resources[$res_name])

@@ -630,3 +630,13 @@ function rovas_civic_update_7020() {
   }
   return t('Public-benefit / nonprofit labels refreshed on charity_organization type, project fields, menu, and enrollment copy.');
 }
+
+/**
+ * Enable Civic Merit spotlight Services resource (period leads by area).
+ */
+function rovas_civic_update_7021() {
+  if (function_exists('rovas_civic_ensure_services_resources')) {
+    rovas_civic_ensure_services_resources();
+  }
+  return t('Civic Merit spotlight API (GET /rovas/civic_merit_spotlight) enabled on rovas_endpoint.');
+}

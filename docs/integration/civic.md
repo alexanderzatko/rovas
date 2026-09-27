@@ -3787,12 +3787,12 @@ uid). Omit a category from `leads` when its top earned_me is ≤ 0.
 
 ### Checklist
 
-1. [ ] Services resource `civic_merit_spotlight` on `rovas_endpoint` (OAuth2 `civic` server; API-key off; public GET + optional Bearer)
-2. [ ] Period window math (Europe/Bratislava) for `day` / `week` / `month`
-3. [ ] Aggregate ledger credits → per-uid `by_category` + category leads
-4. [ ] Optional `country_iso2` filter (same country source as Merit Index)
-5. [ ] Optional Bearer → `you` block (`earned_me`, `by_category`, `earned_today_me`, `is_lead_for`)
-6. [ ] Hide negative lifetime Merit users from leads / active_earners
+1. [x] Services resource `civic_merit_spotlight` on `rovas_endpoint` (OAuth2 `civic` server; API-key off; public GET + optional Bearer)
+2. [x] Period window math (Europe/Bratislava) for `day` / `week` / `month`
+3. [x] Aggregate ledger credits → per-uid `by_category` + category leads
+4. [x] Optional `country_iso2` filter (same country source as Merit Index)
+5. [x] Optional Bearer → `you` block (`earned_me`, `by_category`, `earned_today_me`, `is_lead_for`)
+6. [x] Hide negative lifetime Merit users from leads / active_earners
 7. [ ] Hook / update + enable on rovdev (`drush74 updb` or admin Enable Civic resources)
 8. [ ] Deploy rovdev
 
