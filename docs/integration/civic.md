@@ -33,13 +33,14 @@ Civic API); keep both in sync when contracts change.
 [AI NACE + title from work-report text](#ai-nace--title-from-work-report-text),
 [CHR to ME on WR verification](#chr-to-me-on-wr-verification),
 [Next work: geofield on Civic work reports](#next-work-geofield-on-civic-work-reports),
-and [Next work: OAuth session persistence](#next-work-oauth-session-persistence),
+[Next work: OAuth session persistence](#next-work-oauth-session-persistence),
 [Next work: member_since_year on users_lookup](#next-work-member_since_year-on-users_lookup),
 [Next work: charitable projects (Civic catalog)](#next-work-charitable-projects-civic-catalog),
 [Next work: broaden Gifts path labels (public-benefit orgs)](#next-work-broaden-gifts-path-labels-public-benefit-orgs),
 [Next work: top_volunteer_projects include WR rewards](#next-work-top_volunteer_projects-include-wr-rewards),
 [Next work: co_worker %-shares misclassified as charity](#next-work-co_worker-shares-misclassified-as-charity),
-[Next work: Civic WR usage fee (app AUR)](#next-work-civic-wr-usage-fee-app-aur).
+[Next work: Civic WR usage fee (app AUR)](#next-work-civic-wr-usage-fee-app-aur),
+and [Next work: Merit spotlight (period leads by area)](#next-work-merit-spotlight-period-leads-by-area).
 Do not rely on reading the Civic tree unless you need Expo/API details.
 
 **Dev target (until told otherwise):** all Civic integration work targets
@@ -3693,6 +3694,130 @@ Civic API attaches `usage_fee_project_id` / `usage_fee_rate` from its env
 (`CIVIC_APP_PROJECT_NID`, `WR_USAGE_FEE_RATE`) when the fee is enabled.
 Form disclosure uses Civic `GET /work-reports/fee-info` (no Rovas round-trip).
 One-time: create the Civic project in the Rovas UI; put its nid in Civic env.
+
+## Next work: Merit spotlight (period leads by area)
+
+**Product:** Civic Home + ME•rank show a **Merit spotlight** — top Merit
+*earners in a time window* (not lifetime wallet), one lead per Civic area
+(Taxes / Gifts / Volunteering). Lifetime Merit Index stays separate.
+
+**Timezone for period bounds:** `Europe/Bratislava`.
+
+| `period` | Window |
+|----------|--------|
+| `day` | Previous calendar day (yesterday) |
+| `week` | Last 7 calendar days ending yesterday (inclusive) |
+| `month` | Previous calendar month |
+
+### Contract
+
+`GET /rovas/civic_merit_spotlight`
+
+| Query | Required | Notes |
+|-------|----------|--------|
+| `period` | yes | `day` \| `week` \| `month` |
+| `country_iso2` | no | ISO-2; when set, rank only users with that country. Civic defaults to `SK`. |
+| `lang` | no | `sk` \| `en` (labels unused for this payload; accept for consistency) |
+
+**Auth:** public read. Optional Bearer — when present, include `you`.
+
+**Aggregation:** sum ledger Merit *credits* (positive disbursements) with
+`created` in `[period_start, period_end]` per uid × Civic category
+(`tax_payment`→taxes, `charitable_donation`→charity,
+`volunteer_work`+`volunteer`+`penalty`→volunteer). Exclude users with
+lifetime `total_me < 0` (same hide rule as Merit Index). Per category, the
+lead is the uid with the highest period ME in that category (ties → lower
+uid). Omit a category from `leads` when its top earned_me is ≤ 0.
+
+**Response 200:**
+
+```json
+{
+  "period": "week",
+  "period_start": "2026-09-19",
+  "period_end": "2026-09-25",
+  "country_iso2": "SK",
+  "community_earned_me": 1284.5,
+  "active_earners": 17,
+  "leads": [
+    {
+      "category": "taxes",
+      "earned_me": 42.5,
+      "rovas_uid": "123",
+      "username": "ann",
+      "display_name": "Ann",
+      "country_iso2": "SK"
+    },
+    {
+      "category": "charity",
+      "earned_me": 100,
+      "rovas_uid": "456",
+      "username": "bob",
+      "display_name": "Bob",
+      "country_iso2": "SK"
+    },
+    {
+      "category": "volunteer",
+      "earned_me": 30,
+      "rovas_uid": "789",
+      "username": "cy",
+      "display_name": "Cy",
+      "country_iso2": "SK"
+    }
+  ],
+  "you": {
+    "earned_me": 12,
+    "by_category": { "taxes": 12, "charity": 0, "volunteer": 0 },
+    "earned_today_me": 0,
+    "is_lead_for": []
+  }
+}
+```
+
+| Field | Notes |
+|-------|--------|
+| `period_start` / `period_end` | Inclusive calendar dates `YYYY-MM-DD` in Europe/Bratislava |
+| `country_iso2` | Echo filter, or `null` when unfiltered |
+| `community_earned_me` | Sum of all positive period ME in scope |
+| `active_earners` | Distinct uids with period ME &gt; 0 |
+| `leads[]` | 0–3 rows; order: taxes, charity, volunteer when present |
+| `you` | Omit when anonymous. `earned_today_me` = Merits credited on *today’s* calendar day (Bratislava), for Home “already earning → skip promo”. `is_lead_for` = categories where caller is the period lead |
+
+**Errors:** `400` invalid `period`; `503` if ledger query fails.
+
+### Checklist
+
+1. [ ] Services resource `civic_merit_spotlight` on `rovas_endpoint` (OAuth2 `civic` server; API-key off; public GET + optional Bearer)
+2. [ ] Period window math (Europe/Bratislava) for `day` / `week` / `month`
+3. [ ] Aggregate ledger credits → per-uid `by_category` + category leads
+4. [ ] Optional `country_iso2` filter (same country source as Merit Index)
+5. [ ] Optional Bearer → `you` block (`earned_me`, `by_category`, `earned_today_me`, `is_lead_for`)
+6. [ ] Hide negative lifetime Merit users from leads / active_earners
+7. [ ] Hook / update + enable on rovdev (`drush74 updb` or admin Enable Civic resources)
+8. [ ] Deploy rovdev
+
+### Smoke test
+
+```bash
+# Public — week, Slovakia
+curl -sS "https://dev.rovas.app/rovas/civic_merit_spotlight?period=week&country_iso2=SK" \
+  -H "Accept: application/json" | jq '{period, period_start, period_end, community_earned_me, active_earners, leads: [.leads[].category]}'
+
+# Expect: HTTP 200; period=week; leads categories ⊆ taxes|charity|volunteer;
+# no you key without Bearer.
+
+# With Bearer — you block present
+curl -sS "https://dev.rovas.app/rovas/civic_merit_spotlight?period=day&country_iso2=SK" \
+  -H "Accept: application/json" \
+  -H "Authorization: Bearer $TOKEN" | jq '.you'
+```
+
+### Civic will consume
+
+Civic proxies `GET /rank/spotlight` → this endpoint (optional Bearer). Mobile
+`MeritSpotlight` on Home (dismissible daily card) and ME•rank (permanent
+header). Until this resource exists, Civic returns an empty spotlight payload
+(200) so the UI stays hidden.
 
 ## Related Civic docs
 
