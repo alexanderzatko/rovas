@@ -138,8 +138,9 @@ function rovas_civic_merit_spotlight_period_window($period) {
 /**
  * Aggregate positive period Merit credits per uid × category.
  *
- * Excludes users with lifetime total_me < 0. Optional country filter uses
- * field_country (same source as Merit Index).
+ * Excludes blocked/inactive users (users.status = 1) and lifetime
+ * total_me < 0 — same hide rules as Merit Index. Optional country filter
+ * uses field_country (same source as Merit Index).
  *
  * @param int $start_ts
  * @param int $end_excl_ts
@@ -173,6 +174,9 @@ function rovas_civic_merit_spotlight_aggregate($start_ts, $end_excl_ts, $country
     FROM {node} n
     INNER JOIN {field_data_field_reward_recipient} rec
       ON rec.entity_id = n.nid AND rec.entity_type = 'node' AND rec.deleted = 0
+    INNER JOIN {users} u
+      ON u.uid = rec.field_reward_recipient_target_id
+      AND u.status = 1
     INNER JOIN {field_data_field_reward_amount} amt
       ON amt.entity_id = n.nid AND amt.entity_type = 'node' AND amt.deleted = 0
     LEFT JOIN {field_data_field_merit_source} src

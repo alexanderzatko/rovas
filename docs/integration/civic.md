@@ -3725,10 +3725,11 @@ One-time: create the Civic project in the Rovas UI; put its nid in Civic env.
 **Aggregation:** sum ledger Merit *credits* (positive disbursements) with
 `created` in `[period_start, period_end]` per uid × Civic category
 (`tax_payment`→taxes, `charitable_donation`→charity,
-`volunteer_work`+`volunteer`+`penalty`→volunteer). Exclude users with
-lifetime `total_me < 0` (same hide rule as Merit Index). Per category, the
-lead is the uid with the highest period ME in that category (ties → lower
-uid). Omit a category from `leads` when its top earned_me is ≤ 0.
+`volunteer_work`+`volunteer`+`penalty`→volunteer). Exclude blocked/inactive
+users (`users.status = 1`) and lifetime `total_me < 0` (same hide rules as
+Merit Index). Per category, the lead is the uid with the highest period ME
+in that category (ties → lower uid). Omit a category from `leads` when its
+top earned_me is ≤ 0.
 
 **Response 200:**
 
@@ -3861,8 +3862,9 @@ windows). Do **not** change the lifetime Merit Index snapshot path.
 
 **Aggregation:** same as spotlight — positive ledger credits in the window;
 category map `tax_payment`→taxes, `charitable_donation`→charity,
-`volunteer_work`+`volunteer`+`penalty`→volunteer; hide lifetime
-`total_me < 0`. Omit users whose **period** ME rounds to ≤ 0 (`round(earned_me) <= 0`) so Civic does not show “0 ME” rows.
+`volunteer_work`+`volunteer`+`penalty`→volunteer; hide blocked/inactive
+users and lifetime `total_me < 0`. Omit users whose **period** ME rounds to
+≤ 0 (`round(earned_me) <= 0`) so Civic does not show “0 ME” rows.
 
 **Row shape:** same fields as `civic_merit_index` items so Civic can reuse the
 Merit Index table UI:
