@@ -640,3 +640,13 @@ function rovas_civic_update_7021() {
   }
   return t('Civic Merit spotlight API (GET /rovas/civic_merit_spotlight) enabled on rovas_endpoint.');
 }
+
+/**
+ * Enable Civic Merit period index Services resource (ME•ter time dimension).
+ */
+function rovas_civic_update_7022() {
+  if (function_exists('rovas_civic_ensure_services_resources')) {
+    rovas_civic_ensure_services_resources();
+  }
+  return t('Civic Merit period index API (GET /rovas/civic_merit_period_index) enabled on rovas_endpoint.');
+}
