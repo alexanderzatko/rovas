@@ -1,0 +1,33 @@
+diff --git a/lib/Drupal/oauth2_server/Storage.php b/lib/Drupal/oauth2_server/Storage.php
+index d48c4b19..b4baab81 100644
+--- a/lib/Drupal/oauth2_server/Storage.php
++++ b/lib/Drupal/oauth2_server/Storage.php
+@@ -121,13 +121,27 @@ class Storage implements AuthorizationCodeInterface,
+   /**
+    * Track the time the token was accessed.
+    *
++   * Concurrent requests that share the same access token (e.g. Civic Bearer
++   * introspect + parallel API calls) race on this UPDATE and can hit MySQL
++   * deadlock 1213. Prefer a single-column update over entity save, and swallow
++   * lock failures so token validation still succeeds. See Drupal.org #2859214.
++   *
+    * @param \OAuth2ServerToken $token
+    */
+   protected function logAccessTime(\OAuth2ServerToken $token)
+   {
+     if ($token->last_access != REQUEST_TIME) {
+       $token->last_access = REQUEST_TIME;
+-      $token->save();
++      try {
++        // Narrow UPDATE avoids locking entityreference/field rows with entity_save().
++        db_update('oauth2_server_token')
++          ->fields(array('last_access' => REQUEST_TIME))
++          ->condition('token_id', $token->token_id)
++          ->execute();
++      }
++      catch (\Exception $e) {
++        // @todo Find a way to reliably handle concurrent updates of last_access.
++      }
+     }
+   }
+ 
