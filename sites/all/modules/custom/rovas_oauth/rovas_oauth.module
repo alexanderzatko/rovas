@@ -32,6 +32,11 @@ define('ROVAS_OAUTH_CLIENT_KEY', 'civic');
 define('ROVAS_OAUTH_REDIRECT_PROD', 'civic://oauth/callback');
 
 /**
+ * Session key for Civic UI locale during OAuth authorize (anonymous login).
+ */
+define('ROVAS_OAUTH_CIVIC_UI_LANG_SESSION', 'rovas_oauth_civic_ui_lang');
+
+/**
  * Services endpoint machine name used by Rovas REST APIs.
  */
 define('ROVAS_OAUTH_SERVICES_ENDPOINT', 'rovas_endpoint');
@@ -110,6 +115,203 @@ function rovas_oauth_is_civic_authorize_context() {
 
   // Destination present; session params exist but client_id key missing.
   return !empty($_SESSION['oauth2_server_authorize']);
+}
+
+/**
+ * Implements hook_init().
+ *
+ * Capture Civic `lang` / `ui_locales` on authorize and force interface language
+ * for the Civic-branded login/register path (mirrors RewPro anonymous UI lang).
+ */
+function rovas_oauth_init() {
+  rovas_oauth_civic_ui_lang_capture_from_request();
+  rovas_oauth_civic_ui_lang_apply_or_clear();
+}
+
+/**
+ * Implements hook_drupal_goto_alter().
+ *
+ * Optional: keep `lang=` on the authorize → login redirect for debuggability.
+ * Session remains the source of truth.
+ */
+function rovas_oauth_drupal_goto_alter(&$path, &$options, &$http_response_code) {
+  if ($path !== 'user/login' && $path !== 'user/register') {
+    return;
+  }
+  if (empty($_SESSION[ROVAS_OAUTH_CIVIC_UI_LANG_SESSION])) {
+    return;
+  }
+  if (!isset($options['query']) || !is_array($options['query'])) {
+    $options['query'] = array();
+  }
+  if (empty($options['query']['lang'])) {
+    $options['query']['lang'] = $_SESSION[ROVAS_OAUTH_CIVIC_UI_LANG_SESSION];
+  }
+}
+
+/**
+ * Read `lang` / `ui_locales` on Civic authorize and stash an enabled langcode.
+ */
+function rovas_oauth_civic_ui_lang_capture_from_request() {
+  // Only capture on the authorize endpoint for client civic.
+  if (!(arg(0) === 'oauth2' && arg(1) === 'authorize')) {
+    return;
+  }
+  $client_id = '';
+  if (!empty($_GET['client_id'])) {
+    $client_id = $_GET['client_id'];
+  }
+  elseif (!empty($_SESSION['oauth2_server_authorize']['client_id'])) {
+    $client_id = $_SESSION['oauth2_server_authorize']['client_id'];
+  }
+  if ($client_id !== ROVAS_OAUTH_CLIENT_KEY) {
+    return;
+  }
+
+  // Prefer live query (first hit); fall back to oauth2 session (return after
+  // login — authorize query params were moved into $_SESSION).
+  $langcode = rovas_oauth_civic_ui_lang_from_params($_GET);
+  if ($langcode === FALSE && !empty($_SESSION['oauth2_server_authorize']) && is_array($_SESSION['oauth2_server_authorize'])) {
+    $langcode = rovas_oauth_civic_ui_lang_from_params($_SESSION['oauth2_server_authorize']);
+  }
+
+  if ($langcode === FALSE) {
+    // Query explicitly sent an unrecognized lang — do not force a fallback.
+    if (isset($_GET['lang']) || isset($_GET['ui_locales'])) {
+      unset($_SESSION[ROVAS_OAUTH_CIVIC_UI_LANG_SESSION]);
+    }
+    return;
+  }
+
+  $_SESSION[ROVAS_OAUTH_CIVIC_UI_LANG_SESSION] = $langcode;
+  drupal_page_is_cacheable(FALSE);
+}
+
+/**
+ * Parse lang / ui_locales from a parameter bag into an enabled langcode.
+ *
+ * @param array $params
+ *   Query or oauth2 authorize session parameters.
+ *
+ * @return string|false
+ *   Enabled langcode, or FALSE when missing / unsupported.
+ */
+function rovas_oauth_civic_ui_lang_from_params(array $params) {
+  $candidates = array();
+  if (isset($params['lang']) && trim((string) $params['lang']) !== '') {
+    $candidates[] = trim((string) $params['lang']);
+  }
+  elseif (isset($params['ui_locales']) && trim((string) $params['ui_locales']) !== '') {
+    $candidates = preg_split('/\s+/', trim((string) $params['ui_locales']));
+  }
+  if (empty($candidates)) {
+    return FALSE;
+  }
+
+  $enabled = language_list('enabled');
+  if (empty($enabled[1]) || !is_array($enabled[1])) {
+    return FALSE;
+  }
+  $languages = $enabled[1];
+
+  foreach ($candidates as $raw) {
+    $langcode = rovas_oauth_map_civic_lang_candidate($raw, $languages);
+    if ($langcode !== FALSE) {
+      return $langcode;
+    }
+  }
+  return FALSE;
+}
+
+/**
+ * Map one Civic locale tag to an enabled Drupal language, or FALSE.
+ *
+ * Accepts sk / en (primary) and cs / cz → sk. Unknown tags are ignored.
+ *
+ * @param string $raw
+ *   Raw lang or BCP47 tag.
+ * @param array $languages
+ *   Enabled language objects keyed by langcode.
+ *
+ * @return string|false
+ */
+function rovas_oauth_map_civic_lang_candidate($raw, array $languages) {
+  $raw = trim((string) $raw);
+  if ($raw === '') {
+    return FALSE;
+  }
+  $lower = drupal_strtolower($raw);
+  $parts = preg_split('/[-_]/', $lower, 2);
+  $primary = $parts[0];
+
+  // Contract: cs / cz → Slovak when available.
+  if ($primary === 'cs' || $primary === 'cz') {
+    if (isset($languages['sk'])) {
+      return 'sk';
+    }
+    if (isset($languages['cs'])) {
+      return 'cs';
+    }
+    return FALSE;
+  }
+
+  if (isset($languages[$primary])) {
+    return $primary;
+  }
+
+  // sk-SK etc. via partner mapper when primary prefix matches result.
+  if (function_exists('rovas_base_map_partner_user_language')) {
+    $mapped = rovas_base_map_partner_user_language($raw);
+    if (isset($languages[$mapped]) && (strpos($lower, $mapped) === 0 || $mapped === $primary)) {
+      return $mapped;
+    }
+  }
+
+  return FALSE;
+}
+
+/**
+ * Force or clear Civic OAuth UI language for the current request.
+ */
+function rovas_oauth_civic_ui_lang_apply_or_clear() {
+  if (empty($_SESSION[ROVAS_OAUTH_CIVIC_UI_LANG_SESSION])) {
+    return;
+  }
+
+  if (!rovas_oauth_is_civic_authorize_context()) {
+    // Do not leak into plain /user/login or the rest of the site.
+    unset($_SESSION[ROVAS_OAUTH_CIVIC_UI_LANG_SESSION]);
+    return;
+  }
+
+  $langcode = $_SESSION[ROVAS_OAUTH_CIVIC_UI_LANG_SESSION];
+  $enabled = language_list('enabled');
+  if (empty($enabled[1][$langcode])) {
+    unset($_SESSION[ROVAS_OAUTH_CIVIC_UI_LANG_SESSION]);
+    return;
+  }
+
+  rovas_oauth_force_interface_langcode($langcode, $enabled[1]);
+  drupal_page_is_cacheable(FALSE);
+}
+
+/**
+ * Overwrite Drupal globals so t() / .po strings use $langcode.
+ *
+ * @param string $langcode
+ *   Enabled langcode.
+ * @param array $languages
+ *   Enabled language objects keyed by langcode.
+ */
+function rovas_oauth_force_interface_langcode($langcode, array $languages) {
+  if (!isset($languages[$langcode])) {
+    return;
+  }
+  $language = $languages[$langcode];
+  $GLOBALS['language'] = $language;
+  if (isset($GLOBALS['language_content'])) {
+    $GLOBALS['language_content'] = $language;
+  }
 }
 
 /**

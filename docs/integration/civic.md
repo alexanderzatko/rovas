@@ -42,7 +42,8 @@ Civic API); keep both in sync when contracts change.
 [Next work: co_worker %-shares misclassified as charity](#next-work-co_worker-shares-misclassified-as-charity),
 [Next work: Civic WR usage fee (app AUR)](#next-work-civic-wr-usage-fee-app-aur),
 [Next work: Merit spotlight (period leads by area)](#next-work-merit-spotlight-period-leads-by-area),
-and [Next work: Merit period index (ME•ter time dimension)](#next-work-merit-period-index-meter-time-dimension).
+[Next work: Merit period index (ME•ter time dimension)](#next-work-merit-period-index-meter-time-dimension),
+and [Next work: pass Civic locale on OAuth authorize](#next-work-pass-civic-locale-on-oauth-authorize).
 Do not rely on reading the Civic tree unless you need Expo/API details.
 
 **Dev target (until told otherwise):** all Civic integration work targets
@@ -92,6 +93,7 @@ env): [`civic-deploy.md`](civic-deploy.md).
 | Merit index (Civic Prínos / ranks)   | `GET /rovas/civic_merit_index`, `civic_merit_index_countries`                                                                             | Snapshot-backed (`7017`); cron rebuild every **12h** (configurable) + admin rebuild. Warm reads ≪1s; items include `by_category` + `by_source`.                                                                      |
 | Charitable projects catalog          | `GET /rovas/civic_charity_projects`; org type `charity_organization`; `/charity-projects`                                                  | Catalog API implemented (`7018`). Product framing → Gifts / public-benefit orgs — see [broaden Gifts path labels](#next-work-broaden-gifts-path-labels-public-benefit-orgs).          |
 | Civic-branded OAuth login/register | `/user/login`, `/user/register` when authorizing `client_id=civic`                                                                        | Implemented in `rovas_oauth` — Civic chrome + copy; HybridAuth destination fix + automatic authorize (`7002`). Deploy + `drush74 updb` + smoke.                                      |
+| Civic locale on OAuth authorize      | `GET /oauth2/authorize?lang=sk\|en`                                                                                                        | Implemented in `rovas_oauth` — session stash + force `$GLOBALS['language']` for Civic login/register. Deploy + smoke.                                                                  |
 
 
 ## OAuth endpoints (live on dev)
@@ -4020,6 +4022,91 @@ Civic `GET /rank/index?period=day|week|month&…` proxies this endpoint when
 `period` is set; without `period` it keeps proxying lifetime
 `civic_merit_index`. Mobile ME•ter: time chips (All time default) + existing
 table; NACE filter only for All time. Home spotlight unchanged.
+
+## Next work: pass Civic locale on OAuth authorize
+
+**Implemented in `rovas_oauth`.** When Civic opens Rovas OAuth login/register, the
+anonymous HybridAuth pages use the **Civic UI locale** (`sk` / `en`), not the
+system browser’s `Accept-Language`.
+
+**Why:** Civic locale can diverge from the device/browser language (Profile
+override, or signed-out device list vs in-app choice). The authorize flow runs
+in the system browser, so Rovas language negotiation previously ignored Civic.
+
+**Do not change:**
+
+- OAuth Authorization Code + PKCE contract (`client_id=civic`, scope
+  `user_profile`, redirect `civic://oauth/callback`)
+- Civic-branded chrome detection (`rovas_oauth_is_civic_authorize_context()`)
+- HybridAuth providers / destination survival patch
+- Token lifetimes / refresh rotation
+- Signed-in user’s Drupal `$account->language` (that remains the profile SoT
+  via `/rovas/me` `language` — see
+  [preferred language](#next-work-expose-preferred-language-on-rovasme))
+
+**Contract (Civic → Rovas):**
+
+Civic appends `lang` on the authorize request (same values as API `?lang=`):
+
+```
+GET /oauth2/authorize?response_type=code&client_id=civic&…&lang=sk
+```
+
+| Param | Values | Notes |
+|-------|--------|--------|
+| `lang` | `sk` \| `en` (primary) | Civic UI locale. Also accept `cs` / `cz` → map to `sk`. |
+| `ui_locales` | optional OIDC-style space-separated BCP47 list | If present and `lang` absent, use the **first** usable tag. Ignore unknown tags; never error. |
+
+Missing / invalid → keep today’s behavior (browser / Drupal negotiation).
+
+**Rovas approach (`rovas_oauth`):**
+
+1. `hook_init()` → `rovas_oauth_civic_ui_lang_capture_from_request()` on
+   `/oauth2/authorize` for `client_id=civic`: map `lang` / `ui_locales` (and the
+   same keys on `$_SESSION['oauth2_server_authorize']` after login return),
+   stash `$_SESSION['rovas_oauth_civic_ui_lang']`.
+2. `rovas_oauth_civic_ui_lang_apply_or_clear()` — while
+   `rovas_oauth_is_civic_authorize_context()`, force `$GLOBALS['language']` (+
+   `language_content`); otherwise unset the session key (no leak to plain
+   `/user/login`).
+3. `hook_drupal_goto_alter()` — optional `lang=` on authorize → login redirect
+   (session remains SoT).
+
+**Checklist:**
+
+1. [x] Read `lang` / `ui_locales` on `/oauth2/authorize` for client `civic`;
+       map to an enabled Drupal interface language; stash in session.
+2. [x] Force `$GLOBALS['language']` for Civic authorize context while the
+       session key is set (login / register / password / authorize).
+3. [x] Session survives authorize → `/user/login?destination=…` round-trip.
+4. [x] Clear session key when leaving Civic authorize context.
+5. [x] Plain `/user/login` (no Civic OAuth destination) still uses browser /
+       Drupal negotiation.
+6. [x] Invalid / unsupported `lang` does not 400 the authorize endpoint.
+7. [ ] Deploy `rovas_oauth` to rovdev + smoke tests below.
+
+**Smoke test:**
+
+```bash
+# 1) Authorize with lang=sk — after redirect to login, page chrome/copy is SK
+#    (e.g. "Prihlásiť sa do Civic" / Slovak HybridAuth labels), even if the
+#    browser Accept-Language is en.
+open 'https://dev.rovas.app/oauth2/authorize?response_type=code&client_id=civic&redirect_uri=civic%3A%2F%2Foauth%2Fcallback&scope=user_profile&state=langtest&code_challenge=x&code_challenge_method=S256&lang=sk'
+
+# 2) Same URL with lang=en → English Civic login copy despite SK browser.
+
+# 3) Omit lang → previous behavior (browser language).
+
+# 4) From Civic mobile (SK locale): Sign in → system browser shows SK
+#    Civic-branded login → complete OAuth → app signed in.
+```
+
+**Response shape:** unchanged OAuth token JSON.
+
+**Civic will consume:** Expo `AuthRequest` `extraParams.lang` = active Civic
+locale (`getLocale()` → `sk`|`en`) on every authorize open. No token / API
+change. Companion note:
+`~/Documents/homeProjects/civic/docs/rovas-integration.md`.
 
 ## Related Civic docs
 

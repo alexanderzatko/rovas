@@ -8,5 +8,6 @@ dependencies[] = hybridauth
 dependencies[] = entity
 dependencies[] = xautoload
 dependencies[] = services
+dependencies[] = rovas_base
 
 configure = admin/config/services/rovas-oauth
