@@ -91,7 +91,7 @@ env): [`civic-deploy.md`](civic-deploy.md).
 | Civic WR verification (in-app)       | `GET /rovas/civic_pending_verifications`, `civic_work_report/{nid}`, `POST /rovas/civic_submit_verification`                               | Implemented in `rovas_civic` (`rovas_civic_update_7013`). Pending list + verifier detail + approve/reject/decline.                                                                     |
 | Merit index (Civic Prínos / ranks)   | `GET /rovas/civic_merit_index`, `civic_merit_index_countries`                                                                             | Snapshot-backed (`7017`); cron rebuild every **12h** (configurable) + admin rebuild. Warm reads ≪1s; items include `by_category` + `by_source`.                                                                      |
 | Charitable projects catalog          | `GET /rovas/civic_charity_projects`; org type `charity_organization`; `/charity-projects`                                                  | Catalog API implemented (`7018`). Product framing → Gifts / public-benefit orgs — see [broaden Gifts path labels](#next-work-broaden-gifts-path-labels-public-benefit-orgs).          |
-| Civic-branded OAuth login/register | `/user/login`, `/user/register` when authorizing `client_id=civic`                                                                        | Implemented in `rovas_oauth` — Civic chrome + copy; HybridAuth unchanged; non-Civic login untouched. Deploy + smoke after rsync.                                                      |
+| Civic-branded OAuth login/register | `/user/login`, `/user/register` when authorizing `client_id=civic`                                                                        | Implemented in `rovas_oauth` — Civic chrome + copy; HybridAuth destination fix + automatic authorize (`7002`). Deploy + `drush74 updb` + smoke.                                      |
 
 
 ## OAuth endpoints (live on dev)
@@ -133,6 +133,7 @@ Click **Bootstrap Civic OAuth server + client**. That creates:
 | Client ID           | `civic`                                              |
 | Client secret       | *(empty — public native client)*                     |
 | Redirect URI        | `civic://oauth/callback` (+ optional Expo proxy URI) |
+| Automatic authorize | yes (no consent screen; `rovas_oauth_update_7002`)   |
 | Default scope       | `user_profile`                                       |
 
 
@@ -143,6 +144,12 @@ is the authorize login UI. When `client_id=civic`, `rovas_oauth` applies
 Civic-branded chrome and copy (see
 [Civic-branded OAuth login/register](#next-work-civic-branded-oauth-loginregister)).
 Non-Civic `/user/login` is unchanged.
+
+After Google/Facebook, HybridAuth must return to `oauth2/authorize` (not `/user`).
+That needs the destination-aware close handler in
+`patches/hybridauth-destination-survive-oauth-roundtrip.patch` (applied under
+`sites/all/modules/contrib/hybridauth`). With automatic authorization on, authorize
+then immediately redirects to `civic://oauth/callback`.
 
 ## Enable on dev.rovas.app
 
@@ -3079,7 +3086,11 @@ via `$_SESSION['oauth2_server_authorize']` / authorize path. Then:
    `destination=oauth2/authorize` and injects HybridAuth when missing.
 3. Local-task preprocess adds `destination=oauth2/authorize` on Log in /
    Create new account tabs.
-4. Authorize consent form — “Continue to Civic” / “Continue” for client civic.
+4. HybridAuth close honors widget `destination=` (stashed across provider
+   OAuth round-trip) — see `patches/hybridauth-destination-survive-oauth-roundtrip.patch`.
+5. Civic client `automatic_authorization = TRUE` (`rovas_oauth_update_7002`) —
+   after login, `/oauth2/authorize` issues the code and redirects to
+   `civic://oauth/callback` with no consent screen.
 
 **Checklist:**
 
@@ -3090,21 +3101,25 @@ via `$_SESSION['oauth2_server_authorize']` / authorize path. Then:
 3. [x] Register path: destination preserved so new Drupal user returns to
        authorize after create.
 4. [x] Non-Civic login/register unchanged.
-5. [ ] Deploy to rovdev + import `translations/po/sk.custom-modules.po` (and cs/it
-       if used) + `drush74 cc all`.
-6. [ ] Smoke tests below.
+5. [x] HybridAuth post-login returns to `oauth2/authorize` (not `/user`) when
+       destination was set.
+6. [x] Civic client automatic authorization enabled.
+7. [ ] Deploy to rovdev: rsync `rovas_oauth` + `hybridauth/hybridauth.pages.inc`
+       + PO files; `drush74 updb -y` (`7002`) + `drush74 cc all`.
+8. [ ] Smoke tests below.
 
 **Smoke test:**
 
 1. From Civic mobile, tap **Sign in** → system browser opens branded Civic
    login (green navbar, Civic wordmark, no Rovas marketing footer) → Google /
-   Facebook / Drupal → app receives `civic://oauth/callback` and shows
-   signed-in state.
+   Facebook / Drupal → **no** Rovas account page and **no** consent screen →
+   app receives `civic://oauth/callback` and shows signed-in state.
 2. From Civic, tap **Register** → same authorize URL → on Rovas, open
    **Create a Civic account** tab → branded register → create account →
    complete authorize → same signed-in state.
 3. Open `/user/login` on `dev.rovas.app` without OAuth destination → still
-   normal Rovas login (no `rovas-oauth-civic` body class).
+   normal Rovas login (no `rovas-oauth-civic` body class). HybridAuth there
+   still follows the site-wide HybridAuth redirect setting.
 
 **Response shape:** unchanged OAuth token JSON (`access_token`, `refresh_token`,
 `expires_in`, `token_type`, `scope`).

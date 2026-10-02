@@ -54,3 +54,16 @@ function rovas_oauth_update_7001() {
   }
   return t('Civic Services resources (/me, /contributions/aggregate, merit_distribution) enabled on rovas_endpoint.');
 }
+
+/**
+ * Enable automatic authorization on the Civic OAuth client.
+ *
+ * After HybridAuth (or password) login, oauth2/authorize issues the code
+ * immediately and redirects to civic://oauth/callback — no consent screen.
+ */
+function rovas_oauth_update_7002() {
+  if (function_exists('rovas_oauth_ensure_client')) {
+    rovas_oauth_ensure_client();
+  }
+  return t('Civic OAuth client automatic_authorization enabled.');
+}

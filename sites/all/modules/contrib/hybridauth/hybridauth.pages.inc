@@ -55,14 +55,24 @@ function hybridauth_providers($js, $icon_pack) {
 }
 
 function hybridauth_window_start($provider_id) {
+  // Make sure the session is started before stashing destinations / HybridAuth.
+  hybridauth_session_start();
+
+  // Preserve redirect targets across the provider OAuth round-trip. The close
+  // handler must not rely on $_GET['destination'] alone — the callback to
+  // hybridauth/endpoint drops those query args.
+  if (!empty($_GET['destination'])) {
+    $_SESSION['hybridauth_destination'] = $_GET['destination'];
+  }
+  if (!empty($_GET['destination_error'])) {
+    $_SESSION['hybridauth_destination_error'] = $_GET['destination_error'];
+  }
+
   // If provider is OpenID, but we don't have the openid_identifier.
   if ($provider_id == 'OpenID' && !isset($_GET['openid_identifier'])) {
     $form = drupal_get_form('hybridauth_openid_form');
     return _hybridauth_window_render_form($form, $provider_id);
   }
-
-  // Make sure the session is started, HybridAuth library needs it.
-  hybridauth_session_start();
 
   // Try to get HybridAuth instance.
   if ($hybridauth = hybridauth_get_instance()) {
@@ -82,8 +92,36 @@ function _hybridauth_window_close($redirect = TRUE) {
   // Prevent devel module from spewing.
   $GLOBALS['devel_shutdown'] = FALSE;
 
-  $destination = variable_get('hybridauth_destination', 'user');
-  $destination_error = !empty($_GET['destination_error']) ? $_GET['destination_error'] : variable_get('hybridauth_destination_error', 'user');
+  // Prefer per-request destination (widget / OAuth authorize), then the value
+  // stashed for the provider round-trip, then the site-wide HybridAuth setting.
+  if (!empty($_GET['destination'])) {
+    $destination = $_GET['destination'];
+  }
+  elseif (!empty($_SESSION['hybridauth_destination'])) {
+    $destination = $_SESSION['hybridauth_destination'];
+  }
+  else {
+    $destination = variable_get('hybridauth_destination', 'user');
+  }
+  if (!empty($_GET['destination_error'])) {
+    $destination_error = $_GET['destination_error'];
+  }
+  elseif (!empty($_SESSION['hybridauth_destination_error'])) {
+    $destination_error = $_SESSION['hybridauth_destination_error'];
+  }
+  else {
+    $destination_error = variable_get('hybridauth_destination_error', 'user');
+  }
+  unset($_SESSION['hybridauth_destination'], $_SESSION['hybridauth_destination_error']);
+
+  // Never follow an external URL (open-redirect guard).
+  if ($destination !== '' && url_is_external($destination)) {
+    $destination = variable_get('hybridauth_destination', 'user');
+  }
+  if ($destination_error !== '' && url_is_external($destination_error)) {
+    $destination_error = variable_get('hybridauth_destination_error', 'user');
+  }
+
   // Check if token replacements are allowed for the destination string.
   $destination = token_replace($destination, array('user' => $user), array('clear' => TRUE));
   $destination_error = token_replace($destination_error, array('user' => $user), array('clear' => TRUE));

@@ -411,14 +411,26 @@ function rovas_oauth_ensure_client($extra_redirect = NULL) {
 
   $client = oauth2_server_client_load(ROVAS_OAUTH_CLIENT_KEY);
   if ($client) {
+    $needs_save = FALSE;
     // Merge redirect URIs if missing.
     $existing = preg_split('/\s+/', trim($client->redirect_uri));
     $merged = array_unique(array_filter(array_merge($existing, $redirects)));
     $new_uri = implode("\n", $merged);
-    if ($new_uri !== $client->redirect_uri || !empty($client->client_secret)) {
+    if ($new_uri !== $client->redirect_uri) {
       $client->redirect_uri = $new_uri;
-      // Public native client — no secret.
+      $needs_save = TRUE;
+    }
+    // Public native client — no secret.
+    if (!empty($client->client_secret)) {
       $client->client_secret = '';
+      $needs_save = TRUE;
+    }
+    // Skip the consent screen; Civic already authenticated the user on Rovas.
+    if (empty($client->automatic_authorization)) {
+      $client->automatic_authorization = TRUE;
+      $needs_save = TRUE;
+    }
+    if ($needs_save) {
       $client->save();
     }
     return $client;
@@ -430,7 +442,7 @@ function rovas_oauth_ensure_client($extra_redirect = NULL) {
     'client_key' => ROVAS_OAUTH_CLIENT_KEY,
     'client_secret' => '',
     'redirect_uri' => implode("\n", $redirects),
-    'automatic_authorization' => FALSE,
+    'automatic_authorization' => TRUE,
     'settings' => array(
       'override_grant_types' => FALSE,
       'grant_types' => array(
