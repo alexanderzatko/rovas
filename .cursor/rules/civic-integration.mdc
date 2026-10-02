@@ -1,0 +1,16 @@
+---
+description: Civic ↔ Rovas integration — task files, not growing civic.md
+globs: docs/integration/civic*.md,docs/integration/civic_tasks/**/*,sites/all/modules/custom/rovas_civic/**/*,sites/all/modules/custom/rovas_oauth/**/*
+alwaysApply: false
+---
+
+# Civic integration docs
+
+- Evergreen SoT + index: [`docs/integration/civic.md`](docs/integration/civic.md)
+- Open work: [`docs/integration/civic_tasks/active/`](docs/integration/civic_tasks/active/)
+- New tasks: copy [`docs/integration/civic_tasks/_template.md`](docs/integration/civic_tasks/_template.md) → `active/<slug>.md`, then add a row to the Task directory in `civic.md`
+- Do **not** append new `## Next work` sections to `civic.md`
+- When done: set `status: done`, move file to `civic_tasks/done/`, update the Task directory
+- Target **`/var/www/rovdev`** (`dev.rovas.app`) unless the user asks for prod
+- Human deploys (see always-apply deploy-owner rule); leave code + docs ready
+- Do not treat Agent Stores or chat history as the contract SoT
