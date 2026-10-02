@@ -7,7 +7,7 @@
  * Responsibilities (see civic docs/plan.md §8a):
  * - Ensure a default OAuth2 server ("civic") exists with PKCE enforced.
  * - Ensure the public "civic" mobile client exists (no client secret).
- * - Improve the login page when arriving from /oauth2/authorize.
+ * - Civic-brand the login/register/authorize chrome when client_id=civic.
  * - Helpers to resolve a Bearer access token to a Drupal uid.
  * - Civic home-read Services resources: GET /rovas/me,
  *   GET /rovas/contributions/aggregate (Bearer / public).
@@ -66,6 +66,154 @@ function rovas_oauth_menu() {
 }
 
 /**
+ * Whether the current request is Civic OAuth authorize UX.
+ *
+ * Brands only:
+ * - `/oauth2/authorize` for client `civic`
+ * - `/user/login|register|password` when `destination=oauth2/authorize` and the
+ *   authorize session is for client `civic`
+ *
+ * Plain `/user/login` (no destination) stays the normal Rovas chrome even if a
+ * prior authorize session is still in $_SESSION.
+ *
+ * @return bool
+ */
+function rovas_oauth_is_civic_authorize_context() {
+  $session_client = '';
+  if (!empty($_SESSION['oauth2_server_authorize']['client_id'])) {
+    $session_client = $_SESSION['oauth2_server_authorize']['client_id'];
+  }
+
+  // Consent / authorize endpoint.
+  if (arg(0) === 'oauth2' && arg(1) === 'authorize') {
+    $client_id = $session_client !== '' ? $session_client : (isset($_GET['client_id']) ? $_GET['client_id'] : '');
+    return $client_id === ROVAS_OAUTH_CLIENT_KEY;
+  }
+
+  // Login / register / password (and bare /user → login for anonymous).
+  if (arg(0) !== 'user') {
+    return FALSE;
+  }
+  $arg1 = arg(1);
+  if ($arg1 !== NULL && $arg1 !== '' && !in_array($arg1, array('login', 'register', 'password'), TRUE)) {
+    return FALSE;
+  }
+
+  $destination = isset($_GET['destination']) ? $_GET['destination'] : '';
+  if (strpos($destination, 'oauth2/authorize') !== 0) {
+    return FALSE;
+  }
+
+  if ($session_client !== '') {
+    return $session_client === ROVAS_OAUTH_CLIENT_KEY;
+  }
+
+  // Destination present; session params exist but client_id key missing.
+  return !empty($_SESSION['oauth2_server_authorize']);
+}
+
+/**
+ * Absolute URL for the Civic wordmark shipped with this module.
+ *
+ * @return string
+ */
+function rovas_oauth_civic_logo_url() {
+  global $base_url;
+  return $base_url . '/' . drupal_get_path('module', 'rovas_oauth') . '/images/civic-wordmark.svg';
+}
+
+/**
+ * Attach Civic OAuth chrome CSS when in Civic authorize context.
+ */
+function rovas_oauth_attach_civic_chrome() {
+  static $attached = FALSE;
+  if ($attached || !rovas_oauth_is_civic_authorize_context()) {
+    return;
+  }
+  $attached = TRUE;
+  drupal_add_css(drupal_get_path('module', 'rovas_oauth') . '/css/civic-oauth.css', array(
+    'group' => CSS_DEFAULT,
+    'every_page' => FALSE,
+    'weight' => 50,
+  ));
+}
+
+/**
+ * Implements hook_preprocess_html().
+ */
+function rovas_oauth_preprocess_html(&$variables) {
+  if (!rovas_oauth_is_civic_authorize_context()) {
+    return;
+  }
+  $variables['classes_array'][] = 'rovas-oauth-civic';
+  if (!empty($variables['head_title_array']['name'])) {
+    $variables['head_title_array']['name'] = 'Civic';
+    $variables['head_title'] = implode(' | ', array_filter($variables['head_title_array']));
+  }
+  rovas_oauth_attach_civic_chrome();
+}
+
+/**
+ * Implements hook_preprocess_page().
+ *
+ * Swap Rovas navbar/footer chrome for Civic branding on the authorize path.
+ */
+function rovas_oauth_preprocess_page(&$variables) {
+  if (!rovas_oauth_is_civic_authorize_context()) {
+    return;
+  }
+
+  rovas_oauth_attach_civic_chrome();
+
+  $variables['logo'] = rovas_oauth_civic_logo_url();
+  $variables['site_name'] = 'Civic';
+  $variables['site_slogan'] = '';
+  $variables['primary_nav'] = NULL;
+  $variables['secondary_nav'] = NULL;
+  if (isset($variables['main_menu'])) {
+    $variables['main_menu'] = NULL;
+  }
+  if (isset($variables['secondary_menu'])) {
+    $variables['secondary_menu'] = NULL;
+  }
+
+  // Replace Rovas marketing footer with a quiet identity line.
+  $variables['page']['footer'] = array(
+    'civic_oauth_footer' => array(
+      '#markup' => '<p class="civic-oauth-footer">'
+        . t('Identity powered by Rovas')
+        . ' · <a href="' . check_url(url('privacy')) . '">' . t('Privacy') . '</a></p>',
+    ),
+  );
+}
+
+/**
+ * Implements hook_preprocess_menu_local_task().
+ *
+ * Keep destination=oauth2/authorize on Log in / Create new account tabs so
+ * register completes the OAuth flow instead of dropping the user on /user.
+ */
+function rovas_oauth_preprocess_menu_local_task(&$variables) {
+  if (!rovas_oauth_is_civic_authorize_context()) {
+    return;
+  }
+  if (empty($variables['element']['#link']['href'])) {
+    return;
+  }
+  $href = $variables['element']['#link']['href'];
+  if (!in_array($href, array('user', 'user/login', 'user/register', 'user/password'), TRUE)) {
+    return;
+  }
+  if (!isset($variables['element']['#link']['localized_options'])) {
+    $variables['element']['#link']['localized_options'] = array();
+  }
+  if (!isset($variables['element']['#link']['localized_options']['query'])) {
+    $variables['element']['#link']['localized_options']['query'] = array();
+  }
+  $variables['element']['#link']['localized_options']['query']['destination'] = 'oauth2/authorize';
+}
+
+/**
  * Implements hook_form_FORM_ID_alter() for oauth2_server_authorize_form.
  *
  * Re-apply authorize UI strings through t() so locale translations (sk/cs/it)
@@ -74,7 +222,12 @@ function rovas_oauth_menu() {
 function rovas_oauth_form_oauth2_server_authorize_form_alter(&$form, &$form_state) {
   $client = isset($form_state['build_info']['args'][0]) ? $form_state['build_info']['args'][0] : NULL;
   $scopes = isset($form_state['build_info']['args'][2]) ? $form_state['build_info']['args'][2] : array();
-  if ($client && !empty($client->label)) {
+  $is_civic = $client && !empty($client->client_key) && $client->client_key === ROVAS_OAUTH_CLIENT_KEY;
+
+  if ($is_civic) {
+    drupal_set_title(t('Continue to Civic'));
+  }
+  elseif ($client && !empty($client->label)) {
     drupal_set_title(t('Authorize @client to use your account?', array('@client' => $client->label)));
   }
 
@@ -93,7 +246,9 @@ function rovas_oauth_form_oauth2_server_authorize_form_alter(&$form, &$form_stat
   $form['scopes']['#markup'] = theme('item_list', $list);
 
   if (isset($form['authorize'])) {
-    $form['authorize']['#value'] = t('Yes, I authorize this request.');
+    $form['authorize']['#value'] = $is_civic
+      ? t('Continue')
+      : t('Yes, I authorize this request.');
   }
   if (isset($form['cancel'])) {
     $form['cancel']['#value'] = t('Cancel');
@@ -103,46 +258,65 @@ function rovas_oauth_form_oauth2_server_authorize_form_alter(&$form, &$form_stat
 /**
  * Implements hook_form_FORM_ID_alter() for user_login.
  *
- * When the user lands here from /oauth2/authorize (destination query), show a
- * short Civic-oriented intro. HybridAuth already injects its widget onto the
- * standard login forms.
+ * When the user lands here from Civic /oauth2/authorize, brand the form.
+ * HybridAuth already injects its widget onto the standard login forms.
  */
 function rovas_oauth_form_user_login_alter(&$form, &$form_state) {
-  rovas_oauth_annotate_login_form($form);
+  rovas_oauth_annotate_civic_auth_form($form, 'login');
 }
 
 /**
  * Implements hook_form_FORM_ID_alter() for user_login_block.
  */
 function rovas_oauth_form_user_login_block_alter(&$form, &$form_state) {
-  rovas_oauth_annotate_login_form($form);
+  rovas_oauth_annotate_civic_auth_form($form, 'login');
 }
 
 /**
- * Add Civic context to the login form when authorizing an OAuth client.
+ * Implements hook_form_FORM_ID_alter() for user_register_form.
  */
-function rovas_oauth_annotate_login_form(&$form) {
-  $destination = isset($_GET['destination']) ? $_GET['destination'] : '';
-  $from_authorize = (strpos($destination, 'oauth2/authorize') === 0)
-    || !empty($_SESSION['oauth2_server_authorize']);
-  if (!$from_authorize) {
+function rovas_oauth_form_user_register_form_alter(&$form, &$form_state) {
+  rovas_oauth_annotate_civic_auth_form($form, 'register');
+}
+
+/**
+ * Brand login/register forms for Civic OAuth authorize.
+ *
+ * @param array $form
+ *   Form array (by reference).
+ * @param string $mode
+ *   'login' or 'register'.
+ */
+function rovas_oauth_annotate_civic_auth_form(&$form, $mode = 'login') {
+  if (!rovas_oauth_is_civic_authorize_context()) {
     return;
   }
 
-  $client_label = 'Civic';
-  if (!empty($_SESSION['oauth2_server_authorize']['client_id'])) {
-    $client = oauth2_server_client_load($_SESSION['oauth2_server_authorize']['client_id']);
-    if ($client && !empty($client->label)) {
-      $client_label = $client->label;
+  rovas_oauth_attach_civic_chrome();
+
+  if ($mode === 'register') {
+    drupal_set_title(t('Create a Civic account'));
+    $intro = t('Create an account to continue to Civic. Use Google, Facebook, or email. Civic does not store a separate password.');
+    // Ensure post-register lands back on authorize (session holds PKCE params).
+    $form['#action'] = url('user/register', array(
+      'query' => array('destination' => 'oauth2/authorize'),
+    ));
+    // HybridAuth is often login-only; inject the same widget for Civic register.
+    if (empty($form['hybridauth']) && user_access('use hybridauth') && function_exists('hybridauth_get_enabled_providers')) {
+      $form['hybridauth'] = array(
+        '#type' => 'hybridauth_widget',
+        '#weight' => -50,
+      );
     }
+  }
+  else {
+    drupal_set_title(t('Sign in to Civic'));
+    $intro = t('Sign in to continue to Civic. Use Google, Facebook, or your Rovas email and password. Civic does not store a separate password.');
   }
 
   $form['rovas_oauth_intro'] = array(
     '#type' => 'item',
-    '#markup' => '<p class="rovas-oauth-intro">' . t(
-      'Sign in to authorize <strong>@app</strong>. Use Google, Facebook, or your Rovas account. Civic does not store a separate password.',
-      array('@app' => $client_label)
-    ) . '</p>',
+    '#markup' => '<p class="rovas-oauth-intro">' . $intro . '</p>',
     '#weight' => -100,
   );
 }

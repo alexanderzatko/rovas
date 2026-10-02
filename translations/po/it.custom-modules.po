@@ -93,9 +93,33 @@ msgstr "Questa applicazione potrà:"
 msgid "Yes, I authorize this request."
 msgstr "Sì, autorizzo questa richiesta."
 
-#: sites/all/modules/custom/rovas_oauth/rovas_oauth.module:107
-msgid "Sign in to authorize <strong>@app</strong>. Use Google, Facebook, or your Rovas account. Civic does not store a separate password."
-msgstr "Accedi per autorizzare <strong>@app</strong>. Usa Google, Facebook o il tuo account Rovas. Civic non memorizza una password separata."
+#: sites/all/modules/custom/rovas_oauth/rovas_oauth.module
+msgid "Sign in to Civic"
+msgstr "Accedi a Civic"
+
+#: sites/all/modules/custom/rovas_oauth/rovas_oauth.module
+msgid "Create a Civic account"
+msgstr "Crea un account Civic"
+
+#: sites/all/modules/custom/rovas_oauth/rovas_oauth.module
+msgid "Sign in to continue to Civic. Use Google, Facebook, or your Rovas email and password. Civic does not store a separate password."
+msgstr "Accedi per continuare su Civic. Usa Google, Facebook oppure email e password Rovas. Civic non memorizza una password separata."
+
+#: sites/all/modules/custom/rovas_oauth/rovas_oauth.module
+msgid "Create an account to continue to Civic. Use Google, Facebook, or email. Civic does not store a separate password."
+msgstr "Crea un account per continuare su Civic. Usa Google, Facebook o l’email. Civic non memorizza una password separata."
+
+#: sites/all/modules/custom/rovas_oauth/rovas_oauth.module
+msgid "Continue to Civic"
+msgstr "Continua su Civic"
+
+#: sites/all/modules/custom/rovas_oauth/rovas_oauth.module
+msgid "Continue"
+msgstr "Continua"
+
+#: sites/all/modules/custom/rovas_oauth/rovas_oauth.module
+msgid "Identity powered by Rovas"
+msgstr "Identità tramite Rovas"
 
 #: sites/all/modules/custom/rovas_oauth/rovas_oauth.module:159
 msgid "Read your Rovas username and grant Merits on your behalf."

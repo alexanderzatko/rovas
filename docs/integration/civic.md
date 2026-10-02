@@ -34,6 +34,7 @@ Civic API); keep both in sync when contracts change.
 [CHR to ME on WR verification](#chr-to-me-on-wr-verification),
 [Next work: geofield on Civic work reports](#next-work-geofield-on-civic-work-reports),
 [Next work: OAuth session persistence](#next-work-oauth-session-persistence),
+[Next work: Civic-branded OAuth login/register](#next-work-civic-branded-oauth-loginregister),
 [Next work: member_since_year on users_lookup](#next-work-member_since_year-on-users_lookup),
 [Next work: charitable projects (Civic catalog)](#next-work-charitable-projects-civic-catalog),
 [Next work: broaden Gifts path labels (public-benefit orgs)](#next-work-broaden-gifts-path-labels-public-benefit-orgs),
@@ -90,8 +91,7 @@ env): [`civic-deploy.md`](civic-deploy.md).
 | Civic WR verification (in-app)       | `GET /rovas/civic_pending_verifications`, `civic_work_report/{nid}`, `POST /rovas/civic_submit_verification`                               | Implemented in `rovas_civic` (`rovas_civic_update_7013`). Pending list + verifier detail + approve/reject/decline.                                                                     |
 | Merit index (Civic Prínos / ranks)   | `GET /rovas/civic_merit_index`, `civic_merit_index_countries`                                                                             | Snapshot-backed (`7017`); cron rebuild every **12h** (configurable) + admin rebuild. Warm reads ≪1s; items include `by_category` + `by_source`.                                                                      |
 | Charitable projects catalog          | `GET /rovas/civic_charity_projects`; org type `charity_organization`; `/charity-projects`                                                  | Catalog API implemented (`7018`). Product framing → Gifts / public-benefit orgs — see [broaden Gifts path labels](#next-work-broaden-gifts-path-labels-public-benefit-orgs).          |
-| Chron balance on `/rovas/me`         | `GET /rovas/me` → `total_chr`                                                                                                              | Pending — see [Chron balance on /rovas/me](#next-work-chron-balance-on-rovasme).                                                                                                       |
-| NACE expertise icons                 | `GET /rovas/users_lookup` → `nace_expertise[]`                                                                                             | Pending — see [NACE expertise on users_lookup](#next-work-nace-expertise-on-users_lookup).                                                                                             |
+| Civic-branded OAuth login/register | `/user/login`, `/user/register` when authorizing `client_id=civic`                                                                        | Implemented in `rovas_oauth` — Civic chrome + copy; HybridAuth unchanged; non-Civic login untouched. Deploy + smoke after rsync.                                                      |
 
 
 ## OAuth endpoints (live on dev)
@@ -139,8 +139,10 @@ Click **Bootstrap Civic OAuth server + client**. That creates:
 HybridAuth (Google / Facebook / Drupal login) already attaches to `user_login`.
 `oauth2_server` redirects anonymous authorize requests to
 `/user/login?destination=oauth2/authorize`, so the existing HybridAuth widget
-is the authorize login UI. `rovas_oauth` only adds a short intro when the
-destination is authorize.
+is the authorize login UI. When `client_id=civic`, `rovas_oauth` applies
+Civic-branded chrome and copy (see
+[Civic-branded OAuth login/register](#next-work-civic-branded-oauth-loginregister)).
+Non-Civic `/user/login` is unchanged.
 
 ## Enable on dev.rovas.app
 
@@ -3044,6 +3046,71 @@ curl -sS -X POST "https://dev.rovas.app/oauth2/token" \
 Civic mobile (`apps/mobile/lib/auth.tsx`) preserves `refreshToken` when the
 server omits it, refreshes on app foreground, and only clears the session on
 `invalid_grant` (not transient network errors).
+
+---
+
+## Next work: Civic-branded OAuth login/register
+
+**Implemented in `rovas_oauth`.** When Civic opens Rovas OAuth authorize (client
+`civic`), the login and register pages use Civic chrome (logo, brand colors,
+“Sign in to Civic” / “Create a Civic account” copy) instead of the default Rovas
+marketing surface. Identity and tokens stay on Rovas; the PKCE contract does not
+change.
+
+**Why:** Civic UI now names Rovas mainly on its own login screen. New users
+should not face a full Rovas product surface when creating an account or signing
+in from Civic.
+
+**Do not change:**
+
+- OAuth Authorization Code + PKCE (`client_id=civic`, scope `user_profile`)
+- Redirect URI `civic://oauth/callback` (and any already-registered Expo proxy
+  URIs); HTTPS web redirects can be added later without this task
+- HybridAuth providers (Google / Facebook / Drupal password)
+- Token lifetimes / refresh rotation
+
+**Approach:** `rovas_oauth_is_civic_authorize_context()` detects client `civic`
+via `$_SESSION['oauth2_server_authorize']` / authorize path. Then:
+
+1. `hook_preprocess_html` / `hook_preprocess_page` — body class
+   `rovas-oauth-civic`, Civic wordmark, green navbar, quiet footer
+   (“Identity powered by Rovas”), CSS from `css/civic-oauth.css`.
+2. Form alters on login + register — Civic titles/help; register keeps
+   `destination=oauth2/authorize` and injects HybridAuth when missing.
+3. Local-task preprocess adds `destination=oauth2/authorize` on Log in /
+   Create new account tabs.
+4. Authorize consent form — “Continue to Civic” / “Continue” for client civic.
+
+**Checklist:**
+
+1. [x] Detect Civic OAuth authorize context on `/user/login` and `/user/register`
+       (destination / client `civic`).
+2. [x] Civic-branded chrome + copy (EN + SK) for that path; HybridAuth widget
+       still works.
+3. [x] Register path: destination preserved so new Drupal user returns to
+       authorize after create.
+4. [x] Non-Civic login/register unchanged.
+5. [ ] Deploy to rovdev + import `translations/po/sk.custom-modules.po` (and cs/it
+       if used) + `drush74 cc all`.
+6. [ ] Smoke tests below.
+
+**Smoke test:**
+
+1. From Civic mobile, tap **Sign in** → system browser opens branded Civic
+   login (green navbar, Civic wordmark, no Rovas marketing footer) → Google /
+   Facebook / Drupal → app receives `civic://oauth/callback` and shows
+   signed-in state.
+2. From Civic, tap **Register** → same authorize URL → on Rovas, open
+   **Create a Civic account** tab → branded register → create account →
+   complete authorize → same signed-in state.
+3. Open `/user/login` on `dev.rovas.app` without OAuth destination → still
+   normal Rovas login (no `rovas-oauth-civic` body class).
+
+**Response shape:** unchanged OAuth token JSON (`access_token`, `refresh_token`,
+`expires_in`, `token_type`, `scope`).
+
+**Civic will consume:** no API change. Expo already opens
+`{ROVAS}/oauth2/authorize` for both login and register.
 
 ---
 

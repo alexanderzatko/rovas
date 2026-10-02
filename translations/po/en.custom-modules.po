@@ -83,8 +83,32 @@ msgstr ""
 msgid "Yes, I authorize this request."
 msgstr ""
 
-#: sites/all/modules/custom/rovas_oauth/rovas_oauth.module:107
-msgid "Sign in to authorize <strong>@app</strong>. Use Google, Facebook, or your Rovas account. Civic does not store a separate password."
+#: sites/all/modules/custom/rovas_oauth/rovas_oauth.module
+msgid "Sign in to Civic"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_oauth/rovas_oauth.module
+msgid "Create a Civic account"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_oauth/rovas_oauth.module
+msgid "Sign in to continue to Civic. Use Google, Facebook, or your Rovas email and password. Civic does not store a separate password."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_oauth/rovas_oauth.module
+msgid "Create an account to continue to Civic. Use Google, Facebook, or email. Civic does not store a separate password."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_oauth/rovas_oauth.module
+msgid "Continue to Civic"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_oauth/rovas_oauth.module
+msgid "Continue"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_oauth/rovas_oauth.module
+msgid "Identity powered by Rovas"
 msgstr ""
 
 #: sites/all/modules/custom/rovas_oauth/rovas_oauth.module:159

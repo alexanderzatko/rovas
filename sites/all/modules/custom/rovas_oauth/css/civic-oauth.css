@@ -1,0 +1,150 @@
+/**
+ * Civic-branded chrome for OAuth authorize login / register / consent.
+ * Applied only when body.rovas-oauth-civic is present.
+ */
+
+body.rovas-oauth-civic {
+  background: #f3f6f2;
+  color: #12241c;
+}
+
+body.rovas-oauth-civic header#navbar {
+  background: #0b3d2e;
+  border: 0;
+  border-radius: 0;
+  margin-bottom: 0;
+  min-height: 56px;
+}
+
+body.rovas-oauth-civic header#navbar .container {
+  padding-top: 8px;
+  padding-bottom: 8px;
+}
+
+body.rovas-oauth-civic header#navbar .logo {
+  pointer-events: none;
+  margin: 0;
+}
+
+body.rovas-oauth-civic header#navbar .logo img {
+  height: 44px;
+  width: auto;
+  max-width: 120px;
+  filter: brightness(0) invert(1);
+}
+
+body.rovas-oauth-civic header#navbar .name.navbar-brand {
+  color: #fff;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+body.rovas-oauth-civic header#navbar .navbar-collapse,
+body.rovas-oauth-civic header#navbar .navbar-toggle,
+body.rovas-oauth-civic #page-header,
+body.rovas-oauth-civic .breadcrumb,
+body.rovas-oauth-civic .region-sidebar-first,
+body.rovas-oauth-civic .region-sidebar-second {
+  display: none !important;
+}
+
+body.rovas-oauth-civic .main-container,
+body.rovas-oauth-civic .container > .row {
+  max-width: 480px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+body.rovas-oauth-civic h1.page-header {
+  border: 0;
+  color: #0b3d2e;
+  font-size: 1.6em;
+  font-weight: 700;
+  margin: 1.25em 0 0.75em;
+  text-align: center;
+}
+
+body.rovas-oauth-civic .tabs--primary {
+  display: flex;
+  justify-content: center;
+  border: 0;
+  margin-bottom: 1.25em;
+}
+
+body.rovas-oauth-civic .tabs--primary > li > a {
+  border: 0;
+  border-radius: 999px;
+  color: #5b6b63;
+  margin: 0 4px;
+  padding: 8px 14px;
+}
+
+body.rovas-oauth-civic .tabs--primary > li.active > a,
+body.rovas-oauth-civic .tabs--primary > li.active > a:hover,
+body.rovas-oauth-civic .tabs--primary > li.active > a:focus {
+  background: #0b3d2e;
+  border: 0;
+  color: #fff;
+}
+
+body.rovas-oauth-civic .region-content {
+  background: #fff;
+  border: 1px solid #d5ded8;
+  border-radius: 16px;
+  padding: 20px 22px 8px;
+  box-shadow: 0 8px 24px rgba(18, 36, 28, 0.06);
+}
+
+body.rovas-oauth-civic .rovas-oauth-intro {
+  color: #5b6b63;
+  font-size: 0.95em;
+  line-height: 1.45;
+  margin: 0 0 1em;
+  text-align: center;
+}
+
+body.rovas-oauth-civic .hybridauth-widget-wrapper {
+  text-align: center;
+  margin-bottom: 1em;
+}
+
+body.rovas-oauth-civic .hybridauth-widget-wrapper h3 {
+  color: #5b6b63;
+  font-size: 0.95em;
+  font-weight: 600;
+  margin-top: 0;
+}
+
+body.rovas-oauth-civic .btn-primary {
+  background-color: #0b3d2e;
+  border-color: #0b3d2e;
+}
+
+body.rovas-oauth-civic .btn-primary:hover,
+body.rovas-oauth-civic .btn-primary:focus {
+  background-color: #1a5c45;
+  border-color: #1a5c45;
+}
+
+body.rovas-oauth-civic footer.footer {
+  background: transparent;
+  border: 0;
+  color: #5b6b63;
+  margin-top: 1.5em;
+  padding-top: 0;
+  text-align: center;
+}
+
+body.rovas-oauth-civic footer.footer .civic-oauth-footer {
+  font-size: 0.85em;
+  margin: 0;
+}
+
+body.rovas-oauth-civic footer.footer .civic-oauth-footer a {
+  color: #1a5c45;
+  font-weight: 600;
+}
+
+body.rovas-oauth-civic .form-actions {
+  text-align: center;
+}

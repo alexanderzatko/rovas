@@ -91,9 +91,33 @@ msgstr "Táto aplikácia bude môcť:"
 msgid "Yes, I authorize this request."
 msgstr "Áno, autorizujem túto požiadavku."
 
-#: sites/all/modules/custom/rovas_oauth/rovas_oauth.module:107
-msgid "Sign in to authorize <strong>@app</strong>. Use Google, Facebook, or your Rovas account. Civic does not store a separate password."
-msgstr "Prihláste sa a autorizujte <strong>@app</strong>. Použite Google, Facebook alebo svoj účet Rovas. Civic neukladá samostatné heslo."
+#: sites/all/modules/custom/rovas_oauth/rovas_oauth.module
+msgid "Sign in to Civic"
+msgstr "Prihláste sa do Civic"
+
+#: sites/all/modules/custom/rovas_oauth/rovas_oauth.module
+msgid "Create a Civic account"
+msgstr "Vytvorte účet Civic"
+
+#: sites/all/modules/custom/rovas_oauth/rovas_oauth.module
+msgid "Sign in to continue to Civic. Use Google, Facebook, or your Rovas email and password. Civic does not store a separate password."
+msgstr "Prihláste sa a pokračujte do Civic. Použite Google, Facebook alebo e-mail a heslo Rovas. Civic neukladá samostatné heslo."
+
+#: sites/all/modules/custom/rovas_oauth/rovas_oauth.module
+msgid "Create an account to continue to Civic. Use Google, Facebook, or email. Civic does not store a separate password."
+msgstr "Vytvorte účet a pokračujte do Civic. Použite Google, Facebook alebo e-mail. Civic neukladá samostatné heslo."
+
+#: sites/all/modules/custom/rovas_oauth/rovas_oauth.module
+msgid "Continue to Civic"
+msgstr "Pokračovať do Civic"
+
+#: sites/all/modules/custom/rovas_oauth/rovas_oauth.module
+msgid "Continue"
+msgstr "Pokračovať"
+
+#: sites/all/modules/custom/rovas_oauth/rovas_oauth.module
+msgid "Identity powered by Rovas"
+msgstr "Identita cez Rovas"
 
 #: sites/all/modules/custom/rovas_oauth/rovas_oauth.module:159
 msgid "Read your Rovas username and grant Merits on your behalf."
