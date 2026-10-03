@@ -387,7 +387,7 @@ function rovas_oauth_preprocess_page(&$variables) {
   $variables['page']['footer'] = array(
     'civic_oauth_footer' => array(
       '#markup' => '<p class="civic-oauth-footer">'
-        . t('Identity powered by Rovas')
+        . t('Your Civic account on Rovas')
         . ' · <a href="' . check_url(url('privacy')) . '">' . t('Privacy') . '</a></p>',
     ),
   );
@@ -423,10 +423,21 @@ function rovas_oauth_preprocess_menu_local_task(&$variables) {
     'user/register' => t('Create account'),
     'user/login' => t('Log in'),
     'user' => t('Log in'),
-    'user/password' => t('Forgotten password'),
+    'user/password' => t('Reset forgotten password'),
   );
   if (isset($titles[$href])) {
     $variables['element']['#link']['title'] = $titles[$href];
+  }
+  if ($href === 'user/password') {
+    if (!isset($variables['element']['#link']['localized_options']['attributes']['class'])) {
+      $variables['element']['#link']['localized_options']['attributes']['class'] = array();
+    }
+    elseif (!is_array($variables['element']['#link']['localized_options']['attributes']['class'])) {
+      $variables['element']['#link']['localized_options']['attributes']['class'] = array(
+        $variables['element']['#link']['localized_options']['attributes']['class'],
+      );
+    }
+    $variables['element']['#link']['localized_options']['attributes']['class'][] = 'civic-oauth-password-link';
   }
 }
 

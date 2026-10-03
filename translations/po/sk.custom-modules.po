@@ -100,8 +100,8 @@ msgid "Create account"
 msgstr "Vytvoriť účet"
 
 #: sites/all/modules/custom/rovas_oauth/rovas_oauth.module
-msgid "Forgotten password"
-msgstr "Zabudnuté heslo"
+msgid "Reset forgotten password"
+msgstr "Resetovať zabudnuté heslo"
 
 #: sites/all/modules/custom/rovas_oauth/rovas_oauth.module
 msgid "You can sign in via a service represented by an icon below, or create an account with a password by filling in the form under the icons."
@@ -116,8 +116,12 @@ msgid "Continue"
 msgstr "Pokračovať"
 
 #: sites/all/modules/custom/rovas_oauth/rovas_oauth.module
-msgid "Identity powered by Rovas"
-msgstr "Identita cez Rovas"
+msgid "Your Civic account on Rovas"
+msgstr "Váš Civic účet v Rováši"
+
+#: sites/all/modules/custom/rovas_oauth/rovas_oauth.module
+msgid "Privacy"
+msgstr "Súkromie"
 
 #: sites/all/modules/custom/rovas_oauth/rovas_oauth.module:159
 msgid "Read your Rovas username and grant Merits on your behalf."

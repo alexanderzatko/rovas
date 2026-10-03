@@ -17,27 +17,61 @@ body.rovas-oauth-civic header#navbar {
 }
 
 body.rovas-oauth-civic header#navbar .container {
+  display: flex;
+  align-items: center;
+  min-height: 56px;
   padding-top: 8px;
   padding-bottom: 8px;
 }
 
+body.rovas-oauth-civic header#navbar .navbar-header {
+  display: flex;
+  align-items: center;
+  float: none;
+  width: 100%;
+  position: relative;
+  min-height: 40px;
+  margin: 0;
+}
+
 body.rovas-oauth-civic header#navbar .logo {
   pointer-events: none;
+  float: none;
+  position: relative;
+  z-index: 1;
   margin: 0;
+  padding: 0;
+  display: flex;
+  align-items: center;
 }
 
 body.rovas-oauth-civic header#navbar .logo img {
   height: 36px;
   width: auto;
   max-width: 56px;
+  display: block;
   filter: brightness(0) invert(1);
 }
 
 body.rovas-oauth-civic header#navbar .name.navbar-brand {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  margin: 0;
+  padding: 0;
+  float: none;
+  height: auto;
+  line-height: 1.2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   color: #fff;
   font-weight: 700;
   letter-spacing: 0.02em;
   white-space: nowrap;
+  text-align: center;
 }
 
 body.rovas-oauth-civic header#navbar .navbar-collapse,
@@ -115,6 +149,34 @@ body.rovas-oauth-civic ul.nav-tabs > li.active > a:focus {
   background: #0b3d2e;
   border-color: #0b3d2e;
   color: #fff;
+}
+
+body.rovas-oauth-civic .tabs--primary > li:has(> a.civic-oauth-password-link),
+body.rovas-oauth-civic ul.nav-tabs > li:has(> a.civic-oauth-password-link) {
+  flex: 1 0 100%;
+  display: flex;
+  justify-content: center;
+}
+
+body.rovas-oauth-civic .tabs--primary > li > a.civic-oauth-password-link,
+body.rovas-oauth-civic .tabs--primary > li.active > a.civic-oauth-password-link,
+body.rovas-oauth-civic .tabs--primary > li > a.civic-oauth-password-link:hover,
+body.rovas-oauth-civic .tabs--primary > li > a.civic-oauth-password-link:focus,
+body.rovas-oauth-civic .tabs--primary > li.active > a.civic-oauth-password-link:hover,
+body.rovas-oauth-civic .tabs--primary > li.active > a.civic-oauth-password-link:focus,
+body.rovas-oauth-civic ul.nav-tabs > li > a.civic-oauth-password-link,
+body.rovas-oauth-civic ul.nav-tabs > li.active > a.civic-oauth-password-link,
+body.rovas-oauth-civic ul.nav-tabs > li > a.civic-oauth-password-link:hover,
+body.rovas-oauth-civic ul.nav-tabs > li > a.civic-oauth-password-link:focus,
+body.rovas-oauth-civic ul.nav-tabs > li.active > a.civic-oauth-password-link:hover,
+body.rovas-oauth-civic ul.nav-tabs > li.active > a.civic-oauth-password-link:focus {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: #1a5c45;
+  font-weight: 600;
+  text-decoration: underline;
+  padding: 4px 6px;
 }
 
 body.rovas-oauth-civic .region-content {
