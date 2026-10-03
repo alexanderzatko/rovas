@@ -7,6 +7,9 @@ body.rovas-oauth-civic {
   background: #f3f6f2;
   color: #12241c;
   overflow-x: hidden;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
 }
 
 body.rovas-oauth-civic header#navbar {
@@ -15,6 +18,8 @@ body.rovas-oauth-civic header#navbar {
   border-radius: 0;
   margin-bottom: 0;
   min-height: 56px;
+  flex: 0 0 auto;
+  width: 100%;
 }
 
 body.rovas-oauth-civic header#navbar .container {
@@ -84,11 +89,39 @@ body.rovas-oauth-civic .region-sidebar-second {
   display: none !important;
 }
 
-body.rovas-oauth-civic .main-container,
-body.rovas-oauth-civic .container > .row {
+/* Fill the viewport under the header so the card can vertically center its form. */
+body.rovas-oauth-civic .main-container {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
   max-width: 480px;
   margin-left: auto;
   margin-right: auto;
+  padding-bottom: 0;
+}
+
+body.rovas-oauth-civic .main-container > .row {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 100%;
+  margin-left: 0;
+  margin-right: 0;
+}
+
+body.rovas-oauth-civic .main-container > .row > section {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  float: none !important;
+  width: 100% !important;
+  max-width: 100%;
+}
+
+body.rovas-oauth-civic .main-container > .row > section > *:not(.region-content) {
+  flex: 0 0 auto;
 }
 
 body.rovas-oauth-civic h1.page-header {
@@ -205,24 +238,33 @@ body.rovas-oauth-civic .region-content {
   border: 1px solid #d5ded8;
   border-top: 0;
   border-radius: 0 0 16px 16px;
-  padding: 14px 22px 16px;
+  padding: 16px 22px;
   box-shadow: 0 8px 24px rgba(18, 36, 28, 0.06);
   position: relative;
   z-index: 1;
   margin-top: 0;
+  margin-bottom: 0;
   animation: civic-oauth-card-in 0.22s ease-out;
+  flex: 1 1 auto;
   display: flex;
   flex-direction: column;
   justify-content: center;
+  align-items: stretch;
+  min-height: 0;
 }
 
-/* Collapse empty chrome that was pushing form content down inside the card. */
+/*
+ * Keep the form content-sized. If it stretches to the full card height,
+ * justify-content:center on the card has nothing to center.
+ */
 body.rovas-oauth-civic .region-content > .block,
-body.rovas-oauth-civic .region-content form,
-body.rovas-oauth-civic .region-content .form-item:first-child,
-body.rovas-oauth-civic .region-content .form-group:first-child,
-body.rovas-oauth-civic .region-content > *:first-child {
+body.rovas-oauth-civic .region-content > form,
+body.rovas-oauth-civic .region-content > div,
+body.rovas-oauth-civic .region-content > * {
+  flex: 0 0 auto;
+  width: 100%;
   margin-top: 0;
+  margin-bottom: 0;
 }
 
 body.rovas-oauth-civic .region-content label:empty,
@@ -335,9 +377,14 @@ body.rovas-oauth-civic footer.footer {
   background: transparent;
   border: 0;
   color: #5b6b63;
-  margin-top: 1.5em;
-  padding-top: 0;
+  margin-top: 0;
+  padding: 1em 0 1.25em;
   text-align: center;
+  flex: 0 0 auto;
+  width: 100%;
+  max-width: 480px;
+  margin-left: auto;
+  margin-right: auto;
 }
 
 body.rovas-oauth-civic footer.footer .civic-oauth-footer {
