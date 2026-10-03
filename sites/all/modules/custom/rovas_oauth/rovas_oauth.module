@@ -78,10 +78,14 @@ function rovas_oauth_menu() {
 /**
  * Whether the current request is Civic OAuth authorize UX.
  *
- * Brands only:
+ * Brands / keeps locale for:
  * - `/oauth2/authorize` for client `civic`
  * - `/user/login|register|password` when `destination=oauth2/authorize` and the
  *   authorize session is for client `civic`
+ * - `/hybridauth/window/*` and `/hybridauth/endpoint` when the HybridAuth
+ *   destination is `oauth2/authorize` (provider round-trip + additional-info
+ *   form). Without this, stashed `lang` is cleared mid-flow and OSM/etc.
+ *   registration forms fall back to English.
  *
  * Plain `/user/login` (no destination) stays the normal Rovas chrome even if a
  * prior authorize session is still in $_SESSION.
@@ -98,6 +102,11 @@ function rovas_oauth_is_civic_authorize_context() {
   if (arg(0) === 'oauth2' && arg(1) === 'authorize') {
     $client_id = $session_client !== '' ? $session_client : (isset($_GET['client_id']) ? $_GET['client_id'] : '');
     return $client_id === ROVAS_OAUTH_CLIENT_KEY;
+  }
+
+  // HybridAuth provider round-trip during Civic authorize.
+  if (arg(0) === 'hybridauth' && in_array(arg(1), array('window', 'endpoint'), TRUE)) {
+    return rovas_oauth_is_civic_hybridauth_destination($session_client);
   }
 
   // Login / register / password (and bare /user → login for anonymous).
@@ -119,6 +128,32 @@ function rovas_oauth_is_civic_authorize_context() {
   }
 
   // Destination present; session params exist but client_id key missing.
+  return !empty($_SESSION['oauth2_server_authorize']);
+}
+
+/**
+ * Whether a HybridAuth request is part of the Civic authorize login/register.
+ *
+ * @param string $session_client
+ *   client_id from $_SESSION['oauth2_server_authorize'], or empty.
+ *
+ * @return bool
+ */
+function rovas_oauth_is_civic_hybridauth_destination($session_client = '') {
+  // Prefer live query (window start); endpoint callback uses the session stash
+  // written by hybridauth_window_start() / destination-survive patch.
+  $destination = isset($_GET['destination']) ? $_GET['destination'] : '';
+  if ($destination === '' && !empty($_SESSION['hybridauth_destination'])) {
+    $destination = $_SESSION['hybridauth_destination'];
+  }
+  if (strpos($destination, 'oauth2/authorize') !== 0) {
+    return FALSE;
+  }
+
+  if ($session_client !== '') {
+    return $session_client === ROVAS_OAUTH_CLIENT_KEY;
+  }
+
   return !empty($_SESSION['oauth2_server_authorize']);
 }
 
