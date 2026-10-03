@@ -73,19 +73,34 @@ function rovas_site_rules_module_implements_alter(&$implementations, $hook) {
  * TRUE while a user account is being canceled or deleted.
  *
  * Used to suppress UI-oriented Rules actions (redirects) that assume a project
- * delete form at node/N/delete, not the account cancel confirmation URL.
+ * delete form at node/N/delete, not the account cancel confirmation URL, and
+ * to avoid private-message notifications to the account being removed.
  */
 function rovas_site_rules_in_account_deletion() {
   return (bool) drupal_static(__FUNCTION__, FALSE);
 }
 
 /**
- * Marks the start of account-deletion work (nested calls supported).
+ * UID of the account currently being canceled or deleted, or 0 if none.
  */
-function rovas_site_rules_account_deletion_begin() {
+function rovas_site_rules_account_being_deleted_uid() {
+  return (int) drupal_static(__FUNCTION__, 0);
+}
+
+/**
+ * Marks the start of account-deletion work (nested calls supported).
+ *
+ * @param object|null $account
+ *   The user account being canceled or deleted, when known.
+ */
+function rovas_site_rules_account_deletion_begin($account = NULL) {
   $depth = &drupal_static(__FUNCTION__, 0);
   $depth++;
   drupal_static('rovas_site_rules_in_account_deletion', TRUE);
+  if (!empty($account->uid)) {
+    $uid = &drupal_static('rovas_site_rules_account_being_deleted_uid', 0);
+    $uid = (int) $account->uid;
+  }
 }
 
 /**
@@ -97,7 +112,41 @@ function rovas_site_rules_account_deletion_end() {
   if ($depth <= 0) {
     drupal_static_reset('rovas_site_rules_account_deletion_begin');
     drupal_static_reset('rovas_site_rules_in_account_deletion');
+    drupal_static_reset('rovas_site_rules_account_being_deleted_uid');
   }
+}
+
+/**
+ * Implements hook_privatemsg_block_message().
+ *
+ * Account cancellation deletes the user's system project via
+ * rules_delete_project, which notifies work-report authors and coworkers by
+ * private message. Skip messages to the account being deleted so they do not
+ * get a pm_email_notify email for a mailbox that is about to disappear.
+ */
+function rovas_site_rules_privatemsg_block_message($author, $recipients, $context = array()) {
+  $uid = rovas_site_rules_account_being_deleted_uid();
+  if ($uid <= 0) {
+    return array();
+  }
+
+  $blocked = array();
+  foreach ($recipients as $recipient_id => $recipient) {
+    $recipient_uid = 0;
+    if (isset($recipient->uid)) {
+      $recipient_uid = (int) $recipient->uid;
+    }
+    elseif (isset($recipient->recipient)) {
+      $recipient_uid = (int) $recipient->recipient;
+    }
+    if ($recipient_uid === $uid) {
+      $blocked[] = array(
+        'recipient' => $recipient_id,
+        'message' => t('Private messages are not sent to an account that is being deleted.'),
+      );
+    }
+  }
+  return $blocked;
 }
 
 /**
@@ -123,7 +172,7 @@ function rovas_site_rules_page_build(&$page) {
  */
 function rovas_site_rules_user_cancel($edit, $account, $method) {
   if ($method === 'user_cancel_reassign') {
-    rovas_site_rules_account_deletion_begin();
+    rovas_site_rules_account_deletion_begin($account);
     _rovas_site_rules_delete_user_system_project($account);
     _rovas_site_rules_delete_user_shareholder_records($account);
     rovas_site_rules_account_deletion_end();
@@ -140,7 +189,7 @@ function rovas_site_rules_user_cancel($edit, $account, $method) {
  * pointing at a removed uid.
  */
 function rovas_site_rules_user_delete($account) {
-  rovas_site_rules_account_deletion_begin();
+  rovas_site_rules_account_deletion_begin($account);
   _rovas_site_rules_delete_user_system_project($account);
   _rovas_site_rules_delete_user_shareholder_records($account);
   rovas_site_rules_account_deletion_end();
