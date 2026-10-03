@@ -110,6 +110,10 @@ msgid "Enter your username."
 msgstr "Zadejte své uživatelské jméno."
 
 #: sites/all/modules/custom/rovas_oauth/rovas_oauth.module
+msgid "The selected country is invalid."
+msgstr "Vybraná země je neplatná."
+
+#: sites/all/modules/custom/rovas_oauth/rovas_oauth.module
 msgid "You can sign in via a service represented by an icon, or create an account with a password by filling in the form under the icons."
 msgstr "Přihlásit se můžete přes službu reprezentovanou ikonou, nebo si můžete vytvořit účet s heslem vyplněním formuláře pod ikonami."
 
