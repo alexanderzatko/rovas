@@ -620,18 +620,17 @@ function rovas_oauth_annotate_civic_auth_form(&$form, $mode = 'login') {
     $form['#action'] = url('user/register', array(
       'query' => array('destination' => 'oauth2/authorize'),
     ));
-    // HybridAuth is often login-only; inject the same widget for Civic register.
-    if (empty($form['hybridauth']) && user_access('use hybridauth') && function_exists('hybridauth_get_enabled_providers')) {
-      $form['hybridauth'] = array(
-        '#type' => 'hybridauth_widget',
-        '#title' => '',
-        '#weight' => -50,
-      );
-    }
   }
 
-  if (!empty($form['hybridauth'])) {
+  // HybridAuth under the intro (above form fields) on both login and register.
+  if (user_access('use hybridauth') && function_exists('hybridauth_get_enabled_providers')) {
+    if (empty($form['hybridauth'])) {
+      $form['hybridauth'] = array(
+        '#type' => 'hybridauth_widget',
+      );
+    }
     $form['hybridauth']['#title'] = '';
+    $form['hybridauth']['#weight'] = -50;
   }
 
   // Drop site-name suffix (“… Rovas”) from the login username help.
@@ -646,6 +645,28 @@ function rovas_oauth_annotate_civic_auth_form(&$form, $mode = 'login') {
     '#markup' => '<p class="rovas-oauth-intro">' . $intro . '</p>',
     '#weight' => -100,
   );
+
+  // HybridAuth's form_alter may run after ours; re-assert order in after_build.
+  if (!isset($form['#after_build']) || !is_array($form['#after_build'])) {
+    $form['#after_build'] = array();
+  }
+  if (!in_array('rovas_oauth_civic_auth_form_after_build', $form['#after_build'], TRUE)) {
+    $form['#after_build'][] = 'rovas_oauth_civic_auth_form_after_build';
+  }
+}
+
+/**
+ * After-build: keep intro → HybridAuth → fields order on Civic auth forms.
+ */
+function rovas_oauth_civic_auth_form_after_build($form, &$form_state) {
+  if (!empty($form['rovas_oauth_intro'])) {
+    $form['rovas_oauth_intro']['#weight'] = -100;
+  }
+  if (!empty($form['hybridauth'])) {
+    $form['hybridauth']['#title'] = '';
+    $form['hybridauth']['#weight'] = -50;
+  }
+  return $form;
 }
 
 /**
