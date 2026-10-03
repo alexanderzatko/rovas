@@ -349,7 +349,7 @@ function rovas_oauth_preprocess_html(&$variables) {
   }
   $variables['classes_array'][] = 'rovas-oauth-civic';
   if (!empty($variables['head_title_array']['name'])) {
-    $variables['head_title_array']['name'] = 'Civic';
+    $variables['head_title_array']['name'] = t('Your Civic account');
     $variables['head_title'] = implode(' | ', array_filter($variables['head_title_array']));
   }
   rovas_oauth_attach_civic_chrome();
@@ -368,8 +368,12 @@ function rovas_oauth_preprocess_page(&$variables) {
   rovas_oauth_attach_civic_chrome();
 
   $variables['logo'] = rovas_oauth_civic_logo_url();
-  $variables['site_name'] = 'Civic';
+  $variables['site_name'] = t('Your Civic account');
   $variables['site_slogan'] = '';
+  // Login/register/password: brand lives in the navbar. Keep consent page title.
+  if (arg(0) === 'user') {
+    $variables['title'] = '';
+  }
   $variables['primary_nav'] = NULL;
   $variables['secondary_nav'] = NULL;
   if (isset($variables['main_menu'])) {
@@ -394,6 +398,7 @@ function rovas_oauth_preprocess_page(&$variables) {
  *
  * Keep destination=oauth2/authorize on Log in / Create new account tabs so
  * register completes the OAuth flow instead of dropping the user on /user.
+ * Shorten Civic tab labels.
  */
 function rovas_oauth_preprocess_menu_local_task(&$variables) {
   if (!rovas_oauth_is_civic_authorize_context()) {
@@ -413,6 +418,16 @@ function rovas_oauth_preprocess_menu_local_task(&$variables) {
     $variables['element']['#link']['localized_options']['query'] = array();
   }
   $variables['element']['#link']['localized_options']['query']['destination'] = 'oauth2/authorize';
+
+  $titles = array(
+    'user/register' => t('Create account'),
+    'user/login' => t('Log in'),
+    'user' => t('Log in'),
+    'user/password' => t('Forgotten password'),
+  );
+  if (isset($titles[$href])) {
+    $variables['element']['#link']['title'] = $titles[$href];
+  }
 }
 
 /**
@@ -496,9 +511,10 @@ function rovas_oauth_annotate_civic_auth_form(&$form, $mode = 'login') {
 
   rovas_oauth_attach_civic_chrome();
 
+  // Navbar carries the brand label; keep a short browser/document title only.
+  drupal_set_title(t('Your Civic account'));
+
   if ($mode === 'register') {
-    drupal_set_title(t('Create a Civic account'));
-    $intro = t('Create an account to continue to Civic. Use Google, Facebook, or email. Civic does not store a separate password.');
     // Ensure post-register lands back on authorize (session holds PKCE params).
     $form['#action'] = url('user/register', array(
       'query' => array('destination' => 'oauth2/authorize'),
@@ -507,14 +523,17 @@ function rovas_oauth_annotate_civic_auth_form(&$form, $mode = 'login') {
     if (empty($form['hybridauth']) && user_access('use hybridauth') && function_exists('hybridauth_get_enabled_providers')) {
       $form['hybridauth'] = array(
         '#type' => 'hybridauth_widget',
+        '#title' => '',
         '#weight' => -50,
       );
     }
   }
-  else {
-    drupal_set_title(t('Sign in to Civic'));
-    $intro = t('Sign in to continue to Civic. Use Google, Facebook, or your Rovas email and password. Civic does not store a separate password.');
+
+  if (!empty($form['hybridauth'])) {
+    $form['hybridauth']['#title'] = '';
   }
+
+  $intro = t('You can sign in via a service represented by an icon below, or create an account with a password by filling in the form under the icons.');
 
   $form['rovas_oauth_intro'] = array(
     '#type' => 'item',

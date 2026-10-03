@@ -92,20 +92,20 @@ msgid "Yes, I authorize this request."
 msgstr "Áno, autorizujem túto požiadavku."
 
 #: sites/all/modules/custom/rovas_oauth/rovas_oauth.module
-msgid "Sign in to Civic"
-msgstr "Prihláste sa do Civic"
+msgid "Your Civic account"
+msgstr "Váš Civic účet"
 
 #: sites/all/modules/custom/rovas_oauth/rovas_oauth.module
-msgid "Create a Civic account"
-msgstr "Vytvorte účet Civic"
+msgid "Create account"
+msgstr "Vytvoriť účet"
 
 #: sites/all/modules/custom/rovas_oauth/rovas_oauth.module
-msgid "Sign in to continue to Civic. Use Google, Facebook, or your Rovas email and password. Civic does not store a separate password."
-msgstr "Prihláste sa a pokračujte do Civic. Použite Google, Facebook alebo e-mail a heslo Rovas. Civic neukladá samostatné heslo."
+msgid "Forgotten password"
+msgstr "Zabudnuté heslo"
 
 #: sites/all/modules/custom/rovas_oauth/rovas_oauth.module
-msgid "Create an account to continue to Civic. Use Google, Facebook, or email. Civic does not store a separate password."
-msgstr "Vytvorte účet a pokračujte do Civic. Použite Google, Facebook alebo e-mail. Civic neukladá samostatné heslo."
+msgid "You can sign in via a service represented by an icon below, or create an account with a password by filling in the form under the icons."
+msgstr "Prihlásiť sa môžete cez službu reprezentovanú ikonou nižšie, alebo si môžete vytvoriť účet s heslom vyplnením formulára pod ikonami."
 
 #: sites/all/modules/custom/rovas_oauth/rovas_oauth.module
 msgid "Continue to Civic"

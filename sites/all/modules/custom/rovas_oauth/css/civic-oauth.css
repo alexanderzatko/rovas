@@ -27,9 +27,9 @@ body.rovas-oauth-civic header#navbar .logo {
 }
 
 body.rovas-oauth-civic header#navbar .logo img {
-  height: 44px;
+  height: 36px;
   width: auto;
-  max-width: 120px;
+  max-width: 56px;
   filter: brightness(0) invert(1);
 }
 
@@ -37,6 +37,7 @@ body.rovas-oauth-civic header#navbar .name.navbar-brand {
   color: #fff;
   font-weight: 700;
   letter-spacing: 0.02em;
+  white-space: nowrap;
 }
 
 body.rovas-oauth-civic header#navbar .navbar-collapse,
@@ -64,26 +65,55 @@ body.rovas-oauth-civic h1.page-header {
   text-align: center;
 }
 
-body.rovas-oauth-civic .tabs--primary {
+body.rovas-oauth-civic .tabs--primary,
+body.rovas-oauth-civic ul.tabs--primary,
+body.rovas-oauth-civic ul.nav-tabs {
   display: flex;
+  flex-wrap: wrap;
   justify-content: center;
+  align-items: stretch;
+  gap: 8px;
   border: 0;
-  margin-bottom: 1.25em;
+  margin: 1.25em 0;
+  padding: 0;
 }
 
-body.rovas-oauth-civic .tabs--primary > li > a {
-  border: 0;
+body.rovas-oauth-civic .tabs--primary > li,
+body.rovas-oauth-civic ul.nav-tabs > li {
+  float: none;
+  margin: 0;
+}
+
+body.rovas-oauth-civic .tabs--primary > li > a,
+body.rovas-oauth-civic ul.nav-tabs > li > a {
+  border: 1px solid #0b3d2e;
   border-radius: 999px;
-  color: #5b6b63;
-  margin: 0 4px;
+  background: #fff;
+  color: #0b3d2e;
+  margin: 0;
   padding: 8px 14px;
+  text-align: center;
+  display: block;
+  line-height: 1.25;
+}
+
+body.rovas-oauth-civic .tabs--primary > li > a:hover,
+body.rovas-oauth-civic .tabs--primary > li > a:focus,
+body.rovas-oauth-civic ul.nav-tabs > li > a:hover,
+body.rovas-oauth-civic ul.nav-tabs > li > a:focus {
+  background: #e8f0ec;
+  border-color: #0b3d2e;
+  color: #0b3d2e;
 }
 
 body.rovas-oauth-civic .tabs--primary > li.active > a,
 body.rovas-oauth-civic .tabs--primary > li.active > a:hover,
-body.rovas-oauth-civic .tabs--primary > li.active > a:focus {
+body.rovas-oauth-civic .tabs--primary > li.active > a:focus,
+body.rovas-oauth-civic ul.nav-tabs > li.active > a,
+body.rovas-oauth-civic ul.nav-tabs > li.active > a:hover,
+body.rovas-oauth-civic ul.nav-tabs > li.active > a:focus {
   background: #0b3d2e;
-  border: 0;
+  border-color: #0b3d2e;
   color: #fff;
 }
 
@@ -109,10 +139,7 @@ body.rovas-oauth-civic .hybridauth-widget-wrapper {
 }
 
 body.rovas-oauth-civic .hybridauth-widget-wrapper h3 {
-  color: #5b6b63;
-  font-size: 0.95em;
-  font-weight: 600;
-  margin-top: 0;
+  display: none;
 }
 
 body.rovas-oauth-civic .btn-primary {
