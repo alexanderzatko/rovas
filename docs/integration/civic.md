@@ -38,10 +38,11 @@ env): [`civic-deploy.md`](civic-deploy.md).
 
 | Status | Slug | File | Notes |
 |--------|------|------|-------|
+| done | oauth-authorize-intent | [`done/oauth-authorize-intent.md`](civic_tasks/done/oauth-authorize-intent.md) | `intent=login\|register` on authorize → land on login vs register; deploy/smoke on rovdev |
 | done | merit-period-index | [`done/merit-period-index.md`](civic_tasks/done/merit-period-index.md) | ME•ter period leaderboard; deploy/smoke on rovdev when ready |
 | done | historical-pre-split | [`done/_historical-pre-split.md`](civic_tasks/done/_historical-pre-split.md) | Pre-split “Next work” archive — not open work |
 
-Open tasks: none (see `civic_tasks/active/`). Naming and archival rules:
+Open tasks: see `civic_tasks/active/`. Naming and archival rules:
 [`civic_tasks/README.md`](civic_tasks/README.md).
 
 ## Status
@@ -82,6 +83,7 @@ Open tasks: none (see `civic_tasks/active/`). Naming and archival rules:
 | Charitable projects catalog          | `GET /rovas/civic_charity_projects`; org type `charity_organization`; `/charity-projects`                                                  | Catalog API implemented (`7018`). Product framing → Gifts / public-benefit orgs — see [broaden Gifts path labels](civic_tasks/done/_historical-pre-split.md#next-work-broaden-gifts-path-labels-public-benefit-orgs).          |
 | Civic-branded OAuth login/register | `/user/login`, `/user/register` when authorizing `client_id=civic`                                                                        | Implemented in `rovas_oauth` — Civic chrome + copy; HybridAuth destination fix + automatic authorize (`7002`). Deploy + `drush74 updb` + smoke.                                      |
 | Civic locale on OAuth authorize      | `GET /oauth2/authorize?lang=sk\|en`                                                                                                        | Implemented in `rovas_oauth` — session stash + force `$GLOBALS['language']` for Civic login/register. Deploy + smoke.                                                                  |
+| OAuth authorize intent               | `GET /oauth2/authorize?intent=login\|register`                                                                                             | **Implemented** in `rovas_oauth` — session stash + goto rewrite to `/user/register` when `intent=register`. Deploy + smoke. See [oauth-authorize-intent](civic_tasks/done/oauth-authorize-intent.md).   |
 
 
 ## OAuth endpoints (live on dev)

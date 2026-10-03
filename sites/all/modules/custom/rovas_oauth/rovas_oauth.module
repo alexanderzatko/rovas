@@ -37,6 +37,11 @@ define('ROVAS_OAUTH_REDIRECT_PROD', 'civic://oauth/callback');
 define('ROVAS_OAUTH_CIVIC_UI_LANG_SESSION', 'rovas_oauth_civic_ui_lang');
 
 /**
+ * Session key for Civic authorize landing intent (login vs register).
+ */
+define('ROVAS_OAUTH_CIVIC_INTENT_SESSION', 'rovas_oauth_civic_intent');
+
+/**
  * Services endpoint machine name used by Rovas REST APIs.
  */
 define('ROVAS_OAUTH_SERVICES_ENDPOINT', 'rovas_endpoint');
@@ -120,32 +125,50 @@ function rovas_oauth_is_civic_authorize_context() {
 /**
  * Implements hook_init().
  *
- * Capture Civic `lang` / `ui_locales` on authorize and force interface language
- * for the Civic-branded login/register path (mirrors RewPro anonymous UI lang).
+ * Capture Civic `lang` / `ui_locales` and `intent` on authorize; force interface
+ * language for the Civic-branded login/register path.
  */
 function rovas_oauth_init() {
   rovas_oauth_civic_ui_lang_capture_from_request();
+  rovas_oauth_civic_intent_capture_from_request();
   rovas_oauth_civic_ui_lang_apply_or_clear();
+  rovas_oauth_civic_intent_clear_outside_context();
 }
 
 /**
  * Implements hook_drupal_goto_alter().
  *
- * Optional: keep `lang=` on the authorize → login redirect for debuggability.
- * Session remains the source of truth.
+ * Honor Civic authorize `intent=register` (land on Create account) and keep
+ * `lang=` / `intent=` on the redirect query for debuggability. Session is SoT.
  */
 function rovas_oauth_drupal_goto_alter(&$path, &$options, &$http_response_code) {
   if ($path !== 'user/login' && $path !== 'user/register') {
     return;
   }
-  if (empty($_SESSION[ROVAS_OAUTH_CIVIC_UI_LANG_SESSION])) {
+
+  $intent = !empty($_SESSION[ROVAS_OAUTH_CIVIC_INTENT_SESSION])
+    ? $_SESSION[ROVAS_OAUTH_CIVIC_INTENT_SESSION]
+    : '';
+  $langcode = !empty($_SESSION[ROVAS_OAUTH_CIVIC_UI_LANG_SESSION])
+    ? $_SESSION[ROVAS_OAUTH_CIVIC_UI_LANG_SESSION]
+    : '';
+  if ($intent === '' && $langcode === '') {
     return;
   }
+
   if (!isset($options['query']) || !is_array($options['query'])) {
     $options['query'] = array();
   }
-  if (empty($options['query']['lang'])) {
-    $options['query']['lang'] = $_SESSION[ROVAS_OAUTH_CIVIC_UI_LANG_SESSION];
+
+  if ($path === 'user/login' && $intent === 'register') {
+    $path = 'user/register';
+  }
+
+  if ($intent !== '' && empty($options['query']['intent'])) {
+    $options['query']['intent'] = $intent;
+  }
+  if ($langcode !== '' && empty($options['query']['lang'])) {
+    $options['query']['lang'] = $langcode;
   }
 }
 
@@ -296,6 +319,62 @@ function rovas_oauth_civic_ui_lang_apply_or_clear() {
 }
 
 /**
+ * Capture Civic authorize `intent` (login|register) into session.
+ *
+ * Missing or invalid values keep / default to login landing (never 400).
+ */
+function rovas_oauth_civic_intent_capture_from_request() {
+  if (!(arg(0) === 'oauth2' && arg(1) === 'authorize')) {
+    return;
+  }
+
+  $client_id = '';
+  if (!empty($_GET['client_id'])) {
+    $client_id = $_GET['client_id'];
+  }
+  elseif (!empty($_SESSION['oauth2_server_authorize']['client_id'])) {
+    $client_id = $_SESSION['oauth2_server_authorize']['client_id'];
+  }
+  if ($client_id !== ROVAS_OAUTH_CLIENT_KEY) {
+    return;
+  }
+
+  $raw = NULL;
+  if (isset($_GET['intent'])) {
+    $raw = $_GET['intent'];
+  }
+  elseif (!empty($_SESSION['oauth2_server_authorize']) && is_array($_SESSION['oauth2_server_authorize']) && isset($_SESSION['oauth2_server_authorize']['intent'])) {
+    $raw = $_SESSION['oauth2_server_authorize']['intent'];
+  }
+
+  if ($raw === NULL) {
+    return;
+  }
+
+  $intent = drupal_strtolower(trim((string) $raw));
+  if ($intent === 'register' || $intent === 'login') {
+    $_SESSION[ROVAS_OAUTH_CIVIC_INTENT_SESSION] = $intent;
+  }
+  else {
+    // Invalid → same landing as missing (login); do not 400 authorize.
+    $_SESSION[ROVAS_OAUTH_CIVIC_INTENT_SESSION] = 'login';
+  }
+  drupal_page_is_cacheable(FALSE);
+}
+
+/**
+ * Drop authorize intent when leaving Civic-branded OAuth chrome.
+ */
+function rovas_oauth_civic_intent_clear_outside_context() {
+  if (empty($_SESSION[ROVAS_OAUTH_CIVIC_INTENT_SESSION])) {
+    return;
+  }
+  if (!rovas_oauth_is_civic_authorize_context()) {
+    unset($_SESSION[ROVAS_OAUTH_CIVIC_INTENT_SESSION]);
+  }
+}
+
+/**
  * Overwrite Drupal globals so t() / .po strings use $langcode.
  *
  * @param string $langcode
@@ -437,7 +516,18 @@ function rovas_oauth_preprocess_menu_local_task(&$variables) {
         $variables['element']['#link']['localized_options']['attributes']['class'],
       );
     }
-    $variables['element']['#link']['localized_options']['attributes']['class'][] = 'civic-oauth-password-link';
+    $variables['element']['#link']['localized_options']['attributes']['class'][] = 'civic-oauth-password-btn';
+  }
+  else {
+    if (!isset($variables['element']['#link']['localized_options']['attributes']['class'])) {
+      $variables['element']['#link']['localized_options']['attributes']['class'] = array();
+    }
+    elseif (!is_array($variables['element']['#link']['localized_options']['attributes']['class'])) {
+      $variables['element']['#link']['localized_options']['attributes']['class'] = array(
+        $variables['element']['#link']['localized_options']['attributes']['class'],
+      );
+    }
+    $variables['element']['#link']['localized_options']['attributes']['class'][] = 'civic-oauth-auth-tab';
   }
 }
 

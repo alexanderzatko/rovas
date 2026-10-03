@@ -6,6 +6,7 @@
 body.rovas-oauth-civic {
   background: #f3f6f2;
   color: #12241c;
+  overflow-x: hidden;
 }
 
 body.rovas-oauth-civic header#navbar {
@@ -99,17 +100,25 @@ body.rovas-oauth-civic h1.page-header {
   text-align: center;
 }
 
+/* Full-bleed toolbar: auth tabs align with card; reset flush to screen right. */
 body.rovas-oauth-civic .tabs--primary,
 body.rovas-oauth-civic ul.tabs--primary,
 body.rovas-oauth-civic ul.nav-tabs {
   display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  align-items: stretch;
-  gap: 8px;
+  flex-wrap: nowrap;
+  align-items: flex-end;
+  justify-content: flex-start;
+  gap: 0;
   border: 0;
-  margin: 1.25em 0;
-  padding: 0;
+  width: 100vw;
+  max-width: 100vw;
+  position: relative;
+  left: 50%;
+  right: 50%;
+  margin: 1.25em -50vw 0;
+  padding-left: max(12px, calc((100vw - 480px) / 2));
+  padding-right: 12px;
+  box-sizing: border-box;
 }
 
 body.rovas-oauth-civic .tabs--primary > li,
@@ -118,73 +127,120 @@ body.rovas-oauth-civic ul.nav-tabs > li {
   margin: 0;
 }
 
-body.rovas-oauth-civic .tabs--primary > li > a,
-body.rovas-oauth-civic ul.nav-tabs > li > a {
+/* Create account / Log in — tab heads attached to the card below. */
+body.rovas-oauth-civic .tabs--primary > li > a.civic-oauth-auth-tab,
+body.rovas-oauth-civic ul.nav-tabs > li > a.civic-oauth-auth-tab {
+  border: 1px solid #d5ded8;
+  border-bottom: 0;
+  border-radius: 12px 12px 0 0;
+  background: #e4ebe6;
+  color: #5b6b63;
+  margin: 0 4px 0 0;
+  padding: 10px 16px;
+  text-align: center;
+  display: block;
+  line-height: 1.25;
+  font-weight: 600;
+  position: relative;
+  z-index: 0;
+}
+
+body.rovas-oauth-civic .tabs--primary > li > a.civic-oauth-auth-tab:hover,
+body.rovas-oauth-civic .tabs--primary > li > a.civic-oauth-auth-tab:focus,
+body.rovas-oauth-civic ul.nav-tabs > li > a.civic-oauth-auth-tab:hover,
+body.rovas-oauth-civic ul.nav-tabs > li > a.civic-oauth-auth-tab:focus {
+  background: #d5ded8;
+  border-color: #c5d0c9;
+  color: #0b3d2e;
+}
+
+body.rovas-oauth-civic .tabs--primary > li.active > a.civic-oauth-auth-tab,
+body.rovas-oauth-civic .tabs--primary > li.active > a.civic-oauth-auth-tab:hover,
+body.rovas-oauth-civic .tabs--primary > li.active > a.civic-oauth-auth-tab:focus,
+body.rovas-oauth-civic ul.nav-tabs > li.active > a.civic-oauth-auth-tab,
+body.rovas-oauth-civic ul.nav-tabs > li.active > a.civic-oauth-auth-tab:hover,
+body.rovas-oauth-civic ul.nav-tabs > li.active > a.civic-oauth-auth-tab:focus {
+  background: #fff;
+  border-color: #d5ded8;
+  color: #0b3d2e;
+  font-weight: 700;
+  z-index: 2;
+  margin-bottom: -1px;
+  padding-bottom: 11px;
+  box-shadow: 0 -2px 8px rgba(18, 36, 28, 0.04);
+}
+
+/* Reset password — pill button flush right. */
+body.rovas-oauth-civic .tabs--primary > li:has(> a.civic-oauth-password-btn),
+body.rovas-oauth-civic ul.nav-tabs > li:has(> a.civic-oauth-password-btn) {
+  margin-left: auto;
+  align-self: center;
+}
+
+body.rovas-oauth-civic .tabs--primary > li > a.civic-oauth-password-btn,
+body.rovas-oauth-civic .tabs--primary > li.active > a.civic-oauth-password-btn,
+body.rovas-oauth-civic .tabs--primary > li > a.civic-oauth-password-btn:hover,
+body.rovas-oauth-civic .tabs--primary > li > a.civic-oauth-password-btn:focus,
+body.rovas-oauth-civic .tabs--primary > li.active > a.civic-oauth-password-btn:hover,
+body.rovas-oauth-civic .tabs--primary > li.active > a.civic-oauth-password-btn:focus,
+body.rovas-oauth-civic ul.nav-tabs > li > a.civic-oauth-password-btn,
+body.rovas-oauth-civic ul.nav-tabs > li.active > a.civic-oauth-password-btn,
+body.rovas-oauth-civic ul.nav-tabs > li > a.civic-oauth-password-btn:hover,
+body.rovas-oauth-civic ul.nav-tabs > li > a.civic-oauth-password-btn:focus,
+body.rovas-oauth-civic ul.nav-tabs > li.active > a.civic-oauth-password-btn:hover,
+body.rovas-oauth-civic ul.nav-tabs > li.active > a.civic-oauth-password-btn:focus {
   border: 1px solid #0b3d2e;
   border-radius: 999px;
   background: #fff;
   color: #0b3d2e;
+  font-weight: 600;
+  text-decoration: none;
   margin: 0;
   padding: 8px 14px;
   text-align: center;
   display: block;
   line-height: 1.25;
+  white-space: nowrap;
 }
 
-body.rovas-oauth-civic .tabs--primary > li > a:hover,
-body.rovas-oauth-civic .tabs--primary > li > a:focus,
-body.rovas-oauth-civic ul.nav-tabs > li > a:hover,
-body.rovas-oauth-civic ul.nav-tabs > li > a:focus {
-  background: #e8f0ec;
-  border-color: #0b3d2e;
-  color: #0b3d2e;
-}
-
-body.rovas-oauth-civic .tabs--primary > li.active > a,
-body.rovas-oauth-civic .tabs--primary > li.active > a:hover,
-body.rovas-oauth-civic .tabs--primary > li.active > a:focus,
-body.rovas-oauth-civic ul.nav-tabs > li.active > a,
-body.rovas-oauth-civic ul.nav-tabs > li.active > a:hover,
-body.rovas-oauth-civic ul.nav-tabs > li.active > a:focus {
+body.rovas-oauth-civic .tabs--primary > li.active > a.civic-oauth-password-btn,
+body.rovas-oauth-civic .tabs--primary > li.active > a.civic-oauth-password-btn:hover,
+body.rovas-oauth-civic .tabs--primary > li.active > a.civic-oauth-password-btn:focus,
+body.rovas-oauth-civic ul.nav-tabs > li.active > a.civic-oauth-password-btn,
+body.rovas-oauth-civic ul.nav-tabs > li.active > a.civic-oauth-password-btn:hover,
+body.rovas-oauth-civic ul.nav-tabs > li.active > a.civic-oauth-password-btn:focus {
   background: #0b3d2e;
   border-color: #0b3d2e;
   color: #fff;
 }
 
-body.rovas-oauth-civic .tabs--primary > li:has(> a.civic-oauth-password-link),
-body.rovas-oauth-civic ul.nav-tabs > li:has(> a.civic-oauth-password-link) {
-  flex: 1 0 100%;
-  display: flex;
-  justify-content: center;
-}
-
-body.rovas-oauth-civic .tabs--primary > li > a.civic-oauth-password-link,
-body.rovas-oauth-civic .tabs--primary > li.active > a.civic-oauth-password-link,
-body.rovas-oauth-civic .tabs--primary > li > a.civic-oauth-password-link:hover,
-body.rovas-oauth-civic .tabs--primary > li > a.civic-oauth-password-link:focus,
-body.rovas-oauth-civic .tabs--primary > li.active > a.civic-oauth-password-link:hover,
-body.rovas-oauth-civic .tabs--primary > li.active > a.civic-oauth-password-link:focus,
-body.rovas-oauth-civic ul.nav-tabs > li > a.civic-oauth-password-link,
-body.rovas-oauth-civic ul.nav-tabs > li.active > a.civic-oauth-password-link,
-body.rovas-oauth-civic ul.nav-tabs > li > a.civic-oauth-password-link:hover,
-body.rovas-oauth-civic ul.nav-tabs > li > a.civic-oauth-password-link:focus,
-body.rovas-oauth-civic ul.nav-tabs > li.active > a.civic-oauth-password-link:hover,
-body.rovas-oauth-civic ul.nav-tabs > li.active > a.civic-oauth-password-link:focus {
-  border: 0;
-  border-radius: 0;
-  background: transparent;
-  color: #1a5c45;
-  font-weight: 600;
-  text-decoration: underline;
-  padding: 4px 6px;
-}
-
 body.rovas-oauth-civic .region-content {
   background: #fff;
   border: 1px solid #d5ded8;
-  border-radius: 16px;
+  border-radius: 0 16px 16px 16px;
   padding: 20px 22px 8px;
   box-shadow: 0 8px 24px rgba(18, 36, 28, 0.06);
+  position: relative;
+  z-index: 1;
+  animation: civic-oauth-card-in 0.22s ease-out;
+}
+
+@keyframes civic-oauth-card-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* When login (2nd) tab is active, round the card's top-left too. */
+body.page-user-login.rovas-oauth-civic .region-content,
+body.page-user.rovas-oauth-civic .region-content,
+body.page-user-password.rovas-oauth-civic .region-content {
+  border-radius: 16px;
 }
 
 body.rovas-oauth-civic .rovas-oauth-intro {
