@@ -135,7 +135,7 @@ body.rovas-oauth-civic ul.nav-tabs > li > a.civic-oauth-auth-tab {
   border-radius: 12px 12px 0 0;
   background: #e4ebe6;
   color: #5b6b63;
-  margin: 0 4px 0 0;
+  margin: 0 2px 0 0;
   padding: 10px 16px;
   text-align: center;
   display: block;
@@ -143,6 +143,11 @@ body.rovas-oauth-civic ul.nav-tabs > li > a.civic-oauth-auth-tab {
   font-weight: 600;
   position: relative;
   z-index: 0;
+}
+
+body.rovas-oauth-civic .tabs--primary > li:first-child > a.civic-oauth-auth-tab,
+body.rovas-oauth-civic ul.nav-tabs > li:first-child > a.civic-oauth-auth-tab {
+  margin-left: 0;
 }
 
 body.rovas-oauth-civic .tabs--primary > li > a.civic-oauth-auth-tab:hover,
@@ -162,12 +167,13 @@ body.rovas-oauth-civic ul.nav-tabs > li.active > a.civic-oauth-auth-tab:hover,
 body.rovas-oauth-civic ul.nav-tabs > li.active > a.civic-oauth-auth-tab:focus {
   background: #fff;
   border-color: #d5ded8;
+  /* Cover the card top edge so tab + card read as one continuous outline. */
+  border-bottom: 1px solid #fff;
   color: #0b3d2e;
   font-weight: 700;
   z-index: 2;
   margin-bottom: -1px;
   padding-bottom: 11px;
-  box-shadow: 0 -2px 8px rgba(18, 36, 28, 0.04);
 }
 
 /* Reset password — pill button flush right. */
@@ -236,7 +242,17 @@ body.rovas-oauth-civic .region-content {
   }
 }
 
-/* When login (2nd) tab is active, round the card's top-left too. */
+/* First tab active: left edge of tab + card is one continuous cornerless join. */
+body.page-user-register.rovas-oauth-civic .tabs--primary > li:first-child.active > a.civic-oauth-auth-tab,
+body.page-user-register.rovas-oauth-civic ul.nav-tabs > li:first-child.active > a.civic-oauth-auth-tab {
+  border-top-left-radius: 16px;
+}
+
+body.page-user-register.rovas-oauth-civic .region-content {
+  border-radius: 0 16px 16px 16px;
+}
+
+/* Login / password: card is a standalone panel (active tab is not leftmost). */
 body.page-user-login.rovas-oauth-civic .region-content,
 body.page-user.rovas-oauth-civic .region-content,
 body.page-user-password.rovas-oauth-civic .region-content {

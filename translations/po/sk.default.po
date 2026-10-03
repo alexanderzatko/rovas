@@ -29612,7 +29612,7 @@ msgstr ""
 
 #: /admin/structure/views/view/merit_history/edit/page_1?destination=user/2271/merits
 msgid "Rovas"
-msgstr ""
+msgstr "Rováš"
 
 #: /admin/structure/views/view/total_chrons
 msgid "total chrons"

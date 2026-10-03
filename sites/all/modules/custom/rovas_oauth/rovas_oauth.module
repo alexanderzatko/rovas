@@ -502,7 +502,7 @@ function rovas_oauth_preprocess_menu_local_task(&$variables) {
     'user/register' => t('Create account'),
     'user/login' => t('Log in'),
     'user' => t('Log in'),
-    'user/password' => t('Reset forgotten password'),
+    'user/password' => t('Reset password'),
   );
   if (isset($titles[$href])) {
     $variables['element']['#link']['title'] = $titles[$href];
@@ -632,6 +632,11 @@ function rovas_oauth_annotate_civic_auth_form(&$form, $mode = 'login') {
 
   if (!empty($form['hybridauth'])) {
     $form['hybridauth']['#title'] = '';
+  }
+
+  // Drop site-name suffix (“… Rovas”) from the login username help.
+  if ($mode === 'login' && !empty($form['name'])) {
+    $form['name']['#description'] = t('Enter your username.');
   }
 
   $intro = t('You can sign in via a service represented by an icon below, or create an account with a password by filling in the form under the icons.');

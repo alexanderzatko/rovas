@@ -100,8 +100,12 @@ msgid "Create account"
 msgstr "Vytvoriť účet"
 
 #: sites/all/modules/custom/rovas_oauth/rovas_oauth.module
-msgid "Reset forgotten password"
-msgstr "Resetovať zabudnuté heslo"
+msgid "Reset password"
+msgstr "Resetovať heslo"
+
+#: sites/all/modules/custom/rovas_oauth/rovas_oauth.module
+msgid "Enter your username."
+msgstr "Zadajte svoje používateľské meno."
 
 #: sites/all/modules/custom/rovas_oauth/rovas_oauth.module
 msgid "You can sign in via a service represented by an icon below, or create an account with a password by filling in the form under the icons."
