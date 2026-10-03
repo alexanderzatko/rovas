@@ -631,6 +631,9 @@ function rovas_oauth_form_user_register_form_alter(&$form, &$form_state) {
     $form['locale']['language']['#access'] = FALSE;
   }
 
+  // Same country default as HybridAuth mini-form (sk/cs → SK).
+  rovas_oauth_civic_apply_default_country($form);
+
   // CAPTCHA is for open web signup; Civic in-app browser is low bot risk.
   $form['#after_build'][] = 'rovas_oauth_civic_register_remove_captcha';
 }
@@ -686,14 +689,61 @@ function rovas_oauth_form_hybridauth_additional_info_form_alter(&$form, &$form_s
     '#weight' => 50,
   );
 
-  // Sensible default when Civic UI is Slovak/Czech.
-  $langcode = rovas_oauth_civic_session_langcode();
-  if (($langcode === 'sk' || $langcode === 'cs') && isset($countries['SK'])) {
-    $form['fset']['country_iso2']['#default_value'] = 'SK';
+  $default_iso2 = rovas_oauth_civic_default_country_iso2();
+  if ($default_iso2 !== '' && isset($countries[$default_iso2])) {
+    $form['fset']['country_iso2']['#default_value'] = $default_iso2;
   }
 
   $form['#validate'][] = 'rovas_oauth_civic_hybridauth_additional_info_validate';
   $form['#validate'][] = 'rovas_oauth_civic_register_skip_email_verification_validate';
+}
+
+/**
+ * Default country ISO2 for Civic signup from session UI language, or ''.
+ *
+ * Slovak / Czech Civic UI → Slovakia (SK).
+ *
+ * @return string
+ */
+function rovas_oauth_civic_default_country_iso2() {
+  $langcode = rovas_oauth_civic_session_langcode();
+  if ($langcode !== 'sk' && $langcode !== 'cs') {
+    return '';
+  }
+  if (function_exists('country_load') && !country_load('SK')) {
+    return '';
+  }
+  return 'SK';
+}
+
+/**
+ * Prefill field_country on Civic native register (options_select / country widget).
+ *
+ * @param array $form
+ *   Form array (by reference).
+ */
+function rovas_oauth_civic_apply_default_country(array &$form) {
+  $iso2 = rovas_oauth_civic_default_country_iso2();
+  if ($iso2 === '' || empty($form['field_country'])) {
+    return;
+  }
+
+  $lang = LANGUAGE_NONE;
+  // options_select (countries field): select lives at LANGUAGE_NONE.
+  if (isset($form['field_country'][$lang]) && is_array($form['field_country'][$lang])) {
+    if (isset($form['field_country'][$lang]['#type'])) {
+      $form['field_country'][$lang]['#default_value'] = $iso2;
+      return;
+    }
+    // Country element / nested iso2 column.
+    if (isset($form['field_country'][$lang][0]['iso2'])) {
+      $form['field_country'][$lang][0]['iso2']['#default_value'] = $iso2;
+      return;
+    }
+    if (isset($form['field_country'][$lang][0]) && is_array($form['field_country'][$lang][0])) {
+      $form['field_country'][$lang][0]['#default_value'] = array('iso2' => $iso2);
+    }
+  }
 }
 
 /**
