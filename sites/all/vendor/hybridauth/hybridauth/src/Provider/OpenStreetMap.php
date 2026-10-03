@@ -35,8 +35,8 @@ class OpenStreetMap extends OAuth2
 		$userProfile->photoURL = isset($userData['img']['@attributes']['href']) ? $userData['img']['@attributes']['href'] : null;
 		$userProfile->description = isset($userData['description']) ? $userData['description'] : null;
 
-watchdog('library','OpenStreetMap userProfile ' . print_r($userProfile,1));
-
-		return $userProfile;		
+		// OSM's user/details API does not include email. Keep displayName so
+		// HybridAuth username tokens / the additional-info form have a default.
+		return $userProfile;
     }
 }

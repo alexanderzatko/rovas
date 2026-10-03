@@ -6,7 +6,10 @@
 
 function hybridauth_endpoint() {
   if ($storage = hybridauth_get_storage()) {
-    hybridauth_window_start($storage->get('provider'));
+    // Must return the page/form from window_start. Login success closes via
+    // drupal_exit(), but new registrations often need the additional-info form
+    // (e.g. OSM returns no email) — discarding that return yields a blank 200.
+    return hybridauth_window_start($storage->get('provider'));
   }
 }
 
