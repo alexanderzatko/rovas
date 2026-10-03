@@ -101,8 +101,9 @@ body.rovas-oauth-civic h1.page-header {
 }
 
 /*
- * Tab toolbar shares the same width as the card so the leftmost tab lines up
- * with the card edge. Reset sits flush right within that column.
+ * Folder tabs: the UL bottom border is the card's top edge.
+ * The active tab punches a white hole in that line (classic Bootstrap pattern).
+ * .region-content has NO top border so the outline stays continuous.
  */
 body.rovas-oauth-civic .tabs--primary,
 body.rovas-oauth-civic ul.tabs--primary,
@@ -112,126 +113,108 @@ body.rovas-oauth-civic ul.nav-tabs {
   align-items: flex-end;
   justify-content: flex-start;
   gap: 0;
-  border: 0;
   width: 100%;
   max-width: 100%;
   margin: 1.25em 0 0;
   padding: 0;
   box-sizing: border-box;
+  border: 0;
+  border-bottom: 1px solid #d5ded8;
+  position: relative;
+  z-index: 2;
 }
 
 body.rovas-oauth-civic .tabs--primary > li,
 body.rovas-oauth-civic ul.nav-tabs > li {
   float: none;
-  margin: 0;
+  margin: 0 2px 0 0;
 }
 
-/* Create account / Log in — tab heads attached to the card below. */
+body.rovas-oauth-civic .tabs--primary > li:first-child,
+body.rovas-oauth-civic ul.nav-tabs > li:first-child {
+  margin-left: 0;
+}
+
+body.rovas-oauth-civic .tabs--primary > li:last-child,
+body.rovas-oauth-civic ul.nav-tabs > li:last-child {
+  margin-right: 0;
+  margin-left: auto;
+}
+
+body.rovas-oauth-civic .tabs--primary > li > a,
+body.rovas-oauth-civic ul.nav-tabs > li > a,
 body.rovas-oauth-civic .tabs--primary > li > a.civic-oauth-auth-tab,
 body.rovas-oauth-civic ul.nav-tabs > li > a.civic-oauth-auth-tab {
-  border: 1px solid #d5ded8;
+  border: 1px solid transparent;
   border-bottom: 0;
   border-radius: 12px 12px 0 0;
   background: #e4ebe6;
   color: #5b6b63;
-  margin: 0 2px 0 0;
-  padding: 10px 14px;
-  text-align: center;
-  display: block;
-  line-height: 1.25;
-  font-weight: 600;
-  position: relative;
-  z-index: 0;
-}
-
-body.rovas-oauth-civic .tabs--primary > li:first-child > a.civic-oauth-auth-tab,
-body.rovas-oauth-civic ul.nav-tabs > li:first-child > a.civic-oauth-auth-tab {
-  margin-left: 0;
-}
-
-body.rovas-oauth-civic .tabs--primary > li > a.civic-oauth-auth-tab:hover,
-body.rovas-oauth-civic .tabs--primary > li > a.civic-oauth-auth-tab:focus,
-body.rovas-oauth-civic ul.nav-tabs > li > a.civic-oauth-auth-tab:hover,
-body.rovas-oauth-civic ul.nav-tabs > li > a.civic-oauth-auth-tab:focus {
-  background: #d5ded8;
-  border-color: #c5d0c9;
-  color: #0b3d2e;
-}
-
-body.rovas-oauth-civic .tabs--primary > li.active > a.civic-oauth-auth-tab,
-body.rovas-oauth-civic .tabs--primary > li.active > a.civic-oauth-auth-tab:hover,
-body.rovas-oauth-civic .tabs--primary > li.active > a.civic-oauth-auth-tab:focus,
-body.rovas-oauth-civic ul.nav-tabs > li.active > a.civic-oauth-auth-tab,
-body.rovas-oauth-civic ul.nav-tabs > li.active > a.civic-oauth-auth-tab:hover,
-body.rovas-oauth-civic ul.nav-tabs > li.active > a.civic-oauth-auth-tab:focus {
-  background: #fff;
-  border-color: #d5ded8;
-  /* Cover the card top edge so tab + card read as one continuous outline. */
-  border-bottom: 1px solid #fff;
-  color: #0b3d2e;
-  font-weight: 700;
-  z-index: 2;
-  margin-bottom: -1px;
-  padding-bottom: 11px;
-}
-
-/* Reset password — compact wrapped label, flush right. */
-body.rovas-oauth-civic .tabs--primary > li:has(> a.civic-oauth-password-btn),
-body.rovas-oauth-civic ul.nav-tabs > li:has(> a.civic-oauth-password-btn) {
-  margin-left: auto;
-  align-self: center;
-  flex: 0 0 auto;
-}
-
-body.rovas-oauth-civic .tabs--primary > li > a.civic-oauth-password-btn,
-body.rovas-oauth-civic .tabs--primary > li.active > a.civic-oauth-password-btn,
-body.rovas-oauth-civic .tabs--primary > li > a.civic-oauth-password-btn:hover,
-body.rovas-oauth-civic .tabs--primary > li > a.civic-oauth-password-btn:focus,
-body.rovas-oauth-civic .tabs--primary > li.active > a.civic-oauth-password-btn:hover,
-body.rovas-oauth-civic .tabs--primary > li.active > a.civic-oauth-password-btn:focus,
-body.rovas-oauth-civic ul.nav-tabs > li > a.civic-oauth-password-btn,
-body.rovas-oauth-civic ul.nav-tabs > li.active > a.civic-oauth-password-btn,
-body.rovas-oauth-civic ul.nav-tabs > li > a.civic-oauth-password-btn:hover,
-body.rovas-oauth-civic ul.nav-tabs > li > a.civic-oauth-password-btn:focus,
-body.rovas-oauth-civic ul.nav-tabs > li.active > a.civic-oauth-password-btn:hover,
-body.rovas-oauth-civic ul.nav-tabs > li.active > a.civic-oauth-password-btn:focus {
-  border: 1px solid #0b3d2e;
-  border-radius: 12px;
-  background: #fff;
-  color: #0b3d2e;
-  font-weight: 600;
-  text-decoration: none;
-  margin: 0;
-  padding: 6px 10px;
+  margin: 0 0 -1px;
+  padding: 10px 12px;
   text-align: center;
   display: block;
   line-height: 1.2;
+  font-weight: 600;
+  position: relative;
+  z-index: 0;
   white-space: normal;
-  max-width: 6.5em;
-  word-break: break-word;
-  hyphens: auto;
+  max-width: 7.5em;
 }
 
-body.rovas-oauth-civic .tabs--primary > li.active > a.civic-oauth-password-btn,
-body.rovas-oauth-civic .tabs--primary > li.active > a.civic-oauth-password-btn:hover,
-body.rovas-oauth-civic .tabs--primary > li.active > a.civic-oauth-password-btn:focus,
-body.rovas-oauth-civic ul.nav-tabs > li.active > a.civic-oauth-password-btn,
-body.rovas-oauth-civic ul.nav-tabs > li.active > a.civic-oauth-password-btn:hover,
-body.rovas-oauth-civic ul.nav-tabs > li.active > a.civic-oauth-password-btn:focus {
-  background: #0b3d2e;
-  border-color: #0b3d2e;
-  color: #fff;
+body.rovas-oauth-civic .tabs--primary > li > a:hover,
+body.rovas-oauth-civic .tabs--primary > li > a:focus,
+body.rovas-oauth-civic ul.nav-tabs > li > a:hover,
+body.rovas-oauth-civic ul.nav-tabs > li > a:focus {
+  background: #d5ded8;
+  border-color: transparent;
+  color: #0b3d2e;
 }
 
+body.rovas-oauth-civic .tabs--primary > li.active > a,
+body.rovas-oauth-civic .tabs--primary > li.active > a:hover,
+body.rovas-oauth-civic .tabs--primary > li.active > a:focus,
+body.rovas-oauth-civic ul.nav-tabs > li.active > a,
+body.rovas-oauth-civic ul.nav-tabs > li.active > a:hover,
+body.rovas-oauth-civic ul.nav-tabs > li.active > a:focus {
+  background: #fff;
+  border: 1px solid #d5ded8;
+  border-bottom-color: #fff;
+  color: #0b3d2e;
+  font-weight: 700;
+  z-index: 3;
+  margin-bottom: -1px;
+}
+
+/* Card panel: sides + bottom only; top edge comes from the tab strip. */
 body.rovas-oauth-civic .region-content {
   background: #fff;
   border: 1px solid #d5ded8;
-  border-radius: 0 16px 16px 16px;
+  border-top: 0;
+  border-radius: 0 0 16px 16px;
   padding: 20px 22px 8px;
   box-shadow: 0 8px 24px rgba(18, 36, 28, 0.06);
   position: relative;
   z-index: 1;
+  margin-top: 0;
   animation: civic-oauth-card-in 0.22s ease-out;
+}
+
+/* When the first tab is active, square the join; otherwise soften the open top-left. */
+body.page-user-register.rovas-oauth-civic .tabs--primary > li:first-child.active > a,
+body.page-user-register.rovas-oauth-civic ul.nav-tabs > li:first-child.active > a {
+  border-top-left-radius: 16px;
+}
+
+body.page-user-login.rovas-oauth-civic .region-content,
+body.page-user.rovas-oauth-civic .region-content,
+body.page-user-password.rovas-oauth-civic .region-content {
+  border-top-right-radius: 0;
+}
+
+body.page-user-password.rovas-oauth-civic .tabs--primary > li:last-child.active > a,
+body.page-user-password.rovas-oauth-civic ul.nav-tabs > li:last-child.active > a {
+  border-top-right-radius: 16px;
 }
 
 @keyframes civic-oauth-card-in {
@@ -243,26 +226,6 @@ body.rovas-oauth-civic .region-content {
     opacity: 1;
     transform: none;
   }
-}
-
-/* First tab active: one continuous left edge from tab into card. */
-body.page-user-register.rovas-oauth-civic .tabs--primary > li:first-child.active > a.civic-oauth-auth-tab,
-body.page-user-register.rovas-oauth-civic ul.nav-tabs > li:first-child.active > a.civic-oauth-auth-tab {
-  border-top-left-radius: 16px;
-}
-
-body.page-user-register.rovas-oauth-civic .region-content {
-  border-top-left-radius: 0;
-  border-top-right-radius: 16px;
-  border-bottom-right-radius: 16px;
-  border-bottom-left-radius: 16px;
-}
-
-/* Login / password: full rounded card (active tab is not the left corner). */
-body.page-user-login.rovas-oauth-civic .region-content,
-body.page-user.rovas-oauth-civic .region-content,
-body.page-user-password.rovas-oauth-civic .region-content {
-  border-radius: 16px;
 }
 
 body.rovas-oauth-civic .rovas-oauth-intro {
@@ -282,15 +245,23 @@ body.rovas-oauth-civic .hybridauth-widget-wrapper h3 {
   display: none;
 }
 
-body.rovas-oauth-civic .btn-primary {
+body.rovas-oauth-civic .btn-primary,
+body.rovas-oauth-civic .form-actions .btn,
+body.rovas-oauth-civic .form-actions input[type="submit"] {
   background-color: #0b3d2e;
   border-color: #0b3d2e;
+  color: #fff;
 }
 
 body.rovas-oauth-civic .btn-primary:hover,
-body.rovas-oauth-civic .btn-primary:focus {
+body.rovas-oauth-civic .btn-primary:focus,
+body.rovas-oauth-civic .form-actions .btn:hover,
+body.rovas-oauth-civic .form-actions .btn:focus,
+body.rovas-oauth-civic .form-actions input[type="submit"]:hover,
+body.rovas-oauth-civic .form-actions input[type="submit"]:focus {
   background-color: #1a5c45;
   border-color: #1a5c45;
+  color: #fff;
 }
 
 body.rovas-oauth-civic footer.footer {

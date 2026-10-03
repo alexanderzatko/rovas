@@ -114,6 +114,10 @@ msgid "You can sign in via a service represented by an icon below, or create an 
 msgstr "Přihlásit se můžete přes službu reprezentovanou ikonou níže, nebo si můžete vytvořit účet s heslem vyplněním formuláře pod ikonami."
 
 #: sites/all/modules/custom/rovas_oauth/rovas_oauth.module
+msgid "Request a link to reset a lost or forgotten password. The link will be sent to the e-mail address you provide below. If you do not receive it within 10 minutes, please check your spam folder."
+msgstr "Požádejte o odkaz na obnovení ztraceného nebo zapomenutého hesla. Odkaz vám pošleme na e-mailovou adresu, kterou zadáte níže. Pokud ho nedostanete do 10 minut, zkontrolujte také složku se spamem."
+
+#: sites/all/modules/custom/rovas_oauth/rovas_oauth.module
 msgid "Continue to Civic"
 msgstr "Pokračovat do Civic"
 

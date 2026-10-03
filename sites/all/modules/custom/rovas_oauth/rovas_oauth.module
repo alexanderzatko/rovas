@@ -507,28 +507,15 @@ function rovas_oauth_preprocess_menu_local_task(&$variables) {
   if (isset($titles[$href])) {
     $variables['element']['#link']['title'] = $titles[$href];
   }
-  if ($href === 'user/password') {
-    if (!isset($variables['element']['#link']['localized_options']['attributes']['class'])) {
-      $variables['element']['#link']['localized_options']['attributes']['class'] = array();
-    }
-    elseif (!is_array($variables['element']['#link']['localized_options']['attributes']['class'])) {
-      $variables['element']['#link']['localized_options']['attributes']['class'] = array(
-        $variables['element']['#link']['localized_options']['attributes']['class'],
-      );
-    }
-    $variables['element']['#link']['localized_options']['attributes']['class'][] = 'civic-oauth-password-btn';
+  if (!isset($variables['element']['#link']['localized_options']['attributes']['class'])) {
+    $variables['element']['#link']['localized_options']['attributes']['class'] = array();
   }
-  else {
-    if (!isset($variables['element']['#link']['localized_options']['attributes']['class'])) {
-      $variables['element']['#link']['localized_options']['attributes']['class'] = array();
-    }
-    elseif (!is_array($variables['element']['#link']['localized_options']['attributes']['class'])) {
-      $variables['element']['#link']['localized_options']['attributes']['class'] = array(
-        $variables['element']['#link']['localized_options']['attributes']['class'],
-      );
-    }
-    $variables['element']['#link']['localized_options']['attributes']['class'][] = 'civic-oauth-auth-tab';
+  elseif (!is_array($variables['element']['#link']['localized_options']['attributes']['class'])) {
+    $variables['element']['#link']['localized_options']['attributes']['class'] = array(
+      $variables['element']['#link']['localized_options']['attributes']['class'],
+    );
   }
+  $variables['element']['#link']['localized_options']['attributes']['class'][] = 'civic-oauth-auth-tab';
 }
 
 /**
@@ -598,12 +585,19 @@ function rovas_oauth_form_user_register_form_alter(&$form, &$form_state) {
 }
 
 /**
- * Brand login/register forms for Civic OAuth authorize.
+ * Implements hook_form_FORM_ID_alter() for user_pass.
+ */
+function rovas_oauth_form_user_pass_alter(&$form, &$form_state) {
+  rovas_oauth_annotate_civic_auth_form($form, 'password');
+}
+
+/**
+ * Brand login/register/password forms for Civic OAuth authorize.
  *
  * @param array $form
  *   Form array (by reference).
  * @param string $mode
- *   'login' or 'register'.
+ *   'login', 'register', or 'password'.
  */
 function rovas_oauth_annotate_civic_auth_form(&$form, $mode = 'login') {
   if (!rovas_oauth_is_civic_authorize_context()) {
@@ -622,8 +616,8 @@ function rovas_oauth_annotate_civic_auth_form(&$form, $mode = 'login') {
     ));
   }
 
-  // HybridAuth under the intro (above form fields) on both login and register.
-  if (user_access('use hybridauth') && function_exists('hybridauth_get_enabled_providers')) {
+  // HybridAuth under the intro (above form fields) on login and register.
+  if ($mode !== 'password' && user_access('use hybridauth') && function_exists('hybridauth_get_enabled_providers')) {
     if (empty($form['hybridauth'])) {
       $form['hybridauth'] = array(
         '#type' => 'hybridauth_widget',
@@ -638,7 +632,16 @@ function rovas_oauth_annotate_civic_auth_form(&$form, $mode = 'login') {
     $form['name']['#description'] = t('Enter your username.');
   }
 
-  $intro = t('You can sign in via a service represented by an icon below, or create an account with a password by filling in the form under the icons.');
+  if ($mode === 'password') {
+    $intro = t('Request a link to reset a lost or forgotten password. The link will be sent to the e-mail address you provide below. If you do not receive it within 10 minutes, please check your spam folder.');
+    // Keep destination so a successful reset request returns to authorize flow.
+    $form['#action'] = url('user/password', array(
+      'query' => array('destination' => 'oauth2/authorize'),
+    ));
+  }
+  else {
+    $intro = t('You can sign in via a service represented by an icon below, or create an account with a password by filling in the form under the icons.');
+  }
 
   $form['rovas_oauth_intro'] = array(
     '#type' => 'item',
