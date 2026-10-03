@@ -110,9 +110,9 @@ body.rovas-oauth-civic ul.tabs--primary,
 body.rovas-oauth-civic ul.nav-tabs {
   display: flex;
   flex-wrap: nowrap;
-  align-items: flex-end;
+  align-items: stretch;
   justify-content: flex-start;
-  gap: 0;
+  gap: 2px;
   width: 100%;
   max-width: 100%;
   margin: 1.25em 0 0;
@@ -127,18 +127,10 @@ body.rovas-oauth-civic ul.nav-tabs {
 body.rovas-oauth-civic .tabs--primary > li,
 body.rovas-oauth-civic ul.nav-tabs > li {
   float: none;
-  margin: 0 2px 0 0;
-}
-
-body.rovas-oauth-civic .tabs--primary > li:first-child,
-body.rovas-oauth-civic ul.nav-tabs > li:first-child {
-  margin-left: 0;
-}
-
-body.rovas-oauth-civic .tabs--primary > li:last-child,
-body.rovas-oauth-civic ul.nav-tabs > li:last-child {
-  margin-right: 0;
-  margin-left: auto;
+  margin: 0;
+  flex: 1 1 0;
+  display: flex;
+  min-width: 0;
 }
 
 body.rovas-oauth-civic .tabs--primary > li > a,
@@ -151,15 +143,24 @@ body.rovas-oauth-civic ul.nav-tabs > li > a.civic-oauth-auth-tab {
   background: #e4ebe6;
   color: #5b6b63;
   margin: 0 0 -1px;
-  padding: 10px 12px;
+  padding: 8px 6px;
   text-align: center;
-  display: block;
-  line-height: 1.2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 3.25em;
+  box-sizing: border-box;
+  line-height: 1.15;
+  font-size: 0.88em;
   font-weight: 600;
   position: relative;
   z-index: 0;
   white-space: normal;
-  max-width: 7.5em;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  hyphens: auto;
+  -webkit-hyphens: auto;
 }
 
 body.rovas-oauth-civic .tabs--primary > li > a:hover,
