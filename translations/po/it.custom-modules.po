@@ -102,12 +102,12 @@ msgid "Create a Civic account"
 msgstr "Crea un account Civic"
 
 #: sites/all/modules/custom/rovas_oauth/rovas_oauth.module
-msgid "Sign in to continue to Civic. Use Google, Facebook, or your Rovas email and password. Civic does not store a separate password."
-msgstr "Accedi per continuare su Civic. Usa Google, Facebook oppure email e password Rovas. Civic non memorizza una password separata."
+msgid "You can sign in via a service represented by an icon, or create an account with a password by filling in the form under the icons."
+msgstr "Puoi accedere tramite un servizio rappresentato da un’icona, oppure creare un account con password compilando il modulo sotto le icone."
 
 #: sites/all/modules/custom/rovas_oauth/rovas_oauth.module
-msgid "Create an account to continue to Civic. Use Google, Facebook, or email. Civic does not store a separate password."
-msgstr "Crea un account per continuare su Civic. Usa Google, Facebook o l’email. Civic non memorizza una password separata."
+msgid "Sign in via a service represented by an icon, or enter your username and password in the form under the icons. Your Civic login credentials are the same as your Rovas login credentials."
+msgstr "Accedi tramite un servizio rappresentato da un’icona, oppure inserisci nome utente e password nel modulo sotto le icone. Le tue credenziali Civic sono le stesse delle credenziali Rovas."
 
 #: sites/all/modules/custom/rovas_oauth/rovas_oauth.module
 msgid "Continue to Civic"

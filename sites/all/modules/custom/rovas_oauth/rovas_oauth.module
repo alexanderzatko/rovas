@@ -639,8 +639,11 @@ function rovas_oauth_annotate_civic_auth_form(&$form, $mode = 'login') {
       'query' => array('destination' => 'oauth2/authorize'),
     ));
   }
+  elseif ($mode === 'register') {
+    $intro = t('You can sign in via a service represented by an icon, or create an account with a password by filling in the form under the icons.');
+  }
   else {
-    $intro = t('You can sign in via a service represented by an icon below, or create an account with a password by filling in the form under the icons.');
+    $intro = t('Sign in via a service represented by an icon, or enter your username and password in the form under the icons. Your Civic login credentials are the same as your Rovas login credentials.');
   }
 
   // Plain markup (not #type item) so Bootstrap does not emit an empty label

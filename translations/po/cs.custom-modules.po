@@ -110,8 +110,12 @@ msgid "Enter your username."
 msgstr "Zadejte své uživatelské jméno."
 
 #: sites/all/modules/custom/rovas_oauth/rovas_oauth.module
-msgid "You can sign in via a service represented by an icon below, or create an account with a password by filling in the form under the icons."
-msgstr "Přihlásit se můžete přes službu reprezentovanou ikonou níže, nebo si můžete vytvořit účet s heslem vyplněním formuláře pod ikonami."
+msgid "You can sign in via a service represented by an icon, or create an account with a password by filling in the form under the icons."
+msgstr "Přihlásit se můžete přes službu reprezentovanou ikonou, nebo si můžete vytvořit účet s heslem vyplněním formuláře pod ikonami."
+
+#: sites/all/modules/custom/rovas_oauth/rovas_oauth.module
+msgid "Sign in via a service represented by an icon, or enter your username and password in the form under the icons. Your Civic login credentials are the same as your Rovas login credentials."
+msgstr "Přihlaste se přes službu reprezentovanou ikonou, nebo zadejte uživatelské jméno a vaše heslo ve formuláři pod ikonami. Vaše Civic přihlašovací údaje jsou stejné jako přihlašovací údaje do Rováše."
 
 #: sites/all/modules/custom/rovas_oauth/rovas_oauth.module
 msgid "Request a link to reset a lost or forgotten password. The link will be sent to the e-mail address you provide below. If you do not receive it within 10 minutes, please check your spam folder."
