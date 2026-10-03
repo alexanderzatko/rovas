@@ -617,6 +617,10 @@ function rovas_oauth_form_user_login_block_alter(&$form, &$form_state) {
  */
 function rovas_oauth_form_user_register_form_alter(&$form, &$form_state) {
   rovas_oauth_annotate_civic_auth_form($form, 'register');
+  if (rovas_oauth_is_civic_authorize_context()) {
+    // Skip site-wide email activation; log in immediately after create.
+    $form['#validate'][] = 'rovas_oauth_civic_register_skip_email_verification_validate';
+  }
 }
 
 /**
@@ -624,6 +628,145 @@ function rovas_oauth_form_user_register_form_alter(&$form, &$form_state) {
  */
 function rovas_oauth_form_user_pass_alter(&$form, &$form_state) {
   rovas_oauth_annotate_civic_auth_form($form, 'password');
+}
+
+/**
+ * Implements hook_form_FORM_ID_alter() for hybridauth_additional_info_form.
+ *
+ * OSM (and similar) collect email on this form; treat it as verified in Civic
+ * so HybridAuth logs the user in instead of sending an activation mail.
+ */
+function rovas_oauth_form_hybridauth_additional_info_form_alter(&$form, &$form_state) {
+  if (!rovas_oauth_is_civic_hybridauth_registration_flow()) {
+    return;
+  }
+  $form['#validate'][] = 'rovas_oauth_civic_hybridauth_mark_email_verified_validate';
+  $form['#validate'][] = 'rovas_oauth_civic_register_skip_email_verification_validate';
+}
+
+/**
+ * Form validate: mark HybridAuth email as verified for Civic registration.
+ */
+function rovas_oauth_civic_hybridauth_mark_email_verified_validate($form, &$form_state) {
+  $email = '';
+  if (!empty($form_state['values']['email'])) {
+    $email = trim($form_state['values']['email']);
+  }
+  elseif (!empty($form_state['values']['data']['email'])) {
+    $email = trim($form_state['values']['data']['email']);
+  }
+  if ($email === '') {
+    return;
+  }
+  if (!isset($form_state['values']['data']) || !is_array($form_state['values']['data'])) {
+    $form_state['values']['data'] = array();
+  }
+  $form_state['values']['data']['email'] = $email;
+  $form_state['values']['data']['emailVerified'] = $email;
+}
+
+/**
+ * Form validate: disable email-verification variables for this Civic request.
+ */
+function rovas_oauth_civic_register_skip_email_verification_validate($form, &$form_state) {
+  rovas_oauth_civic_disable_email_verification();
+}
+
+/**
+ * Request-scoped: do not require email activation in Civic authorize UX.
+ *
+ * HybridAuth falls back to user_email_verification when its own setting is
+ * “follow Drupal”; core register also consults the same variable.
+ * hybridauth_email_verification = 2 means never require verification.
+ */
+function rovas_oauth_civic_disable_email_verification() {
+  $GLOBALS['conf']['user_email_verification'] = FALSE;
+  $GLOBALS['conf']['hybridauth_email_verification'] = 2;
+}
+
+/**
+ * Implements hook_hybridauth_profile_alter().
+ *
+ * When the provider already returned an email, treat it as verified in Civic.
+ */
+function rovas_oauth_hybridauth_profile_alter(&$profile) {
+  if (!rovas_oauth_is_civic_hybridauth_registration_flow()) {
+    return;
+  }
+  if (!empty($profile['email']) && empty($profile['emailVerified'])) {
+    $profile['emailVerified'] = $profile['email'];
+  }
+  rovas_oauth_civic_disable_email_verification();
+}
+
+/**
+ * Implements hook_user_insert().
+ *
+ * Same destination restore as HybridAuth insert (password register path).
+ */
+function rovas_oauth_user_insert(&$edit, $account, $category) {
+  if ($category !== 'account') {
+    return;
+  }
+  if (!rovas_oauth_is_civic_authorize_context()
+    && !rovas_oauth_is_civic_hybridauth_registration_flow()) {
+    return;
+  }
+  rovas_oauth_civic_restore_authorize_destination();
+}
+
+/**
+ * Implements hook_hybridauth_user_insert().
+ *
+ * `rules_registered_user_populator` runs `hybridauth_set_destination` → `dash`
+ * on user_insert. Restore oauth2/authorize so a logged-in new user finishes
+ * OAuth and returns to civic://oauth/callback.
+ */
+function rovas_oauth_hybridauth_user_insert($account, $data) {
+  if (!rovas_oauth_is_civic_hybridauth_registration_flow()) {
+    return;
+  }
+  rovas_oauth_civic_restore_authorize_destination();
+}
+
+/**
+ * Keep HybridAuth / register redirects on the Civic authorize path.
+ */
+function rovas_oauth_civic_restore_authorize_destination() {
+  $_GET['destination'] = 'oauth2/authorize';
+  $_GET['destination_error'] = 'oauth2/authorize';
+  $_SESSION['hybridauth_destination'] = 'oauth2/authorize';
+  $_SESSION['hybridauth_destination_error'] = 'oauth2/authorize';
+  // login_destination may also stash a dash redirect during user_insert.
+  unset($GLOBALS['destination']);
+
+  // Next anonymous landing (if any) should be login, not create-account.
+  $_SESSION[ROVAS_OAUTH_CIVIC_INTENT_SESSION] = 'login';
+}
+
+/**
+ * Whether HybridAuth account creation is inside the Civic OAuth authorize flow.
+ *
+ * Prefer session (authorize client / HybridAuth stash). $_GET['destination'] may
+ * already have been overwritten to `dash` by Rules before this runs.
+ *
+ * @return bool
+ */
+function rovas_oauth_is_civic_hybridauth_registration_flow() {
+  if (!empty($_SESSION['oauth2_server_authorize']['client_id'])
+    && $_SESSION['oauth2_server_authorize']['client_id'] === ROVAS_OAUTH_CLIENT_KEY) {
+    return TRUE;
+  }
+
+  $destination = '';
+  if (!empty($_SESSION['hybridauth_destination'])) {
+    $destination = $_SESSION['hybridauth_destination'];
+  }
+  elseif (!empty($_GET['destination']) && $_GET['destination'] !== 'dash') {
+    $destination = $_GET['destination'];
+  }
+
+  return strpos($destination, 'oauth2/authorize') === 0;
 }
 
 /**

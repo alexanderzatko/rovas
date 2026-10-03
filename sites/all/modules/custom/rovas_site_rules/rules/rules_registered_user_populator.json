@@ -3,7 +3,7 @@
     "PLUGIN" : "reaction rule",
     "OWNER" : "rules",
     "TAGS" : [ "user" ],
-    "REQUIRES" : [ "rules_conditional", "rules", "hybridauth", "services_auth_apikeys" ],
+    "REQUIRES" : [ "rules_conditional", "rules", "php", "hybridauth", "services_auth_apikeys" ],
     "ON" : { "user_insert" : [] },
     "DO" : [
       { "CONDITIONAL" : [
@@ -93,7 +93,15 @@
           "PROVIDE" : { "created_project" : { "the_system_project" : "The system project" } }
         }
       },
-      { "hybridauth_set_destination" : { "destination" : "dash" } }
+      { "CONDITIONAL" : [
+          {
+            "IF" : { "php_eval" : { "code" : "\/\/ Keep Civic OAuth authorize destination (do not force \/dash).\r\nif (!empty($_SESSION['oauth2_server_authorize']['client_id']) && $_SESSION['oauth2_server_authorize']['client_id'] === 'civic') {\r\n  return FALSE;\r\n}\r\n$dest = !empty($_SESSION['hybridauth_destination']) ? $_SESSION['hybridauth_destination'] : '';\r\nif ($dest !== '' && strpos($dest, 'oauth2\/authorize') === 0) {\r\n  return FALSE;\r\n}\r\nreturn TRUE;" } },
+            "DO" : [
+              { "hybridauth_set_destination" : { "destination" : "dash" } }
+            ]
+          }
+        ]
+      }
     ]
   }
 }
