@@ -643,8 +643,9 @@ function rovas_oauth_annotate_civic_auth_form(&$form, $mode = 'login') {
     $intro = t('You can sign in via a service represented by an icon below, or create an account with a password by filling in the form under the icons.');
   }
 
+  // Plain markup (not #type item) so Bootstrap does not emit an empty label
+  // / .form-group that pushes card content down.
   $form['rovas_oauth_intro'] = array(
-    '#type' => 'item',
     '#markup' => '<p class="rovas-oauth-intro">' . $intro . '</p>',
     '#weight' => -100,
   );

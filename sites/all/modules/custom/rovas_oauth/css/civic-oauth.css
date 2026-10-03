@@ -133,11 +133,18 @@ body.rovas-oauth-civic ul.nav-tabs > li {
   min-width: 0;
 }
 
+/* Nudge the first tab left so its outer edge matches the card border. */
+body.rovas-oauth-civic .tabs--primary > li:first-child,
+body.rovas-oauth-civic ul.nav-tabs > li:first-child {
+  margin-left: -2px;
+}
+
 body.rovas-oauth-civic .tabs--primary > li > a,
 body.rovas-oauth-civic ul.nav-tabs > li > a,
 body.rovas-oauth-civic .tabs--primary > li > a.civic-oauth-auth-tab,
 body.rovas-oauth-civic ul.nav-tabs > li > a.civic-oauth-auth-tab {
-  border: 1px solid transparent;
+  /* Same border width as the active state so the outer edge lines up with the card. */
+  border: 1px solid #e4ebe6;
   border-bottom: 0;
   border-radius: 12px 12px 0 0;
   background: #e4ebe6;
@@ -180,7 +187,12 @@ body.rovas-oauth-civic ul.nav-tabs > li.active > a:hover,
 body.rovas-oauth-civic ul.nav-tabs > li.active > a:focus {
   background: #fff;
   border: 1px solid #d5ded8;
-  border-bottom-color: #fff;
+  /* No bottom border — white box-shadow covers the strip line without
+     eating the bottom-left/right corner of the side borders (the "kink"). */
+  border-bottom: 0;
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+  box-shadow: 0 1px 0 #fff;
   color: #0b3d2e;
   font-weight: 700;
   z-index: 3;
@@ -193,29 +205,77 @@ body.rovas-oauth-civic .region-content {
   border: 1px solid #d5ded8;
   border-top: 0;
   border-radius: 0 0 16px 16px;
-  padding: 20px 22px 8px;
+  padding: 14px 22px 16px;
   box-shadow: 0 8px 24px rgba(18, 36, 28, 0.06);
   position: relative;
   z-index: 1;
   margin-top: 0;
   animation: civic-oauth-card-in 0.22s ease-out;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
 }
 
-/* When the first tab is active, square the join; otherwise soften the open top-left. */
+/* Collapse empty chrome that was pushing form content down inside the card. */
+body.rovas-oauth-civic .region-content > .block,
+body.rovas-oauth-civic .region-content form,
+body.rovas-oauth-civic .region-content .form-item:first-child,
+body.rovas-oauth-civic .region-content .form-group:first-child,
+body.rovas-oauth-civic .region-content > *:first-child {
+  margin-top: 0;
+}
+
+body.rovas-oauth-civic .region-content label:empty,
+body.rovas-oauth-civic .region-content .control-label:empty {
+  display: none !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  height: 0 !important;
+}
+
+/* First tab active: continuous left edge from tab into card (no step/notch). */
 body.page-user-register.rovas-oauth-civic .tabs--primary > li:first-child.active > a,
 body.page-user-register.rovas-oauth-civic ul.nav-tabs > li:first-child.active > a {
-  border-top-left-radius: 16px;
+  border-radius: 16px 12px 0 0;
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
 }
 
-body.page-user-login.rovas-oauth-civic .region-content,
-body.page-user.rovas-oauth-civic .region-content,
-body.page-user-password.rovas-oauth-civic .region-content {
+body.page-user-register.rovas-oauth-civic .tabs--primary > li:first-child.active > a::after,
+body.page-user-register.rovas-oauth-civic ul.nav-tabs > li:first-child.active > a::after {
+  content: '';
+  position: absolute;
+  left: -1px;
+  bottom: -1px;
+  width: 1px;
+  height: 2px;
+  background: #d5ded8;
+  z-index: 4;
+}
+
+body.page-user-register.rovas-oauth-civic .region-content {
+  border-top-left-radius: 0;
   border-top-right-radius: 0;
 }
 
+/* Last tab active: continuous right edge into the card. */
 body.page-user-password.rovas-oauth-civic .tabs--primary > li:last-child.active > a,
 body.page-user-password.rovas-oauth-civic ul.nav-tabs > li:last-child.active > a {
-  border-top-right-radius: 16px;
+  border-radius: 12px 16px 0 0;
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+}
+
+body.page-user-password.rovas-oauth-civic .tabs--primary > li:last-child.active > a::after,
+body.page-user-password.rovas-oauth-civic ul.nav-tabs > li:last-child.active > a::after {
+  content: '';
+  position: absolute;
+  right: -1px;
+  bottom: -1px;
+  width: 1px;
+  height: 2px;
+  background: #d5ded8;
+  z-index: 4;
 }
 
 @keyframes civic-oauth-card-in {
@@ -233,8 +293,14 @@ body.rovas-oauth-civic .rovas-oauth-intro {
   color: #5b6b63;
   font-size: 0.95em;
   line-height: 1.45;
-  margin: 0 0 1em;
+  margin: 0 0 0.85em;
   text-align: center;
+}
+
+body.rovas-oauth-civic .region-content .form-item-rovas-oauth-intro,
+body.rovas-oauth-civic .region-content .form-type-item.form-item-rovas-oauth-intro {
+  margin: 0 0 0.85em;
+  padding: 0;
 }
 
 body.rovas-oauth-civic .hybridauth-widget-wrapper {
