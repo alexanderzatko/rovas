@@ -256,8 +256,8 @@ msgid "a Civic user"
 msgstr "Civic"
 
 #: sites/all/modules/custom/rovas_civic/rovas_civic.charity.inc
-msgid "Today, @username, a user of our Civic smartphone app, added your organization @org to Rovas, which is Civic’s main database. They did this because they want to send you money, and your organization must be in our system for that to be possible."
-msgstr "Používateľ @username, našej smartfónovej aplikácie Civic, dnes pridal vašu organizáciu @org do našej aplikácie Rováš, ktorý je hlavnou databázou pre Civic. Urobil to preto, že vám chce poslať peniaze, a na to je potrebné, aby vaša organizácia bola v našom systéme."
+msgid "At the request of user @username of our Rovas app, we today added your organization @org to the application and also created a project for it. These two steps are necessary so that our users can send you money and at the same time be rewarded by us for it."
+msgstr "Na žiadosť používateľa „@username“ našej aplikácie Rováš sme do aplikácie dnes pridali vašu organizáciu @org a vytvorili aj pre ňu projekt. Tieto dva kroky sú nutné, aby vám naši používatelia mohli posielať peniaze a súčasne byť za to nami odmenení."
 
 #: sites/all/modules/custom/rovas_civic/rovas_civic.charity.inc
 msgid "Your organization page: @url"

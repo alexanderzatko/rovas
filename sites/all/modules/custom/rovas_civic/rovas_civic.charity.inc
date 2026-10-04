@@ -1508,7 +1508,9 @@ function rovas_civic_notify_charity_org_claim($org, $project_nid, $ownership = '
   $lines = array(
     t('Hello,', array(), $t_opts),
     '',
-    t('Today, @username, a user of our Civic smartphone app, added your organization @org to Rovas, which is Civic’s main database. They did this because they want to send you money, and your organization must be in our system for that to be possible.', array(
+    t('We are NeoFund, a Slovak nonprofit. We develop solutions that aim to increase contributions to the volunteer, nonprofit, and charitable sector.', array(), $t_opts),
+    '',
+    t('At the request of user @username of our Rovas app, we today added your organization @org to the application and also created a project for it. These two steps are necessary so that our users can send you money and at the same time be rewarded by us for it.', array(
       '@username' => $username,
       '@org' => $org->title,
     ), $t_opts),
@@ -1519,8 +1521,6 @@ function rovas_civic_notify_charity_org_claim($org, $project_nid, $ownership = '
     t('You can claim this project on Rovas (log in or register) to take ownership and add or correct information such as donation instructions. Please reply to this email if you wish to do so.', array(), $t_opts),
     '',
     t('Learn more about <a href="!url">how this works</a>.', array('!url' => $catalog_url), $t_opts),
-    '',
-    t('We are NeoFund, a Slovak nonprofit. We develop solutions that aim to increase contributions to the volunteer, nonprofit, and charitable sector.', array(), $t_opts),
     '',
     'NeoFund n.f.',
     $neofund_url,
