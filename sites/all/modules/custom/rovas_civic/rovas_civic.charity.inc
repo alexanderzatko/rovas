@@ -539,7 +539,7 @@ function rovas_civic_form_project_node_form_alter(&$form, &$form_state) {
 }
 
 /**
- * Form alter: charity_organization — hide approval from non-staff.
+ * Form alter: charity_organization — hide approval / IBAN verified from non-staff.
  */
 function rovas_civic_form_charity_organization_node_form_alter(&$form, &$form_state) {
   $can_approve = user_access('administer rovas civic');
@@ -549,6 +549,14 @@ function rovas_civic_form_charity_organization_node_form_alter(&$form, &$form_st
     }
     else {
       $form['field_charity_status']['#access'] = FALSE;
+    }
+  }
+  if (isset($form['field_charity_iban_verified'])) {
+    if ($can_approve) {
+      $form['field_charity_iban_verified'][LANGUAGE_NONE]['#description'] = t('Staff only. Marks that the organization controls this IBAN. Cleared automatically when the IBAN changes.');
+    }
+    else {
+      $form['field_charity_iban_verified']['#access'] = FALSE;
     }
   }
   if (isset($form['title'])) {
@@ -631,6 +639,48 @@ function rovas_civic_charity_node_presave($node) {
       elseif ($current === NULL || $current === '') {
         $node->field_charity_status[LANGUAGE_NONE][0]['value'] = ROVAS_CIVIC_CHARITY_STATUS_PENDING;
       }
+    }
+
+    // IBAN verified: default off; clear when IBAN changes; non-staff cannot set.
+    if (field_info_field('field_charity_iban_verified')) {
+      $can_verify = user_access('administer rovas civic');
+      $new_iban = '';
+      if (!empty($node->field_charity_iban[LANGUAGE_NONE][0]['value'])) {
+        $new_iban = drupal_strtoupper(preg_replace('/\s+/', '', (string) $node->field_charity_iban[LANGUAGE_NONE][0]['value']));
+      }
+      $old_iban = '';
+      $old_verified = 0;
+      if (!empty($node->original) && !empty($node->nid)) {
+        $old_iban_items = field_get_items('node', $node->original, 'field_charity_iban');
+        if (!empty($old_iban_items[0]['value'])) {
+          $old_iban = drupal_strtoupper(preg_replace('/\s+/', '', (string) $old_iban_items[0]['value']));
+        }
+        $old_ver_items = field_get_items('node', $node->original, 'field_charity_iban_verified');
+        if (!empty($old_ver_items[0]['value'])) {
+          $old_verified = (int) $old_ver_items[0]['value'];
+        }
+      }
+
+      $verified = 0;
+      if (!empty($node->field_charity_iban_verified[LANGUAGE_NONE][0]['value'])) {
+        $verified = (int) $node->field_charity_iban_verified[LANGUAGE_NONE][0]['value'];
+      }
+
+      if ($new_iban === '') {
+        $verified = 0;
+      }
+      elseif ($old_iban !== '' && $new_iban !== $old_iban) {
+        // IBAN changed — prior verification no longer applies (re-verify via admin).
+        $verified = 0;
+      }
+      elseif (!$can_verify) {
+        $verified = $old_verified;
+      }
+      elseif (!empty($node->rovas_civic_force_iban_verified)) {
+        $verified = 1;
+      }
+
+      $node->field_charity_iban_verified[LANGUAGE_NONE][0]['value'] = $verified ? 1 : 0;
     }
   }
 
@@ -749,6 +799,56 @@ function rovas_civic_charity_org_set_status($node, $status) {
     return FALSE;
   }
   $node->field_charity_status[LANGUAGE_NONE][0]['value'] = $status;
+  node_save($node);
+  return TRUE;
+}
+
+/**
+ * Whether the org's IBAN is marked verified.
+ *
+ * @param object $org
+ *
+ * @return bool
+ */
+function rovas_civic_charity_iban_verified($org) {
+  if (empty($org) || empty($org->nid)) {
+    return FALSE;
+  }
+  $iban = rovas_civic_node_text_field($org, 'field_charity_iban');
+  if ($iban === '' || $iban === NULL) {
+    return FALSE;
+  }
+  $items = field_get_items('node', $org, 'field_charity_iban_verified');
+  return !empty($items[0]['value']);
+}
+
+/**
+ * Set IBAN verified flag (staff / automated challenge).
+ *
+ * @param object $node
+ * @param bool $verified
+ *
+ * @return bool
+ */
+function rovas_civic_charity_org_set_iban_verified($node, $verified) {
+  if (empty($node) || $node->type !== ROVAS_CIVIC_CHARITY_BUNDLE) {
+    return FALSE;
+  }
+  if (!field_info_field('field_charity_iban_verified')) {
+    return FALSE;
+  }
+  $iban = rovas_civic_node_text_field($node, 'field_charity_iban');
+  if (($iban === '' || $iban === NULL) && $verified) {
+    return FALSE;
+  }
+  if ($verified) {
+    $node->rovas_civic_force_iban_verified = TRUE;
+    $node->field_charity_iban_verified[LANGUAGE_NONE][0]['value'] = 1;
+  }
+  else {
+    unset($node->rovas_civic_force_iban_verified);
+    $node->field_charity_iban_verified[LANGUAGE_NONE][0]['value'] = 0;
+  }
   node_save($node);
   return TRUE;
 }
@@ -1638,9 +1738,19 @@ function rovas_civic_charity_ai_check_process($item) {
     module_load_include('inc', 'rovas_ai', 'rovas_ai.classify');
     $parsed = rovas_ai_parse_json_object(isset($chat['content']) ? $chat['content'] : '');
   }
-  $ok = is_array($parsed) && !empty($parsed['ok']);
-  $summary = is_array($parsed) && isset($parsed['summary']) ? (string) $parsed['summary'] : '';
-  $issues = (is_array($parsed) && !empty($parsed['issues']) && is_array($parsed['issues']))
+  if (!is_array($parsed) || !array_key_exists('ok', $parsed)) {
+    // Model answered but not as expected JSON — log only; do not pretend it "flagged" data.
+    $raw = isset($chat['content']) ? drupal_substr((string) $chat['content'], 0, 500) : '';
+    watchdog('rovas_civic', 'Charity AI check unparseable for org @nid. Raw: @raw', array(
+      '@nid' => $nid,
+      '@raw' => $raw !== '' ? $raw : '—',
+    ), WATCHDOG_WARNING);
+    return;
+  }
+
+  $ok = !empty($parsed['ok']);
+  $summary = isset($parsed['summary']) ? trim((string) $parsed['summary']) : '';
+  $issues = (!empty($parsed['issues']) && is_array($parsed['issues']))
     ? implode('; ', $parsed['issues'])
     : '';
 
@@ -1651,30 +1761,36 @@ function rovas_civic_charity_ai_check_process($item) {
     '@i' => $issues !== '' ? $issues : '—',
   ), $ok ? WATCHDOG_NOTICE : WATCHDOG_WARNING);
 
-  if (!$ok) {
-    $staff = variable_get('site_mail', '');
-    if ($staff !== '' && $staff !== NULL) {
-      $lang = language_default();
-      $langcode = !empty($lang->language) ? $lang->language : 'en';
-      drupal_mail(
-        'rovas_civic',
-        'charity_org_pending',
-        $staff,
-        $langcode,
-        array(
-          'subject' => t('Rovas: AI flagged charity org data — @title', array('@title' => $org->title)),
-          'body' => implode("\n", array(
-            t('AI accuracy check flagged issues for a public-benefit / nonprofit organization (approval status unchanged).'),
-            t('Node: @nid', array('@nid' => $nid)),
-            t('Legal name: @title', array('@title' => $org->title)),
-            t('Summary: @s', array('@s' => $summary !== '' ? $summary : '—')),
-            t('Issues: @i', array('@i' => $issues !== '' ? $issues : '—')),
-            t('Edit: @url', array('@url' => url('node/' . $nid . '/edit', array('absolute' => TRUE)))),
-          )),
-        ),
-        $staff
-      );
-    }
+  // Staff notify only when the model explicitly flagged (ok=false).
+  if ($ok) {
+    return;
+  }
+  if ($summary === '' && $issues === '') {
+    $summary = t('Model returned ok=false without summary or issues.');
+  }
+
+  $staff = variable_get('site_mail', '');
+  if ($staff !== '' && $staff !== NULL) {
+    $lang = language_default();
+    $langcode = !empty($lang->language) ? $lang->language : 'en';
+    drupal_mail(
+      'rovas_civic',
+      'charity_org_pending',
+      $staff,
+      $langcode,
+      array(
+        'subject' => t('Rovas: AI flagged charity org data — @title', array('@title' => $org->title)),
+        'body' => implode("\n", array(
+          t('AI accuracy check flagged issues for a public-benefit / nonprofit organization (approval status unchanged).'),
+          t('Node: @nid', array('@nid' => $nid)),
+          t('Legal name: @title', array('@title' => $org->title)),
+          t('Summary: @s', array('@s' => $summary !== '' ? $summary : '—')),
+          t('Issues: @i', array('@i' => $issues !== '' ? $issues : '—')),
+          t('Edit: @url', array('@url' => url('node/' . $nid . '/edit', array('absolute' => TRUE)))),
+        )),
+      ),
+      $staff
+    );
   }
 }
 
@@ -1795,6 +1911,9 @@ function rovas_civic_services_create_charity_org($data) {
   }
   if (field_info_field('field_charity_iban')) {
     $org->field_charity_iban[LANGUAGE_NONE][0]['value'] = $iban;
+  }
+  if (field_info_field('field_charity_iban_verified')) {
+    $org->field_charity_iban_verified[LANGUAGE_NONE][0]['value'] = 0;
   }
   if (field_info_field('field_charity_contact_email')) {
     $field = field_info_field('field_charity_contact_email');

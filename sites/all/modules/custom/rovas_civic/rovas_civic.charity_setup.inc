@@ -228,6 +228,22 @@ function _rovas_civic_ensure_charity_field_bases() {
         'max_length' => 34,
       ),
     ),
+    'field_charity_iban_verified' => array(
+      'field_name' => 'field_charity_iban_verified',
+      'type' => 'list_boolean',
+      'module' => 'list',
+      'active' => 1,
+      'locked' => 0,
+      'cardinality' => 1,
+      'translatable' => 0,
+      'settings' => array(
+        'allowed_values' => array(
+          0 => '',
+          1 => '',
+        ),
+        'allowed_values_function' => '',
+      ),
+    ),
     'field_charity_donate_text' => array(
       'field_name' => 'field_charity_donate_text',
       'type' => 'text_long',
@@ -377,19 +393,41 @@ function _rovas_civic_ensure_charity_field_instances() {
       ),
       'description' => 'For later pass-through remittance. Not shown in Civic catalog.',
     ),
+    'field_charity_iban_verified' => array(
+      'label' => 'IBAN verified',
+      'required' => 0,
+      'default_value' => array(
+        array('value' => 0),
+      ),
+      'widget' => array(
+        'type' => 'options_onoff',
+        'weight' => 7,
+        'settings' => array(
+          'display_label' => 1,
+        ),
+      ),
+      'display' => array(
+        'default' => array(
+          'label' => 'above',
+          'type' => 'list_default',
+          'weight' => 7,
+        ),
+      ),
+      'description' => 'NeoFund staff only. Marks that the org controls this IBAN (e.g. challenge payment or manual review). Cleared automatically when the IBAN changes.',
+    ),
     'field_charity_donate_text' => array(
       'label' => 'Default donate instructions',
       'required' => 0,
       'widget' => array(
         'type' => 'text_textarea',
-        'weight' => 7,
+        'weight' => 8,
         'settings' => array('rows' => 4),
       ),
       'display' => array(
         'default' => array(
           'label' => 'above',
           'type' => 'text_default',
-          'weight' => 7,
+          'weight' => 8,
         ),
       ),
       'description' => 'Shown in Civic when a project does not override donate instructions.',
@@ -402,13 +440,13 @@ function _rovas_civic_ensure_charity_field_instances() {
       'required' => 0,
       'widget' => array(
         'type' => 'text_textfield',
-        'weight' => 8,
+        'weight' => 9,
       ),
       'display' => array(
         'default' => array(
           'label' => 'above',
           'type' => 'text_default',
-          'weight' => 8,
+          'weight' => 9,
         ),
       ),
       'description' => 'Absolute URL; used when a project has no override.',

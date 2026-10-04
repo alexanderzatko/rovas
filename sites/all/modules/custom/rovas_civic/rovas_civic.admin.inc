@@ -331,7 +331,7 @@ function rovas_civic_admin_charities_form($form, &$form_state) {
     $status_filter = 'pending';
   }
 
-  // Token-checked approve / set-pending (GET).
+  // Token-checked approve / set-pending / IBAN verify (GET).
   if (!empty($_GET['op']) && !empty($_GET['nid']) && !empty($_GET['token'])) {
     $nid = (int) $_GET['nid'];
     $op = $_GET['op'];
@@ -348,6 +348,25 @@ function rovas_civic_admin_charities_form($form, &$form_state) {
       if ($node && function_exists('rovas_civic_charity_org_set_status')
         && rovas_civic_charity_org_set_status($node, ROVAS_CIVIC_CHARITY_STATUS_PENDING)) {
         drupal_set_message(t('Set @title back to pending.', array('@title' => $node->title)));
+      }
+      drupal_goto('admin/config/rovas/civic/charities', array('query' => array('status' => $status_filter)));
+    }
+    if ($op === 'iban-verify' && drupal_valid_token($_GET['token'], 'civic-charity-iban-verify-' . $nid)) {
+      $node = node_load($nid);
+      if ($node && function_exists('rovas_civic_charity_org_set_iban_verified')
+        && rovas_civic_charity_org_set_iban_verified($node, TRUE)) {
+        drupal_set_message(t('Marked IBAN verified for @title.', array('@title' => $node->title)));
+      }
+      else {
+        drupal_set_message(t('Could not mark IBAN verified (missing IBAN?).'), 'error');
+      }
+      drupal_goto('admin/config/rovas/civic/charities', array('query' => array('status' => $status_filter)));
+    }
+    if ($op === 'iban-unverify' && drupal_valid_token($_GET['token'], 'civic-charity-iban-unverify-' . $nid)) {
+      $node = node_load($nid);
+      if ($node && function_exists('rovas_civic_charity_org_set_iban_verified')
+        && rovas_civic_charity_org_set_iban_verified($node, FALSE)) {
+        drupal_set_message(t('Cleared IBAN verified for @title.', array('@title' => $node->title)));
       }
       drupal_goto('admin/config/rovas/civic/charities', array('query' => array('status' => $status_filter)));
     }
@@ -386,6 +405,14 @@ function rovas_civic_admin_charities_form($form, &$form_state) {
   $query->leftJoin('field_data_field_charity_country', 'co',
     "co.entity_id = n.nid AND co.entity_type = 'node' AND co.deleted = 0");
   $query->addField('co', 'field_charity_country_value', 'country');
+  $query->leftJoin('field_data_field_charity_iban', 'iban',
+    "iban.entity_id = n.nid AND iban.entity_type = 'node' AND iban.deleted = 0");
+  $query->addField('iban', 'field_charity_iban_value', 'iban');
+  if (field_info_field('field_charity_iban_verified')) {
+    $query->leftJoin('field_data_field_charity_iban_verified', 'ibv',
+      "ibv.entity_id = n.nid AND ibv.entity_type = 'node' AND ibv.deleted = 0");
+    $query->addField('ibv', 'field_charity_iban_verified_value', 'iban_verified');
+  }
   if ($status_filter === 'pending') {
     $query->where("(st.field_charity_status_value IS NULL OR st.field_charity_status_value = :pending)", array(
       ':pending' => ROVAS_CIVIC_CHARITY_STATUS_PENDING,
@@ -402,6 +429,8 @@ function rovas_civic_admin_charities_form($form, &$form_state) {
     t('Approval'),
     t('IČO'),
     t('Country'),
+    t('IBAN'),
+    t('IBAN verified'),
     t('Owner'),
     t('Created'),
     t('Operations'),
@@ -411,6 +440,8 @@ function rovas_civic_admin_charities_form($form, &$form_state) {
   foreach ($result as $row) {
     $status = !empty($row->charity_status) ? $row->charity_status : ROVAS_CIVIC_CHARITY_STATUS_PENDING;
     $owner = user_load((int) $row->uid);
+    $iban_raw = !empty($row->iban) ? trim((string) $row->iban) : '';
+    $iban_verified = !empty($row->iban_verified) && $iban_raw !== '';
     $ops = array(
       l(t('edit'), 'node/' . (int) $row->nid . '/edit', array(
         'query' => array('destination' => 'admin/config/rovas/civic/charities'),
@@ -436,11 +467,35 @@ function rovas_civic_admin_charities_form($form, &$form_state) {
         ),
       ));
     }
+    if ($iban_raw !== '') {
+      if ($iban_verified) {
+        $ops[] = l(t('clear IBAN verified'), 'admin/config/rovas/civic/charities', array(
+          'query' => array(
+            'op' => 'iban-unverify',
+            'nid' => (int) $row->nid,
+            'token' => drupal_get_token('civic-charity-iban-unverify-' . (int) $row->nid),
+            'status' => $status_filter,
+          ),
+        ));
+      }
+      else {
+        $ops[] = l(t('mark IBAN verified'), 'admin/config/rovas/civic/charities', array(
+          'query' => array(
+            'op' => 'iban-verify',
+            'nid' => (int) $row->nid,
+            'token' => drupal_get_token('civic-charity-iban-verify-' . (int) $row->nid),
+            'status' => $status_filter,
+          ),
+        ));
+      }
+    }
     $rows[] = array(
       l($row->title, 'node/' . (int) $row->nid),
       $status === ROVAS_CIVIC_CHARITY_STATUS_APPROVED ? t('Approved') : t('Pending'),
       check_plain($row->ico ? $row->ico : '—'),
       check_plain($row->country ? $row->country : '—'),
+      $iban_raw !== '' ? check_plain($iban_raw) : '—',
+      $iban_raw === '' ? '—' : ($iban_verified ? t('Yes') : t('No')),
       $owner ? check_plain(format_username($owner)) : '—',
       format_date((int) $row->created, 'short'),
       implode(' | ', $ops),

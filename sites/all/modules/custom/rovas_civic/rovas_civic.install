@@ -660,3 +660,14 @@ function rovas_civic_update_7023() {
   }
   return t('Civic donor-add charity org API (POST /rovas/civic_create_charity_org) enabled on rovas_endpoint.');
 }
+
+/**
+ * Add IBAN verified flag on charity_organization.
+ */
+function rovas_civic_update_7024() {
+  module_load_include('inc', 'rovas_civic', 'rovas_civic.charity_setup');
+  if (function_exists('rovas_civic_ensure_charity_content')) {
+    rovas_civic_ensure_charity_content();
+  }
+  return t('Added field_charity_iban_verified on charity_organization (admin toggle on charities list).');
+}
