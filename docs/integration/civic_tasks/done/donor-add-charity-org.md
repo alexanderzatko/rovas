@@ -1,5 +1,5 @@
 ---
-status: active
+status: done
 slug: donor-add-charity-org
 owner_repo: both
 created: 2026-10-04
@@ -119,7 +119,7 @@ on, `field_charity_organization` → new/existing org, title = org legal name
 5. [x] SK nonprofit register verification → auto `approved` + name reconcile
 6. [x] Claim email to `contact_email` when custodial (and optionally always)
 7. [x] Rovas AI accuracy check (async OK); staff notify on pending
-8. [ ] Deploy rovdev + smoke (human unless asked)
+8. [x] Deploy rovdev + smoke (human unless asked)
 
 **Rovas notes (2026-10-04):** Implemented in `rovas_civic` — `POST /rovas/civic_create_charity_org`
 (`rovas_civic_update_7023`). SK lookup via ŠÚ SR RPO
