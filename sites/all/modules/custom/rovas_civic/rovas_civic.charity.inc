@@ -597,27 +597,40 @@ function rovas_civic_project_charity_form_validate_impl($form, &$form_state) {
 
 /**
  * Presave: force pending status for non-staff; default pending on insert.
+ *
+ * Internal Civic API may set $node->rovas_civic_force_charity_status to
+ * approved|pending after SK register verification (owners still cannot
+ * self-approve via the node form).
  */
 function rovas_civic_charity_node_presave($node) {
   if ($node->type === ROVAS_CIVIC_CHARITY_BUNDLE) {
-    $can_approve = user_access('administer rovas civic');
-    $current = NULL;
-    if (!empty($node->field_charity_status[LANGUAGE_NONE][0]['value'])) {
-      $current = $node->field_charity_status[LANGUAGE_NONE][0]['value'];
+    $forced = !empty($node->rovas_civic_force_charity_status)
+      ? (string) $node->rovas_civic_force_charity_status
+      : '';
+    if ($forced === ROVAS_CIVIC_CHARITY_STATUS_APPROVED
+      || $forced === ROVAS_CIVIC_CHARITY_STATUS_PENDING) {
+      $node->field_charity_status[LANGUAGE_NONE][0]['value'] = $forced;
     }
-    if (!$can_approve) {
-      // Owners cannot self-approve; keep previous status if editing.
-      if (!empty($node->original) && !empty($node->nid)) {
-        $prev = field_get_items('node', $node->original, 'field_charity_status');
-        $prev_status = !empty($prev[0]['value']) ? $prev[0]['value'] : ROVAS_CIVIC_CHARITY_STATUS_PENDING;
-        $node->field_charity_status[LANGUAGE_NONE][0]['value'] = $prev_status;
+    else {
+      $can_approve = user_access('administer rovas civic');
+      $current = NULL;
+      if (!empty($node->field_charity_status[LANGUAGE_NONE][0]['value'])) {
+        $current = $node->field_charity_status[LANGUAGE_NONE][0]['value'];
       }
-      else {
+      if (!$can_approve) {
+        // Owners cannot self-approve; keep previous status if editing.
+        if (!empty($node->original) && !empty($node->nid)) {
+          $prev = field_get_items('node', $node->original, 'field_charity_status');
+          $prev_status = !empty($prev[0]['value']) ? $prev[0]['value'] : ROVAS_CIVIC_CHARITY_STATUS_PENDING;
+          $node->field_charity_status[LANGUAGE_NONE][0]['value'] = $prev_status;
+        }
+        else {
+          $node->field_charity_status[LANGUAGE_NONE][0]['value'] = ROVAS_CIVIC_CHARITY_STATUS_PENDING;
+        }
+      }
+      elseif ($current === NULL || $current === '') {
         $node->field_charity_status[LANGUAGE_NONE][0]['value'] = ROVAS_CIVIC_CHARITY_STATUS_PENDING;
       }
-    }
-    elseif ($current === NULL || $current === '') {
-      $node->field_charity_status[LANGUAGE_NONE][0]['value'] = ROVAS_CIVIC_CHARITY_STATUS_PENDING;
     }
   }
 
@@ -781,4 +794,824 @@ function rovas_civic_rewpro_eur_charity_validate_impl($form, &$form_state) {
   if (rovas_civic_project_blocks_eur_rails($project)) {
     form_set_error('payment', t('EUR payments are blocked until NeoFund approves this public-benefit / nonprofit organization.'));
   }
+}
+
+/* ===========================================================================
+ * Donor-add: POST /rovas/civic_create_charity_org
+ * ========================================================================= */
+
+/**
+ * JSON error for Civic charity create (same shape as volunteer endpoints).
+ */
+function rovas_civic_charity_error($http, $error, $message) {
+  return services_error($message, (int) $http, array(
+    'error' => $error,
+    'message' => $message,
+  ));
+}
+
+/**
+ * Custodial NeoFund/system uid for Civic-submitted orgs.
+ *
+ * @return int
+ */
+function rovas_civic_charity_custodial_uid() {
+  $uid = (int) variable_get(ROVAS_CIVIC_CHARITY_CUSTODIAL_UID_VAR, 0);
+  if ($uid > 0) {
+    $account = user_load($uid);
+    if ($account && !empty($account->uid)) {
+      return (int) $account->uid;
+    }
+  }
+  return 1;
+}
+
+/**
+ * Ownership mode for an org relative to the custodial uid.
+ *
+ * @param object $org
+ *
+ * @return string
+ *   custodial|submitter
+ */
+function rovas_civic_charity_ownership_mode($org) {
+  $custodial = rovas_civic_charity_custodial_uid();
+  if (!empty($org->uid) && (int) $org->uid === $custodial) {
+    return 'custodial';
+  }
+  return 'submitter';
+}
+
+/**
+ * Find charity_organization by country + org_id (IČO).
+ *
+ * @param string $country
+ * @param string $org_id
+ *
+ * @return object|null
+ */
+function rovas_civic_charity_find_by_country_org_id($country, $org_id) {
+  $country = drupal_strtoupper(trim((string) $country));
+  $org_id = trim((string) $org_id);
+  if ($country === '' || $org_id === '') {
+    return NULL;
+  }
+  $nid = (int) db_query("
+    SELECT n.nid
+    FROM {node} n
+    INNER JOIN {field_data_field_charity_country} c
+      ON c.entity_id = n.nid AND c.entity_type = 'node' AND c.deleted = 0
+    INNER JOIN {field_data_field_charity_ico} i
+      ON i.entity_id = n.nid AND i.entity_type = 'node' AND i.deleted = 0
+    WHERE n.type = :type
+      AND c.field_charity_country_value = :country
+      AND i.field_charity_ico_value = :org_id
+    ORDER BY n.nid ASC
+    LIMIT 1
+  ", array(
+    ':type' => ROVAS_CIVIC_CHARITY_BUNDLE,
+    ':country' => $country,
+    ':org_id' => $org_id,
+  ))->fetchField();
+  if ($nid < 1) {
+    return NULL;
+  }
+  $org = node_load($nid);
+  if (!$org || $org->type !== ROVAS_CIVIC_CHARITY_BUNDLE) {
+    return NULL;
+  }
+  return $org;
+}
+
+/**
+ * First published project linked to an org, or 0.
+ *
+ * @param int $org_nid
+ *
+ * @return int
+ */
+function rovas_civic_charity_linked_project_nid($org_nid) {
+  $org_nid = (int) $org_nid;
+  if ($org_nid < 1) {
+    return 0;
+  }
+  return (int) db_query("
+    SELECT n.nid
+    FROM {node} n
+    INNER JOIN {field_data_field_is_charity} ic
+      ON ic.entity_id = n.nid AND ic.entity_type = 'node' AND ic.deleted = 0
+      AND ic.field_is_charity_value = 1
+    INNER JOIN {field_data_field_charity_organization} ref
+      ON ref.entity_id = n.nid AND ref.entity_type = 'node' AND ref.deleted = 0
+      AND ref.field_charity_organization_target_id = :org
+    WHERE n.type = 'project' AND n.status = 1
+    ORDER BY n.nid ASC
+    LIMIT 1
+  ", array(':org' => $org_nid))->fetchField();
+}
+
+/**
+ * Basic SEPA IBAN check (normalize + length + mod-97).
+ *
+ * @param string $iban
+ *
+ * @return string|false
+ *   Normalized IBAN or FALSE.
+ */
+function rovas_civic_normalize_iban($iban) {
+  $iban = drupal_strtoupper(preg_replace('/\s+/', '', (string) $iban));
+  if (!preg_match('/^[A-Z]{2}[0-9]{2}[A-Z0-9]{11,30}$/', $iban)) {
+    return FALSE;
+  }
+  $len = strlen($iban);
+  if ($len < 15 || $len > 34) {
+    return FALSE;
+  }
+  $rearranged = substr($iban, 4) . substr($iban, 0, 4);
+  $numeric = '';
+  $chars = str_split($rearranged);
+  foreach ($chars as $ch) {
+    if ($ch >= 'A' && $ch <= 'Z') {
+      $numeric .= (string) (ord($ch) - 55);
+    }
+    else {
+      $numeric .= $ch;
+    }
+  }
+  // Chunked mod 97 for arbitrary-length IBAN.
+  $checksum = 0;
+  $chunks = str_split($numeric, 7);
+  foreach ($chunks as $chunk) {
+    $checksum = (int) ($checksum . $chunk) % 97;
+  }
+  if ($checksum !== 1) {
+    return FALSE;
+  }
+  return $iban;
+}
+
+/**
+ * Absolute http(s) URL check.
+ *
+ * @param string $url
+ *
+ * @return string|false
+ */
+function rovas_civic_normalize_http_url($url) {
+  $url = trim((string) $url);
+  if ($url === '' || drupal_strlen($url) > 512) {
+    return FALSE;
+  }
+  if (!preg_match('#^https?://#i', $url)) {
+    return FALSE;
+  }
+  $parts = @parse_url($url);
+  if (empty($parts['scheme']) || empty($parts['host'])) {
+    return FALSE;
+  }
+  $scheme = drupal_strtolower($parts['scheme']);
+  if ($scheme !== 'http' && $scheme !== 'https') {
+    return FALSE;
+  }
+  return $url;
+}
+
+/**
+ * Contact email from a charity_organization node.
+ *
+ * @param object $org
+ *
+ * @return string|null
+ */
+function rovas_civic_charity_org_contact_email($org) {
+  $email_items = field_get_items('node', $org, 'field_charity_contact_email');
+  if (!empty($email_items[0]['email'])) {
+    return trim((string) $email_items[0]['email']);
+  }
+  if (!empty($email_items[0]['value'])) {
+    return trim((string) $email_items[0]['value']);
+  }
+  return NULL;
+}
+
+/**
+ * SK RPO eligible source-register codes (CL010112) for auto-approve.
+ *
+ * 4 foundations, 5 non-investment funds, 6 n.o., 7 o.z., 9 international orgs.
+ *
+ * @return array
+ */
+function rovas_civic_sk_rpo_eligible_register_codes() {
+  return array('4', '5', '6', '7', '9');
+}
+
+/**
+ * Look up a Slovak IČO in the public RPO API.
+ *
+ * @param string $org_id
+ *
+ * @return array
+ *   keys: ok (bool), eligible (bool), legal_name (string|null),
+ *   source_register_code, source_register_label, error (string|null)
+ */
+function rovas_civic_sk_rpo_lookup($org_id) {
+  $org_id = trim((string) $org_id);
+  $out = array(
+    'ok' => FALSE,
+    'eligible' => FALSE,
+    'legal_name' => NULL,
+    'source_register_code' => NULL,
+    'source_register_label' => NULL,
+    'error' => NULL,
+  );
+  if ($org_id === '') {
+    $out['error'] = 'empty_org_id';
+    return $out;
+  }
+
+  $url = ROVAS_CIVIC_SK_RPO_SEARCH_URL . '?' . drupal_http_build_query(array(
+    'identifier' => $org_id,
+    'onlyActive' => 'true',
+  ));
+  $response = drupal_http_request($url, array(
+    'headers' => array('Accept' => 'application/json'),
+    'timeout' => 12,
+  ));
+  if (!empty($response->error) || (int) $response->code < 200 || (int) $response->code >= 300) {
+    $out['error'] = 'register_outage';
+    watchdog('rovas_civic', 'SK RPO lookup failed for @ico: @err (HTTP @code)', array(
+      '@ico' => $org_id,
+      '@err' => !empty($response->error) ? $response->error : 'http',
+      '@code' => isset($response->code) ? $response->code : 0,
+    ), WATCHDOG_WARNING);
+    return $out;
+  }
+
+  $data = drupal_json_decode($response->data);
+  if (!is_array($data) || empty($data['results']) || !is_array($data['results'])) {
+    $out['ok'] = TRUE;
+    $out['error'] = 'not_found';
+    return $out;
+  }
+
+  $matches = array();
+  foreach ($data['results'] as $row) {
+    if (!is_array($row)) {
+      continue;
+    }
+    $identifiers = isset($row['identifiers']) ? $row['identifiers'] : array();
+    $ico_match = FALSE;
+    if (is_array($identifiers)) {
+      foreach ($identifiers as $id_row) {
+        if (!is_array($id_row)) {
+          continue;
+        }
+        if (isset($id_row['validTo']) && $id_row['validTo'] !== NULL && $id_row['validTo'] !== '') {
+          continue;
+        }
+        if (isset($id_row['value']) && (string) $id_row['value'] === $org_id) {
+          $ico_match = TRUE;
+          break;
+        }
+      }
+      // Fallback: first identifier value.
+      if (!$ico_match && !empty($identifiers[0]['value']) && (string) $identifiers[0]['value'] === $org_id) {
+        $ico_match = TRUE;
+      }
+    }
+    if (!$ico_match) {
+      continue;
+    }
+    $matches[] = $row;
+  }
+
+  if (count($matches) === 0) {
+    $out['ok'] = TRUE;
+    $out['error'] = 'not_found';
+    return $out;
+  }
+  if (count($matches) > 1) {
+    $out['ok'] = TRUE;
+    $out['error'] = 'ambiguous';
+    return $out;
+  }
+
+  $row = $matches[0];
+  $out['ok'] = TRUE;
+  $src = isset($row['sourceRegister']['value']) ? $row['sourceRegister']['value'] : array();
+  $code = isset($src['code']) ? (string) $src['code'] : '';
+  $label = isset($src['value']) ? (string) $src['value'] : '';
+  $out['source_register_code'] = $code !== '' ? $code : NULL;
+  $out['source_register_label'] = $label !== '' ? $label : NULL;
+  $out['eligible'] = in_array($code, rovas_civic_sk_rpo_eligible_register_codes(), TRUE);
+
+  $names = isset($row['fullNames']) && is_array($row['fullNames']) ? $row['fullNames'] : array();
+  $legal = NULL;
+  foreach ($names as $name_row) {
+    if (!is_array($name_row) || empty($name_row['value'])) {
+      continue;
+    }
+    if (isset($name_row['validTo']) && $name_row['validTo'] !== NULL && $name_row['validTo'] !== '') {
+      continue;
+    }
+    $legal = trim((string) $name_row['value']);
+    break;
+  }
+  if ($legal === NULL && !empty($names[0]['value'])) {
+    $legal = trim((string) $names[0]['value']);
+  }
+  $out['legal_name'] = ($legal !== NULL && $legal !== '') ? $legal : NULL;
+  return $out;
+}
+
+/**
+ * Create or return a default charitable project linked to an org.
+ *
+ * @param object $org
+ * @param int $owner_uid
+ * @param string $website_url
+ *
+ * @return int
+ *   project nid or 0
+ */
+function rovas_civic_charity_ensure_default_project($org, $owner_uid, $website_url = '') {
+  $existing = rovas_civic_charity_linked_project_nid((int) $org->nid);
+  if ($existing > 0) {
+    return $existing;
+  }
+
+  $owner_uid = (int) $owner_uid;
+  $author = user_load($owner_uid);
+  if (!$author) {
+    return 0;
+  }
+  $title = trim((string) $org->title);
+  if ($title === '') {
+    $title = t('Nonprofit project');
+  }
+  $description = t('Charitable project for @org. Claim this project on Rovas to add or correct details.', array(
+    '@org' => $title,
+  ));
+  $website_url = trim((string) $website_url);
+
+  $nid = 0;
+  if (function_exists('rules_invoke_component') && rules_config_load('rules_create_project')) {
+    module_load_include('inc', 'rovas_civic', 'rovas_civic.volunteer');
+    $result = rules_invoke_component(
+      'rules_create_project',
+      $title,
+      $author,
+      $website_url,
+      0,
+      1,
+      1,
+      $description,
+      FALSE
+    );
+    $nid = function_exists('rovas_civic_volunteer_nid_from_rules')
+      ? rovas_civic_volunteer_nid_from_rules($result)
+      : 0;
+  }
+
+  if ($nid < 1) {
+    $node = new stdClass();
+    $node->type = 'project';
+    $node->title = $title;
+    $node->language = !empty($author->language) ? $author->language : LANGUAGE_NONE;
+    $node->uid = $owner_uid;
+    $node->status = 1;
+    $node->body[LANGUAGE_NONE][0] = array(
+      'value' => $description,
+      'format' => 'filtered_html',
+    );
+    if (field_info_field('field_status')) {
+      $node->field_status[LANGUAGE_NONE][0]['value'] = 1;
+    }
+    if (field_info_field('field_participation')) {
+      $node->field_participation[LANGUAGE_NONE][0]['value'] = 1;
+    }
+    if (field_info_field('field_system_project')) {
+      $node->field_system_project[LANGUAGE_NONE][0]['value'] = 0;
+    }
+    if ($website_url !== '' && field_info_field('field_asset_web_address')) {
+      $node->field_asset_web_address[LANGUAGE_NONE][0]['value'] = $website_url;
+    }
+    node_object_prepare($node);
+    node_save($node);
+    $nid = (int) $node->nid;
+  }
+
+  if ($nid < 1) {
+    return 0;
+  }
+
+  $project = node_load($nid);
+  if (!$project) {
+    return 0;
+  }
+  $project->uid = $owner_uid;
+  $project->title = $title;
+  if (field_info_field('field_is_charity')) {
+    $project->field_is_charity[LANGUAGE_NONE][0]['value'] = 1;
+  }
+  if (field_info_field('field_charity_organization')) {
+    $project->field_charity_organization[LANGUAGE_NONE][0]['target_id'] = (int) $org->nid;
+  }
+  if (field_info_field('field_status')) {
+    $project->field_status[LANGUAGE_NONE][0]['value'] = 1;
+  }
+  if (field_info_field('field_participation')) {
+    $project->field_participation[LANGUAGE_NONE][0]['value'] = 1;
+  }
+  node_save($project);
+
+  if (function_exists('rules_invoke_component') && rules_config_load('rules_check_or_add_shareholder')) {
+    rules_invoke_component('rules_check_or_add_shareholder', $owner_uid, $nid);
+  }
+
+  return $nid;
+}
+
+/**
+ * Email contact_email inviting the org to claim / correct the project.
+ *
+ * @param object $org
+ * @param int $project_nid
+ * @param string $ownership
+ *
+ * @return bool
+ */
+function rovas_civic_notify_charity_org_claim($org, $project_nid, $ownership = 'custodial') {
+  if (empty($org) || empty($org->nid) || $org->type !== ROVAS_CIVIC_CHARITY_BUNDLE) {
+    return FALSE;
+  }
+  $to = rovas_civic_charity_org_contact_email($org);
+  if (empty($to) || !valid_email_address($to)) {
+    watchdog('rovas_civic', 'Charity claim email skipped for org @nid: missing contact_email.', array(
+      '@nid' => (int) $org->nid,
+    ), WATCHDOG_WARNING);
+    return FALSE;
+  }
+
+  $catalog_url = url('charity-projects', array('absolute' => TRUE));
+  $project_url = $project_nid
+    ? url('node/' . (int) $project_nid, array('absolute' => TRUE))
+    : $catalog_url;
+  $org_url = url('node/' . (int) $org->nid, array('absolute' => TRUE));
+
+  $lines = array(
+    t('A Civic donor added your public-benefit / nonprofit organization to Rovas.'),
+    '',
+    t('Legal name: @title', array('@title' => $org->title)),
+    t('Organization page: @url', array('@url' => $org_url)),
+    t('Linked project: @url', array('@url' => $project_url)),
+    t('Catalog: @url', array('@url' => $catalog_url)),
+    '',
+  );
+  if ($ownership === 'custodial') {
+    $lines[] = t('Please claim this project on Rovas (log in or register) to take ownership and add or correct information such as donate instructions.');
+  }
+  else {
+    $lines[] = t('Please review the listing and update any incorrect details on Rovas.');
+  }
+  $lines[] = '';
+  $lines[] = t('If you did not expect this message, you can ignore it or contact NeoFund via the site.');
+
+  $lang = language_default();
+  $langcode = !empty($lang->language) ? $lang->language : 'en';
+  $from = variable_get('site_mail', $to);
+
+  drupal_mail(
+    'rovas_civic',
+    'charity_org_claim',
+    $to,
+    $langcode,
+    array(
+      'subject' => t('Rovas: Your organization was added — @title', array(
+        '@title' => $org->title,
+      )),
+      'body' => implode("\n", $lines),
+    ),
+    $from
+  );
+
+  watchdog('rovas_civic', 'Sent charity claim email for org @nid to @to.', array(
+    '@nid' => (int) $org->nid,
+    '@to' => $to,
+  ), WATCHDOG_NOTICE);
+
+  return TRUE;
+}
+
+/**
+ * Queue an async AI accuracy check for a newly created org.
+ *
+ * @param object $org
+ * @param array $submitted
+ */
+function rovas_civic_charity_queue_ai_check($org, array $submitted) {
+  if (empty($org->nid)) {
+    return;
+  }
+  try {
+    $queue = DrupalQueue::get('rovas_civic_charity_ai_check');
+    $queue->createItem(array(
+      'organization_nid' => (int) $org->nid,
+      'submitted' => $submitted,
+      'created' => REQUEST_TIME,
+    ));
+  }
+  catch (Exception $e) {
+    watchdog('rovas_civic', 'Failed to queue charity AI check for org @nid: @msg', array(
+      '@nid' => (int) $org->nid,
+      '@msg' => $e->getMessage(),
+    ), WATCHDOG_WARNING);
+  }
+}
+
+/**
+ * Process queued AI accuracy check (does not change approval status).
+ *
+ * @param mixed $item
+ */
+function rovas_civic_charity_ai_check_process($item) {
+  if (!is_array($item) || empty($item['organization_nid'])) {
+    return;
+  }
+  $nid = (int) $item['organization_nid'];
+  $org = node_load($nid);
+  if (!$org || $org->type !== ROVAS_CIVIC_CHARITY_BUNDLE) {
+    return;
+  }
+  if (!function_exists('rovas_ai_chat') || !function_exists('rovas_ai_is_configured') || !rovas_ai_is_configured()) {
+    watchdog('rovas_civic', 'Charity AI check skipped for org @nid (rovas_ai unavailable).', array(
+      '@nid' => $nid,
+    ), WATCHDOG_NOTICE);
+    return;
+  }
+
+  $submitted = isset($item['submitted']) && is_array($item['submitted']) ? $item['submitted'] : array();
+  $payload = array(
+    'legal_name' => $org->title,
+    'country' => rovas_civic_node_text_field($org, 'field_charity_country'),
+    'org_id' => rovas_civic_node_text_field($org, 'field_charity_ico'),
+    'website_url' => rovas_civic_node_text_field($org, 'field_charity_website'),
+    'contact_email' => rovas_civic_charity_org_contact_email($org),
+    'iban' => rovas_civic_node_text_field($org, 'field_charity_iban'),
+    'submitted' => $submitted,
+    'status' => rovas_civic_charity_org_status($org),
+  );
+
+  $system = 'You review public-benefit / nonprofit organization submissions for Rovas/Civic. '
+    . 'Compare entered fields for obvious inconsistencies (name vs website domain, country vs IBAN prefix, etc.). '
+    . 'Reply with JSON only: {"ok":true|false,"issues":["string"],"summary":"string"}. '
+    . 'Do not invent legal facts; flag only clear mismatches.';
+  $messages = array(
+    array(
+      'role' => 'system',
+      'content' => $system,
+    ),
+    array(
+      'role' => 'user',
+      'content' => drupal_json_encode($payload),
+    ),
+  );
+  $chat = rovas_ai_chat($messages, array('task' => 'charity_org_check', 'temperature' => 0));
+  if (empty($chat['ok'])) {
+    watchdog('rovas_civic', 'Charity AI check failed for org @nid: @err', array(
+      '@nid' => $nid,
+      '@err' => isset($chat['error']) ? $chat['error'] : 'unknown',
+    ), WATCHDOG_WARNING);
+    return;
+  }
+
+  $parsed = NULL;
+  if (function_exists('rovas_ai_parse_json_object')) {
+    module_load_include('inc', 'rovas_ai', 'rovas_ai.classify');
+    $parsed = rovas_ai_parse_json_object(isset($chat['content']) ? $chat['content'] : '');
+  }
+  $ok = is_array($parsed) && !empty($parsed['ok']);
+  $summary = is_array($parsed) && isset($parsed['summary']) ? (string) $parsed['summary'] : '';
+  $issues = (is_array($parsed) && !empty($parsed['issues']) && is_array($parsed['issues']))
+    ? implode('; ', $parsed['issues'])
+    : '';
+
+  watchdog('rovas_civic', 'Charity AI check for org @nid: ok=@ok summary=@s issues=@i', array(
+    '@nid' => $nid,
+    '@ok' => $ok ? '1' : '0',
+    '@s' => $summary !== '' ? $summary : '—',
+    '@i' => $issues !== '' ? $issues : '—',
+  ), $ok ? WATCHDOG_NOTICE : WATCHDOG_WARNING);
+
+  if (!$ok) {
+    $staff = variable_get('site_mail', '');
+    if ($staff !== '' && $staff !== NULL) {
+      $lang = language_default();
+      $langcode = !empty($lang->language) ? $lang->language : 'en';
+      drupal_mail(
+        'rovas_civic',
+        'charity_org_pending',
+        $staff,
+        $langcode,
+        array(
+          'subject' => t('Rovas: AI flagged charity org data — @title', array('@title' => $org->title)),
+          'body' => implode("\n", array(
+            t('AI accuracy check flagged issues for a public-benefit / nonprofit organization (approval status unchanged).'),
+            t('Node: @nid', array('@nid' => $nid)),
+            t('Legal name: @title', array('@title' => $org->title)),
+            t('Summary: @s', array('@s' => $summary !== '' ? $summary : '—')),
+            t('Issues: @i', array('@i' => $issues !== '' ? $issues : '—')),
+            t('Edit: @url', array('@url' => url('node/' . $nid . '/edit', array('absolute' => TRUE)))),
+          )),
+        ),
+        $staff
+      );
+    }
+  }
+}
+
+/**
+ * Services callback: POST /rovas/civic_create_charity_org
+ *
+ * @param array $data
+ *
+ * @return array
+ */
+function rovas_civic_services_create_charity_org($data) {
+  $uid = rovas_civic_request_uid();
+  if ($uid < 1) {
+    return rovas_civic_charity_error(401, 'unauthorized', 'Authentication required');
+  }
+  if (!is_array($data)) {
+    $data = array();
+  }
+
+  $name = isset($data['name']) ? trim((string) $data['name']) : '';
+  $country = isset($data['country']) ? drupal_strtoupper(trim((string) $data['country'])) : '';
+  $website_url = isset($data['website_url']) ? trim((string) $data['website_url']) : '';
+  $contact_email = isset($data['contact_email']) ? trim((string) $data['contact_email']) : '';
+  $org_id = isset($data['org_id']) ? trim((string) $data['org_id']) : '';
+  $iban_raw = isset($data['iban']) ? (string) $data['iban'] : '';
+
+  if ($name === '' || $country === '' || $website_url === '' || $contact_email === '' || $org_id === '' || trim($iban_raw) === '') {
+    return rovas_civic_charity_error(400, 'invalid_input', 'name, country, website_url, contact_email, org_id, and iban are required.');
+  }
+  if (drupal_strlen($name) > 255) {
+    return rovas_civic_charity_error(400, 'invalid_input', 'name is too long.');
+  }
+  if (!preg_match('/^[A-Z]{2}$/', $country)) {
+    return rovas_civic_charity_error(400, 'invalid_input', 'country must be ISO 3166-1 alpha-2.');
+  }
+  $website_url = rovas_civic_normalize_http_url($website_url);
+  if ($website_url === FALSE) {
+    return rovas_civic_charity_error(400, 'invalid_input', 'website_url must be an absolute http(s) URL.');
+  }
+  if (!valid_email_address($contact_email)) {
+    return rovas_civic_charity_error(400, 'invalid_input', 'contact_email is not a valid email address.');
+  }
+  if (drupal_strlen($org_id) > 64) {
+    return rovas_civic_charity_error(400, 'invalid_input', 'org_id is too long.');
+  }
+  $iban = rovas_civic_normalize_iban($iban_raw);
+  if ($iban === FALSE) {
+    return rovas_civic_charity_error(400, 'invalid_input', 'iban must be a valid SEPA IBAN.');
+  }
+
+  $submitter = user_load($uid);
+  if (!$submitter) {
+    return rovas_civic_charity_error(401, 'unauthorized', 'Authentication required');
+  }
+
+  // Duplicate short-circuit (idempotent 200).
+  $existing = rovas_civic_charity_find_by_country_org_id($country, $org_id);
+  if ($existing) {
+    $project_nid = rovas_civic_charity_ensure_default_project($existing, (int) $existing->uid, $website_url);
+    if ($project_nid < 1) {
+      return rovas_civic_charity_error(502, 'rovas_error', 'Organization exists but linked project could not be ensured.');
+    }
+    $status = rovas_civic_charity_org_status($existing);
+    return array(
+      'ok' => TRUE,
+      'status' => $status ? $status : ROVAS_CIVIC_CHARITY_STATUS_PENDING,
+      'created' => FALSE,
+      'organization_nid' => (string) (int) $existing->nid,
+      'project_nid' => (string) $project_nid,
+      'organization' => trim((string) $existing->title),
+      'ownership' => rovas_civic_charity_ownership_mode($existing),
+    );
+  }
+
+  $custodial_uid = rovas_civic_charity_custodial_uid();
+  $ownership = 'custodial';
+  $owner_uid = $custodial_uid;
+  if (!empty($submitter->mail)
+    && drupal_strtolower(trim($submitter->mail)) === drupal_strtolower($contact_email)) {
+    $ownership = 'submitter';
+    $owner_uid = $uid;
+  }
+
+  $status = ROVAS_CIVIC_CHARITY_STATUS_PENDING;
+  $register_name = NULL;
+  if ($country === 'SK') {
+    $lookup = rovas_civic_sk_rpo_lookup($org_id);
+    if (!empty($lookup['ok']) && !empty($lookup['eligible'])) {
+      $status = ROVAS_CIVIC_CHARITY_STATUS_APPROVED;
+      if (!empty($lookup['legal_name'])) {
+        $register_name = $lookup['legal_name'];
+      }
+    }
+    // Outage / not found / ambiguous → stay pending (still create).
+  }
+
+  $legal_name = $register_name !== NULL ? $register_name : $name;
+
+  $org = new stdClass();
+  $org->type = ROVAS_CIVIC_CHARITY_BUNDLE;
+  $org->title = $legal_name;
+  $org->language = LANGUAGE_NONE;
+  $org->uid = $owner_uid;
+  $org->status = 1;
+  $org->rovas_civic_force_charity_status = $status;
+  $org->field_charity_status[LANGUAGE_NONE][0]['value'] = $status;
+  if (field_info_field('field_charity_ico')) {
+    $org->field_charity_ico[LANGUAGE_NONE][0]['value'] = $org_id;
+  }
+  if (field_info_field('field_charity_country')) {
+    $org->field_charity_country[LANGUAGE_NONE][0]['value'] = $country;
+  }
+  if (field_info_field('field_charity_website')) {
+    $org->field_charity_website[LANGUAGE_NONE][0]['value'] = $website_url;
+  }
+  if (field_info_field('field_charity_iban')) {
+    $org->field_charity_iban[LANGUAGE_NONE][0]['value'] = $iban;
+  }
+  if (field_info_field('field_charity_contact_email')) {
+    $field = field_info_field('field_charity_contact_email');
+    if (!empty($field['type']) && $field['type'] === 'email') {
+      $org->field_charity_contact_email[LANGUAGE_NONE][0]['email'] = $contact_email;
+    }
+    else {
+      $org->field_charity_contact_email[LANGUAGE_NONE][0]['value'] = $contact_email;
+    }
+  }
+  node_object_prepare($org);
+  // Preserve forced status after prepare.
+  $org->rovas_civic_force_charity_status = $status;
+  $org->field_charity_status[LANGUAGE_NONE][0]['value'] = $status;
+  $org->uid = $owner_uid;
+
+  try {
+    node_save($org);
+  }
+  catch (Exception $e) {
+    watchdog('rovas_civic', 'civic_create_charity_org node_save failed: @msg', array(
+      '@msg' => $e->getMessage(),
+    ), WATCHDOG_ERROR);
+    return rovas_civic_charity_error(502, 'rovas_error', 'Failed to create organization.');
+  }
+
+  if (empty($org->nid)) {
+    return rovas_civic_charity_error(502, 'rovas_error', 'Failed to create organization.');
+  }
+
+  // Re-assert approval if register path won (presave may have been skipped wrongly).
+  $saved_status = rovas_civic_charity_org_status($org);
+  if ($status === ROVAS_CIVIC_CHARITY_STATUS_APPROVED && $saved_status !== ROVAS_CIVIC_CHARITY_STATUS_APPROVED) {
+    $org->rovas_civic_force_charity_status = ROVAS_CIVIC_CHARITY_STATUS_APPROVED;
+    $org->field_charity_status[LANGUAGE_NONE][0]['value'] = ROVAS_CIVIC_CHARITY_STATUS_APPROVED;
+    node_save($org);
+  }
+
+  $project_nid = rovas_civic_charity_ensure_default_project($org, $owner_uid, $website_url);
+  if ($project_nid < 1) {
+    return rovas_civic_charity_error(502, 'rovas_error', 'Organization created but linked project failed.');
+  }
+
+  // Claim invite — especially important for custodial ownership.
+  if ($ownership === 'custodial' || $status === ROVAS_CIVIC_CHARITY_STATUS_APPROVED) {
+    rovas_civic_notify_charity_org_claim($org, $project_nid, $ownership);
+  }
+
+  if ($status === ROVAS_CIVIC_CHARITY_STATUS_APPROVED) {
+    rovas_civic_charity_queue_ai_check($org, array(
+      'name' => $name,
+      'country' => $country,
+      'website_url' => $website_url,
+      'contact_email' => $contact_email,
+      'org_id' => $org_id,
+      'iban' => $iban,
+      'submitter_uid' => $uid,
+      'register_name' => $register_name,
+    ));
+  }
+
+  return array(
+    'ok' => TRUE,
+    'status' => rovas_civic_charity_org_status($org),
+    'created' => TRUE,
+    'organization_nid' => (string) (int) $org->nid,
+    'project_nid' => (string) $project_nid,
+    'organization' => trim((string) $org->title),
+    'ownership' => $ownership,
+  );
 }

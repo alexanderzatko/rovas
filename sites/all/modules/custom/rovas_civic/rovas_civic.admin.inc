@@ -119,6 +119,14 @@ function rovas_civic_admin_form($form, &$form_state) {
     '#title' => t('Public-benefit / nonprofit organizations'),
     '#description' => t('NeoFund review queue for organizations linked from public-benefit / nonprofit projects.'),
   );
+  $custodial_uid = (int) variable_get(ROVAS_CIVIC_CHARITY_CUSTODIAL_UID_VAR, 0);
+  $form['charities']['rovas_civic_charity_custodial_uid'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Custodial owner uid (Civic donor-add)'),
+    '#default_value' => $custodial_uid > 0 ? $custodial_uid : '',
+    '#size' => 10,
+    '#description' => t('Drupal uid that owns organizations and charitable projects created from Civic when the submitter’s account email does not match contact_email. Leave empty to fall back to uid 1.'),
+  );
   $form['charities']['link'] = array(
     '#markup' => '<p>' . l(t('Review public-benefit / nonprofit organizations'), 'admin/config/rovas/civic/charities') . '</p>',
   );
@@ -166,6 +174,27 @@ function rovas_civic_admin_form_submit($form, &$form_state) {
     variable_set(ROVAS_CIVIC_MERIT_INDEX_SNAPSHOT_INTERVAL_VAR, $hours * 3600);
     drupal_set_message(t('Merit Index snapshot interval set to @h hours.', array('@h' => $hours)));
   }
+
+  if (isset($form_state['values']['rovas_civic_charity_custodial_uid'])) {
+    $raw = trim((string) $form_state['values']['rovas_civic_charity_custodial_uid']);
+    if ($raw === '') {
+      variable_del(ROVAS_CIVIC_CHARITY_CUSTODIAL_UID_VAR);
+      drupal_set_message(t('Custodial charity owner uid cleared (fallback uid 1).'));
+    }
+    else {
+      $cuid = (int) $raw;
+      $account = $cuid > 0 ? user_load($cuid) : FALSE;
+      if (!$account || empty($account->uid)) {
+        form_set_error('rovas_civic_charity_custodial_uid', t('Custodial owner must be an existing Drupal user uid.'));
+        return;
+      }
+      variable_set(ROVAS_CIVIC_CHARITY_CUSTODIAL_UID_VAR, $cuid);
+      drupal_set_message(t('Custodial charity owner set to uid @uid (@name).', array(
+        '@uid' => $cuid,
+        '@name' => format_username($account),
+      )));
+    }
+  }
 }
 
 /**
@@ -204,7 +233,7 @@ function rovas_civic_admin_resources_submit($form, &$form_state) {
     rovas_civic_ensure_charity_content();
   }
   if (rovas_civic_ensure_services_resources()) {
-    drupal_set_message(t('Civic APIs enabled on rovas_endpoint (claims, rates, users, project, charity catalog, shareholders, merit history).'));
+    drupal_set_message(t('Civic APIs enabled on rovas_endpoint (claims, rates, users, project, charity catalog/create, shareholders, merit history).'));
   }
   else {
     drupal_set_message(t('Could not update Services endpoint.'), 'error');

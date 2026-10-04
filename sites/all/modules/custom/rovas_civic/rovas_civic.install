@@ -650,3 +650,13 @@ function rovas_civic_update_7022() {
   }
   return t('Civic Merit period index API (GET /rovas/civic_merit_period_index) enabled on rovas_endpoint.');
 }
+
+/**
+ * Enable donor-add charity org API (POST /rovas/civic_create_charity_org).
+ */
+function rovas_civic_update_7023() {
+  if (function_exists('rovas_civic_ensure_services_resources')) {
+    rovas_civic_ensure_services_resources();
+  }
+  return t('Civic donor-add charity org API (POST /rovas/civic_create_charity_org) enabled on rovas_endpoint.');
+}

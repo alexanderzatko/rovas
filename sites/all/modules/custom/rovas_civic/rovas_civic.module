@@ -34,6 +34,10 @@ define('ROVAS_CIVIC_FALLBACK_NACE_TID', 1601);
 define('ROVAS_CIVIC_CHARITY_NACE_TID', 0);
 define('ROVAS_CIVIC_CHARITY_CATALOG_DEFAULT_LIMIT', 5);
 define('ROVAS_CIVIC_CHARITY_CATALOG_MAX_LIMIT', 20);
+/** Drupal uid that owns Civic-submitted orgs when contact_email ≠ submitter. */
+define('ROVAS_CIVIC_CHARITY_CUSTODIAL_UID_VAR', 'rovas_civic_charity_custodial_uid');
+/** ŠÚ SR RPO public search (IČO / nonprofit source registers). */
+define('ROVAS_CIVIC_SK_RPO_SEARCH_URL', 'https://api.statistics.sk/rpo/v1/search');
 
 /**
  * Implements hook_permission().
@@ -101,13 +105,20 @@ function rovas_civic_menu() {
  * Implements hook_mail().
  */
 function rovas_civic_mail($key, &$message, $params) {
-  if ($key !== 'charity_org_pending') {
+  if ($key !== 'charity_org_pending' && $key !== 'charity_org_claim') {
     return;
   }
   $message['headers']['Content-Type'] = 'text/plain; charset=UTF-8; format=flowed';
-  $message['subject'] = isset($params['subject'])
-    ? $params['subject']
-    : t('Rovas: New public-benefit / nonprofit organization pending review');
+  if ($key === 'charity_org_claim') {
+    $message['subject'] = isset($params['subject'])
+      ? $params['subject']
+      : t('Rovas: A public-benefit organization was added for you');
+  }
+  else {
+    $message['subject'] = isset($params['subject'])
+      ? $params['subject']
+      : t('Rovas: New public-benefit / nonprofit organization pending review');
+  }
   $message['body'][] = isset($params['body']) ? $params['body'] : '';
 }
 
@@ -186,6 +197,30 @@ function rovas_civic_cron() {
 }
 
 /**
+ * Implements hook_cron_queue_info().
+ */
+function rovas_civic_cron_queue_info() {
+  $queues = array();
+  $queues['rovas_civic_charity_ai_check'] = array(
+    'worker callback' => 'rovas_civic_charity_ai_check_worker',
+    'time' => 60,
+  );
+  return $queues;
+}
+
+/**
+ * Queue worker stub — loads charity.inc (Services file may not be loaded).
+ *
+ * @param mixed $item
+ */
+function rovas_civic_charity_ai_check_worker($item) {
+  module_load_include('inc', 'rovas_civic', 'rovas_civic.charity');
+  if (function_exists('rovas_civic_charity_ai_check_process')) {
+    rovas_civic_charity_ai_check_process($item);
+  }
+}
+
+/**
  * Implements hook_node_insert().
  *
  * Runs after Rules (module weight 21) so verification Chron grants exist before
@@ -194,7 +229,10 @@ function rovas_civic_cron() {
 function rovas_civic_node_insert($node) {
   if ($node->type === 'charity_organization') {
     module_load_include('inc', 'rovas_civic', 'rovas_civic.charity');
-    if (function_exists('rovas_civic_notify_charity_org_pending')) {
+    // Auto-approved SK creates skip the staff pending inbox; claim email covers contact.
+    if (function_exists('rovas_civic_charity_org_status')
+      && rovas_civic_charity_org_status($node) === ROVAS_CIVIC_CHARITY_STATUS_PENDING
+      && function_exists('rovas_civic_notify_charity_org_pending')) {
       rovas_civic_notify_charity_org_pending($node);
     }
     return;
@@ -240,6 +278,7 @@ function rovas_civic_node_insert($node) {
  * - GET  /rovas/civic_merit_spotlight (period leads by Civic area)
  * - GET  /rovas/civic_merit_period_index (ME•ter period leaderboard)
  * - GET  /rovas/civic_charity_projects (public approved-charity catalog)
+ * - POST /rovas/civic_create_charity_org (donor add public-benefit org)
  *
  * Note: Services aliases must be slash-free. Do not use aliases like
  * civic/claims — Services treats the first segment as the resource name.
@@ -1100,6 +1139,27 @@ function rovas_civic_services_resources() {
               'source' => array('param' => 'lang'),
               'optional' => TRUE,
               'default value' => '',
+            ),
+          ),
+        ),
+      ),
+    ),
+    'civic_create_charity_org' => array(
+      'operations' => array(
+        'create' => array(
+          'help' => 'Donor-add a public-benefit / nonprofit organization + linked charitable project. Body: name, country, website_url, contact_email, org_id, iban. Bearer; API-key off.',
+          'callback' => 'rovas_civic_services_create_charity_org',
+          'file' => $charity_file,
+          'access callback' => $bearer_auth['access callback'],
+          'access arguments' => $bearer_auth['access arguments'],
+          'access arguments append' => $bearer_auth['access arguments append'],
+          'args' => array(
+            array(
+              'name' => 'data',
+              'type' => 'struct',
+              'description' => 'Org fields: name, country, website_url, contact_email, org_id, iban.',
+              'source' => 'data',
+              'optional' => FALSE,
             ),
           ),
         ),
@@ -3278,7 +3338,7 @@ function rovas_civic_ensure_services_resources() {
       'create' => $bearer_op,
     ),
   );
-  foreach (array('civic_create_project', 'civic_create_work_report') as $res_name) {
+  foreach (array('civic_create_project', 'civic_create_work_report', 'civic_create_charity_org') as $res_name) {
     if (empty($endpoint->resources[$res_name])
       || $endpoint->resources[$res_name] != $civic_create_resource) {
       $endpoint->resources[$res_name] = $civic_create_resource;
