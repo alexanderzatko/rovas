@@ -1128,14 +1128,20 @@ function rovas_civic_sk_rpo_lookup($org_id) {
  * Default body for a Civic-created charitable project.
  *
  * @param string $org_title
+ * @param string|null $langcode
+ *   Locale for t(); NULL uses the current interface language.
  *
  * @return string
  *   filtered_html markup (includes mailto link).
  */
-function rovas_civic_charity_default_project_description($org_title) {
+function rovas_civic_charity_default_project_description($org_title, $langcode = NULL) {
   $org_title = trim((string) $org_title);
+  $options = array();
+  if ($langcode !== NULL && $langcode !== '') {
+    $options['langcode'] = $langcode;
+  }
   if ($org_title === '') {
-    $org_title = t('Nonprofit project');
+    $org_title = t('Nonprofit project', array(), $options);
   }
   $contact = variable_get('site_mail', '');
   if ($contact === '' || $contact === NULL) {
@@ -1145,7 +1151,118 @@ function rovas_civic_charity_default_project_description($org_title) {
   return t('Nonprofit or charity project of organization @org, added by a donor/sponsor of this organization. If you represent this organization, send a message to !mail and we will change the owner to you.', array(
     '@org' => $org_title,
     '!mail' => $mail_link,
-  ));
+  ), $options);
+}
+
+/**
+ * Enabled content language codes (lowercase), keyed by langcode.
+ *
+ * @return array
+ */
+function rovas_civic_charity_enabled_langcodes() {
+  $out = array();
+  if (!function_exists('language_list')) {
+    return $out;
+  }
+  foreach (language_list() as $code => $lang) {
+    if (!empty($lang->enabled)) {
+      $out[drupal_strtolower($code)] = drupal_strtolower($code);
+    }
+  }
+  return $out;
+}
+
+/**
+ * Write per-language body (and title_field) so locale switching shows SK/IT/….
+ *
+ * Create-time t() alone freezes the request language into body; Entity
+ * Translation needs body[$lang] + translation records for each language.
+ *
+ * @param object $project
+ * @param string $org_title
+ */
+function rovas_civic_charity_seed_project_description_translations($project, $org_title) {
+  if (empty($project) || empty($project->nid) || $project->type !== 'project') {
+    return;
+  }
+  $org_title = trim((string) $org_title);
+  if ($org_title === '') {
+    $org_title = t('Nonprofit project');
+  }
+
+  $enabled = rovas_civic_charity_enabled_langcodes();
+  if (empty($enabled)) {
+    $enabled = array('en' => 'en');
+  }
+  $source = isset($enabled['en']) ? 'en' : reset($enabled);
+
+  $body_field = field_info_field('body');
+  $body_translatable = !empty($body_field['translatable']);
+  $title_field = field_info_field('title_field');
+  $title_translatable = !empty($title_field['translatable']);
+
+  $has_et = $body_translatable
+    && module_exists('entity_translation')
+    && function_exists('entity_translation_enabled')
+    && entity_translation_enabled('node', $project)
+    && function_exists('entity_translation_get_handler');
+
+  $project->language = $source;
+  unset($project->body[LANGUAGE_NONE]);
+
+  $langs_to_write = $body_translatable ? $enabled : array($source => $source);
+  foreach ($langs_to_write as $code) {
+    $project->body[$code][0] = array(
+      'value' => rovas_civic_charity_default_project_description($org_title, $code),
+      'summary' => '',
+      'format' => 'filtered_html',
+    );
+    if ($title_translatable) {
+      $project->title_field[$code][0] = array(
+        'value' => $org_title,
+        'format' => '',
+        'safe_value' => check_plain($org_title),
+      );
+    }
+  }
+  $project->title = $org_title;
+
+  $handler = NULL;
+  if ($has_et) {
+    $handler = entity_translation_get_handler('node', $project);
+    if ($handler && method_exists($handler, 'setOriginalLanguage')) {
+      $handler->setOriginalLanguage($source);
+    }
+    foreach ($enabled as $code) {
+      if ($code === $source) {
+        continue;
+      }
+      if (!$handler) {
+        break;
+      }
+      $handler->setTranslation(array(
+        'translate' => 0,
+        'status' => 1,
+        'language' => $code,
+        'source' => $source,
+        'uid' => !empty($project->uid) ? (int) $project->uid : 1,
+        'created' => !empty($project->created) ? (int) $project->created : REQUEST_TIME,
+        'changed' => REQUEST_TIME,
+      ));
+    }
+  }
+
+  $prev_title = NULL;
+  if (function_exists('rovas_base_translation_begin_presave_title_context')) {
+    $prev_title = rovas_base_translation_begin_presave_title_context($source);
+  }
+  node_save($project);
+  if ($handler && method_exists($handler, 'saveTranslations')) {
+    $handler->saveTranslations();
+  }
+  if (function_exists('rovas_base_translation_end_presave_title_context')) {
+    rovas_base_translation_end_presave_title_context($prev_title);
+  }
 }
 
 /**
@@ -1177,7 +1294,8 @@ function rovas_civic_charity_ensure_default_project($org, $owner_uid, $website_u
   if ($title === '') {
     $title = t('Nonprofit project');
   }
-  $description = rovas_civic_charity_default_project_description($title);
+  // English source for the initial Rules/create body; ET seed overwrites per locale.
+  $description = rovas_civic_charity_default_project_description($title, 'en');
   $website_url = trim((string) $website_url);
 
   // Public-project Rules use site:current-user for the initial coworker row.
@@ -1212,11 +1330,12 @@ function rovas_civic_charity_ensure_default_project($org, $owner_uid, $website_u
       $node = new stdClass();
       $node->type = 'project';
       $node->title = $title;
-      $node->language = !empty($author->language) ? $author->language : LANGUAGE_NONE;
+      $node->language = 'en';
       $node->uid = $owner_uid;
       $node->status = 1;
-      $node->body[LANGUAGE_NONE][0] = array(
+      $node->body['en'][0] = array(
         'value' => $description,
+        'summary' => '',
         'format' => 'filtered_html',
       );
       if (field_info_field('field_status')) {
@@ -1246,10 +1365,6 @@ function rovas_civic_charity_ensure_default_project($org, $owner_uid, $website_u
     }
     $project->uid = $owner_uid;
     $project->title = $title;
-    $project->body[LANGUAGE_NONE][0] = array(
-      'value' => $description,
-      'format' => 'filtered_html',
-    );
     if (field_info_field('field_is_charity')) {
       $project->field_is_charity[LANGUAGE_NONE][0]['value'] = 1;
     }
@@ -1267,6 +1382,12 @@ function rovas_civic_charity_ensure_default_project($org, $owner_uid, $website_u
     // Idempotent: insert Rules usually already attached current-user (= owner).
     if (function_exists('rules_invoke_component') && rules_config_load('rules_check_or_add_shareholder')) {
       rules_invoke_component('rules_check_or_add_shareholder', $owner_uid, $nid);
+    }
+
+    // Reload then seed body per enabled locale (SK/IT/… via locale + ET).
+    $project = node_load($nid);
+    if ($project) {
+      rovas_civic_charity_seed_project_description_translations($project, $title);
     }
   }
   finally {

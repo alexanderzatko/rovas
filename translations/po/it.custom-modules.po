@@ -196,3 +196,7 @@ msgstr "Le donazioni in euro e gli acquisti di quote in euro non sono disponibil
 #: sites/all/modules/custom/rovas_civic/rovas_civic.charity.inc
 msgid "EUR payments are blocked until NeoFund approves this public-benefit / nonprofit organization."
 msgstr "I pagamenti in euro sono bloccati finché NeoFund non approva questa organizzazione di pubblica utilità / nonprofit."
+
+#: sites/all/modules/custom/rovas_civic/rovas_civic.charity.inc
+msgid "Nonprofit or charity project of organization @org, added by a donor/sponsor of this organization. If you represent this organization, send a message to !mail and we will change the owner to you."
+msgstr "Progetto nonprofit o di beneficenza dell’organizzazione @org, aggiunto da un donatore/sponsor di questa organizzazione. Se rappresentate questa organizzazione, inviate un messaggio a !mail e cambieremo il proprietario a voi."
