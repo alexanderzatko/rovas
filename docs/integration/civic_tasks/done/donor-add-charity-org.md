@@ -108,7 +108,9 @@ Prefer **idempotent 200** with `created: false` for duplicates — **not** 409.
 
 **New project defaults (create path):** Public, for sale, `field_is_charity`
 on, `field_charity_organization` → new/existing org, title = org legal name
-(claimant can edit later).
+(claimant can edit later). Sole shareholder = project owner (custodial or
+email-verified submitter) — create runs as that user so public-project Rules
+do not also attach the Bearer donor. Body invites reps to mail `site_mail`.
 
 ### Checklist
 

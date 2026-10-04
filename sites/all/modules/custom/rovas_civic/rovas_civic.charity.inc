@@ -1125,7 +1125,35 @@ function rovas_civic_sk_rpo_lookup($org_id) {
 }
 
 /**
+ * Default body for a Civic-created charitable project.
+ *
+ * @param string $org_title
+ *
+ * @return string
+ *   filtered_html markup (includes mailto link).
+ */
+function rovas_civic_charity_default_project_description($org_title) {
+  $org_title = trim((string) $org_title);
+  if ($org_title === '') {
+    $org_title = t('Nonprofit project');
+  }
+  $contact = variable_get('site_mail', '');
+  if ($contact === '' || $contact === NULL) {
+    $contact = 'rovas@merit.world';
+  }
+  $mail_link = '<a href="mailto:' . check_plain($contact) . '">' . check_plain($contact) . '</a>';
+  return t('Nonprofit or charity project of organization @org, added by a donor/sponsor of this organization. If you represent this organization, send a message to !mail and we will change the owner to you.', array(
+    '@org' => $org_title,
+    '!mail' => $mail_link,
+  ));
+}
+
+/**
  * Create or return a default charitable project linked to an org.
+ *
+ * Exactly one shareholder: the project owner (custodial Rovas uid, or the
+ * submitter when contact_email matched their account). Public-project insert
+ * Rules attach site:current-user, so create runs as that owner.
  *
  * @param object $org
  * @param int $owner_uid
@@ -1149,84 +1177,101 @@ function rovas_civic_charity_ensure_default_project($org, $owner_uid, $website_u
   if ($title === '') {
     $title = t('Nonprofit project');
   }
-  $description = t('Charitable project for @org. Claim this project on Rovas to add or correct details.', array(
-    '@org' => $title,
-  ));
+  $description = rovas_civic_charity_default_project_description($title);
   $website_url = trim((string) $website_url);
 
-  $nid = 0;
-  if (function_exists('rules_invoke_component') && rules_config_load('rules_create_project')) {
-    module_load_include('inc', 'rovas_civic', 'rovas_civic.volunteer');
-    $result = rules_invoke_component(
-      'rules_create_project',
-      $title,
-      $author,
-      $website_url,
-      0,
-      1,
-      1,
-      $description,
-      FALSE
-    );
-    $nid = function_exists('rovas_civic_volunteer_nid_from_rules')
-      ? rovas_civic_volunteer_nid_from_rules($result)
-      : 0;
-  }
+  // Public-project Rules use site:current-user for the initial coworker row.
+  // Run as the intended sole owner so the Bearer donor is not also attached.
+  global $user;
+  $previous_user = $user;
+  $previous_session = drupal_save_session();
+  drupal_save_session(FALSE);
+  $user = $author;
 
-  if ($nid < 1) {
-    $node = new stdClass();
-    $node->type = 'project';
-    $node->title = $title;
-    $node->language = !empty($author->language) ? $author->language : LANGUAGE_NONE;
-    $node->uid = $owner_uid;
-    $node->status = 1;
-    $node->body[LANGUAGE_NONE][0] = array(
+  $nid = 0;
+  try {
+    if (function_exists('rules_invoke_component') && rules_config_load('rules_create_project')) {
+      module_load_include('inc', 'rovas_civic', 'rovas_civic.volunteer');
+      $result = rules_invoke_component(
+        'rules_create_project',
+        $title,
+        $author,
+        $website_url,
+        0,
+        1,
+        1,
+        $description,
+        FALSE
+      );
+      $nid = function_exists('rovas_civic_volunteer_nid_from_rules')
+        ? rovas_civic_volunteer_nid_from_rules($result)
+        : 0;
+    }
+
+    if ($nid < 1) {
+      $node = new stdClass();
+      $node->type = 'project';
+      $node->title = $title;
+      $node->language = !empty($author->language) ? $author->language : LANGUAGE_NONE;
+      $node->uid = $owner_uid;
+      $node->status = 1;
+      $node->body[LANGUAGE_NONE][0] = array(
+        'value' => $description,
+        'format' => 'filtered_html',
+      );
+      if (field_info_field('field_status')) {
+        $node->field_status[LANGUAGE_NONE][0]['value'] = 1;
+      }
+      if (field_info_field('field_participation')) {
+        $node->field_participation[LANGUAGE_NONE][0]['value'] = 1;
+      }
+      if (field_info_field('field_system_project')) {
+        $node->field_system_project[LANGUAGE_NONE][0]['value'] = 0;
+      }
+      if ($website_url !== '' && field_info_field('field_asset_web_address')) {
+        $node->field_asset_web_address[LANGUAGE_NONE][0]['value'] = $website_url;
+      }
+      node_object_prepare($node);
+      node_save($node);
+      $nid = (int) $node->nid;
+    }
+
+    if ($nid < 1) {
+      return 0;
+    }
+
+    $project = node_load($nid);
+    if (!$project) {
+      return 0;
+    }
+    $project->uid = $owner_uid;
+    $project->title = $title;
+    $project->body[LANGUAGE_NONE][0] = array(
       'value' => $description,
       'format' => 'filtered_html',
     );
+    if (field_info_field('field_is_charity')) {
+      $project->field_is_charity[LANGUAGE_NONE][0]['value'] = 1;
+    }
+    if (field_info_field('field_charity_organization')) {
+      $project->field_charity_organization[LANGUAGE_NONE][0]['target_id'] = (int) $org->nid;
+    }
     if (field_info_field('field_status')) {
-      $node->field_status[LANGUAGE_NONE][0]['value'] = 1;
+      $project->field_status[LANGUAGE_NONE][0]['value'] = 1;
     }
     if (field_info_field('field_participation')) {
-      $node->field_participation[LANGUAGE_NONE][0]['value'] = 1;
+      $project->field_participation[LANGUAGE_NONE][0]['value'] = 1;
     }
-    if (field_info_field('field_system_project')) {
-      $node->field_system_project[LANGUAGE_NONE][0]['value'] = 0;
+    node_save($project);
+
+    // Idempotent: insert Rules usually already attached current-user (= owner).
+    if (function_exists('rules_invoke_component') && rules_config_load('rules_check_or_add_shareholder')) {
+      rules_invoke_component('rules_check_or_add_shareholder', $owner_uid, $nid);
     }
-    if ($website_url !== '' && field_info_field('field_asset_web_address')) {
-      $node->field_asset_web_address[LANGUAGE_NONE][0]['value'] = $website_url;
-    }
-    node_object_prepare($node);
-    node_save($node);
-    $nid = (int) $node->nid;
   }
-
-  if ($nid < 1) {
-    return 0;
-  }
-
-  $project = node_load($nid);
-  if (!$project) {
-    return 0;
-  }
-  $project->uid = $owner_uid;
-  $project->title = $title;
-  if (field_info_field('field_is_charity')) {
-    $project->field_is_charity[LANGUAGE_NONE][0]['value'] = 1;
-  }
-  if (field_info_field('field_charity_organization')) {
-    $project->field_charity_organization[LANGUAGE_NONE][0]['target_id'] = (int) $org->nid;
-  }
-  if (field_info_field('field_status')) {
-    $project->field_status[LANGUAGE_NONE][0]['value'] = 1;
-  }
-  if (field_info_field('field_participation')) {
-    $project->field_participation[LANGUAGE_NONE][0]['value'] = 1;
-  }
-  node_save($project);
-
-  if (function_exists('rules_invoke_component') && rules_config_load('rules_check_or_add_shareholder')) {
-    rules_invoke_component('rules_check_or_add_shareholder', $owner_uid, $nid);
+  finally {
+    $user = $previous_user;
+    drupal_save_session($previous_session);
   }
 
   return $nid;

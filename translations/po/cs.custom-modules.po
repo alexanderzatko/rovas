@@ -216,3 +216,7 @@ msgstr "Dary v eurech a nákup podílů za eura nejsou dostupné, dokud NeoFund 
 #: sites/all/modules/custom/rovas_civic/rovas_civic.charity.inc
 msgid "EUR payments are blocked until NeoFund approves this public-benefit / nonprofit organization."
 msgstr "Platby v eurech jsou zablokované, dokud NeoFund neschválí tuto veřejně prospěšnou / neziskovou organizaci."
+
+#: sites/all/modules/custom/rovas_civic/rovas_civic.charity.inc
+msgid "Nonprofit or charity project of organization @org, added by a donor/sponsor of this organization. If you represent this organization, send a message to !mail and we will change the owner to you."
+msgstr "Neziskový nebo charitativní projekt organizace @org, přidaný dárcem/sponzorem této organizace. Pokud tuto organizaci zastupujete, pošlete zprávu na !mail a my změníme vlastníka na vás."

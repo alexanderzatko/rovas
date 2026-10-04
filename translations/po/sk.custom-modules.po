@@ -242,3 +242,7 @@ msgstr "Schválená verejnoprospešná / nezisková organizácia @title."
 #: sites/all/modules/custom/rovas_civic/rovas_civic.admin.inc
 msgid "No public-benefit / nonprofit organizations match this filter."
 msgstr "Tomuto filtru nezodpovedajú žiadne verejnoprospešné / neziskové organizácie."
+
+#: sites/all/modules/custom/rovas_civic/rovas_civic.charity.inc
+msgid "Nonprofit or charity project of organization @org, added by a donor/sponsor of this organization. If you represent this organization, send a message to !mail and we will change the owner to you."
+msgstr "Neziskový alebo charitatívny projekt organizácie @org, pridaný darcom/sponzorom tejto organizácie. Ak reprezentujete túto organizáciu, pošlite správu na !mail a my zmeníme vlastníka na vás."
