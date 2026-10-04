@@ -144,7 +144,7 @@ msgid "Learn more about <a href=\"!url\">how this works</a>."
 msgstr ""
 
 #: sites/all/modules/custom/rovas_civic/rovas_civic.charity.inc
-msgid "We are NeoFund (!url), a Slovak nonprofit. We develop solutions that aim to increase contributions to the volunteer, nonprofit, and charitable sector."
+msgid "We are NeoFund, a Slovak nonprofit. We develop solutions that aim to increase contributions to the volunteer, nonprofit, and charitable sector."
 msgstr ""
 
 #: sites/all/modules/custom/rovas_civic/rovas_civic.charity.inc

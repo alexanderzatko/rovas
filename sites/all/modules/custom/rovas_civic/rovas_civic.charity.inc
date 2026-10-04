@@ -1520,9 +1520,7 @@ function rovas_civic_notify_charity_org_claim($org, $project_nid, $ownership = '
     '',
     t('Learn more about <a href="!url">how this works</a>.', array('!url' => $catalog_url), $t_opts),
     '',
-    t('We are NeoFund (!url), a Slovak nonprofit. We develop solutions that aim to increase contributions to the volunteer, nonprofit, and charitable sector.', array(
-      '!url' => $neofund_url,
-    ), $t_opts),
+    t('We are NeoFund, a Slovak nonprofit. We develop solutions that aim to increase contributions to the volunteer, nonprofit, and charitable sector.', array(), $t_opts),
     '',
     'NeoFund n.f.',
     $neofund_url,
