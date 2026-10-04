@@ -158,12 +158,28 @@ function rovas_oauth_is_civic_hybridauth_destination($session_client = '') {
 }
 
 /**
+ * Implements hook_module_implements_alter().
+ *
+ * Run after login_destination so Civic authorize can clear its node/8
+ * redirect and finish OAuth (password login → oauth2/authorize).
+ */
+function rovas_oauth_module_implements_alter(&$implementations, $hook) {
+  if (($hook === 'user_login' || $hook === 'drupal_goto_alter')
+    && isset($implementations['rovas_oauth'])) {
+    $group = $implementations['rovas_oauth'];
+    unset($implementations['rovas_oauth']);
+    $implementations['rovas_oauth'] = $group;
+  }
+}
+
+/**
  * Implements hook_init().
  *
  * Capture Civic `lang` / `ui_locales` and `intent` on authorize; force interface
  * language for the Civic-branded login/register path.
  */
 function rovas_oauth_init() {
+  rovas_oauth_civic_sanitize_authorize_destination();
   rovas_oauth_civic_ui_lang_capture_from_request();
   rovas_oauth_civic_intent_capture_from_request();
   rovas_oauth_civic_ui_lang_apply_or_clear();
@@ -171,40 +187,80 @@ function rovas_oauth_init() {
 }
 
 /**
+ * Fix $_GET['destination'] when intent/lang were glued on with "&".
+ *
+ * Drupal's drupal_parse_url() only splits on "?"; a value like
+ * oauth2/authorize&intent=login becomes a literal 404 path after login.
+ */
+function rovas_oauth_civic_sanitize_authorize_destination() {
+  if (empty($_GET['destination']) || !is_string($_GET['destination'])) {
+    return;
+  }
+  if (strpos($_GET['destination'], 'oauth2/authorize&') !== 0) {
+    return;
+  }
+  $_GET['destination'] = 'oauth2/authorize';
+}
+
+/**
  * Implements hook_drupal_goto_alter().
  *
- * Honor Civic authorize `intent=register` (land on Create account) and keep
- * `lang=` / `intent=` on the redirect query for debuggability. Session is SoT.
+ * - Honor Civic authorize `intent=register` (land on Create account).
+ * - Repair a mangled post-login destination where `intent` / `lang` were
+ *   appended to the path with `&` instead of a real `?` query
+ *   (`oauth2/authorize&intent=login&lang=sk` → 404).
+ *
+ * Session remains SoT for intent/lang — do **not** echo them on the
+ * authorize → login redirect query. Sibling query params next to
+ * `destination=oauth2/authorize` get absorbed into destination by some
+ * post-login redirects (and then `drupal_parse_url()` treats `&…` as path).
  */
 function rovas_oauth_drupal_goto_alter(&$path, &$options, &$http_response_code) {
+  $civic_authorize = !empty($_SESSION['oauth2_server_authorize']['client_id'])
+    && $_SESSION['oauth2_server_authorize']['client_id'] === ROVAS_OAUTH_CLIENT_KEY;
+
+  // Repair: destination was oauth2/authorize&intent=…&lang=… (no "?").
+  if (is_string($path) && strpos($path, 'oauth2/authorize&') === 0) {
+    $path = 'oauth2/authorize';
+    $options['query'] = array();
+    return;
+  }
+
+  // Post-login: login_destination may have replaced path with node/8.
+  // When Civic authorize params are still in session and destination points
+  // at authorize (or was restored in hook_user_login), finish OAuth.
+  if ($civic_authorize && $path !== 'user/login' && $path !== 'user/register') {
+    $dest = isset($_GET['destination']) ? $_GET['destination'] : '';
+    if ($dest === 'oauth2/authorize' || strpos($dest, 'oauth2/authorize') === 0) {
+      if (strpos((string) $path, 'oauth2/authorize') !== 0) {
+        $path = 'oauth2/authorize';
+        $options['query'] = array();
+        unset($GLOBALS['destination']);
+        return;
+      }
+    }
+  }
+
   if ($path !== 'user/login' && $path !== 'user/register') {
+    return;
+  }
+
+  if (!$civic_authorize) {
     return;
   }
 
   $intent = !empty($_SESSION[ROVAS_OAUTH_CIVIC_INTENT_SESSION])
     ? $_SESSION[ROVAS_OAUTH_CIVIC_INTENT_SESSION]
     : '';
-  $langcode = !empty($_SESSION[ROVAS_OAUTH_CIVIC_UI_LANG_SESSION])
-    ? $_SESSION[ROVAS_OAUTH_CIVIC_UI_LANG_SESSION]
-    : '';
-  if ($intent === '' && $langcode === '') {
-    return;
-  }
-
-  if (!isset($options['query']) || !is_array($options['query'])) {
-    $options['query'] = array();
-  }
-
   if ($path === 'user/login' && $intent === 'register') {
     $path = 'user/register';
   }
 
-  if ($intent !== '' && empty($options['query']['intent'])) {
-    $options['query']['intent'] = $intent;
+  // Keep a clean destination; never add intent/lang as query siblings.
+  if (!isset($options['query']) || !is_array($options['query'])) {
+    $options['query'] = array();
   }
-  if ($langcode !== '' && empty($options['query']['lang'])) {
-    $options['query']['lang'] = $langcode;
-  }
+  $options['query']['destination'] = 'oauth2/authorize';
 }
 
 /**
@@ -613,6 +669,21 @@ function rovas_oauth_form_user_login_block_alter(&$form, &$form_state) {
 }
 
 /**
+ * Implements hook_user_login().
+ *
+ * Password login must return to oauth2/authorize (session holds PKCE params).
+ * Clears login_destination's $GLOBALS override (site rule → node/8) and any
+ * mangled destination that absorbed intent/lang into the path.
+ */
+function rovas_oauth_user_login(&$edit, $account) {
+  if (empty($_SESSION['oauth2_server_authorize']['client_id'])
+    || $_SESSION['oauth2_server_authorize']['client_id'] !== ROVAS_OAUTH_CLIENT_KEY) {
+    return;
+  }
+  rovas_oauth_civic_restore_authorize_destination();
+}
+
+/**
  * Implements hook_form_FORM_ID_alter() for user_register_form.
  */
 function rovas_oauth_form_user_register_form_alter(&$form, &$form_state) {
@@ -967,7 +1038,15 @@ function rovas_oauth_annotate_civic_auth_form(&$form, $mode = 'login') {
   // Navbar carries the brand label; keep a short browser/document title only.
   drupal_set_title(t('Your Civic account'));
 
-  if ($mode === 'register') {
+  // Pin #action to destination=oauth2/authorize only. Core defaults to
+  // request_uri(), which keeps sibling intent=/lang= query params; those
+  // can be absorbed into destination after submit and 404 authorize.
+  if ($mode === 'login') {
+    $form['#action'] = url('user/login', array(
+      'query' => array('destination' => 'oauth2/authorize'),
+    ));
+  }
+  elseif ($mode === 'register') {
     // Ensure post-register lands back on authorize (session holds PKCE params).
     $form['#action'] = url('user/register', array(
       'query' => array('destination' => 'oauth2/authorize'),

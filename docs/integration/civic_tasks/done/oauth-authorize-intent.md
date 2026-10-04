@@ -50,8 +50,9 @@ when session intent is `register` (via existing `hook_drupal_goto_alter` in
    `$_SESSION['rovas_oauth_civic_intent']`.
 2. In `rovas_oauth_drupal_goto_alter()`: when `$path === 'user/login'` and
    session intent is `register`, set `$path = 'user/register'`. Keep
-   `destination=oauth2/authorize` (and optional `lang=`). Optionally echo
-   `intent=` on the query for debuggability (session remains SoT).
+   `destination=oauth2/authorize` only — do **not** echo `intent=` / `lang=`
+   as sibling query params (they get absorbed into destination after password
+   login → `/oauth2/authorize%26intent%3D…` 404). Session remains SoT.
 3. Clear the session key when leaving Civic authorize context (same lifetime
    rules as `ROVAS_OAUTH_CIVIC_UI_LANG_SESSION` — no leak to plain
    `/user/login`).
