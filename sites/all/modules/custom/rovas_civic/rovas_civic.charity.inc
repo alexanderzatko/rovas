@@ -1125,6 +1125,33 @@ function rovas_civic_sk_rpo_lookup($org_id) {
 }
 
 /**
+ * Soften ALL-CAPS legal names from registers / clients for display titles.
+ *
+ * Slovak RPO often returns "SLOVENSKO V POHYBE"; we keep mixed-case names as-is.
+ *
+ * @param string $name
+ *
+ * @return string
+ */
+function rovas_civic_normalize_org_display_name($name) {
+  $name = trim(preg_replace('/\s+/u', ' ', (string) $name));
+  if ($name === '') {
+    return $name;
+  }
+  $letters = preg_replace('/[^\p{L}]/u', '', $name);
+  if ($letters === '') {
+    return $name;
+  }
+  // Only rewrite when every letter is uppercase (and there is at least one
+  // cased letter — avoid changing already sentence-case or lowercase strings).
+  if ($letters === drupal_strtoupper($letters)
+    && $letters !== drupal_strtolower($letters)) {
+    return drupal_ucfirst(drupal_strtolower($name));
+  }
+  return $name;
+}
+
+/**
  * Default body for a Civic-created charitable project.
  *
  * @param string $org_title
@@ -1746,7 +1773,10 @@ function rovas_civic_services_create_charity_org($data) {
     // Outage / not found / ambiguous → stay pending (still create).
   }
 
-  $legal_name = $register_name !== NULL ? $register_name : $name;
+  // Prefer register legal name when SK-verified; soften ALL-CAPS RPO strings.
+  $legal_name = rovas_civic_normalize_org_display_name(
+    $register_name !== NULL ? $register_name : $name
+  );
 
   $org = new stdClass();
   $org->type = ROVAS_CIVIC_CHARITY_BUNDLE;
