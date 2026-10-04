@@ -38,6 +38,7 @@ Civic proxies as `POST /charities/organizations` and builds the Expo form.
 | `contact_email` | Valid email; required |
 | `org_id` | Registration number / IČO; required; trim; uniqueness with `country` |
 | `iban` | SEPA IBAN; required; normalize (strip spaces); basic format check |
+| `lang` | Optional; `sk`\|`en` (cs/cz→sk). Claim email preferred locale; if omitted, org `country` is used (SK/CZ→sk, IT→it). |
 
 **Uniqueness:** `(country, org_id)` on `field_charity_country` +
 `field_charity_ico`. If a matching `charity_organization` already exists:
@@ -67,7 +68,8 @@ register of nonprofit / public-benefit organizations. If found and eligible:
 4. Email `contact_email` that a donor added the org and invite them to
    **claim** the project on Rovas (link to `/charity-projects` and/or the
    project node) to add or correct info — especially when
-   `ownership=custodial`.
+   `ownership=custodial`. Locale: optional `lang` / `?lang=`, else org
+   country (SK→Slovak).
 
 If SK register lookup fails, is ambiguous, or country is not `SK`: leave
 `pending`, keep existing insert → `site_mail` staff notify. Do **not** let
@@ -129,6 +131,7 @@ do not also attach the Bearer donor. Body invites reps to mail `site_mail`.
 4/5/6/7/9 (nadácie, neinvestičné fondy, n.o., o.z., medzinárodný prvok).
 Custodial uid: `rovas_civic_charity_custodial_uid` on Configuration → Rovas Civic.
 AI check queue `rovas_civic_charity_ai_check` (does not revoke auto-approval).
+Claim email uses `lang` / org country (not site default) + `t(..., langcode)`.
 
 ### Smoke test
 

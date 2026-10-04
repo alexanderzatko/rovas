@@ -108,18 +108,22 @@ function rovas_civic_mail($key, &$message, $params) {
   if ($key !== 'charity_org_pending' && $key !== 'charity_org_claim') {
     return;
   }
-  $message['headers']['Content-Type'] = 'text/plain; charset=UTF-8; format=flowed';
   if ($key === 'charity_org_claim') {
+    // Claim body includes a trusted <a> to the charity catalog.
+    $message['headers']['Content-Type'] = 'text/html; charset=UTF-8';
     $message['subject'] = isset($params['subject'])
       ? $params['subject']
       : t('Rovas: A public-benefit organization was added for you');
+    $body = isset($params['body']) ? $params['body'] : '';
+    $message['body'][] = nl2br($body);
   }
   else {
+    $message['headers']['Content-Type'] = 'text/plain; charset=UTF-8; format=flowed';
     $message['subject'] = isset($params['subject'])
       ? $params['subject']
       : t('Rovas: New public-benefit / nonprofit organization pending review');
+    $message['body'][] = isset($params['body']) ? $params['body'] : '';
   }
-  $message['body'][] = isset($params['body']) ? $params['body'] : '';
 }
 
 /**

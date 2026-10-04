@@ -1399,15 +1399,60 @@ function rovas_civic_charity_ensure_default_project($org, $owner_uid, $website_u
 }
 
 /**
+ * Interface language for the claim email to an org contact.
+ *
+ * Prefers Civic request/body lang, then org country (SK/CZ→sk, IT→it), else
+ * site default. Recipient is the org, not the donor.
+ *
+ * @param object $org
+ * @param string|null $preferred
+ *   Optional lang from Civic (?lang= or body lang).
+ *
+ * @return string
+ *   Enabled Drupal langcode.
+ */
+function rovas_civic_charity_claim_mail_langcode($org, $preferred = NULL) {
+  $candidate = NULL;
+  if ($preferred !== NULL && $preferred !== '') {
+    $candidate = function_exists('rovas_civic_request_lang')
+      ? rovas_civic_request_lang($preferred)
+      : drupal_strtolower(trim((string) $preferred));
+  }
+  if ($candidate === NULL || $candidate === '') {
+    $country = drupal_strtoupper(trim((string) rovas_civic_node_text_field($org, 'field_charity_country')));
+    $by_country = array(
+      'SK' => 'sk',
+      'CZ' => 'sk',
+      'IT' => 'it',
+    );
+    if (isset($by_country[$country])) {
+      $candidate = $by_country[$country];
+    }
+  }
+  if ($candidate === NULL || $candidate === '') {
+    $default = language_default();
+    $candidate = !empty($default->language) ? $default->language : 'en';
+  }
+  if (function_exists('rovas_base_normalize_to_enabled_language')) {
+    return rovas_base_normalize_to_enabled_language($candidate);
+  }
+  return $candidate;
+}
+
+/**
  * Email contact_email inviting the org to claim / correct the project.
  *
  * @param object $org
  * @param int $project_nid
  * @param string $ownership
+ * @param string|null $lang
+ *   Optional Civic UI lang (sk|en); country is used when omitted.
+ * @param object|null $submitter
+ *   Civic donor user who added the organization (for @username in the body).
  *
  * @return bool
  */
-function rovas_civic_notify_charity_org_claim($org, $project_nid, $ownership = 'custodial') {
+function rovas_civic_notify_charity_org_claim($org, $project_nid, $ownership = 'custodial', $lang = NULL, $submitter = NULL) {
   if (empty($org) || empty($org->nid) || $org->type !== ROVAS_CIVIC_CHARITY_BUNDLE) {
     return FALSE;
   }
@@ -1419,32 +1464,43 @@ function rovas_civic_notify_charity_org_claim($org, $project_nid, $ownership = '
     return FALSE;
   }
 
+  $langcode = rovas_civic_charity_claim_mail_langcode($org, $lang);
+  $t_opts = array('langcode' => $langcode);
+
+  $username = (is_object($submitter) && !empty($submitter->name))
+    ? '@' . $submitter->name
+    : t('a Civic user', array(), $t_opts);
+
   $catalog_url = url('charity-projects', array('absolute' => TRUE));
   $project_url = $project_nid
     ? url('node/' . (int) $project_nid, array('absolute' => TRUE))
     : $catalog_url;
   $org_url = url('node/' . (int) $org->nid, array('absolute' => TRUE));
+  $neofund_url = 'https://neofund.sk';
 
   $lines = array(
-    t('A Civic donor added your public-benefit / nonprofit organization to Rovas.'),
+    t('Hello,', array(), $t_opts),
     '',
-    t('Legal name: @title', array('@title' => $org->title)),
-    t('Organization page: @url', array('@url' => $org_url)),
-    t('Linked project: @url', array('@url' => $project_url)),
-    t('Catalog: @url', array('@url' => $catalog_url)),
+    t('Today, @username, a user of our Civic smartphone app, added your organization @org to Rovas, which is Civic’s main database. They did this because they want to send you money, and your organization must be in our system for that to be possible.', array(
+      '@username' => $username,
+      '@org' => $org->title,
+    ), $t_opts),
     '',
+    t('Your organization page: @url', array('@url' => $org_url), $t_opts),
+    t('The project we created for you: @url', array('@url' => $project_url), $t_opts),
+    '',
+    t('You can claim this project on Rovas (log in or register) to take ownership and add or correct information such as donation instructions. Please reply to this email if you wish to do so.', array(), $t_opts),
+    '',
+    t('Learn more about <a href="!url">how this works</a>.', array('!url' => $catalog_url), $t_opts),
+    '',
+    t('We are NeoFund (!url), a Slovak nonprofit. We develop solutions that aim to increase contributions to the volunteer, nonprofit, and charitable sector.', array(
+      '!url' => $neofund_url,
+    ), $t_opts),
+    '',
+    'NeoFund n.f.',
+    $neofund_url,
   );
-  if ($ownership === 'custodial') {
-    $lines[] = t('Please claim this project on Rovas (log in or register) to take ownership and add or correct information such as donate instructions.');
-  }
-  else {
-    $lines[] = t('Please review the listing and update any incorrect details on Rovas.');
-  }
-  $lines[] = '';
-  $lines[] = t('If you did not expect this message, you can ignore it or contact NeoFund via the site.');
 
-  $lang = language_default();
-  $langcode = !empty($lang->language) ? $lang->language : 'en';
   $from = variable_get('site_mail', $to);
 
   drupal_mail(
@@ -1455,15 +1511,16 @@ function rovas_civic_notify_charity_org_claim($org, $project_nid, $ownership = '
     array(
       'subject' => t('Rovas: Your organization was added — @title', array(
         '@title' => $org->title,
-      )),
+      ), $t_opts),
       'body' => implode("\n", $lines),
     ),
     $from
   );
 
-  watchdog('rovas_civic', 'Sent charity claim email for org @nid to @to.', array(
+  watchdog('rovas_civic', 'Sent charity claim email for org @nid to @to (lang=@lang).', array(
     '@nid' => (int) $org->nid,
     '@to' => $to,
+    '@lang' => $langcode,
   ), WATCHDOG_NOTICE);
 
   return TRUE;
@@ -1754,8 +1811,16 @@ function rovas_civic_services_create_charity_org($data) {
   }
 
   // Claim invite — especially important for custodial ownership.
+  // Language: optional body/query lang, else org country (SK→sk).
+  $mail_lang = NULL;
+  if (isset($data['lang']) && $data['lang'] !== '') {
+    $mail_lang = $data['lang'];
+  }
+  elseif (function_exists('rovas_civic_request_lang')) {
+    $mail_lang = rovas_civic_request_lang();
+  }
   if ($ownership === 'custodial' || $status === ROVAS_CIVIC_CHARITY_STATUS_APPROVED) {
-    rovas_civic_notify_charity_org_claim($org, $project_nid, $ownership);
+    rovas_civic_notify_charity_org_claim($org, $project_nid, $ownership, $mail_lang, $submitter);
   }
 
   if ($status === ROVAS_CIVIC_CHARITY_STATUS_APPROVED) {

@@ -200,3 +200,39 @@ msgstr "I pagamenti in euro sono bloccati finché NeoFund non approva questa org
 #: sites/all/modules/custom/rovas_civic/rovas_civic.charity.inc
 msgid "Nonprofit or charity project of organization @org, added by a donor/sponsor of this organization. If you represent this organization, send a message to !mail and we will change the owner to you."
 msgstr "Progetto nonprofit o di beneficenza dell’organizzazione @org, aggiunto da un donatore/sponsor di questa organizzazione. Se rappresentate questa organizzazione, inviate un messaggio a !mail e cambieremo il proprietario a voi."
+
+#: sites/all/modules/custom/rovas_civic/rovas_civic.charity.inc
+msgid "Hello,"
+msgstr "Buongiorno,"
+
+#: sites/all/modules/custom/rovas_civic/rovas_civic.charity.inc
+msgid "a Civic user"
+msgstr "un utente Civic"
+
+#: sites/all/modules/custom/rovas_civic/rovas_civic.charity.inc
+msgid "Today, @username, a user of our Civic smartphone app, added your organization @org to Rovas, which is Civic’s main database. They did this because they want to send you money, and your organization must be in our system for that to be possible."
+msgstr "Oggi l’utente @username della nostra app Civic per smartphone ha aggiunto la vostra organizzazione @org a Rovas, che è il database principale di Civic. Lo ha fatto perché vuole inviarvi denaro, e per questo la vostra organizzazione deve essere nel nostro sistema."
+
+#: sites/all/modules/custom/rovas_civic/rovas_civic.charity.inc
+msgid "Your organization page: @url"
+msgstr "Pagina della vostra organizzazione: @url"
+
+#: sites/all/modules/custom/rovas_civic/rovas_civic.charity.inc
+msgid "The project we created for you: @url"
+msgstr "Il progetto che abbiamo creato per voi: @url"
+
+#: sites/all/modules/custom/rovas_civic/rovas_civic.charity.inc
+msgid "You can claim this project on Rovas (log in or register) to take ownership and add or correct information such as donation instructions. Please reply to this email if you wish to do so."
+msgstr "Potete reclamare questo progetto su Rovas (accedete o registratevi) per assumerne la proprietà e aggiungere o correggere informazioni, ad esempio le istruzioni per le donazioni. Rispondete a questa e-mail se desiderate farlo."
+
+#: sites/all/modules/custom/rovas_civic/rovas_civic.charity.inc
+msgid "Learn more about <a href=\"!url\">how this works</a>."
+msgstr "Scoprite di più su <a href=\"!url\">come funziona</a>."
+
+#: sites/all/modules/custom/rovas_civic/rovas_civic.charity.inc
+msgid "We are NeoFund (!url), a Slovak nonprofit. We develop solutions that aim to increase contributions to the volunteer, nonprofit, and charitable sector."
+msgstr "Siamo NeoFund (!url), un’organizzazione nonprofit slovacca. Sviluppiamo soluzioni volte ad aumentare i contributi al settore del volontariato, nonprofit e della beneficenza."
+
+#: sites/all/modules/custom/rovas_civic/rovas_civic.charity.inc
+msgid "Rovas: Your organization was added — @title"
+msgstr "Rovas: La vostra organizzazione è stata aggiunta — @title"
