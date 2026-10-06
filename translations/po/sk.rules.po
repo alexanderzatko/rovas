@@ -1522,7 +1522,7 @@ msgstr ""
 #: rules:rules_config:rules_merit_allocation_deleted_send_email:16:subject
 msgctxt "rules_config:rules_merit_allocation_deleted_send_email:16:subject"
 msgid "Your share in project [project-name:value] was deleted"
-msgstr ""
+msgstr "Váš podiel v projekte [project-name:value] bol odstránený"
 
 #: rules:rules_config:rules_merit_allocation_deleted_send_email:16:message
 msgctxt "rules_config:rules_merit_allocation_deleted_send_email:16:message"
@@ -1538,6 +1538,15 @@ msgid ""
 "action.\r\n"
 "The project owner's email address is [proj-owner-email:value]"
 msgstr ""
+"Používateľ [proj-owner-full-name:value] odstránil váš podiel v "
+"projekte: <a href=\"[site:url]node/[project-id:value]\" "
+">[project-name:value]</a>\r\n"
+"Podiel bol: [merit-share:value] %.\r\n"
+"Celkový počet hodín, ktoré ste na tomto projekte odpracovali, je "
+"[total-number-of-hours:value].\r\n"
+"Ak ste túto akciu neočakávali, kontaktujte vlastníka projektu, aby "
+"ste zistili dôvod a prípadne požiadali o nápravu.\r\n"
+"E-mailová adresa vlastníka projektu je [proj-owner-email:value]"
 
 #: rules:rules_config:rules_merit_allocation_record_updated:label
 msgctxt "rules_config:rules_merit_allocation_record_updated:label"
