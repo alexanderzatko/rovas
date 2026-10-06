@@ -366,7 +366,8 @@ function _rovas_civic_ensure_charity_field_instances() {
       'label' => 'Contact email',
       'required' => 0,
       'widget' => array(
-        'type' => module_exists('email') ? 'email_default' : 'text_textfield',
+        // email_default is a formatter; the Email Field widget is email_textfield.
+        'type' => module_exists('email') ? 'email_textfield' : 'text_textfield',
         'weight' => 5,
       ),
       'display' => array(

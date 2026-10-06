@@ -671,3 +671,25 @@ function rovas_civic_update_7024() {
   }
   return t('Added field_charity_iban_verified on charity_organization (admin toggle on charities list).');
 }
+
+/**
+ * Fix field_charity_contact_email widget (email_default → email_textfield).
+ *
+ * Setup stored the Email Field formatter name as the widget type. Runtime
+ * field_info_* prep silently falls back, but Manage Display save uses
+ * field_read_instance() and triggers a PHP notice in _field_write_instance().
+ */
+function rovas_civic_update_7025() {
+  $fixed = FALSE;
+  if (module_exists('email') && function_exists('field_read_instance')) {
+    $instance = field_read_instance('node', 'field_charity_contact_email', 'charity_organization');
+    if (!empty($instance['widget']['type']) && $instance['widget']['type'] === 'email_default') {
+      $instance['widget']['type'] = 'email_textfield';
+      field_update_instance($instance);
+      $fixed = TRUE;
+    }
+  }
+  return $fixed
+    ? t('Repaired field_charity_contact_email widget to email_textfield.')
+    : t('field_charity_contact_email widget already correct or field absent; nothing to repair.');
+}
