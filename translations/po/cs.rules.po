@@ -124,7 +124,7 @@ msgstr ""
 #: rules:rules_config:rules_add_merit_allocation_for_public_project:8:message
 msgctxt "rules_config:rules_add_merit_allocation_for_public_project:8:message"
 msgid "Success! You can start working on this product."
-msgstr ""
+msgstr "Úspěch! Můžete začít pracovat na tomto projektu."
 
 #: rules:rules_config:rules_adjust_fx_project_hourly_rate:label
 msgctxt "rules_config:rules_adjust_fx_project_hourly_rate:label"
