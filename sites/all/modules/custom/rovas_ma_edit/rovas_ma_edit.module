@@ -1,5 +1,79 @@
 <?php
 
+/**
+ * Implements hook_node_access().
+ *
+ * Align merit-allocation delete/update with the project_coworkers view: grant
+ * by project ownership (and open-project self-remove), not MA node authorship.
+ * Ownership transfer only changes project.uid; without this, the new owner sees
+ * delete/edit links for other shareholders' MAs but hits 403 on node/%/delete.
+ */
+function rovas_ma_edit_node_access($node, $op, $account) {
+	if (!is_object($node) || empty($node->type)) {
+		return NODE_ACCESS_IGNORE;
+	}
+	$types = array('co_worker_merit_allocation', 'project_merit_allocation');
+	if (!in_array($node->type, $types, TRUE)) {
+		return NODE_ACCESS_IGNORE;
+	}
+	if ($op !== 'delete' && $op !== 'update') {
+		return NODE_ACCESS_IGNORE;
+	}
+	if (empty($account->uid)) {
+		return NODE_ACCESS_IGNORE;
+	}
+
+	$project_items = field_get_items('node', $node, 'field_project');
+	if (empty($project_items[0]['target_id'])) {
+		return NODE_ACCESS_IGNORE;
+	}
+	$project = node_load($project_items[0]['target_id']);
+	if (!$project || $project->type !== 'project') {
+		return NODE_ACCESS_IGNORE;
+	}
+
+	$status_items = field_get_items('node', $project, 'field_status');
+	$status = isset($status_items[0]['value']) ? (int) $status_items[0]['value'] : 0;
+	// Closed / sold / expired: no custom grants (matches the view).
+	if ($status >= 2) {
+		return NODE_ACCESS_IGNORE;
+	}
+
+	$part_items = field_get_items('node', $project, 'field_participation');
+	$participation = isset($part_items[0]['value']) ? (int) $part_items[0]['value'] : 0;
+	$is_owner = ((int) $account->uid === (int) $project->uid);
+
+	$coworker_uid = 0;
+	$coworker_items = field_get_items('node', $node, 'field_coworker');
+	if (!empty($coworker_items[0]['target_id'])) {
+		$coworker_uid = (int) $coworker_items[0]['target_id'];
+	}
+
+	if ($op === 'update') {
+		// Private projects: owner may edit any shareholder MA.
+		if ($participation === 0 && $is_owner) {
+			return NODE_ACCESS_ALLOW;
+		}
+		return NODE_ACCESS_IGNORE;
+	}
+
+	// delete — private: owner may remove others' shares (not their own row).
+	if ($participation === 0) {
+		if ($is_owner && (int) $account->uid !== $coworker_uid) {
+			return NODE_ACCESS_ALLOW;
+		}
+		return NODE_ACCESS_IGNORE;
+	}
+
+	// Open: owner may remove other shareholders; non-owner coworker may remove self.
+	if ($is_owner && (int) $account->uid !== $coworker_uid) {
+		return NODE_ACCESS_ALLOW;
+	}
+	if (!$is_owner && $coworker_uid && (int) $account->uid === $coworker_uid) {
+		return NODE_ACCESS_ALLOW;
+	}
+	return NODE_ACCESS_IGNORE;
+}
 
 /**
  * Implements the hook_form_FORM_ID_alter().
