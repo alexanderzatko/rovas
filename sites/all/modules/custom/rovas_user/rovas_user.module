@@ -95,11 +95,12 @@ function rovas_user_show_trusted_banner($account) {
   }
   $profile = url('user/' . (int) $account->uid . '/edit');
   $dismiss = url('dismiss_trusted_notify');
-  $message = '<p>' . t('Congratulations, you are now a <strong>Trusted user</strong>!') . '</p>';
-  $message .= t('You can have your work reports immediately approved and can also stop verifying other users\' reports. You can set these benefits in your <a href="@profile">account settings</a>.', array(
+  // ~0.5 line gaps between headline, body, and dismiss link.
+  $message = '<div style="margin-bottom:0.5em">' . t('Congratulations, you are now a <strong>Trusted user</strong>!') . '</div>';
+  $message .= '<div style="margin-bottom:0.5em">' . t('You can have your work reports immediately approved and can also stop verifying other users\' reports. You can set these benefits in your <a href="@profile">account settings</a>.', array(
     '@profile' => $profile,
-  ));
-  $message .= '<br>' . l(t('Do not show this message again'), $dismiss);
+  )) . '</div>';
+  $message .= l(t('Do not show this message again'), $dismiss);
   drupal_set_message($message, 'status', FALSE);
 }
 
@@ -573,7 +574,8 @@ function rovas_user_attach_trusted_settings_fieldset(&$form, &$form_state, $acco
     '@score' => ROVAS_USER_TRUSTED_COMPLIANCE_MIN,
     '@merits' => ROVAS_USER_TRUSTED_PROJECT_MERITS_MIN,
   ));
-  $help .= '<br>';
+  // ~0.5 line gap before the dispute note.
+  $help .= '<div style="height:0.5em"></div>';
   $help .= t('Even when your reports are immediately approved, other users can still challenge them by filing a dispute. Losing a dispute can revoke Trusted user status.');
 
   $form['trusted_user_settings'] = array(
