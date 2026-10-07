@@ -236,3 +236,71 @@ msgstr "Siamo un’organizzazione nonprofit slovacca, il cui obiettivo è aument
 #: sites/all/modules/custom/rovas_civic/rovas_civic.charity.inc
 msgid "Rovas: Your organization was added — @title"
 msgstr "Rovas: La vostra organizzazione è stata aggiunta — @title"
+
+#: sites/all/modules/custom/rovas_user/rovas_user.module
+msgid "Trusted user settings"
+msgstr "Impostazioni utente affidabile"
+
+#: sites/all/modules/custom/rovas_user/rovas_user.module
+msgid "Trusted users have demonstrated they are a real individual — through verification efforts, Merits earned from rewards to a project they own, or (in the future) government ID verification."
+msgstr "Gli utenti affidabili hanno dimostrato di essere persone reali — attraverso gli sforzi di verifica, i Merit guadagnati dalle ricompense di un progetto di cui sono proprietari, o (in futuro) la verifica con documento d’identità."
+
+#: sites/all/modules/custom/rovas_user/rovas_user.module
+msgid "You qualify when your compliance score is at least @score, or when you own a project and have earned more than @merits Merits from rewards to that project (owning shares alone is not enough)."
+msgstr "Vi qualificate quando il punteggio di conformità è almeno @score, oppure quando siete proprietari di un progetto e avete guadagnato più di @merits Merit dalle ricompense di quel progetto (possedere quote non basta)."
+
+#: sites/all/modules/custom/rovas_user/rovas_user.module
+msgid "Losing a dispute sets your compliance score to 0 and applies the merit penalty described in the <a href=\"@url\">dispute rules</a>. Trusted status is then re-checked and revoked if you no longer meet the eligibility conditions."
+msgstr "Perdere una controversia imposta il punteggio di conformità a 0 e applica la sanzione Merit descritta nelle <a href=\"@url\">regole delle controversie</a>. Lo stato di utente affidabile viene poi rivalutato e revocato se non soddisfate più le condizioni."
+
+#: sites/all/modules/custom/rovas_user/rovas_user.module
+msgid "Even when your reports are immediately approved, other users can still challenge them by filing a dispute."
+msgstr "Anche quando i vostri rapporti sono approvati immediatamente, altri utenti possono comunque contestarli presentando una controversia."
+
+#: sites/all/modules/custom/rovas_user/rovas_user.module
+msgid "I want my reports immediately approved"
+msgstr "Voglio che i miei rapporti siano approvati immediatamente"
+
+#: sites/all/modules/custom/rovas_user/rovas_user.module
+msgid "Verification requests"
+msgstr "Richieste di verifica"
+
+#: sites/all/modules/custom/rovas_user/rovas_user.module
+msgid "I am willing to keep verifying any work reports as needed"
+msgstr "Sono disposto a continuare a verificare i rapporti di lavoro secondo necessità"
+
+#: sites/all/modules/custom/rovas_user/rovas_user.module
+msgid "I opt out of receiving the mandatory verification requests"
+msgstr "Scelgo di non ricevere le richieste di verifica obbligatorie"
+
+#: sites/all/modules/custom/rovas_user/rovas_user.module
+msgid "I do not want to receive any verification requests"
+msgstr "Non voglio ricevere alcuna richiesta di verifica"
+
+#: sites/all/modules/custom/rovas_user/rovas_user.module
+msgid "You will be receiving verification requests from your domain of expertise, and occasionally also requests for reports out of your domain of expertise."
+msgstr "Riceverete richieste di verifica dal vostro ambito di competenza e, occasionalmente, anche richieste per rapporti fuori dal vostro ambito."
+
+#: sites/all/modules/custom/rovas_user/rovas_user.module
+msgid "You might occasionally receive requests for reports out of your domain of expertise that you can refuse to verify without penalties."
+msgstr "Potreste occasionalmente ricevere richieste per rapporti fuori dal vostro ambito di competenza che potete rifiutare di verificare senza sanzioni."
+
+#: sites/all/modules/custom/rovas_user/rovas_user.module
+msgid "You will not receive any verification requests."
+msgstr "Non riceverete alcuna richiesta di verifica."
+
+#: sites/all/modules/custom/rovas_user/rovas_user.module
+msgid "Congratulations, you are a <strong>Trusted user</strong> now. You can have your work reports immediately approved and can stop verifications of other user reports. You can claim these benefits in your <a href=\"@profile\">account settings</a>."
+msgstr "Congratulazioni, ora siete un <strong>utente affidabile</strong>. Potete far approvare immediatamente i vostri rapporti di lavoro e smettere di verificare i rapporti di altri utenti. Potete attivare questi vantaggi nelle <a href=\"@profile\">impostazioni dell’account</a>."
+
+#: sites/all/modules/custom/rovas_user/rovas_user.module
+msgid "Dismiss"
+msgstr "Chiudi"
+
+#: sites/all/modules/custom/rovas_user/rovas_user.module
+msgid "You are now a Trusted user. You can have your work reports automatically approved and can limit or stop verification requests in your <a href=\"@profile\">account settings</a>."
+msgstr "Siete un utente affidabile. Potete far approvare automaticamente i vostri rapporti di lavoro e limitare o interrompere le richieste di verifica nelle <a href=\"@profile\">impostazioni dell’account</a>."
+
+#: sites/all/modules/custom/rovas_user/rovas_user.module
+msgid "Dismiss trusted notification"
+msgstr "Chiudi notifica utente affidabile"

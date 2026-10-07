@@ -2444,3 +2444,33 @@ msgctxt "field_charity_donate_url:project:description"
 msgid "Optional absolute URL. Overrides the organization’s default donate URL."
 msgstr "Voliteľná absolútna URL. Prepíše predvolenú URL na darovanie organizácie."
 
+
+#: field:field_trusted_user:user:label
+msgctxt "field_trusted_user:user:label"
+msgid "Trusted user"
+msgstr "Dôveryhodný používateľ"
+
+#: field:field_trusted_auto_approve:user:label
+msgctxt "field_trusted_auto_approve:user:label"
+msgid "I want my reports immediately approved"
+msgstr "Chcem, aby boli moje správy okamžite schválené"
+
+#: field:field_trusted_verify_level:user:label
+msgctxt "field_trusted_verify_level:user:label"
+msgid "Trusted verification preference"
+msgstr "Preferencia overovania pre dôveryhodného používateľa"
+
+#: field:field_trusted_notify:user:label
+msgctxt "field_trusted_notify:user:label"
+msgid "Trusted status notification"
+msgstr "Upozornenie o dôveryhodnom stave"
+
+#: field:field_auto_approved:work_report:label
+msgctxt "field_auto_approved:work_report:label"
+msgid "Auto-approved"
+msgstr "Automaticky schválené"
+
+#: field:field_auto_approved:work_report:description
+msgctxt "field_auto_approved:work_report:description"
+msgid "Set when a trusted user’s preferences caused immediate approval without peer verification."
+msgstr "Nastavené, keď preferencie dôveryhodného používateľa spôsobili okamžité schválenie bez peer overenia."

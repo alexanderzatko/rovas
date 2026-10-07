@@ -205,7 +205,7 @@ msgid "You will not receive any verification requests."
 msgstr ""
 
 #: sites/all/modules/custom/rovas_user/rovas_user.module
-msgid "You have reached Trusted user status. Go to your <a href=\"@profile\">account settings</a> to choose whether your work reports are immediately approved and how you receive verification requests."
+msgid "Congratulations, you are a <strong>Trusted user</strong> now. You can have your work reports immediately approved and can stop verifications of other user reports. You can claim these benefits in your <a href=\"@profile\">account settings</a>."
 msgstr ""
 
 #: sites/all/modules/custom/rovas_user/rovas_user.module

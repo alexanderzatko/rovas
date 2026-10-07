@@ -2398,3 +2398,33 @@ msgstr "URL per donare (sostituzione per il progetto)"
 msgctxt "field_charity_donate_url:project:description"
 msgid "Optional absolute URL. Overrides the organization’s default donate URL."
 msgstr "URL assoluto facoltativo. Sostituisce l’URL predefinito dell’organizzazione per le donazioni."
+
+#: field:field_trusted_user:user:label
+msgctxt "field_trusted_user:user:label"
+msgid "Trusted user"
+msgstr "Utente affidabile"
+
+#: field:field_trusted_auto_approve:user:label
+msgctxt "field_trusted_auto_approve:user:label"
+msgid "I want my reports immediately approved"
+msgstr "Voglio che i miei rapporti siano approvati immediatamente"
+
+#: field:field_trusted_verify_level:user:label
+msgctxt "field_trusted_verify_level:user:label"
+msgid "Trusted verification preference"
+msgstr "Preferenza di verifica per utente affidabile"
+
+#: field:field_trusted_notify:user:label
+msgctxt "field_trusted_notify:user:label"
+msgid "Trusted status notification"
+msgstr "Notifica stato utente affidabile"
+
+#: field:field_auto_approved:work_report:label
+msgctxt "field_auto_approved:work_report:label"
+msgid "Auto-approved"
+msgstr "Approvato automaticamente"
+
+#: field:field_auto_approved:work_report:description
+msgctxt "field_auto_approved:work_report:description"
+msgid "Set when a trusted user’s preferences caused immediate approval without peer verification."
+msgstr "Impostato quando le preferenze di un utente affidabile hanno causato l’approvazione immediata senza verifica tra pari."
