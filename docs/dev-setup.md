@@ -74,3 +74,8 @@ drush php-eval "print get_class(drupal_mail_system('rules', 'mail'));"
 
 Prod should keep the normal **Mime Mail** / server MTA configuration — do not
 copy `settings.local.php` mail overrides to prod.
+
+## Production cron
+
+Prod cron is Elysia + niced Drush (not HTTP `cron.php`). See
+[`ops-cron.md`](ops-cron.md).
