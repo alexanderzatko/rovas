@@ -256,6 +256,12 @@ pre div.view-footer {
     display: none;
 }
 
+/* Trusted user status banner: space around body (inline styles are stripped). */
+.messages.status .rovas-trusted-banner-body {
+    margin-top: 4px;
+    margin-bottom: 4px;
+}
+
 /*simple modal overlay*/
 
 div.messages.simple-overlay > .message-inner {
