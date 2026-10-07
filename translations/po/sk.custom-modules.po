@@ -288,8 +288,8 @@ msgid "Trusted user — settings"
 msgstr "Dôveryhodný používateľ — nastavenia"
 
 #: sites/all/modules/custom/rovas_user/rovas_user.module
-msgid "A user can become trusted if their compliance score is at least @score, or if they own a project and have earned more than @merits Merits from rewards to that project (owning shares alone is not enough)."
-msgstr "Dôveryhodným používateľom sa môže stať ten, kto má skóre súladu aspoň @score, alebo ak vlastní projekt a z odmien tohto projektu získal viac ako @merits Meritov (samotné vlastníctvo podielov nestačí)."
+msgid "A user can become trusted if their <a href=\"@glossary\">compliance score</a> is at least @score, or if they own a project and have earned more than @merits Merits from rewards to that project (owning shares alone is not enough)."
+msgstr "Dôveryhodným používateľom sa môže stať ten, kto má <a href=\"@glossary\">skóre súladu</a> aspoň @score, alebo ak vlastní projekt a z odmien tohto projektu získal viac ako @merits Meritov (samotné vlastníctvo podielov nestačí)."
 
 #: sites/all/modules/custom/rovas_user/rovas_user.module
 msgid "Even when your reports are immediately approved, other users can still challenge them by filing a dispute. Losing a dispute can revoke Trusted user status."

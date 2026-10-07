@@ -570,7 +570,8 @@ function rovas_user_attach_trusted_settings_fieldset(&$form, &$form_state, $acco
   $auto = rovas_user_field_int($account, 'field_trusted_auto_approve');
   $level = rovas_user_trusted_verify_level($account);
 
-  $help = t('A user can become trusted if their compliance score is at least @score, or if they own a project and have earned more than @merits Merits from rewards to that project (owning shares alone is not enough).', array(
+  $help = t('A user can become trusted if their <a href="@glossary">compliance score</a> is at least @score, or if they own a project and have earned more than @merits Merits from rewards to that project (owning shares alone is not enough).', array(
+    '@glossary' => url('glossary', array('fragment' => 'complianceScore')),
     '@score' => ROVAS_USER_TRUSTED_COMPLIANCE_MIN,
     '@merits' => ROVAS_USER_TRUSTED_PROJECT_MERITS_MIN,
   ));

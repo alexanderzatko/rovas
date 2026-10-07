@@ -242,8 +242,8 @@ msgid "Trusted user — settings"
 msgstr "Utente affidabile — impostazioni"
 
 #: sites/all/modules/custom/rovas_user/rovas_user.module
-msgid "A user can become trusted if their compliance score is at least @score, or if they own a project and have earned more than @merits Merits from rewards to that project (owning shares alone is not enough)."
-msgstr "Un utente può diventare affidabile se il punteggio di conformità è almeno @score, oppure se è proprietario di un progetto e ha guadagnato più di @merits Merit dalle ricompense di quel progetto (possedere quote non basta)."
+msgid "A user can become trusted if their <a href=\"@glossary\">compliance score</a> is at least @score, or if they own a project and have earned more than @merits Merits from rewards to that project (owning shares alone is not enough)."
+msgstr "Un utente può diventare affidabile se il <a href=\"@glossary\">punteggio di conformità</a> è almeno @score, oppure se è proprietario di un progetto e ha guadagnato più di @merits Merit dalle ricompense di quel progetto (possedere quote non basta)."
 
 #: sites/all/modules/custom/rovas_user/rovas_user.module
 msgid "Even when your reports are immediately approved, other users can still challenge them by filing a dispute. Losing a dispute can revoke Trusted user status."
