@@ -95,9 +95,9 @@ function rovas_user_show_trusted_banner($account) {
   }
   $profile = url('user/' . (int) $account->uid . '/edit');
   $dismiss = url('dismiss_trusted_notify');
-  // ~0.5 line gaps between headline, body, and dismiss link.
-  $message = '<div style="margin-bottom:0.5em">' . t('Congratulations, you are now a <strong>Trusted user</strong>!') . '</div>';
-  $message .= '<div style="margin-bottom:0.5em">' . t('You can have your work reports immediately approved and can also stop verifying other users\' reports. You can set these benefits in your <a href="@profile">account settings</a>.', array(
+  // 4px gaps before/after the body between headline and dismiss link.
+  $message = '<div>' . t('Congratulations, you are now a <strong>Trusted user</strong>!') . '</div>';
+  $message .= '<div style="margin-top:4px;margin-bottom:4px">' . t('You can have your work reports immediately approved and can also stop verifying other users\' reports. You can set these benefits in your <a href="@profile">account settings</a>.', array(
     '@profile' => $profile,
   )) . '</div>';
   $message .= l(t('Do not show this message again'), $dismiss);
