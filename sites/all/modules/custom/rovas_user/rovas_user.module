@@ -386,6 +386,13 @@ function rovas_user_auto_approve_work_report($node) {
   $node->field_verification_status[LANGUAGE_NONE][0]['value'] = 1;
   $node->field_chrons_to_grant[LANGUAGE_NONE][0]['value'] = $chrons;
   $node->field_auto_approved[LANGUAGE_NONE][0]['value'] = 1;
+  // Called from rules_work_report_created during node_insert: the {node} row is
+  // already written but $node->is_new is still TRUE (cleared only after insert
+  // hooks return). Without unsetting it, node_save() INSERTs again → duplicate
+  // PRIMARY key.
+  if (!empty($node->nid)) {
+    unset($node->is_new);
+  }
   node_save($node);
 
   if (function_exists('rules_invoke_component') && $chrons != 0) {
