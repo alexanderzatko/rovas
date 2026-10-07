@@ -95,10 +95,11 @@ function rovas_user_show_trusted_banner($account) {
   }
   $profile = url('user/' . (int) $account->uid . '/edit');
   $dismiss = url('dismiss_trusted_notify');
-  $message = t('Congratulations, you are a <strong>Trusted user</strong> now. You can have your work reports immediately approved and can stop verifications of other user reports. You can claim these benefits in your <a href="@profile">account settings</a>.', array(
+  $message = '<p>' . t('Congratulations, you are now a <strong>Trusted user</strong>!') . '</p>';
+  $message .= t('You can have your work reports immediately approved and can also stop verifying other users\' reports. You can set these benefits in your <a href="@profile">account settings</a>.', array(
     '@profile' => $profile,
   ));
-  $message .= ' ' . l(t('Dismiss'), $dismiss);
+  $message .= '<br>' . l(t('Do not show this message again'), $dismiss);
   drupal_set_message($message, 'status', FALSE);
 }
 
@@ -568,23 +569,16 @@ function rovas_user_attach_trusted_settings_fieldset(&$form, &$form_state, $acco
   $auto = rovas_user_field_int($account, 'field_trusted_auto_approve');
   $level = rovas_user_trusted_verify_level($account);
 
-  $help = '';
-  $help .= t('Trusted users have demonstrated they are a real individual — through verification efforts, Merits earned from rewards to a project they own, or (in the future) government ID verification.');
-  $help .= '<br><br>';
-  $help .= t('You qualify when your compliance score is at least @score, or when you own a project and have earned more than @merits Merits from rewards to that project (owning shares alone is not enough).', array(
+  $help = t('A user can become trusted if their compliance score is at least @score, or if they own a project and have earned more than @merits Merits from rewards to that project (owning shares alone is not enough).', array(
     '@score' => ROVAS_USER_TRUSTED_COMPLIANCE_MIN,
     '@merits' => ROVAS_USER_TRUSTED_PROJECT_MERITS_MIN,
   ));
-  $help .= '<br><br>';
-  $help .= t('Losing a dispute sets your compliance score to 0 and applies the merit penalty described in the <a href="@url">dispute rules</a>. Trusted status is then re-checked and revoked if you no longer meet the eligibility conditions.', array(
-    '@url' => url('disputes'),
-  ));
-  $help .= '<br><br>';
-  $help .= t('Even when your reports are immediately approved, other users can still challenge them by filing a dispute.');
+  $help .= '<br>';
+  $help .= t('Even when your reports are immediately approved, other users can still challenge them by filing a dispute. Losing a dispute can revoke Trusted user status.');
 
   $form['trusted_user_settings'] = array(
     '#type' => 'fieldset',
-    '#title' => t('Trusted user settings'),
+    '#title' => t('Trusted user — settings'),
     '#description' => $help,
     '#collapsible' => FALSE,
     '#tree' => TRUE,

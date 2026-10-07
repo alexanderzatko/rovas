@@ -258,24 +258,16 @@ msgid "Rovas: Your organization was added — @title"
 msgstr "Rovas: Vaše organizace byla přidána — @title"
 
 #: sites/all/modules/custom/rovas_user/rovas_user.module
-msgid "Trusted user settings"
-msgstr "Nastavení důvěryhodného uživatele"
+msgid "Trusted user — settings"
+msgstr "Důvěryhodný uživatel — nastavení"
 
 #: sites/all/modules/custom/rovas_user/rovas_user.module
-msgid "Trusted users have demonstrated they are a real individual — through verification efforts, Merits earned from rewards to a project they own, or (in the future) government ID verification."
-msgstr "Důvěryhodní uživatelé prokázali, že jsou skutečnou osobou — ověřováním zpráv, Merity získanými z odměn projektu, který vlastní, nebo (v budoucnu) ověřením občanským průkazem."
+msgid "A user can become trusted if their compliance score is at least @score, or if they own a project and have earned more than @merits Merits from rewards to that project (owning shares alone is not enough)."
+msgstr "Důvěryhodným uživatelem se může stát ten, kdo má skóre souladu alespoň @score, nebo pokud vlastní projekt a z odměn tohoto projektu získal více než @merits Meritů (samotné vlastnictví podílů nestačí)."
 
 #: sites/all/modules/custom/rovas_user/rovas_user.module
-msgid "You qualify when your compliance score is at least @score, or when you own a project and have earned more than @merits Merits from rewards to that project (owning shares alone is not enough)."
-msgstr "Kvalifikujete se, pokud máte skóre souladu alespoň @score, nebo pokud vlastníte projekt a z odměn tohoto projektu jste získali více než @merits Meritů (samotné vlastnictví podílů nestačí)."
-
-#: sites/all/modules/custom/rovas_user/rovas_user.module
-msgid "Losing a dispute sets your compliance score to 0 and applies the merit penalty described in the <a href=\"@url\">dispute rules</a>. Trusted status is then re-checked and revoked if you no longer meet the eligibility conditions."
-msgstr "Prohra ve sporu nastaví vaše skóre souladu na 0 a uplatní sankci Meritů podle <a href=\"@url\">pravidel sporů</a>. Stav důvěryhodného uživatele se poté znovu posoudí a odejme, pokud již nesplňujete podmínky."
-
-#: sites/all/modules/custom/rovas_user/rovas_user.module
-msgid "Even when your reports are immediately approved, other users can still challenge them by filing a dispute."
-msgstr "I když jsou vaše zprávy okamžitě schváleny, jiní uživatelé je mohou stále napadnout podáním sporu."
+msgid "Even when your reports are immediately approved, other users can still challenge them by filing a dispute. Losing a dispute can revoke Trusted user status."
+msgstr "I když jsou vaše zprávy okamžitě schváleny, jiní uživatelé je mohou stále napadnout podáním sporu. Prohra ve sporu může status důvěryhodného uživatele odejmout."
 
 #: sites/all/modules/custom/rovas_user/rovas_user.module
 msgid "I want my reports immediately approved"
@@ -310,12 +302,16 @@ msgid "You will not receive any verification requests."
 msgstr "Nebudete dostávat žádné žádosti o ověření."
 
 #: sites/all/modules/custom/rovas_user/rovas_user.module
-msgid "Congratulations, you are a <strong>Trusted user</strong> now. You can have your work reports immediately approved and can stop verifications of other user reports. You can claim these benefits in your <a href=\"@profile\">account settings</a>."
-msgstr "Blahopřejeme, nyní jste <strong>důvěryhodný uživatel</strong>. Můžete mít pracovní zprávy okamžitě schválené a můžete přestat ověřovat zprávy jiných uživatelů. Tyto výhody si můžete nastavit v <a href=\"@profile\">nastavení účtu</a>."
+msgid "Congratulations, you are now a <strong>Trusted user</strong>!"
+msgstr "Blahopřejeme, stali jste se <strong>důvěryhodným uživatelem</strong>!"
 
 #: sites/all/modules/custom/rovas_user/rovas_user.module
-msgid "Dismiss"
-msgstr "Zavřít"
+msgid "You can have your work reports immediately approved and can also stop verifying other users' reports. You can set these benefits in your <a href=\"@profile\">account settings</a>."
+msgstr "Vaše pracovní výkazy můžete mít okamžitě schválené a můžete také přestat ověřovat zprávy jiných uživatelů. Tyto výhody si můžete nastavit v <a href=\"@profile\">nastavení účtu</a>."
+
+#: sites/all/modules/custom/rovas_user/rovas_user.module
+msgid "Do not show this message again"
+msgstr "Tuto zprávu již nezobrazovat"
 
 #: sites/all/modules/custom/rovas_user/rovas_user.module
 msgid "You are now a Trusted user. You can have your work reports automatically approved and can limit or stop verification requests in your <a href=\"@profile\">account settings</a>."

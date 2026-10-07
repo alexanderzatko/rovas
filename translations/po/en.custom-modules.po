@@ -153,23 +153,15 @@ msgstr ""
 
 
 #: sites/all/modules/custom/rovas_user/rovas_user.module
-msgid "Trusted user settings"
+msgid "Trusted user — settings"
 msgstr ""
 
 #: sites/all/modules/custom/rovas_user/rovas_user.module
-msgid "Trusted users have demonstrated they are a real individual — through verification efforts, Merits earned from rewards to a project they own, or (in the future) government ID verification."
+msgid "A user can become trusted if their compliance score is at least @score, or if they own a project and have earned more than @merits Merits from rewards to that project (owning shares alone is not enough)."
 msgstr ""
 
 #: sites/all/modules/custom/rovas_user/rovas_user.module
-msgid "You qualify when your compliance score is at least @score, or when you own a project and have earned more than @merits Merits from rewards to that project (owning shares alone is not enough)."
-msgstr ""
-
-#: sites/all/modules/custom/rovas_user/rovas_user.module
-msgid "Losing a dispute sets your compliance score to 0 and applies the merit penalty described in the <a href=\"@url\">dispute rules</a>. Trusted status is then re-checked and revoked if you no longer meet the eligibility conditions."
-msgstr ""
-
-#: sites/all/modules/custom/rovas_user/rovas_user.module
-msgid "Even when your reports are immediately approved, other users can still challenge them by filing a dispute."
+msgid "Even when your reports are immediately approved, other users can still challenge them by filing a dispute. Losing a dispute can revoke Trusted user status."
 msgstr ""
 
 #: sites/all/modules/custom/rovas_user/rovas_user.module
@@ -205,11 +197,15 @@ msgid "You will not receive any verification requests."
 msgstr ""
 
 #: sites/all/modules/custom/rovas_user/rovas_user.module
-msgid "Congratulations, you are a <strong>Trusted user</strong> now. You can have your work reports immediately approved and can stop verifications of other user reports. You can claim these benefits in your <a href=\"@profile\">account settings</a>."
+msgid "Congratulations, you are now a <strong>Trusted user</strong>!"
 msgstr ""
 
 #: sites/all/modules/custom/rovas_user/rovas_user.module
-msgid "Dismiss"
+msgid "You can have your work reports immediately approved and can also stop verifying other users' reports. You can set these benefits in your <a href=\"@profile\">account settings</a>."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_user/rovas_user.module
+msgid "Do not show this message again"
 msgstr ""
 
 #: sites/all/modules/custom/rovas_user/rovas_user.module
