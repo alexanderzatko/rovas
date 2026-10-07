@@ -1,9 +1,12 @@
-{ "rules_process_outstanding_verifications" : {
-    "LABEL" : "process outstanding verifications",
-    "PLUGIN" : "rule",
-    "OWNER" : "rules",
-    "TAGS" : [ "verification" ],
-    "REQUIRES" : [
+{
+  "rules_process_outstanding_verifications": {
+    "LABEL": "process outstanding verifications",
+    "PLUGIN": "rule",
+    "OWNER": "rules",
+    "TAGS": [
+      "verification"
+    ],
+    "REQUIRES": [
       "views_bulk_operations",
       "rules_conditional",
       "userpoints_rules",
@@ -11,86 +14,194 @@
       "php",
       "rules_scheduler"
     ],
-    "DO" : [
-      { "views_bulk_operations_action_load_list" : {
-          "USING" : { "view" : "find_delinquent_verify_slots|default" },
-          "PROVIDE" : { "entity_list" : { "delinquent_slots" : "delinquent slots" } }
+    "DO": [
+      {
+        "views_bulk_operations_action_load_list": {
+          "USING": {
+            "view": "find_delinquent_verify_slots|default"
+          },
+          "PROVIDE": {
+            "entity_list": {
+              "delinquent_slots": "delinquent slots"
+            }
+          }
         }
       },
-      { "LOOP" : {
-          "USING" : { "list" : [ "delinquent-slots" ] },
-          "ITEM" : { "this_delinquent" : "this delinquent" },
-          "DO" : [
-            { "CONDITIONAL" : [
+      {
+        "LOOP": {
+          "USING": {
+            "list": [
+              "delinquent-slots"
+            ]
+          },
+          "ITEM": {
+            "this_delinquent": "this delinquent"
+          },
+          "DO": [
+            {
+              "CONDITIONAL": [
                 {
-                  "IF" : { "entity_is_of_bundle" : {
-                      "entity" : [ "this-delinquent" ],
-                      "type" : "node",
-                      "bundle" : { "value" : { "verification_slot" : "verification_slot" } }
+                  "IF": {
+                    "entity_is_of_bundle": {
+                      "entity": [
+                        "this-delinquent"
+                      ],
+                      "type": "node",
+                      "bundle": {
+                        "value": {
+                          "verification_slot": "verification_slot"
+                        }
+                      }
                     }
                   },
-                  "DO" : [
-                    { "userpoints_rules_get_current_points" : {
-                        "USING" : { "user" : [ "this-delinquent:field-slip-owner" ], "tid" : "all" },
-                        "PROVIDE" : { "loaded_points" : { "delinquent_merits" : "delinquent merits" } }
-                      }
-                    },
-                    { "variable_add" : {
-                        "USING" : {
-                          "type" : "node",
-                          "value" : [ "this-delinquent:field-report-to-verify" ]
+                  "DO": [
+                    {
+                      "userpoints_rules_get_current_points": {
+                        "USING": {
+                          "user": [
+                            "this-delinquent:field-slip-owner"
+                          ],
+                          "tid": "all"
                         },
-                        "PROVIDE" : { "variable_added" : { "report_object" : "report object" } }
+                        "PROVIDE": {
+                          "loaded_points": {
+                            "delinquent_merits": "delinquent merits"
+                          }
+                        }
                       }
                     },
-                    { "CONDITIONAL" : [
+                    {
+                      "variable_add": {
+                        "USING": {
+                          "type": "node",
+                          "value": [
+                            "this-delinquent:field-report-to-verify"
+                          ]
+                        },
+                        "PROVIDE": {
+                          "variable_added": {
+                            "report_object": "report object"
+                          }
+                        }
+                      }
+                    },
+                    {
+                      "CONDITIONAL": [
                         {
-                          "IF" : { "data_is" : { "data" : [ "delinquent-merits" ], "op" : "\u003C", "value" : "0" } },
-                          "DO" : [
-                            { "entity_delete" : { "data" : [ "this-delinquent" ] } },
-                            { "data_set" : {
-                                "data" : [ "this-delinquent:field-slip-owner:field-verification-score" ],
-                                "value" : "0"
+                          "IF": {
+                            "data_is": {
+                              "data": [
+                                "delinquent-merits"
+                              ],
+                              "op": "<",
+                              "value": "0"
+                            }
+                          },
+                          "DO": [
+                            {
+                              "entity_delete": {
+                                "data": [
+                                  "this-delinquent"
+                                ]
+                              }
+                            },
+                            {
+                              "data_set": {
+                                "data": [
+                                  "this-delinquent:field-slip-owner:field-verification-score"
+                                ],
+                                "value": "0"
                               }
                             }
                           ]
                         },
-                        { "ELSE" : [
-                            { "CONDITIONAL" : [
+                        {
+                          "ELSE": [
+                            {
+                              "CONDITIONAL": [
                                 {
-                                  "IF" : { "data_is" : { "data" : [ "this-delinquent:field-voluntary" ], "value" : "1" } },
-                                  "DO" : [
-                                    { "data_set" : { "data" : [ "this-delinquent:field-declined" ], "value" : "1" } }
+                                  "IF": {
+                                    "data_is": {
+                                      "data": [
+                                        "this-delinquent:field-voluntary"
+                                      ],
+                                      "value": "1"
+                                    }
+                                  },
+                                  "DO": [
+                                    {
+                                      "data_set": {
+                                        "data": [
+                                          "this-delinquent:field-declined"
+                                        ],
+                                        "value": "1"
+                                      }
+                                    }
                                   ]
                                 },
-                                { "ELSE" : [
-                                    { "data_set" : {
-                                        "data" : [ "this-delinquent:field-report-to-verify" ],
-                                        "value" : [ "" ]
+                                {
+                                  "ELSE": [
+                                    {
+                                      "php_eval": {
+                                        "code": "if (function_exists('rovas_user_demote_verify_level_on_miss')) {\r\n  $owner = NULL;\r\n  if (!empty($this_delinquent->field_slip_owner[LANGUAGE_NONE][0]['target_id'])) {\r\n    $owner = user_load($this_delinquent->field_slip_owner[LANGUAGE_NONE][0]['target_id']);\r\n  }\r\n  if ($owner) {\r\n    rovas_user_demote_verify_level_on_miss($owner);\r\n  }\r\n}"
                                       }
                                     },
-                                    { "data_set" : {
-                                        "data" : [ "this-delinquent:field-slip-owner:field-verification-score" ],
-                                        "value" : {
-                                          "select" : "this-delinquent:field-slip-owner:field-verification-score",
-                                          "num_offset" : { "value" : "-1" }
+                                    {
+                                      "data_set": {
+                                        "data": [
+                                          "this-delinquent:field-report-to-verify"
+                                        ],
+                                        "value": [
+                                          ""
+                                        ]
+                                      }
+                                    },
+                                    {
+                                      "data_set": {
+                                        "data": [
+                                          "this-delinquent:field-slip-owner:field-verification-score"
+                                        ],
+                                        "value": {
+                                          "select": "this-delinquent:field-slip-owner:field-verification-score",
+                                          "num_offset": {
+                                            "value": "-1"
+                                          }
                                         }
                                       }
                                     },
-                                    { "entity_save" : { "data" : [ "this-delinquent:field-slip-owner" ], "immediate" : "1" } },
-                                    { "variable_add" : {
-                                        "USING" : {
-                                          "type" : "integer",
-                                          "value" : [ "this-delinquent:field-slip-owner:field-verification-score" ]
-                                        },
-                                        "PROVIDE" : { "variable_added" : { "verif_score" : "verification score" } }
+                                    {
+                                      "entity_save": {
+                                        "data": [
+                                          "this-delinquent:field-slip-owner"
+                                        ],
+                                        "immediate": "1"
                                       }
                                     },
-                                    { "mail" : {
-                                        "to" : [ "this-delinquent:field-slip-owner:mail" ],
-                                        "subject" : "Rovas: failure to verify",
-                                        "message" : "As a result of your failure to verify report \u003Ca href=\u0022\/node\/[report-object:nid]\u0022\u003E[report-object:title]\u003C\/a\u003E within the allowed time, your Rovas rules compliance score was lowered to [verif-score:value]. Please note that users with negative score lose certain privileges, like post work reports and therefore earn chrons.\r\n\r\nThe \u003Ca href=\u0022\/rules\u0022\u003ENEO rules\u003C\/a\u003E require that all users who file their own work reports verify work reports filed by other users, when asked to do so.",
-                                        "language" : [ "this-delinquent:field-slip-owner:language" ]
+                                    {
+                                      "variable_add": {
+                                        "USING": {
+                                          "type": "integer",
+                                          "value": [
+                                            "this-delinquent:field-slip-owner:field-verification-score"
+                                          ]
+                                        },
+                                        "PROVIDE": {
+                                          "variable_added": {
+                                            "verif_score": "verification score"
+                                          }
+                                        }
+                                      }
+                                    },
+                                    {
+                                      "mail": {
+                                        "to": [
+                                          "this-delinquent:field-slip-owner:mail"
+                                        ],
+                                        "subject": "Rovas: failure to verify",
+                                        "message": "As a result of your failure to verify report <a href=\"/node/[report-object:nid]\">[report-object:title]</a> within the allowed time, your Rovas rules compliance score was lowered to [verif-score:value]. Please note that users with negative score lose certain privileges, like post work reports and therefore earn chrons.\r\n\r\nThe <a href=\"/rules\">NEO rules</a> require that all users who file their own work reports verify work reports filed by other users, when asked to do so.",
+                                        "language": [
+                                          "this-delinquent:field-slip-owner:language"
+                                        ]
                                       }
                                     }
                                   ]
@@ -101,30 +212,60 @@
                         }
                       ]
                     },
-                    { "CONDITIONAL" : [
+                    {
+                      "CONDITIONAL": [
                         {
-                          "IF" : { "entity_is_of_bundle" : {
-                              "entity" : [ "report-object" ],
-                              "type" : "node",
-                              "bundle" : { "value" : { "work_report" : "work_report" } }
+                          "IF": {
+                            "entity_is_of_bundle": {
+                              "entity": [
+                                "report-object"
+                              ],
+                              "type": "node",
+                              "bundle": {
+                                "value": {
+                                  "work_report": "work_report"
+                                }
+                              }
                             }
                           },
-                          "DO" : [
-                            { "CONDITIONAL" : [
+                          "DO": [
+                            {
+                              "CONDITIONAL": [
                                 {
-                                  "IF" : { "NOT data_is" : {
-                                      "data" : [ "report-object:field-verification-status" ],
-                                      "op" : "IN",
-                                      "value" : { "value" : { "1" : "1", "2" : "2" } }
+                                  "IF": {
+                                    "NOT data_is": {
+                                      "data": [
+                                        "report-object:field-verification-status"
+                                      ],
+                                      "op": "IN",
+                                      "value": {
+                                        "value": {
+                                          "1": "1",
+                                          "2": "2"
+                                        }
+                                      }
                                     }
                                   },
-                                  "DO" : [
-                                    { "component_rules_find_verifier" : {
-                                        "USING" : { "wr_object" : [ "report-object" ] },
-                                        "PROVIDE" : { "verifier_found" : { "verifier_found" : "verifier found" } }
+                                  "DO": [
+                                    {
+                                      "component_rules_find_verifier": {
+                                        "USING": {
+                                          "wr_object": [
+                                            "report-object"
+                                          ]
+                                        },
+                                        "PROVIDE": {
+                                          "verifier_found": {
+                                            "verifier_found": "verifier found"
+                                          }
+                                        }
                                       }
                                     },
-                                    { "php_eval" : { "code" : "\/*\r\n$entitytype = \u0027node\u0027;\r\n$entityid = $this_delinquent-\u003Enid;\r\ncache_clear_all(\u0027field:$entitytype:$entityid\u0027, \u0027cache_field\u0027);\r\n*\/" } }
+                                    {
+                                      "php_eval": {
+                                        "code": "/*\r\n$entitytype = 'node';\r\n$entityid = $this_delinquent->nid;\r\ncache_clear_all('field:$entitytype:$entityid', 'cache_field');\r\n*/"
+                                      }
+                                    }
                                   ]
                                 }
                               ]
@@ -140,15 +281,17 @@
           ]
         }
       },
-      { "drupal_watchdog" : {
-          "type" : "info",
-          "message" : "The Process Outstanding Verification rule run as scheduled"
+      {
+        "drupal_watchdog": {
+          "type": "info",
+          "message": "The Process Outstanding Verification rule run as scheduled"
         }
       },
-      { "schedule" : {
-          "component" : "rules_process_outstanding_verifications",
-          "date" : "+1 day",
-          "identifier" : "outstanding verifications"
+      {
+        "schedule": {
+          "component": "rules_process_outstanding_verifications",
+          "date": "+1 day",
+          "identifier": "outstanding verifications"
         }
       }
     ]

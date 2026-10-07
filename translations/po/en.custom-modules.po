@@ -151,3 +151,71 @@ msgstr ""
 msgid "Rovas: Your organization was added — @title"
 msgstr ""
 
+
+#: sites/all/modules/custom/rovas_user/rovas_user.module
+msgid "Trusted user settings"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_user/rovas_user.module
+msgid "Trusted users have demonstrated they are a real individual — through verification efforts, Merits earned from rewards to a project they own, or (in the future) government ID verification."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_user/rovas_user.module
+msgid "You qualify when your compliance score is at least @score, or when you own a project and have earned more than @merits Merits from rewards to that project (owning shares alone is not enough)."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_user/rovas_user.module
+msgid "Losing a dispute sets your compliance score to 0 and applies the merit penalty described in the <a href=\"@url\">dispute rules</a>. Trusted status is then re-checked and revoked if you no longer meet the eligibility conditions."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_user/rovas_user.module
+msgid "Even when your reports are immediately approved, other users can still challenge them by filing a dispute."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_user/rovas_user.module
+msgid "I want my reports immediately approved"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_user/rovas_user.module
+msgid "Verification requests"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_user/rovas_user.module
+msgid "I am willing to keep verifying any work reports as needed"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_user/rovas_user.module
+msgid "I opt out of receiving the mandatory verification requests"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_user/rovas_user.module
+msgid "I do not want to receive any verification requests"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_user/rovas_user.module
+msgid "You will be receiving verification requests from your domain of expertise, and occasionally also requests for reports out of your domain of expertise."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_user/rovas_user.module
+msgid "You might occasionally receive requests for reports out of your domain of expertise that you can refuse to verify without penalties."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_user/rovas_user.module
+msgid "You will not receive any verification requests."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_user/rovas_user.module
+msgid "You have reached Trusted user status. Go to your <a href=\"@profile\">account settings</a> to choose whether your work reports are immediately approved and how you receive verification requests."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_user/rovas_user.module
+msgid "Dismiss"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_user/rovas_user.module
+msgid "You are now a Trusted user. You can have your work reports automatically approved and can limit or stop verification requests in your <a href=\"@profile\">account settings</a>."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_user/rovas_user.module
+msgid "Dismiss trusted notification"
+msgstr ""

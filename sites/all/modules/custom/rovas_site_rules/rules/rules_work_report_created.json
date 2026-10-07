@@ -21,27 +21,7 @@
           "hours_delta" : [ "node:field-hours-worked" ]
         }
       },
-      { "component_rules_create_verify_slot" : {
-          "USING" : {
-            "uid" : [ "node:author:uid" ],
-            "report_nid" : "0",
-            "due_date_offset" : "0",
-            "voluntary" : "0"
-          },
-          "PROVIDE" : { "slot_nid" : { "slot_nid" : "slot nid" } }
-        }
-      },
-      { "component_rules_create_verify_slot" : {
-          "USING" : {
-            "uid" : [ "node:author:uid" ],
-            "report_nid" : "0",
-            "due_date_offset" : "0",
-            "voluntary" : "0"
-          },
-          "PROVIDE" : { "slot_nid" : { "slot_nid_2" : "slot nid 2" } }
-        }
-      },
-      { "data_set" : { "data" : [ "node:author:field-suspend-account" ], "value" : "0" } },
+      { "php_eval" : { "code" : "if (function_exists('rovas_user_handle_work_report_publish')) {\r\n  rovas_user_handle_work_report_publish($node);\r\n}\r\nelse {\r\n  rules_invoke_component('rules_create_verify_slot', (int) $node->uid, 0, '0', 0);\r\n  rules_invoke_component('rules_create_verify_slot', (int) $node->uid, 0, '0', 0);\r\n  $author = user_load($node->uid);\r\n  if ($author) {\r\n    $author->field_suspend_account[LANGUAGE_NONE][0]['value'] = 0;\r\n    user_save($author);\r\n  }\r\n}" } },
       { "redirect" : { "url" : "\u003C?php\r\nreturn \u0027\/node\/\u0027. arg(3);\r\n?\u003E" } }
     ]
   }

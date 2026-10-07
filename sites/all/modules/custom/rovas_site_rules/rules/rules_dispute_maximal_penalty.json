@@ -1,129 +1,304 @@
-{ "rules_dispute_maximal_penalty" : {
-    "LABEL" : "Dispute maximal penalty",
-    "PLUGIN" : "rule",
-    "OWNER" : "rules",
-    "TAGS" : [ "dispute" ],
-    "REQUIRES" : [ "rules", "php", "rules_conditional", "userpoints_rules", "rules_i18n" ],
-    "USES VARIABLES" : { "dispute_node" : { "label" : "The affected dispute", "type" : "node" } },
-    "IF" : [
-      { "entity_is_of_bundle" : {
-          "entity" : [ "dispute-node" ],
-          "type" : "node",
-          "bundle" : { "value" : { "dispute" : "dispute" } }
+{
+  "rules_dispute_maximal_penalty": {
+    "LABEL": "Dispute maximal penalty",
+    "PLUGIN": "rule",
+    "OWNER": "rules",
+    "TAGS": [
+      "dispute"
+    ],
+    "REQUIRES": [
+      "rules",
+      "php",
+      "rules_conditional",
+      "userpoints_rules",
+      "rules_i18n"
+    ],
+    "USES VARIABLES": {
+      "dispute_node": {
+        "label": "The affected dispute",
+        "type": "node"
+      }
+    },
+    "IF": [
+      {
+        "entity_is_of_bundle": {
+          "entity": [
+            "dispute-node"
+          ],
+          "type": "node",
+          "bundle": {
+            "value": {
+              "dispute": "dispute"
+            }
+          }
         }
       }
     ],
-    "DO" : [
-      { "variable_add" : {
-          "USING" : {
-            "type" : "integer",
-            "value" : {
-              "select" : "dispute-node:nid",
-              "php" : { "code" : "$sql = \u0022\r\n  SELECT \r\n    SUM(CASE WHEN pos.field_position_value = 1 THEN p.points ELSE 0 END) AS supporters_sum,\r\n    SUM(CASE WHEN pos.field_position_value = 2 THEN p.points ELSE 0 END) AS defenders_sum\r\n  FROM {node} node\r\n  LEFT JOIN {users} users_node ON node.uid = users_node.uid\r\n  LEFT JOIN {field_data_field_dispute} d ON node.nid = d.entity_id AND (d.entity_type = \u0027node\u0027 AND d.deleted = \u00270\u0027)\r\n  LEFT JOIN {field_data_field_position} pos ON node.nid = pos.entity_id AND (pos.entity_type = \u0027node\u0027 AND pos.deleted = \u00270\u0027)\r\n  LEFT JOIN {userpoints_total} p ON node.uid = p.uid\r\n  WHERE d.field_dispute_target_id = :dispute\r\n  AND node.status = \u00271\u0027\r\n  AND node.type = \u0027dispute_party\u0027\r\n\u0022;\r\n\r\n$result = db_query($sql, array(\u0027:dispute\u0027 =\u003E $value));\r\n$resarray = $result-\u003EfetchAll();\r\n\r\n$sup = isset($resarray[0]-\u003Esupporters_sum) ? $resarray[0]-\u003Esupporters_sum : 0;\r\n$def = isset($resarray[0]-\u003Edefenders_sum) ? $resarray[0]-\u003Edefenders_sum : 0;\r\n\r\nreturn $sup - $def;\r\n" }
+    "DO": [
+      {
+        "variable_add": {
+          "USING": {
+            "type": "integer",
+            "value": {
+              "select": "dispute-node:nid",
+              "php": {
+                "code": "$sql = \"\r\n  SELECT \r\n    SUM(CASE WHEN pos.field_position_value = 1 THEN p.points ELSE 0 END) AS supporters_sum,\r\n    SUM(CASE WHEN pos.field_position_value = 2 THEN p.points ELSE 0 END) AS defenders_sum\r\n  FROM {node} node\r\n  LEFT JOIN {users} users_node ON node.uid = users_node.uid\r\n  LEFT JOIN {field_data_field_dispute} d ON node.nid = d.entity_id AND (d.entity_type = 'node' AND d.deleted = '0')\r\n  LEFT JOIN {field_data_field_position} pos ON node.nid = pos.entity_id AND (pos.entity_type = 'node' AND pos.deleted = '0')\r\n  LEFT JOIN {userpoints_total} p ON node.uid = p.uid\r\n  WHERE d.field_dispute_target_id = :dispute\r\n  AND node.status = '1'\r\n  AND node.type = 'dispute_party'\r\n\";\r\n\r\n$result = db_query($sql, array(':dispute' => $value));\r\n$resarray = $result->fetchAll();\r\n\r\n$sup = isset($resarray[0]->supporters_sum) ? $resarray[0]->supporters_sum : 0;\r\n$def = isset($resarray[0]->defenders_sum) ? $resarray[0]->defenders_sum : 0;\r\n\r\nreturn $sup - $def;\r\n"
+              }
             }
           },
-          "PROVIDE" : { "variable_added" : { "merit_diff" : "Merit difference" } }
+          "PROVIDE": {
+            "variable_added": {
+              "merit_diff": "Merit difference"
+            }
+          }
         }
       },
-      { "CONDITIONAL" : [
+      {
+        "CONDITIONAL": [
           {
-            "IF" : { "data_is" : { "data" : [ "merit-diff" ], "op" : "\u003E", "value" : "0" } },
-            "DO" : [
-              { "variable_add" : {
-                  "USING" : {
-                    "type" : "integer",
-                    "value" : {
-                      "select" : "dispute-node:nid",
-                      "php" : { "code" : "$sql=\u0022SELECT AVG(m.points) AS avrg\r\nFROM {users} users\r\nINNER JOIN {users_roles} r ON users.uid = r.uid\r\nLEFT JOIN {userpoints_total} m ON users.uid = m.uid\r\nWHERE users.status \u003C\u003E \u00270\u0027\r\nAND users.uid NOT IN  (\u00271\u0027)\r\nAND r.rid IN  (\u00274\u0027, \u00276\u0027)\u0022;\r\n\r\n$result = db_query($sql);\r\n$resarray = $result-\u003EfetchAll();\r\n$result = round($resarray[0]-\u003Eavrg \/ 2);\r\n\r\nreturn $result;" }
+            "IF": {
+              "data_is": {
+                "data": [
+                  "merit-diff"
+                ],
+                "op": ">",
+                "value": "0"
+              }
+            },
+            "DO": [
+              {
+                "variable_add": {
+                  "USING": {
+                    "type": "integer",
+                    "value": {
+                      "select": "dispute-node:nid",
+                      "php": {
+                        "code": "$sql=\"SELECT AVG(m.points) AS avrg\r\nFROM {users} users\r\nINNER JOIN {users_roles} r ON users.uid = r.uid\r\nLEFT JOIN {userpoints_total} m ON users.uid = m.uid\r\nWHERE users.status <> '0'\r\nAND users.uid NOT IN  ('1')\r\nAND r.rid IN  ('4', '6')\";\r\n\r\n$result = db_query($sql);\r\n$resarray = $result->fetchAll();\r\n$result = round($resarray[0]->avrg / 2);\r\n\r\nreturn $result;"
+                      }
                     }
                   },
-                  "PROVIDE" : { "variable_added" : { "maximum_penalty" : "Maximum penalty" } }
+                  "PROVIDE": {
+                    "variable_added": {
+                      "maximum_penalty": "Maximum penalty"
+                    }
+                  }
                 }
               },
-              { "userpoints_rules_get_current_points" : {
-                  "USING" : { "user" : [ "dispute-node:field-accused" ], "tid" : "all" },
-                  "PROVIDE" : { "loaded_points" : { "accuseds_merits" : "accused\u0027s merits" } }
+              {
+                "userpoints_rules_get_current_points": {
+                  "USING": {
+                    "user": [
+                      "dispute-node:field-accused"
+                    ],
+                    "tid": "all"
+                  },
+                  "PROVIDE": {
+                    "loaded_points": {
+                      "accuseds_merits": "accused's merits"
+                    }
+                  }
                 }
               },
-              { "data_calc" : {
-                  "USING" : { "input_1" : [ "accuseds-merits" ], "op" : "*", "input_2" : "-1" },
-                  "PROVIDE" : { "result" : { "accuseds_merits_negative" : "Merits of the accused negative" } }
+              {
+                "data_calc": {
+                  "USING": {
+                    "input_1": [
+                      "accuseds-merits"
+                    ],
+                    "op": "*",
+                    "input_2": "-1"
+                  },
+                  "PROVIDE": {
+                    "result": {
+                      "accuseds_merits_negative": "Merits of the accused negative"
+                    }
+                  }
                 }
               },
-              { "CONDITIONAL" : [
+              {
+                "CONDITIONAL": [
                   {
-                    "IF" : { "data_is" : {
-                        "data" : [ "merit-diff" ],
-                        "op" : "\u003C",
-                        "value" : [ "maximum-penalty" ]
+                    "IF": {
+                      "data_is": {
+                        "data": [
+                          "merit-diff"
+                        ],
+                        "op": "<",
+                        "value": [
+                          "maximum-penalty"
+                        ]
                       }
                     },
-                    "DO" : [
-                      { "data_calc" : {
-                          "USING" : {
-                            "input_1" : [ "accuseds-merits-negative" ],
-                            "op" : "-",
-                            "input_2" : [ "merit-diff" ]
+                    "DO": [
+                      {
+                        "data_calc": {
+                          "USING": {
+                            "input_1": [
+                              "accuseds-merits-negative"
+                            ],
+                            "op": "-",
+                            "input_2": [
+                              "merit-diff"
+                            ]
                           },
-                          "PROVIDE" : { "result" : { "new_merits" : "New merits" } }
+                          "PROVIDE": {
+                            "result": {
+                              "new_merits": "New merits"
+                            }
+                          }
                         }
                       }
                     ]
                   },
-                  { "ELSE" : [
-                      { "data_calc" : {
-                          "USING" : {
-                            "input_1" : [ "accuseds-merits-negative" ],
-                            "op" : "-",
-                            "input_2" : [ "maximum-penalty" ]
+                  {
+                    "ELSE": [
+                      {
+                        "data_calc": {
+                          "USING": {
+                            "input_1": [
+                              "accuseds-merits-negative"
+                            ],
+                            "op": "-",
+                            "input_2": [
+                              "maximum-penalty"
+                            ]
                           },
-                          "PROVIDE" : { "result" : { "new_merits" : "New merits" } }
+                          "PROVIDE": {
+                            "result": {
+                              "new_merits": "New merits"
+                            }
+                          }
                         }
                       }
                     ]
                   }
                 ]
               },
-              { "rules_i18n_t" : {
-                  "USING" : {
-                    "text" : "Penalty for losing dispute.",
-                    "language" : [ "site:current-page:language" ]
+              {
+                "rules_i18n_t": {
+                  "USING": {
+                    "text": "Penalty for losing dispute.",
+                    "language": [
+                      "site:current-page:language"
+                    ]
                   },
-                  "PROVIDE" : { "text" : { "reason_for_grant" : "reason for grant" } }
+                  "PROVIDE": {
+                    "text": {
+                      "reason_for_grant": "reason for grant"
+                    }
+                  }
                 }
               },
-              { "component_rules_erase_merits_in_punishment" : {
-                  "reason" : [ "reason-for-grant" ],
-                  "dispute" : [ "dispute-node" ],
-                  "amount" : [ "accuseds-merits-negative" ]
+              {
+                "component_rules_erase_merits_in_punishment": {
+                  "reason": [
+                    "reason-for-grant"
+                  ],
+                  "dispute": [
+                    "dispute-node"
+                  ],
+                  "amount": [
+                    "accuseds-merits-negative"
+                  ]
                 }
               },
-              { "component_rules_set_role_for_the_accused" : {
-                  "affected_dispute" : [ "dispute-node" ],
-                  "role_to_set" : { "value" : [ "5" ] }
+              {
+                "component_rules_set_role_for_the_accused": {
+                  "affected_dispute": [
+                    "dispute-node"
+                  ],
+                  "role_to_set": {
+                    "value": [
+                      "5"
+                    ]
+                  }
                 }
               },
-              { "data_set" : { "data" : [ "dispute-node:field-dispute-status" ], "value" : "4" } }
+              {
+                "data_set": {
+                  "data": [
+                    "dispute-node:field-accused:field-verification-score"
+                  ],
+                  "value": "0"
+                }
+              },
+              {
+                "entity_save": {
+                  "data": [
+                    "dispute-node:field-accused"
+                  ],
+                  "immediate": "1"
+                }
+              },
+              {
+                "data_set": {
+                  "data": [
+                    "dispute-node:field-dispute-status"
+                  ],
+                  "value": "4"
+                }
+              },
+              {
+                "php_eval": {
+                  "code": "if (function_exists('rovas_user_reevaluate_trusted_after_dispute')) {\r\n  $accused = NULL;\r\n  if (!empty($dispute_node->field_accused[LANGUAGE_NONE][0]['target_id'])) {\r\n    $accused = user_load($dispute_node->field_accused[LANGUAGE_NONE][0]['target_id'], TRUE);\r\n  }\r\n  if ($accused) {\r\n    rovas_user_reevaluate_trusted_after_dispute($accused);\r\n  }\r\n}"
+                }
+              }
             ]
           },
           {
-            "ELSE IF" : { "data_is" : { "data" : [ "merit-diff" ], "value" : "0" } },
-            "DO" : [
-              { "component_rules_set_role_for_the_accused" : {
-                  "affected_dispute" : [ "dispute-node" ],
-                  "role_to_set" : { "value" : [ "4" ] }
+            "ELSE IF": {
+              "data_is": {
+                "data": [
+                  "merit-diff"
+                ],
+                "value": "0"
+              }
+            },
+            "DO": [
+              {
+                "component_rules_set_role_for_the_accused": {
+                  "affected_dispute": [
+                    "dispute-node"
+                  ],
+                  "role_to_set": {
+                    "value": [
+                      "4"
+                    ]
+                  }
                 }
               },
-              { "data_set" : { "data" : [ "dispute-node:field-dispute-status" ], "value" : "5" } }
+              {
+                "data_set": {
+                  "data": [
+                    "dispute-node:field-dispute-status"
+                  ],
+                  "value": "5"
+                }
+              }
             ]
           },
-          { "ELSE" : [
-              { "component_rules_set_role_for_the_accused" : {
-                  "affected_dispute" : [ "dispute-node" ],
-                  "role_to_set" : { "value" : [ "4" ] }
+          {
+            "ELSE": [
+              {
+                "component_rules_set_role_for_the_accused": {
+                  "affected_dispute": [
+                    "dispute-node"
+                  ],
+                  "role_to_set": {
+                    "value": [
+                      "4"
+                    ]
+                  }
                 }
               },
-              { "data_set" : { "data" : [ "dispute-node:field-dispute-status" ], "value" : "3" } }
+              {
+                "data_set": {
+                  "data": [
+                    "dispute-node:field-dispute-status"
+                  ],
+                  "value": "3"
+                }
+              }
             ]
           }
         ]

@@ -1,179 +1,387 @@
-{ "rules_find_verifier" : {
-    "LABEL" : "Find verifier",
-    "PLUGIN" : "rule",
-    "OWNER" : "rules",
-    "TAGS" : [ "verification", "work report" ],
-    "REQUIRES" : [ "rules", "php", "rules_conditional", "rules_reldate" ],
-    "USES VARIABLES" : {
-      "verifier_found" : { "label" : "verifier found", "type" : "integer", "parameter" : false },
-      "wr_object" : { "label" : "work report", "type" : "node" }
-    },
-    "IF" : [
-      { "entity_is_of_bundle" : {
-          "entity" : [ "wr-object" ],
-          "type" : "node",
-          "bundle" : { "value" : { "work_report" : "work_report" } }
-        }
-      },
-      { "NOT data_is_empty" : { "data" : [ "wr-object:nid" ] } },
-      { "php_eval" : { "code" : "return TRUE;" } },
-      { "data_is" : { "data" : [ "wr-object:status" ], "value" : "1" } }
+{
+  "rules_find_verifier": {
+    "LABEL": "Find verifier",
+    "PLUGIN": "rule",
+    "OWNER": "rules",
+    "TAGS": [
+      "verification",
+      "work report"
     ],
-    "DO" : [
-      { "variable_add" : {
-          "USING" : {
-            "type" : "text",
-            "value" : "\u003C?php\r\nwatchdog(\u0027rule\u0027,\u0027rules_find_verifier wr_object exists: [\u0027 . isset($wr_object) . \u0027]\u0027);\r\n$verf_id = rovas_verify_find_verifier($wr_object-\u003Enid);\r\nwatchdog(\u0027rule\u0027,\u0027rules_find_verifier 1 \u0027 . print_r($verf_id,1));\r\necho $verf_id;\r\n?\u003E"
+    "REQUIRES": [
+      "rules",
+      "php",
+      "rules_conditional",
+      "rules_reldate"
+    ],
+    "USES VARIABLES": {
+      "verifier_found": {
+        "label": "verifier found",
+        "type": "integer",
+        "parameter": false
+      },
+      "wr_object": {
+        "label": "work report",
+        "type": "node"
+      }
+    },
+    "IF": [
+      {
+        "entity_is_of_bundle": {
+          "entity": [
+            "wr-object"
+          ],
+          "type": "node",
+          "bundle": {
+            "value": {
+              "work_report": "work_report"
+            }
+          }
+        }
+      },
+      {
+        "NOT data_is_empty": {
+          "data": [
+            "wr-object:nid"
+          ]
+        }
+      },
+      {
+        "php_eval": {
+          "code": "return TRUE;"
+        }
+      },
+      {
+        "data_is": {
+          "data": [
+            "wr-object:status"
+          ],
+          "value": "1"
+        }
+      }
+    ],
+    "DO": [
+      {
+        "variable_add": {
+          "USING": {
+            "type": "text",
+            "value": "<?php\r\nwatchdog('rule','rules_find_verifier wr_object exists: [' . isset($wr_object) . ']');\r\n$verf_id = rovas_verify_find_verifier($wr_object->nid);\r\nwatchdog('rule','rules_find_verifier 1 ' . print_r($verf_id,1));\r\necho $verf_id;\r\n?>"
           },
-          "PROVIDE" : { "variable_added" : { "verifier_uid" : "verifier uid" } }
+          "PROVIDE": {
+            "variable_added": {
+              "verifier_uid": "verifier uid"
+            }
+          }
         }
       },
-      { "data_convert" : {
-          "USING" : { "type" : "integer", "value" : [ "verifier-uid" ] },
-          "PROVIDE" : { "conversion_result" : { "verifier_uid_int" : "verifier uid int" } }
+      {
+        "data_convert": {
+          "USING": {
+            "type": "integer",
+            "value": [
+              "verifier-uid"
+            ]
+          },
+          "PROVIDE": {
+            "conversion_result": {
+              "verifier_uid_int": "verifier uid int"
+            }
+          }
         }
       },
-      { "CONDITIONAL" : [
+      {
+        "CONDITIONAL": [
           {
-            "IF" : { "data_is" : { "data" : [ "verifier-uid-int" ], "op" : "\u003E", "value" : "0" } },
-            "DO" : [
-              { "entity_fetch" : {
-                  "USING" : { "type" : "user", "id" : [ "verifier-uid-int" ] },
-                  "PROVIDE" : { "entity_fetched" : { "verifier_object" : "verifier object" } }
+            "IF": {
+              "data_is": {
+                "data": [
+                  "verifier-uid-int"
+                ],
+                "op": ">",
+                "value": "0"
+              }
+            },
+            "DO": [
+              {
+                "entity_fetch": {
+                  "USING": {
+                    "type": "user",
+                    "id": [
+                      "verifier-uid-int"
+                    ]
+                  },
+                  "PROVIDE": {
+                    "entity_fetched": {
+                      "verifier_object": "verifier object"
+                    }
+                  }
                 }
               },
-              { "CONDITIONAL" : [
+              {
+                "CONDITIONAL": [
                   {
-                    "IF" : { "data_is" : {
-                        "data" : [ "verifier-object:field-verification-score" ],
-                        "op" : "\u003C",
-                        "value" : "0"
+                    "IF": {
+                      "data_is": {
+                        "data": [
+                          "verifier-object:field-verification-score"
+                        ],
+                        "op": "<",
+                        "value": "0"
                       }
                     },
-                    "DO" : [
-                      { "rules_reldate_rules_action_calculate_relative_date" : {
-                          "USING" : {
-                            "date" : "now",
-                            "offset" : "\u003C?php\r\n\t$cifra =  variable_get(\u0027rv_restrict_period\u0027) ? variable_get(\u0027rv_restrict_period\u0027) : 0;\r\n\techo \u0027+ \u0027 . $cifra . \u0027 hours\u0027;\r\n?\u003E\r\n"
+                    "DO": [
+                      {
+                        "rules_reldate_rules_action_calculate_relative_date": {
+                          "USING": {
+                            "date": "now",
+                            "offset": "<?php\r\n\t$cifra =  variable_get('rv_restrict_period') ? variable_get('rv_restrict_period') : 0;\r\n\techo '+ ' . $cifra . ' hours';\r\n?>\r\n"
                           },
-                          "PROVIDE" : { "adjusted_date" : { "adjusted_date" : "Adjusted Date" } }
+                          "PROVIDE": {
+                            "adjusted_date": {
+                              "adjusted_date": "Adjusted Date"
+                            }
+                          }
                         }
                       }
                     ]
                   },
-                  { "ELSE" : [
-                      { "rules_reldate_rules_action_calculate_relative_date" : {
-                          "USING" : {
-                            "date" : "now",
-                            "offset" : "\u003C?php\r\n\t$cifra =  variable_get(\u0027rv_normal_period\u0027) ? variable_get(\u0027rv_normal_period\u0027) : 0;\r\n\techo \u0027+ \u0027 . $cifra . \u0027 hours\u0027;\r\n?\u003E\r\n"
+                  {
+                    "ELSE": [
+                      {
+                        "rules_reldate_rules_action_calculate_relative_date": {
+                          "USING": {
+                            "date": "now",
+                            "offset": "<?php\r\n\t$cifra =  variable_get('rv_normal_period') ? variable_get('rv_normal_period') : 0;\r\n\techo '+ ' . $cifra . ' hours';\r\n?>\r\n"
                           },
-                          "PROVIDE" : { "adjusted_date" : { "adjusted_date" : "Adjusted Date" } }
+                          "PROVIDE": {
+                            "adjusted_date": {
+                              "adjusted_date": "Adjusted Date"
+                            }
+                          }
                         }
                       }
                     ]
                   }
                 ]
               },
-              { "variable_add" : {
-                  "USING" : {
-                    "type" : "text",
-                    "value" : "\u003C?php \r\n\/\/find an available slot ID\r\n$slots = _find_user_verif_slots($verifier_uid);\r\necho isset($slots[0]) ? $slots[0] : 0;\r\n?\u003E"
+              {
+                "variable_add": {
+                  "USING": {
+                    "type": "text",
+                    "value": "<?php \r\n//find an available slot ID\r\n$slots = _find_user_verif_slots($verifier_uid);\r\necho isset($slots[0]) ? $slots[0] : 0;\r\n?>"
                   },
-                  "PROVIDE" : { "variable_added" : { "slot_id" : "slot ID" } }
+                  "PROVIDE": {
+                    "variable_added": {
+                      "slot_id": "slot ID"
+                    }
+                  }
                 }
               },
-              { "data_convert" : {
-                  "USING" : { "type" : "integer", "value" : [ "slot-id" ] },
-                  "PROVIDE" : { "conversion_result" : { "slot_id_int" : "slot ID int" } }
-                }
-              },
-              { "drupal_watchdog" : {
-                  "type" : "rule",
-                  "message" : "debug info: verifier-uid:value = [verifier-uid:value] | deadline:value = [adjusted-date:value] | slot-id:value = [slot-id:value]\r\n\r\nrule \u0022rules_find_verifier\u0022",
-                  "severity" : "6"
-                }
-              },
-              { "CONDITIONAL" : [
-                  {
-                    "IF" : { "data_is" : { "data" : [ "slot-id-int" ], "op" : "\u003E", "value" : "0" } },
-                    "DO" : [
-                      { "entity_fetch" : {
-                          "USING" : { "type" : "node", "id" : [ "slot-id-int" ], "revision_id" : "0" },
-                          "PROVIDE" : { "entity_fetched" : { "slot_object" : "slot object" } }
-                        }
-                      },
-                      { "component_rules_translate_node" : { "lang" : [ "verifier-object:language" ], "node" : [ "wr-object" ] } },
-                      { "CONDITIONAL" : [
-                          {
-                            "IF" : { "entity_is_of_bundle" : {
-                                "entity" : [ "slot-object" ],
-                                "type" : "node",
-                                "bundle" : { "value" : { "verification_slot" : "verification_slot" } }
-                              }
-                            },
-                            "DO" : [
-                              { "data_set" : {
-                                  "data" : [ "slot-object:field-report-to-verify" ],
-                                  "value" : [ "wr-object" ]
-                                }
-                              },
-                              { "data_set" : {
-                                  "data" : [ "slot-object:field-verify-date" ],
-                                  "value" : [ "adjusted-date" ]
-                                }
-                              },
-                              { "entity_save" : { "data" : [ "slot-object" ], "immediate" : "1" } }
-                            ]
-                          }
-                        ]
-                      },
-                      { "variable_add" : {
-                          "USING" : {
-                            "type" : "text",
-                            "value" : "<?php\n\n$report = entity_metadata_wrapper('node', $wr_object);\n$ex_node = $report->field_web_address->value();\n$ex_token = $report->field_content_access_token->value();\n\n$link = '';\nif (count($ex_node) == 1) {\n\t$link = rovas_base_proof_web_url($ex_node[0], $ex_token, array(\n\t\t'vrfier' => $verifier_uid_int,\n\t\t'encode_query_special' => TRUE,\n\t));\n}\necho $link;\n?>"
-                          },
-                          "PROVIDE" : { "variable_added" : { "proof_url" : "proof url" } }
-                        }
-                      },
-                      { "variable_add" : {
-                          "USING" : { "type" : "text", "value" : "Rovas verification request" },
-                          "PROVIDE" : { "variable_added" : { "subject" : "subject" } }
-                        }
-                      },
-                      { "CONDITIONAL" : [
-                          {
-                            "IF" : { "data_is_empty" : { "data" : [ "proof-url" ] } },
-                            "DO" : [
-                              { "component_rules_send_email" : {
-                                  "recipient" : [ "verifier-object:mail" ],
-                                  "subject" : "\u003C?php\r\n\r\n$language = $verifier_object-\u003Elanguage;\r\n\r\necho t(\u0027Rovas verification request\u0027,[],[\u0027langcode\u0027 =\u003E $language]);\r\n?\u003E",
-                                  "message" : "\u003C?php\r\n\r\n$language = $verifier_object-\u003Elanguage;\r\n\r\n$usrlink = \u0027\/user\/\u0027 . $wr_object-\u003Euid;\r\n$user = user_load($wr_object-\u003Euid);\r\n$usrname = $user-\u003Ename;\r\n\r\n$rovlink = \u0027\/node\/\u0027 . $wr_object-\u003Enid;\r\n$dateval = date(\u0027d M Y G:i\u0027,$adjusted_date);\r\n\r\n$rulesurl = \u0027\/rules\u0027;\r\n\r\n$message = t(\u0027You have been chosen to verify work report \u003Cstrong\u003E@repname\u003C\/strong\u003E filed by \u003Ca href=\u0022@usrlink\u0022\u003E@usrname\u003C\/a\u003E.\u0027,[\u0027@repname\u0027 =\u003E $wr_object-\u003Etitle,\u0027@usrlink\u0027 =\u003E $usrlink,\u0027@usrname\u0027 =\u003E $usrname],[\u0027langcode\u0027 =\u003E $language]);\r\n$message .= \u0027\u003Cbr\u003E\u003Cbr\u003E\u0027;\r\n$message .= t(\u0027You can \u003Ca href=\u0022@prooflink\u0022\u003Everify the report in Rovas\u003C\/a\u003E.\u0027,[\u0027@prooflink\u0027 =\u003E $rovlink],[\u0027langcode\u0027 =\u003E $language]);\r\n$message .= \u0027\u003Cbr\u003E\u003Cbr\u003E\u0027;\r\n$message .= t(\u0027The deadline to verify the report is @date, please do so, as soon as possible.\u0027,[\u0027@date\u0027 =\u003E $dateval],[\u0027langcode\u0027 =\u003E $language]);\r\n$message .= \u0027\u003Cbr\u003E\u003Cbr\u003E\u0027;\r\n$message .= t(\u0027According to \u003Ca href=\u0022@rulesurl\u0022\u003ENEO rules\u003C\/a\u003E, verification of other users\\\u0027 work reports is mandatory for all users who file their own work reports.\u0027,[\u0027@rulesurl\u0027 =\u003E $rulesurl],[\u0027langcode\u0027 =\u003E $language]);\r\n\r\necho $message;\r\n\r\n?\u003E",
-                                  "language" : [ "verifier-object:language" ]
-                                }
-                              }
-                            ]
-                          },
-                          { "ELSE" : [
-                              { "component_rules_send_email" : {
-                                  "recipient" : [ "verifier-object:mail" ],
-                                  "subject" : "\u003C?php\r\n\r\n$language = $verifier_object-\u003Elanguage;\r\n\r\necho t(\u0027Rovas verification request\u0027,[],[\u0027langcode\u0027 =\u003E $language]);\r\n?\u003E",
-                                  "message" : "\u003C?php\r\n\r\n$language = $verifier_object-\u003Elanguage;\r\n\r\n$usrlink = \u0027\/user\/\u0027 . $wr_object-\u003Euid;\r\n$user = user_load($wr_object-\u003Euid);\r\n$usrname = $user-\u003Ename;\r\n\r\n$rovlink = \u0027\/node\/\u0027 . $wr_object-\u003Enid;\r\n$dateval = date(\u0027d M Y G:i\u0027,$adjusted_date);\r\n\r\n$rulesurl = \u0027\/rules\u0027;\r\n\r\n$message = t(\u0027You have been chosen to verify work report \u003Cstrong\u003E@repname\u003C\/strong\u003E filed by \u003Ca href=\u0022@usrlink\u0022\u003E@usrname\u003C\/a\u003E.\u0027,[\u0027@repname\u0027 =\u003E $wr_object-\u003Etitle,\u0027@usrlink\u0027 =\u003E $usrlink,\u0027@usrname\u0027 =\u003E $usrname],[\u0027langcode\u0027 =\u003E $language]);\r\n$message .= \u0027\u003Cbr\u003E\u003Cbr\u003E\u0027;\r\n$message .= t(\u0027You can see (and possibly also verify) the proof of work on \u003Ca href=\u0022@prooflink\u0022\u003Ethis address\u003C\/a\u003E. The report can be verified also in \u003Ca href=\u0022@rovlink\u0022\u003ERovas\u003C\/a\u003E.\u0027,[\u0027@prooflink\u0027 =\u003E $proof_url,\u0027@rovlink\u0027 =\u003E $rovlink],[\u0027langcode\u0027 =\u003E $language]);\r\n$message .= \u0027\u003Cbr\u003E\u003Cbr\u003E\u0027;\r\n$message .= t(\u0027To log into Rovas, click the appropriate icon in the login block:\u0027,[],[\u0027langcode\u0027 =\u003E $language]);\r\n$message .= \u0027\u003Cbr\u003E\u003Cimg src=\u0022\/sites\/default\/files\/pictures\/services_icons.jpg\u0022 \/\u003E\u0027;\r\n$message .= \u0027\u003Cbr\u003E\u003Cbr\u003E\u0027;\r\n$message .= t(\u0027The deadline to verify the report is @date, please do so, as soon as possible.\u0027,[\u0027@date\u0027 =\u003E $dateval],[\u0027langcode\u0027 =\u003E $language]);\r\n$message .= \u0027\u003Cbr\u003E\u003Cbr\u003E\u0027;\r\n$message .= t(\u0027According to \u003Ca href=\u0022@rulesurl\u0022\u003ENEO rules\u003C\/a\u003E, verification of other users\\\u0027 work reports is mandatory for all users who file their own work reports.\u0027,[\u0027@rulesurl\u0027 =\u003E $rulesurl],[\u0027langcode\u0027 =\u003E $language]);\r\n\r\necho $message;\r\n\r\n?\u003E",
-                                  "language" : [ "verifier-object:language" ]
-                                }
-                              }
-                            ]
-                          }
-                        ]
-                      },
-                      { "data_set" : { "data" : [ "verifier-found" ], "value" : [ "verifier-uid-int" ] } }
+              {
+                "data_convert": {
+                  "USING": {
+                    "type": "integer",
+                    "value": [
+                      "slot-id"
                     ]
                   },
-                  { "ELSE" : [
-                      { "data_set" : { "data" : [ "verifier-found" ], "value" : "0" } },
-                      { "drupal_watchdog" : {
-                          "type" : "rules_find_verifier",
-                          "message" : "No verifier was found to verify report \u003Ca href=\u0022[wr-object:url]\u0022\u003E[wr-object:title]\u003C\/a\u003E",
-                          "severity" : "6"
+                  "PROVIDE": {
+                    "conversion_result": {
+                      "slot_id_int": "slot ID int"
+                    }
+                  }
+                }
+              },
+              {
+                "drupal_watchdog": {
+                  "type": "rule",
+                  "message": "debug info: verifier-uid:value = [verifier-uid:value] | deadline:value = [adjusted-date:value] | slot-id:value = [slot-id:value]\r\n\r\nrule \"rules_find_verifier\"",
+                  "severity": "6"
+                }
+              },
+              {
+                "CONDITIONAL": [
+                  {
+                    "IF": {
+                      "data_is": {
+                        "data": [
+                          "slot-id-int"
+                        ],
+                        "op": ">",
+                        "value": "0"
+                      }
+                    },
+                    "DO": [
+                      {
+                        "entity_fetch": {
+                          "USING": {
+                            "type": "node",
+                            "id": [
+                              "slot-id-int"
+                            ],
+                            "revision_id": "0"
+                          },
+                          "PROVIDE": {
+                            "entity_fetched": {
+                              "slot_object": "slot object"
+                            }
+                          }
+                        }
+                      },
+                      {
+                        "component_rules_translate_node": {
+                          "lang": [
+                            "verifier-object:language"
+                          ],
+                          "node": [
+                            "wr-object"
+                          ]
+                        }
+                      },
+                      {
+                        "CONDITIONAL": [
+                          {
+                            "IF": {
+                              "entity_is_of_bundle": {
+                                "entity": [
+                                  "slot-object"
+                                ],
+                                "type": "node",
+                                "bundle": {
+                                  "value": {
+                                    "verification_slot": "verification_slot"
+                                  }
+                                }
+                              }
+                            },
+                            "DO": [
+                              {
+                                "data_set": {
+                                  "data": [
+                                    "slot-object:field-report-to-verify"
+                                  ],
+                                  "value": [
+                                    "wr-object"
+                                  ]
+                                }
+                              },
+                              {
+                                "data_set": {
+                                  "data": [
+                                    "slot-object:field-verify-date"
+                                  ],
+                                  "value": [
+                                    "adjusted-date"
+                                  ]
+                                }
+                              },
+                              {
+                                "entity_save": {
+                                  "data": [
+                                    "slot-object"
+                                  ],
+                                  "immediate": "1"
+                                }
+                              }
+                            ]
+                          }
+                        ]
+                      },
+                      {
+                        "variable_add": {
+                          "USING": {
+                            "type": "text",
+                            "value": "<?php\n\n$report = entity_metadata_wrapper('node', $wr_object);\n$ex_node = $report->field_web_address->value();\n$ex_token = $report->field_content_access_token->value();\n\n$link = '';\nif (count($ex_node) == 1) {\n\t$link = rovas_base_proof_web_url($ex_node[0], $ex_token, array(\n\t\t'vrfier' => $verifier_uid_int,\n\t\t'encode_query_special' => TRUE,\n\t));\n}\necho $link;\n?>"
+                          },
+                          "PROVIDE": {
+                            "variable_added": {
+                              "proof_url": "proof url"
+                            }
+                          }
+                        }
+                      },
+                      {
+                        "variable_add": {
+                          "USING": {
+                            "type": "text",
+                            "value": "Rovas verification request"
+                          },
+                          "PROVIDE": {
+                            "variable_added": {
+                              "subject": "subject"
+                            }
+                          }
+                        }
+                      },
+                      {
+                        "CONDITIONAL": [
+                          {
+                            "IF": {
+                              "data_is_empty": {
+                                "data": [
+                                  "proof-url"
+                                ]
+                              }
+                            },
+                            "DO": [
+                              {
+                                "component_rules_send_email": {
+                                  "recipient": [
+                                    "verifier-object:mail"
+                                  ],
+                                  "subject": "<?php\r\n\r\n$language = $verifier_object->language;\r\n\r\necho t('Rovas verification request',[],['langcode' => $language]);\r\n?>",
+                                  "message": "<?php\r\n\r\n$language = $verifier_object->language;\r\n\r\n$usrlink = '/user/' . $wr_object->uid;\r\n$user = user_load($wr_object->uid);\r\n$usrname = $user->name;\r\n\r\n$rovlink = '/node/' . $wr_object->nid;\r\n$dateval = date('d M Y G:i',$adjusted_date);\r\n\r\n$rulesurl = '/rules';\r\n\r\n$trusted_notice = '';\r\nif (function_exists('rovas_user_trusted_email_notice')) {\r\n  $trusted_notice = rovas_user_trusted_email_notice($verifier_object, $language);\r\n}\r\n$message = $trusted_notice;\r\n$message .= t('You have been chosen to verify work report <strong>@repname</strong> filed by <a href=\"@usrlink\">@usrname</a>.',['@repname' => $wr_object->title,'@usrlink' => $usrlink,'@usrname' => $usrname],['langcode' => $language]);\r\n$message .= '<br><br>';\r\n$message .= t('You can <a href=\"@prooflink\">verify the report in Rovas</a>.',['@prooflink' => $rovlink],['langcode' => $language]);\r\n$message .= '<br><br>';\r\n$message .= t('The deadline to verify the report is @date, please do so, as soon as possible.',['@date' => $dateval],['langcode' => $language]);\r\n$message .= '<br><br>';\r\n$message .= t('According to <a href=\"@rulesurl\">NEO rules</a>, verification of other users\\' work reports is mandatory for all users who file their own work reports.',['@rulesurl' => $rulesurl],['langcode' => $language]);\r\n\r\necho $message;\r\n\r\n?>",
+                                  "language": [
+                                    "verifier-object:language"
+                                  ]
+                                }
+                              }
+                            ]
+                          },
+                          {
+                            "ELSE": [
+                              {
+                                "component_rules_send_email": {
+                                  "recipient": [
+                                    "verifier-object:mail"
+                                  ],
+                                  "subject": "<?php\r\n\r\n$language = $verifier_object->language;\r\n\r\necho t('Rovas verification request',[],['langcode' => $language]);\r\n?>",
+                                  "message": "<?php\r\n\r\n$language = $verifier_object->language;\r\n\r\n$usrlink = '/user/' . $wr_object->uid;\r\n$user = user_load($wr_object->uid);\r\n$usrname = $user->name;\r\n\r\n$rovlink = '/node/' . $wr_object->nid;\r\n$dateval = date('d M Y G:i',$adjusted_date);\r\n\r\n$rulesurl = '/rules';\r\n\r\n$trusted_notice = '';\r\nif (function_exists('rovas_user_trusted_email_notice')) {\r\n  $trusted_notice = rovas_user_trusted_email_notice($verifier_object, $language);\r\n}\r\n$message = $trusted_notice;\r\n$message .= t('You have been chosen to verify work report <strong>@repname</strong> filed by <a href=\"@usrlink\">@usrname</a>.',['@repname' => $wr_object->title,'@usrlink' => $usrlink,'@usrname' => $usrname],['langcode' => $language]);\r\n$message .= '<br><br>';\r\n$message .= t('You can see (and possibly also verify) the proof of work on <a href=\"@prooflink\">this address</a>. The report can be verified also in <a href=\"@rovlink\">Rovas</a>.',['@prooflink' => $proof_url,'@rovlink' => $rovlink],['langcode' => $language]);\r\n$message .= '<br><br>';\r\n$message .= t('To log into Rovas, click the appropriate icon in the login block:',[],['langcode' => $language]);\r\n$message .= '<br><img src=\"/sites/default/files/pictures/services_icons.jpg\" />';\r\n$message .= '<br><br>';\r\n$message .= t('The deadline to verify the report is @date, please do so, as soon as possible.',['@date' => $dateval],['langcode' => $language]);\r\n$message .= '<br><br>';\r\n$message .= t('According to <a href=\"@rulesurl\">NEO rules</a>, verification of other users\\' work reports is mandatory for all users who file their own work reports.',['@rulesurl' => $rulesurl],['langcode' => $language]);\r\n\r\necho $message;\r\n\r\n?>",
+                                  "language": [
+                                    "verifier-object:language"
+                                  ]
+                                }
+                              }
+                            ]
+                          }
+                        ]
+                      },
+                      {
+                        "data_set": {
+                          "data": [
+                            "verifier-found"
+                          ],
+                          "value": [
+                            "verifier-uid-int"
+                          ]
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "ELSE": [
+                      {
+                        "data_set": {
+                          "data": [
+                            "verifier-found"
+                          ],
+                          "value": "0"
+                        }
+                      },
+                      {
+                        "drupal_watchdog": {
+                          "type": "rules_find_verifier",
+                          "message": "No verifier was found to verify report <a href=\"[wr-object:url]\">[wr-object:title]</a>",
+                          "severity": "6"
                         }
                       }
                     ]
@@ -182,50 +390,131 @@
               }
             ]
           },
-          { "ELSE" : [
-              { "variable_add" : {
-                  "USING" : {
-                    "type" : "integer",
-                    "value" : [ "wr-object:field-classification:0:tid" ]
+          {
+            "ELSE": [
+              {
+                "variable_add": {
+                  "USING": {
+                    "type": "integer",
+                    "value": [
+                      "wr-object:field-classification:0:tid"
+                    ]
                   },
-                  "PROVIDE" : { "variable_added" : { "classification" : "classification" } }
+                  "PROVIDE": {
+                    "variable_added": {
+                      "classification": "classification"
+                    }
+                  }
                 }
               },
-              { "variable_add" : {
-                  "USING" : {
-                    "type" : "text",
-                    "value" : "\u003C?php\r\n\/\/watchdog(\u0027rule\u0027,\u0027rules_find_verifier \u0027 . $classification . \u0027 | \u0027 . $wr_object-\u003Euid );\r\necho _rv_count_experts ($classification,$wr_object-\u003Euid);\r\n?\u003E"
+              {
+                "variable_add": {
+                  "USING": {
+                    "type": "text",
+                    "value": "<?php\r\n//watchdog('rule','rules_find_verifier ' . $classification . ' | ' . $wr_object->uid );\r\necho _rv_count_experts ($classification,$wr_object->uid);\r\n?>"
                   },
-                  "PROVIDE" : { "variable_added" : { "expert_count" : "expert count" } }
+                  "PROVIDE": {
+                    "variable_added": {
+                      "expert_count": "expert count"
+                    }
+                  }
                 }
               },
-              { "data_convert" : {
-                  "USING" : { "type" : "integer", "value" : [ "expert-count" ] },
-                  "PROVIDE" : { "conversion_result" : { "count" : "count" } }
+              {
+                "data_convert": {
+                  "USING": {
+                    "type": "integer",
+                    "value": [
+                      "expert-count"
+                    ]
+                  },
+                  "PROVIDE": {
+                    "conversion_result": {
+                      "count": "count"
+                    }
+                  }
                 }
               },
-              { "CONDITIONAL" : [
+              {
+                "CONDITIONAL": [
                   {
-                    "IF" : { "data_is" : { "data" : [ "count" ], "op" : "\u003C", "value" : "3" } },
-                    "DO" : [
-                      { "component_rules_ask_user_to_verify_report" : {
-                          "USING" : { "work_report" : [ "wr-object" ] },
-                          "PROVIDE" : { "uid" : { "uid" : "found user id" } }
-                        }
-                      },
-                      { "CONDITIONAL" : [
-                          {
-                            "IF" : { "data_is" : { "data" : [ "uid" ], "op" : "\u003E", "value" : "0" } },
-                            "DO" : [
-                              { "data_set" : { "data" : [ "verifier-found" ], "value" : [ "uid" ] } }
+                    "IF": {
+                      "data_is": {
+                        "data": [
+                          "count"
+                        ],
+                        "op": "<",
+                        "value": "3"
+                      }
+                    },
+                    "DO": [
+                      {
+                        "component_rules_ask_user_to_verify_report": {
+                          "USING": {
+                            "work_report": [
+                              "wr-object"
                             ]
                           },
-                          { "ELSE" : [ { "data_set" : { "data" : [ "verifier-found" ], "value" : "0" } } ] }
+                          "PROVIDE": {
+                            "uid": {
+                              "uid": "found user id"
+                            }
+                          }
+                        }
+                      },
+                      {
+                        "CONDITIONAL": [
+                          {
+                            "IF": {
+                              "data_is": {
+                                "data": [
+                                  "uid"
+                                ],
+                                "op": ">",
+                                "value": "0"
+                              }
+                            },
+                            "DO": [
+                              {
+                                "data_set": {
+                                  "data": [
+                                    "verifier-found"
+                                  ],
+                                  "value": [
+                                    "uid"
+                                  ]
+                                }
+                              }
+                            ]
+                          },
+                          {
+                            "ELSE": [
+                              {
+                                "data_set": {
+                                  "data": [
+                                    "verifier-found"
+                                  ],
+                                  "value": "0"
+                                }
+                              }
+                            ]
+                          }
                         ]
                       }
                     ]
                   },
-                  { "ELSE" : [ { "data_set" : { "data" : [ "verifier-found" ], "value" : "0" } } ] }
+                  {
+                    "ELSE": [
+                      {
+                        "data_set": {
+                          "data": [
+                            "verifier-found"
+                          ],
+                          "value": "0"
+                        }
+                      }
+                    ]
+                  }
                 ]
               }
             ]
@@ -233,6 +522,8 @@
         ]
       }
     ],
-    "PROVIDES VARIABLES" : [ "verifier_found" ]
+    "PROVIDES VARIABLES": [
+      "verifier_found"
+    ]
   }
 }

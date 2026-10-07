@@ -850,6 +850,9 @@ function _find_verifier_core($category,$uid,$per) {
 		LEFT JOIN {users} u ON node.uid = u.uid
 		LEFT JOIN {userpoints_total} usrmer ON node.uid = usrmer.uid
 		LEFT JOIN {field_data_field_suspend_account} suspend ON u.uid = suspend.entity_id AND suspend.entity_type = 'user'
+		LEFT JOIN {field_data_field_trusted_user} tu ON u.uid = tu.entity_id AND tu.entity_type = 'user' AND tu.deleted = 0
+		LEFT JOIN {field_data_field_trusted_auto_approve} taa ON u.uid = taa.entity_id AND taa.entity_type = 'user' AND taa.deleted = 0
+		LEFT JOIN {field_data_field_trusted_verify_level} tvl ON u.uid = tvl.entity_id AND tvl.entity_type = 'user' AND tvl.deleted = 0
 		LEFT JOIN {field_data_field_slip_owner} owner ON u.uid = owner.field_slip_owner_target_id AND owner.entity_type = 'node'
 		LEFT JOIN {field_data_field_verify_date} date ON owner.entity_id = date.entity_id AND date.entity_type = 'node'
 		LEFT JOIN {field_data_field_report_to_verify} report ON owner.entity_id = report.entity_id AND report.entity_type = 'node'
@@ -863,6 +866,11 @@ function _find_verifier_core($category,$uid,$per) {
 		AND node.type = 'work_report'
 		AND owner.field_slip_owner_target_id > 0
 		AND (suspend.field_suspend_account_value IS NULL OR suspend.field_suspend_account_value = 0)
+		AND NOT (
+			COALESCE(tu.field_trusted_user_value, 0) = 1
+			AND COALESCE(taa.field_trusted_auto_approve_value, 0) = 1
+			AND COALESCE(tvl.field_trusted_verify_level_value, 1) IN (2, 3)
+		)
 		AND (
 		date.field_verify_date_value IS NULL OR 
 		(report.field_report_to_verify_target_id IS NULL AND DATE_FORMAT(ADDTIME(FROM_UNIXTIME(date.field_verify_date_value), SEC_TO_TIME(3600)), '%Y-%m-%d\T%H:%i:%s') < :date)
@@ -991,6 +999,9 @@ function _find_filing_users($category,$exlude_users) {
 	LEFT JOIN {users_roles} roles ON fwr.uid = roles.uid
 
 	LEFT JOIN {users} user ON fwr.uid = user.uid
+	LEFT JOIN {field_data_field_trusted_user} tu ON user.uid = tu.entity_id AND tu.entity_type = 'user' AND tu.deleted = 0
+	LEFT JOIN {field_data_field_trusted_auto_approve} taa ON user.uid = taa.entity_id AND taa.entity_type = 'user' AND taa.deleted = 0
+	LEFT JOIN {field_data_field_trusted_verify_level} tvl ON user.uid = tvl.entity_id AND tvl.entity_type = 'user' AND tvl.deleted = 0
 
 	WHERE node.type = 'work_report'
 	AND node.nid > :rand
@@ -1001,12 +1012,21 @@ function _find_filing_users($category,$exlude_users) {
 	AND user.status = 1
 	AND roles.rid <> 5
 	AND node.status = 1
+	AND NOT (
+		COALESCE(tu.field_trusted_user_value, 0) = 1
+		AND COALESCE(taa.field_trusted_auto_approve_value, 0) = 1
+		AND COALESCE(tvl.field_trusted_verify_level_value, 1) = 3
+	)
 	LIMIT 1
 	";
 
 	$result =  db_query($query,array(':classif' => $category, ':uid' => $exlude_users,':rand' => $rand));
 	$record = $result->fetchAll();
-	return isset($record[0]->uid) ? $record[0]->uid : 0;
+	$found_uid = isset($record[0]->uid) ? $record[0]->uid : 0;
+	if ($found_uid && function_exists('rovas_user_accepts_voluntary_verification') && !rovas_user_accepts_voluntary_verification($found_uid)) {
+		return 0;
+	}
+	return $found_uid;
 
 //the code below tries to find a single expert by searching reports with set expertise
 //it searches the leaf node and if not found, the siblings of the leaf node in the classif. hierarchy

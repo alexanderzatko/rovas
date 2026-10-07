@@ -1,0 +1,272 @@
+<?php
+
+/**
+ * @file
+ * Install trusted-user and work-report auto-approved fields.
+ */
+
+/**
+ * Implements hook_install().
+ */
+function rovas_user_install() {
+  _rovas_user_ensure_trusted_fields();
+}
+
+/**
+ * Create trusted-user and auto-approved fields if missing.
+ */
+function rovas_user_update_7001() {
+  _rovas_user_ensure_trusted_fields();
+}
+
+/**
+ * Ensure all trusted / auto-approved field bases and instances exist.
+ */
+function _rovas_user_ensure_trusted_fields() {
+  foreach (_rovas_user_trusted_field_bases() as $field) {
+    if (!field_info_field($field['field_name'])) {
+      field_create_field($field);
+    }
+  }
+  foreach (_rovas_user_trusted_field_instances() as $instance) {
+    if (!field_info_instance($instance['entity_type'], $instance['field_name'], $instance['bundle'])) {
+      field_create_instance($instance);
+    }
+  }
+  field_cache_clear();
+}
+
+/**
+ * Field base definitions.
+ */
+function _rovas_user_trusted_field_bases() {
+  $bases = array();
+
+  $bases['field_trusted_user'] = array(
+    'field_name' => 'field_trusted_user',
+    'type' => 'list_boolean',
+    'module' => 'list',
+    'active' => 1,
+    'locked' => 0,
+    'cardinality' => 1,
+    'translatable' => 0,
+    'settings' => array(
+      'allowed_values' => array(
+        0 => '',
+        1 => '',
+      ),
+      'allowed_values_function' => '',
+    ),
+  );
+
+  $bases['field_trusted_auto_approve'] = array(
+    'field_name' => 'field_trusted_auto_approve',
+    'type' => 'list_boolean',
+    'module' => 'list',
+    'active' => 1,
+    'locked' => 0,
+    'cardinality' => 1,
+    'translatable' => 0,
+    'settings' => array(
+      'allowed_values' => array(
+        0 => '',
+        1 => '',
+      ),
+      'allowed_values_function' => '',
+    ),
+  );
+
+  $bases['field_trusted_verify_level'] = array(
+    'field_name' => 'field_trusted_verify_level',
+    'type' => 'list_integer',
+    'module' => 'list',
+    'active' => 1,
+    'locked' => 0,
+    'cardinality' => 1,
+    'translatable' => 0,
+    'settings' => array(
+      'allowed_values' => array(
+        1 => 'Keep verifying',
+        2 => 'Opt out of mandatory',
+        3 => 'No verification requests',
+      ),
+      'allowed_values_function' => '',
+    ),
+  );
+
+  $bases['field_trusted_notify'] = array(
+    'field_name' => 'field_trusted_notify',
+    'type' => 'number_integer',
+    'module' => 'number',
+    'active' => 1,
+    'locked' => 0,
+    'cardinality' => 1,
+    'translatable' => 0,
+    'settings' => array(),
+  );
+
+  $bases['field_auto_approved'] = array(
+    'field_name' => 'field_auto_approved',
+    'type' => 'list_boolean',
+    'module' => 'list',
+    'active' => 1,
+    'locked' => 0,
+    'cardinality' => 1,
+    'translatable' => 0,
+    'settings' => array(
+      'allowed_values' => array(
+        0 => 'No',
+        1 => 'Yes',
+      ),
+      'allowed_values_function' => '',
+    ),
+  );
+
+  return $bases;
+}
+
+/**
+ * Field instance definitions.
+ */
+function _rovas_user_trusted_field_instances() {
+  $instances = array();
+
+  $user_display_hidden = array(
+    'default' => array(
+      'label' => 'hidden',
+      'type' => 'hidden',
+      'weight' => 50,
+      'settings' => array(),
+      'module' => 'list',
+    ),
+  );
+
+  $instances[] = array(
+    'field_name' => 'field_trusted_user',
+    'entity_type' => 'user',
+    'bundle' => 'user',
+    'label' => 'Trusted user',
+    'required' => 0,
+    'default_value' => array(array('value' => 0)),
+    'settings' => array(
+      'user_register_form' => 0,
+    ),
+    'widget' => array(
+      'type' => 'options_onoff',
+      'module' => 'options',
+      'settings' => array(
+        'display_label' => 1,
+      ),
+      'weight' => 40,
+    ),
+    'display' => $user_display_hidden,
+  );
+
+  $instances[] = array(
+    'field_name' => 'field_trusted_auto_approve',
+    'entity_type' => 'user',
+    'bundle' => 'user',
+    'label' => 'I want my reports immediately approved',
+    'required' => 0,
+    'default_value' => array(array('value' => 0)),
+    'settings' => array(
+      'user_register_form' => 0,
+    ),
+    'widget' => array(
+      'type' => 'options_onoff',
+      'module' => 'options',
+      'settings' => array(
+        'display_label' => 1,
+      ),
+      'weight' => 41,
+    ),
+    'display' => $user_display_hidden,
+  );
+
+  $instances[] = array(
+    'field_name' => 'field_trusted_verify_level',
+    'entity_type' => 'user',
+    'bundle' => 'user',
+    'label' => 'Trusted verification preference',
+    'required' => 0,
+    'default_value' => array(array('value' => 1)),
+    'settings' => array(
+      'user_register_form' => 0,
+    ),
+    'widget' => array(
+      'type' => 'options_buttons',
+      'module' => 'options',
+      'settings' => array(),
+      'weight' => 42,
+    ),
+    'display' => $user_display_hidden,
+  );
+
+  $instances[] = array(
+    'field_name' => 'field_trusted_notify',
+    'entity_type' => 'user',
+    'bundle' => 'user',
+    'label' => 'Trusted status notification',
+    'required' => 0,
+    'default_value' => array(array('value' => 0)),
+    'settings' => array(
+      'min' => '',
+      'max' => '',
+      'prefix' => '',
+      'suffix' => '',
+      'user_register_form' => 0,
+    ),
+    'widget' => array(
+      'type' => 'number',
+      'module' => 'number',
+      'settings' => array(),
+      'weight' => 43,
+    ),
+    'display' => array(
+      'default' => array(
+        'label' => 'hidden',
+        'type' => 'hidden',
+        'weight' => 50,
+        'settings' => array(),
+        'module' => 'number',
+      ),
+    ),
+  );
+
+  $instances[] = array(
+    'field_name' => 'field_auto_approved',
+    'entity_type' => 'node',
+    'bundle' => 'work_report',
+    'label' => 'Auto-approved',
+    'description' => 'Set when a trusted user’s preferences caused immediate approval without peer verification.',
+    'required' => 0,
+    'default_value' => array(array('value' => 0)),
+    'settings' => array(),
+    'widget' => array(
+      'type' => 'options_onoff',
+      'module' => 'options',
+      'settings' => array(
+        'display_label' => 1,
+      ),
+      'weight' => 50,
+    ),
+    'display' => array(
+      'default' => array(
+        'label' => 'inline',
+        'type' => 'list_default',
+        'weight' => 20,
+        'settings' => array(),
+        'module' => 'list',
+      ),
+      'teaser' => array(
+        'label' => 'hidden',
+        'type' => 'hidden',
+        'weight' => 0,
+        'settings' => array(),
+        'module' => 'list',
+      ),
+    ),
+  );
+
+  return $instances;
+}

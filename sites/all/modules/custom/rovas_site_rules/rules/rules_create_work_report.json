@@ -161,26 +161,7 @@
                   {
                     "IF" : { "data_is" : { "data" : [ "publish-status" ], "value" : "1" } },
                     "DO" : [
-                      { "component_rules_create_verify_slot" : {
-                          "USING" : {
-                            "uid" : [ "author:uid" ],
-                            "report_nid" : "0",
-                            "due_date_offset" : "0",
-                            "voluntary" : "0"
-                          },
-                          "PROVIDE" : { "slot_nid" : { "slot_nid" : "slot nid" } }
-                        }
-                      },
-                      { "component_rules_create_verify_slot" : {
-                          "USING" : {
-                            "uid" : [ "author:uid" ],
-                            "report_nid" : "0",
-                            "due_date_offset" : "0",
-                            "voluntary" : "0"
-                          },
-                          "PROVIDE" : { "slot_nid" : { "slot_nid_2" : "slot nid 2" } }
-                        }
-                      },
+                      { "php_eval" : { "code" : "if (empty($systemreport) && function_exists('rovas_user_handle_work_report_publish')) {\r\n  rovas_user_handle_work_report_publish($created_work_report, $author, FALSE);\r\n}\r\nelseif (empty($systemreport)) {\r\n  rules_invoke_component('rules_create_verify_slot', (int) $author->uid, 0, '0', 0);\r\n  rules_invoke_component('rules_create_verify_slot', (int) $author->uid, 0, '0', 0);\r\n}" } },
                       { "data_set" : { "data" : [ "result" ], "value" : "1" } }
                     ]
                   },

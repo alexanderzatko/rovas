@@ -1,93 +1,750 @@
 <?php
 
-function rovas_user_form_alter(&$form, &$form_state, $form_id) {
-	if ($form['#id'] == 'user-profile-form') {
+/**
+ * @file
+ * User profile alterations and trusted-user status.
+ */
 
-		$form['picture']['picture_upload']['#description'] = t('Upload your photograph (optional)');
-		$form['comment_notify_settings']['comment_notify']['#description'] = '';
+/**
+ * Compliance score required for trusted eligibility via verification path.
+ */
+define('ROVAS_USER_TRUSTED_COMPLIANCE_MIN', 50);
 
-//this is necessary because https://drupal.stackexchange.com/questions/160387/how-to-re-order-user-profile-form
-		$form['#pre_render'][] = 'rovas_user_alter_weight';
+/**
+ * Project-reward Merits required on an owned project's co_worker share.
+ */
+define('ROVAS_USER_TRUSTED_PROJECT_MERITS_MIN', 500);
 
-		global $user;
-		
-		$verslips = active_verification_slips($user->uid,TRUE,FALSE);
-		$verifcount = count($verslips);
-		
-		if ($verifcount > 0) {
-			$form['field_suspend_account']['#disabled'] = TRUE;
-			$form['field_suspend_account'][LANGUAGE_NONE]['#description'] = t("You can't suspend verifications, because you have @verifcount unfulfilled verification obligations. <br/>
-			You might have to wait for Rovas to turn these obligations to work report verification requests. Only after verifying those requests you will be able to suspend verifications.",['@verifcount' => $verifcount]);	
-		}
-	}
-	else if ($form['#id'] == 'user-cancel-confirm-form') {
-		$message = t('Your account will be removed and all account information deleted.');
-		$message .= '<br>';
-		$message .= t('All of your content (projects, work reports, verifications,...) will be assigned to the <em class="placeholder">Anonymous</em> user.');
-		$message .= '<br><br>';
-		$message .= t('This action cannot be undone.');
+/**
+ * Verify level: keep receiving mandatory verification requests.
+ */
+define('ROVAS_USER_TRUSTED_VERIFY_KEEP', 1);
 
-		$form['description']['#markup'] = $message;
-		$form['actions']['cancel']['#weight'] = 10;
-		$form['actions']['cancel']['#title'] = t('Back to account');
-		$form['actions']['cancel']['#attributes']['class'][] = 'btn';
-		$form['actions']['cancel']['#attributes']['class'][] = 'btn-default';
-		$form['actions']['cancel']['#attributes']['style'] = 'margin-right: 10px;';
-		$form['actions']['submit']['#weight'] = 20;
-		if (!isset($form['actions']['submit']['#attributes']['class'])) {
-			$form['actions']['submit']['#attributes']['class'] = array();
-		}
-		$form['actions']['submit']['#attributes']['class'][] = 'btn-danger';
-	}
+/**
+ * Verify level: opt out of mandatory; voluntary only.
+ */
+define('ROVAS_USER_TRUSTED_VERIFY_OPT_OUT_MANDATORY', 2);
+
+/**
+ * Verify level: no verification requests.
+ */
+define('ROVAS_USER_TRUSTED_VERIFY_NONE', 3);
+
+/**
+ * Implements hook_menu().
+ */
+function rovas_user_menu() {
+  $items = array();
+  $items['dismiss_trusted_notify'] = array(
+    'title' => 'Dismiss trusted notification',
+    'page callback' => 'rovas_user_dismiss_trusted_notify',
+    'access callback' => 'user_is_logged_in',
+    'type' => MENU_CALLBACK,
+  );
+  return $items;
 }
 
+/**
+ * Permanently dismiss the trusted-status site-wide message.
+ */
+function rovas_user_dismiss_trusted_notify() {
+  global $user;
+  if ($user->uid) {
+    $account = user_load($user->uid);
+    if ($account) {
+      rovas_user_set_field_value($account, 'field_trusted_notify', 2);
+      user_save($account);
+    }
+  }
+  drupal_goto('<front>');
+}
+
+/**
+ * Implements hook_init().
+ */
+function rovas_user_init() {
+  global $user;
+  if (empty($user->uid) || drupal_is_cli()) {
+    return;
+  }
+  // Avoid running during install / early bootstrap edge cases.
+  if (!function_exists('field_info_field') || !field_info_field('field_trusted_user')) {
+    return;
+  }
+  $account = user_load($user->uid);
+  if (!$account) {
+    return;
+  }
+  rovas_user_maybe_grant_trusted($account);
+  // Reload if grant may have changed notify flag.
+  if (rovas_user_field_int($account, 'field_trusted_notify') == 1) {
+    $account = user_load($user->uid, TRUE);
+  }
+  rovas_user_show_trusted_banner($account);
+}
+
+/**
+ * Show a permanently dismissible trusted-status message.
+ *
+ * @param object $account
+ *   User account.
+ */
+function rovas_user_show_trusted_banner($account) {
+  if (rovas_user_field_int($account, 'field_trusted_notify') != 1) {
+    return;
+  }
+  $profile = url('user/' . (int) $account->uid . '/edit');
+  $dismiss = url('dismiss_trusted_notify');
+  $message = t('You have reached Trusted user status. Go to your <a href="@profile">account settings</a> to choose whether your work reports are immediately approved and how you receive verification requests.', array(
+    '@profile' => $profile,
+  ));
+  $message .= ' ' . l(t('Dismiss'), $dismiss);
+  drupal_set_message($message, 'status', FALSE);
+}
+
+/**
+ * Read integer field value from a user/node entity.
+ *
+ * @param object $entity
+ * @param string $field_name
+ * @param int $default
+ *
+ * @return int
+ */
+function rovas_user_field_int($entity, $field_name, $default = 0) {
+  $entity_type = !empty($entity->nid) ? 'node' : 'user';
+  $items = field_get_items($entity_type, $entity, $field_name);
+  if ($items === FALSE && isset($entity->{$field_name}[LANGUAGE_NONE][0]['value'])) {
+    return (int) $entity->{$field_name}[LANGUAGE_NONE][0]['value'];
+  }
+  if (isset($items[0]['value'])) {
+    return (int) $items[0]['value'];
+  }
+  return (int) $default;
+}
+
+/**
+ * Set a single-value field on a user entity (in memory).
+ *
+ * @param object $account
+ * @param string $field_name
+ * @param mixed $value
+ */
+function rovas_user_set_field_value($account, $field_name, $value) {
+  $account->{$field_name}[LANGUAGE_NONE][0]['value'] = $value;
+}
+
+/**
+ * Whether the sticky trusted flag is set.
+ *
+ * @param object|int $account
+ *   User object or uid.
+ *
+ * @return bool
+ */
+function rovas_user_is_trusted($account) {
+  $account = rovas_user_load_account($account);
+  if (!$account) {
+    return FALSE;
+  }
+  return rovas_user_field_int($account, 'field_trusted_user') == 1;
+}
+
+/**
+ * Live eligibility check (compliance or owner + project-reward Merits).
+ *
+ * @param object|int $account
+ *
+ * @return bool
+ */
+function rovas_user_trusted_conditions_met($account) {
+  $account = rovas_user_load_account($account);
+  if (!$account) {
+    return FALSE;
+  }
+  if (rovas_user_field_int($account, 'field_verification_score') >= ROVAS_USER_TRUSTED_COMPLIANCE_MIN) {
+    return TRUE;
+  }
+  return rovas_user_has_owner_project_reward_merits($account->uid, ROVAS_USER_TRUSTED_PROJECT_MERITS_MIN);
+}
+
+/**
+ * Owner of a project with co_worker field_merits_earned above threshold.
+ *
+ * @param int $uid
+ * @param int $min_merits
+ *
+ * @return bool
+ */
+function rovas_user_has_owner_project_reward_merits($uid, $min_merits = ROVAS_USER_TRUSTED_PROJECT_MERITS_MIN) {
+  $uid = (int) $uid;
+  if ($uid < 1) {
+    return FALSE;
+  }
+  $sql = "
+    SELECT 1
+    FROM {node} proj
+    INNER JOIN {field_data_field_project} p
+      ON p.field_project_target_id = proj.nid
+      AND p.entity_type = 'node' AND p.deleted = 0
+    INNER JOIN {node} alloc
+      ON alloc.nid = p.entity_id
+      AND alloc.type = 'co_worker_merit_allocation'
+      AND alloc.status = 1
+    INNER JOIN {field_data_field_coworker} cw
+      ON cw.entity_id = alloc.nid AND cw.entity_type = 'node' AND cw.deleted = 0
+      AND cw.field_coworker_target_id = :uid
+    INNER JOIN {field_data_field_merits_earned} me
+      ON me.entity_id = alloc.nid AND me.entity_type = 'node' AND me.deleted = 0
+    WHERE proj.type = 'project'
+      AND proj.status = 1
+      AND proj.uid = :uid
+      AND me.field_merits_earned_value > :min
+    LIMIT 1
+  ";
+  return (bool) db_query($sql, array(
+    ':uid' => $uid,
+    ':min' => (float) $min_merits,
+  ))->fetchField();
+}
+
+/**
+ * Grant sticky trusted status when conditions are first met.
+ *
+ * @param object|int $account
+ *
+ * @return bool
+ *   TRUE if newly granted.
+ */
+function rovas_user_maybe_grant_trusted($account) {
+  $account = rovas_user_load_account($account);
+  if (!$account || rovas_user_is_trusted($account)) {
+    return FALSE;
+  }
+  if (!rovas_user_trusted_conditions_met($account)) {
+    return FALSE;
+  }
+  rovas_user_set_field_value($account, 'field_trusted_user', 1);
+  rovas_user_set_field_value($account, 'field_trusted_notify', 1);
+  user_save($account);
+  return TRUE;
+}
+
+/**
+ * Clear trusted flag and related preferences.
+ *
+ * @param object|int $account
+ */
+function rovas_user_revoke_trusted($account) {
+  $account = rovas_user_load_account($account);
+  if (!$account) {
+    return;
+  }
+  rovas_user_set_field_value($account, 'field_trusted_user', 0);
+  rovas_user_set_field_value($account, 'field_trusted_auto_approve', 0);
+  rovas_user_set_field_value($account, 'field_trusted_verify_level', ROVAS_USER_TRUSTED_VERIFY_KEEP);
+  rovas_user_set_field_value($account, 'field_trusted_notify', 0);
+  user_save($account);
+}
+
+/**
+ * After dispute penalties: revoke trusted if eligibility no longer holds.
+ *
+ * @param object|int $account
+ */
+function rovas_user_reevaluate_trusted_after_dispute($account) {
+  $account = rovas_user_load_account($account);
+  if (!$account || !rovas_user_is_trusted($account)) {
+    return;
+  }
+  // Reload so compliance=0 is visible after in-memory updates + save.
+  $account = user_load($account->uid, TRUE);
+  if (!rovas_user_trusted_conditions_met($account)) {
+    rovas_user_revoke_trusted($account);
+  }
+}
+
+/**
+ * Whether trusted prefs (auto-approve + verify level) apply.
+ *
+ * @param object|int $account
+ *
+ * @return bool
+ */
+function rovas_user_uses_trusted_prefs($account) {
+  $account = rovas_user_load_account($account);
+  if (!$account || !rovas_user_is_trusted($account)) {
+    return FALSE;
+  }
+  return rovas_user_field_int($account, 'field_trusted_auto_approve') == 1;
+}
+
+/**
+ * Whether new published WRs should be auto-approved for this author.
+ *
+ * @param object|int $account
+ *
+ * @return bool
+ */
+function rovas_user_should_auto_approve_reports($account) {
+  return rovas_user_uses_trusted_prefs($account);
+}
+
+/**
+ * Trusted verify level (1/2/3). Defaults to KEEP when unset.
+ *
+ * @param object|int $account
+ *
+ * @return int
+ */
+function rovas_user_trusted_verify_level($account) {
+  $account = rovas_user_load_account($account);
+  if (!$account) {
+    return ROVAS_USER_TRUSTED_VERIFY_KEEP;
+  }
+  $level = rovas_user_field_int($account, 'field_trusted_verify_level', ROVAS_USER_TRUSTED_VERIFY_KEEP);
+  if ($level < 1 || $level > 3) {
+    return ROVAS_USER_TRUSTED_VERIFY_KEEP;
+  }
+  return $level;
+}
+
+/**
+ * May be selected for mandatory verification assignment.
+ *
+ * @param object|int $account
+ *
+ * @return bool
+ */
+function rovas_user_accepts_mandatory_verification($account) {
+  if (!rovas_user_uses_trusted_prefs($account)) {
+    return TRUE;
+  }
+  return rovas_user_trusted_verify_level($account) == ROVAS_USER_TRUSTED_VERIFY_KEEP;
+}
+
+/**
+ * May be selected for voluntary verification asks.
+ *
+ * @param object|int $account
+ *
+ * @return bool
+ */
+function rovas_user_accepts_voluntary_verification($account) {
+  if (!rovas_user_uses_trusted_prefs($account)) {
+    return TRUE;
+  }
+  return rovas_user_trusted_verify_level($account) != ROVAS_USER_TRUSTED_VERIFY_NONE;
+}
+
+/**
+ * On missed mandatory verify: demote verify level KEEP → OPT_OUT_MANDATORY.
+ *
+ * @param object|int $account
+ */
+function rovas_user_demote_verify_level_on_miss($account) {
+  $account = rovas_user_load_account($account);
+  if (!$account || !rovas_user_uses_trusted_prefs($account)) {
+    return;
+  }
+  if (rovas_user_trusted_verify_level($account) != ROVAS_USER_TRUSTED_VERIFY_KEEP) {
+    return;
+  }
+  rovas_user_set_field_value($account, 'field_trusted_verify_level', ROVAS_USER_TRUSTED_VERIFY_OPT_OUT_MANDATORY);
+  user_save($account);
+}
+
+/**
+ * Auto-approve a published work report for a trusted author (in place + save).
+ *
+ * Sets verification status, Chrons, and field_auto_approved. Does not create
+ * verification slots.
+ *
+ * @param object $node
+ *   work_report node (modified and saved).
+ *
+ * @return bool
+ *   TRUE if auto-approved.
+ */
+function rovas_user_auto_approve_work_report($node) {
+  if (empty($node) || empty($node->type) || $node->type !== 'work_report') {
+    return FALSE;
+  }
+  $author = user_load($node->uid);
+  if (!$author || !rovas_user_should_auto_approve_reports($author)) {
+    return FALSE;
+  }
+
+  $hours = 0;
+  if (!empty($node->field_hours_worked[LANGUAGE_NONE][0]['value'])) {
+    $hours = (float) $node->field_hours_worked[LANGUAGE_NONE][0]['value'];
+  }
+  $chrons = $hours * 10;
+
+  $node->field_verification_status[LANGUAGE_NONE][0]['value'] = 1;
+  $node->field_chrons_to_grant[LANGUAGE_NONE][0]['value'] = $chrons;
+  $node->field_auto_approved[LANGUAGE_NONE][0]['value'] = 1;
+  node_save($node);
+
+  if (function_exists('rules_invoke_component') && $chrons != 0) {
+    rules_invoke_component('rules_update_user_chron_account', $author, $chrons, NULL);
+  }
+  return TRUE;
+}
+
+/**
+ * Handle publish-time side effects for a work report author.
+ *
+ * Either auto-approves (trusted prefs) or creates two empty obligation slots.
+ *
+ * @param object $node
+ *   work_report node.
+ * @param object|null $author
+ *   Author user; loaded from $node->uid if NULL.
+ * @param bool $clear_suspend
+ *   When TRUE (UI publish path), clear field_suspend_account unless auto-approving.
+ *
+ * @return bool
+ *   TRUE if auto-approved; FALSE if slots were created.
+ */
+function rovas_user_handle_work_report_publish($node, $author = NULL, $clear_suspend = TRUE) {
+  if ($author === NULL) {
+    $author = user_load($node->uid);
+  }
+  if ($author && rovas_user_should_auto_approve_reports($author)) {
+    rovas_user_auto_approve_work_report($node);
+    return TRUE;
+  }
+  if (function_exists('rules_invoke_component')) {
+    rules_invoke_component('rules_create_verify_slot', (int) $node->uid, 0, '0', 0);
+    rules_invoke_component('rules_create_verify_slot', (int) $node->uid, 0, '0', 0);
+  }
+  if ($clear_suspend && $author) {
+    rovas_user_set_field_value($author, 'field_suspend_account', 0);
+    user_save($author);
+  }
+  return FALSE;
+}
+
+/**
+ * HTML snippet for trusted notice at top of verification emails.
+ *
+ * @param object $account
+ *   Recipient.
+ * @param string $language
+ *   Langcode.
+ *
+ * @return string
+ *   Empty if not trusted; otherwise HTML ending with double &lt;br&gt;.
+ */
+function rovas_user_trusted_email_notice($account, $language = NULL) {
+  $account = rovas_user_load_account($account);
+  if (!$account || !rovas_user_is_trusted($account)) {
+    return '';
+  }
+  $options = array();
+  if ($language) {
+    $options['langcode'] = $language;
+  }
+  $profile = '/user/' . (int) $account->uid . '/edit';
+  $text = t('You are now a Trusted user. You can have your work reports automatically approved and can limit or stop verification requests in your <a href="@profile">account settings</a>.', array(
+    '@profile' => $profile,
+  ), $options);
+  return $text . '<br><br>';
+}
+
+/**
+ * Normalize account argument to a loaded user object.
+ *
+ * @param object|int $account
+ *
+ * @return object|null
+ */
+function rovas_user_load_account($account) {
+  if (is_object($account) && isset($account->uid)) {
+    return $account;
+  }
+  if (is_numeric($account) && (int) $account > 0) {
+    return user_load((int) $account);
+  }
+  return NULL;
+}
+
+/**
+ * Implements hook_node_view().
+ *
+ * Show Auto-approved only when set (avoids "No" noise on normal WRs).
+ */
+function rovas_user_node_view($node, $view_mode, $langcode) {
+  if ($node->type !== 'work_report' || empty($node->content['field_auto_approved'])) {
+    return;
+  }
+  if (rovas_user_field_int($node, 'field_auto_approved') != 1) {
+    hide($node->content['field_auto_approved']);
+  }
+}
+
+/**
+ * Implements hook_form_alter().
+ */
+function rovas_user_form_alter(&$form, &$form_state, $form_id) {
+  if ($form['#id'] == 'user-profile-form') {
+
+    $form['picture']['picture_upload']['#description'] = t('Upload your photograph (optional)');
+    $form['comment_notify_settings']['comment_notify']['#description'] = '';
+
+    // this is necessary because https://drupal.stackexchange.com/questions/160387/how-to-re-order-user-profile-form
+    $form['#pre_render'][] = 'rovas_user_alter_weight';
+
+    global $user;
+
+    $verslips = function_exists('active_verification_slips') ? active_verification_slips($user->uid, TRUE, FALSE) : array();
+    $verifcount = count($verslips);
+
+    if ($verifcount > 0 && isset($form['field_suspend_account'])) {
+      $form['field_suspend_account']['#disabled'] = TRUE;
+      $form['field_suspend_account'][LANGUAGE_NONE]['#description'] = t("You can't suspend verifications, because you have @verifcount unfulfilled verification obligations. <br/>
+			You might have to wait for Rovas to turn these obligations to work report verification requests. Only after verifying those requests you will be able to suspend verifications.", array('@verifcount' => $verifcount));
+    }
+
+    // Hide raw trusted fields; custom fieldset below is the UX.
+    foreach (array(
+      'field_trusted_user',
+      'field_trusted_auto_approve',
+      'field_trusted_verify_level',
+      'field_trusted_notify',
+    ) as $fname) {
+      if (isset($form[$fname])) {
+        $form[$fname]['#access'] = FALSE;
+      }
+    }
+
+    $account = isset($form['#user']) ? $form['#user'] : user_load($user->uid);
+    if ($account) {
+      rovas_user_maybe_grant_trusted($account);
+      $account = user_load($account->uid, TRUE);
+    }
+    rovas_user_attach_trusted_settings_fieldset($form, $form_state, $account);
+  }
+  elseif ($form['#id'] == 'user-cancel-confirm-form') {
+    $message = t('Your account will be removed and all account information deleted.');
+    $message .= '<br>';
+    $message .= t('All of your content (projects, work reports, verifications,...) will be assigned to the <em class="placeholder">Anonymous</em> user.');
+    $message .= '<br><br>';
+    $message .= t('This action cannot be undone.');
+
+    $form['description']['#markup'] = $message;
+    $form['actions']['cancel']['#weight'] = 10;
+    $form['actions']['cancel']['#title'] = t('Back to account');
+    $form['actions']['cancel']['#attributes']['class'][] = 'btn';
+    $form['actions']['cancel']['#attributes']['class'][] = 'btn-default';
+    $form['actions']['cancel']['#attributes']['style'] = 'margin-right: 10px;';
+    $form['actions']['submit']['#weight'] = 20;
+    if (!isset($form['actions']['submit']['#attributes']['class'])) {
+      $form['actions']['submit']['#attributes']['class'] = array();
+    }
+    $form['actions']['submit']['#attributes']['class'][] = 'btn-danger';
+  }
+
+  // Auto-approved is system-set only on work reports.
+  if (!empty($form['#node']) && $form['#node']->type === 'work_report' && isset($form['field_auto_approved'])) {
+    $form['field_auto_approved']['#access'] = FALSE;
+  }
+}
+
+/**
+ * Add Trusted user settings fieldset to the profile form.
+ *
+ * @param array $form
+ * @param array $form_state
+ * @param object|null $account
+ */
+function rovas_user_attach_trusted_settings_fieldset(&$form, &$form_state, $account) {
+  if (!$account || !field_info_field('field_trusted_user')) {
+    return;
+  }
+
+  $is_trusted = rovas_user_is_trusted($account);
+  $auto = rovas_user_field_int($account, 'field_trusted_auto_approve');
+  $level = rovas_user_trusted_verify_level($account);
+
+  $help = '';
+  $help .= '<p>' . t('Trusted users have demonstrated they are a real individual — through verification efforts, Merits earned from rewards to a project they own, or (in the future) government ID verification.') . '</p>';
+  $help .= '<p>' . t('You qualify when your compliance score is at least @score, or when you own a project and have earned more than @merits Merits from rewards to that project (owning shares alone is not enough).', array(
+    '@score' => ROVAS_USER_TRUSTED_COMPLIANCE_MIN,
+    '@merits' => ROVAS_USER_TRUSTED_PROJECT_MERITS_MIN,
+  )) . '</p>';
+  $help .= '<p>' . t('Losing a dispute sets your compliance score to 0 and applies the merit penalty described in the <a href="@url">dispute rules</a>. Trusted status is then re-checked and revoked if you no longer meet the eligibility conditions.', array(
+    '@url' => url('disputes'),
+  )) . '</p>';
+  $help .= '<p>' . t('Even when your reports are immediately approved, other users can still challenge them by filing a dispute.') . '</p>';
+
+  $form['trusted_user_settings'] = array(
+    '#type' => 'fieldset',
+    '#title' => t('Trusted user settings'),
+    '#description' => $help,
+    '#collapsible' => FALSE,
+    '#tree' => TRUE,
+    '#weight' => 35,
+  );
+
+  $form['trusted_user_settings']['auto_approve'] = array(
+    '#type' => 'checkbox',
+    '#title' => t('I want my reports immediately approved'),
+    '#default_value' => $auto,
+    '#disabled' => !$is_trusted,
+  );
+
+  $form['trusted_user_settings']['verify_level'] = array(
+    '#type' => 'radios',
+    '#title' => t('Verification requests'),
+    '#default_value' => $level,
+    '#disabled' => !$is_trusted,
+    '#options' => array(
+      ROVAS_USER_TRUSTED_VERIFY_KEEP => t('I am willing to keep verifying any work reports as needed'),
+      ROVAS_USER_TRUSTED_VERIFY_OPT_OUT_MANDATORY => t('I opt out of receiving the mandatory verification requests'),
+      ROVAS_USER_TRUSTED_VERIFY_NONE => t('I do not want to receive any verification requests'),
+    ),
+    '#states' => array(
+      'visible' => array(
+        ':input[name="trusted_user_settings[auto_approve]"]' => array('checked' => TRUE),
+      ),
+    ),
+  );
+
+  $form['trusted_user_settings']['verify_level_help_1'] = array(
+    '#type' => 'item',
+    '#markup' => '<div class="description">' . t('You will be receiving verification requests from your domain of expertise, and occasionally also requests for reports out of your domain of expertise.') . '</div>',
+    '#states' => array(
+      'visible' => array(
+        ':input[name="trusted_user_settings[auto_approve]"]' => array('checked' => TRUE),
+        ':input[name="trusted_user_settings[verify_level]"]' => array('value' => (string) ROVAS_USER_TRUSTED_VERIFY_KEEP),
+      ),
+    ),
+  );
+  $form['trusted_user_settings']['verify_level_help_2'] = array(
+    '#type' => 'item',
+    '#markup' => '<div class="description">' . t('You might occasionally receive requests for reports out of your domain of expertise that you can refuse to verify without penalties.') . '</div>',
+    '#states' => array(
+      'visible' => array(
+        ':input[name="trusted_user_settings[auto_approve]"]' => array('checked' => TRUE),
+        ':input[name="trusted_user_settings[verify_level]"]' => array('value' => (string) ROVAS_USER_TRUSTED_VERIFY_OPT_OUT_MANDATORY),
+      ),
+    ),
+  );
+  $form['trusted_user_settings']['verify_level_help_3'] = array(
+    '#type' => 'item',
+    '#markup' => '<div class="description">' . t('You will not receive any verification requests.') . '</div>',
+    '#states' => array(
+      'visible' => array(
+        ':input[name="trusted_user_settings[auto_approve]"]' => array('checked' => TRUE),
+        ':input[name="trusted_user_settings[verify_level]"]' => array('value' => (string) ROVAS_USER_TRUSTED_VERIFY_NONE),
+      ),
+    ),
+  );
+
+  if (!$is_trusted) {
+    $form['trusted_user_settings']['#disabled'] = TRUE;
+  }
+
+  $form['#validate'][] = 'rovas_user_trusted_settings_validate';
+  $form['#submit'][] = 'rovas_user_trusted_settings_submit';
+}
+
+/**
+ * Validate trusted settings: only trusted users may enable prefs.
+ */
+function rovas_user_trusted_settings_validate($form, &$form_state) {
+  if (empty($form_state['values']['trusted_user_settings'])) {
+    return;
+  }
+  $uid = !empty($form_state['user']->uid) ? $form_state['user']->uid : 0;
+  $account = user_load($uid);
+  if (!$account || !rovas_user_is_trusted($account)) {
+    // Ignore submitted prefs when not trusted.
+    unset($form_state['values']['trusted_user_settings']);
+  }
+}
+
+/**
+ * Persist trusted settings from the custom fieldset.
+ */
+function rovas_user_trusted_settings_submit($form, &$form_state) {
+  if (empty($form_state['values']['trusted_user_settings'])) {
+    return;
+  }
+  $uid = !empty($form_state['user']->uid) ? $form_state['user']->uid : 0;
+  $account = user_load($uid);
+  if (!$account || !rovas_user_is_trusted($account)) {
+    return;
+  }
+  $vals = $form_state['values']['trusted_user_settings'];
+  $auto = !empty($vals['auto_approve']) ? 1 : 0;
+  $level = isset($vals['verify_level']) ? (int) $vals['verify_level'] : ROVAS_USER_TRUSTED_VERIFY_KEEP;
+  if ($level < 1 || $level > 3) {
+    $level = ROVAS_USER_TRUSTED_VERIFY_KEEP;
+  }
+  if (!$auto) {
+    $level = ROVAS_USER_TRUSTED_VERIFY_KEEP;
+  }
+  rovas_user_set_field_value($account, 'field_trusted_auto_approve', $auto);
+  rovas_user_set_field_value($account, 'field_trusted_verify_level', $level);
+  user_save($account);
+}
+
+/**
+ * Reorder profile form elements.
+ */
 function rovas_user_alter_weight($elements) {
 
-	$order = array('field_full_name',
-					'picture',
-					'account',
-					'field_country',
-					'locale',
-					'timezone',
-					'comment_notify_settings',
-					'privatemsg',
-					'contact',
-					'signature_settings',
-					'field_verified',
-					'field_average_work_day',
-					'field_chrons_balance',
-					'field_actually_available_chrons',
-					'field_merit_decimal_part',
-					'field_dispute_notify');
+  $order = array(
+    'field_full_name',
+    'picture',
+    'account',
+    'field_country',
+    'locale',
+    'timezone',
+    'comment_notify_settings',
+    'privatemsg',
+    'contact',
+    'signature_settings',
+    'field_verified',
+    'field_average_work_day',
+    'field_chrons_balance',
+    'field_actually_available_chrons',
+    'field_merit_decimal_part',
+    'field_dispute_notify',
+    'trusted_user_settings',
+  );
 
-	foreach ($order as $key => $value){
-		$elements[$value]['#weight'] = $key;
-	}
+  foreach ($order as $key => $value) {
+    if (isset($elements[$value])) {
+      $elements[$value]['#weight'] = $key;
+    }
+  }
 
   return $elements;
-
 }
 
-
-/*
-implements hook_views_pre_render
-adds user name to the Chrons and Merit tabs in the user profile
-*/
-
+/**
+ * Implements hook_views_pre_render().
+ *
+ * Adds user name to the Chrons and Merit tabs in the user profile.
+ */
 function rovas_user_views_pre_render(&$view) {
   if ($view->name == 'money_transfers' && $view->current_display == 'page') {
-		$uid = $view->args[0];
-		$user = user_load($uid);
+    $uid = $view->args[0];
+    $user = user_load($uid);
     $view->build_info['title'] = $user->name;
   }
   if ($view->name == 'merit_history' && $view->current_display == 'page_1') {
-		$uid = $view->args[0];
-		$user = user_load($uid);
+    $uid = $view->args[0];
+    $user = user_load($uid);
     $view->build_info['title'] = $user->name;
   }
   if ($view->name == 'Mentions' && $view->current_display == 'page_1') {
-		$uid = $view->args[0];
-		$user = user_load($uid);
+    $uid = $view->args[0];
+    $user = user_load($uid);
     $view->build_info['title'] = $user->name;
   }
 }
