@@ -5,13 +5,14 @@ not steal PHP-FPM workers from Civic / the Rovas API.
 
 Dev (`/var/www/rovdev`) is separate; this note is for prod unless stated.
 
-## Current setup (2026-10-07)
+## Current setup (2026-10-08)
 
 | Piece | Value |
 |-------|--------|
 | Module | `elysia_cron` **7.x-2.5** (enabled) |
 | Automated Drupal cron | Off (`cron_safe_threshold = 0`) |
-| Trigger | `www-data` crontab → **niced Drush** (not `wget cron.php`) |
+| Trigger | `www-data` crontab → **niced Drush** + **`flock -n`** (not `wget cron.php`) |
+| Lock file | `/run/lock/rovas-elysia-cron.lock` (`flock -n`: skip tick if still running) |
 | PHP-FPM | `php7.4-fpm` pool `www`: `pm.max_children = 8` (was 5) |
 | UI / stats | `/admin/config/system/cron` |
 
@@ -21,12 +22,16 @@ Dev (`/var/www/rovdev`) is separate; this note is for prod unless stated.
 # Matomo archive (niced so it yields to web/API)
 */5 * * * * /usr/bin/nice -n 19 /usr/bin/php /var/www/matomo/console core:archive --url=https://analytics.rovas.app > /dev/null 2>&1
 
-# Drupal / Elysia Cron via Drush (CLI, niced — does not consume php-fpm workers)
-* * * * * cd /var/www/rovas && /usr/bin/nice -n 19 /usr/local/bin/drush74 elysia-cron run >/dev/null 2>&1
+# Drupal / Elysia Cron via Drush (CLI, niced, flock so slow runs cannot stack)
+* * * * * /usr/bin/flock -n /run/lock/rovas-elysia-cron.lock /bin/sh -c 'cd /var/www/rovas && /usr/bin/nice -n 19 /usr/local/bin/drush74 elysia-cron run' >/dev/null 2>&1
 ```
 
-The **1-minute** tick only asks Elysia which jobs are due. Heavy work is not
+The **1-minute** tick only asks Elysia which jobs are due. If a previous run is
+still holding the lock, that minute is skipped (`flock -n`). Heavy work is not
 scheduled every minute (see below).
+
+On 2026-10-08 a Rules/`semaphore` deadlock during a long Elysia run stacked many
+minute ticks and saturated PHP-FPM; `flock -n` was added to stop that pile-up.
 
 ### Elysia job rules (initial)
 
