@@ -93,7 +93,9 @@ function rovas_user_show_trusted_banner($account) {
   if (rovas_user_field_int($account, 'field_trusted_notify') != 1) {
     return;
   }
-  $profile = url('user/' . (int) $account->uid . '/edit');
+  $profile = url('user/' . (int) $account->uid . '/edit', array(
+    'fragment' => 'edit-trusted-user-settings',
+  ));
   $dismiss = url('dismiss_trusted_notify');
   // Spacing via CSS class: Bootstrap filter_xss_admin() strips inline style attrs.
   $message = '<div>' . t('Congratulations, you are now a <strong>Trusted user</strong>!') . '</div>';
@@ -455,7 +457,7 @@ function rovas_user_trusted_email_notice($account, $language = NULL) {
   if ($language) {
     $options['langcode'] = $language;
   }
-  $profile = '/user/' . (int) $account->uid . '/edit';
+  $profile = '/user/' . (int) $account->uid . '/edit#edit-trusted-user-settings';
   // Same copy as the site-wide trusted banner (minus dismiss link).
   $text = t('Congratulations, you are now a <strong>Trusted user</strong>!', array(), $options);
   $text .= '<br><br>';
@@ -596,6 +598,8 @@ function rovas_user_attach_trusted_settings_fieldset(&$form, &$form_state, $acco
     '#collapsible' => FALSE,
     '#tree' => TRUE,
     '#weight' => 35,
+    // Stable target for banner/email deep links (#edit-trusted-user-settings).
+    '#id' => 'edit-trusted-user-settings',
   );
 
   $form['trusted_user_settings']['auto_approve'] = array(
