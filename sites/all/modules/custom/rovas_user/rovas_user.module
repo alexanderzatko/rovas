@@ -657,6 +657,27 @@ function rovas_user_attach_trusted_settings_fieldset(&$form, &$form_state, $acco
     ),
   );
 
+  // Warn when opting out while mandatory verification requests are still open.
+  $outstanding = function_exists('active_verification_slips')
+    ? active_verification_slips($account->uid, TRUE, TRUE)
+    : array();
+  if (count($outstanding) > 0) {
+    $form['trusted_user_settings']['verify_level_outstanding_note'] = array(
+      '#type' => 'item',
+      '#markup' => '<div class="rovas-trusted-outstanding-note" style="color:#c00">' . t('You will stop receiving verification requests only after you have verified your existing verification requests.') . '</div>',
+      '#states' => array(
+        'visible' => array(
+          ':input[name="trusted_user_settings[auto_approve]"]' => array('checked' => TRUE),
+          array(
+            array(':input[name="trusted_user_settings[verify_level]"]' => array('value' => (string) ROVAS_USER_TRUSTED_VERIFY_OPT_OUT_MANDATORY)),
+            'or',
+            array(':input[name="trusted_user_settings[verify_level]"]' => array('value' => (string) ROVAS_USER_TRUSTED_VERIFY_NONE)),
+          ),
+        ),
+      ),
+    );
+  }
+
   if (!$is_trusted) {
     $form['trusted_user_settings']['#disabled'] = TRUE;
   }

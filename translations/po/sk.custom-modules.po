@@ -328,6 +328,10 @@ msgid "You will not receive any verification requests."
 msgstr "Nebudete dostávať žiadne žiadosti o overenie."
 
 #: sites/all/modules/custom/rovas_user/rovas_user.module
+msgid "You will stop receiving verification requests only after you have verified your existing verification requests."
+msgstr "Výzvy na overenie prestanete dostávať až potom, čo overíte vaše existujúce žiadosti na overenie"
+
+#: sites/all/modules/custom/rovas_user/rovas_user.module
 msgid "Congratulations, you are now a <strong>Trusted user</strong>!"
 msgstr "Blahoželáme, stali ste sa <strong>dôveryhodným používateľom</strong>!"
 

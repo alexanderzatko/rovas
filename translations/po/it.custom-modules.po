@@ -282,6 +282,10 @@ msgid "You will not receive any verification requests."
 msgstr "Non riceverete alcuna richiesta di verifica."
 
 #: sites/all/modules/custom/rovas_user/rovas_user.module
+msgid "You will stop receiving verification requests only after you have verified your existing verification requests."
+msgstr "Smetterete di ricevere richieste di verifica solo dopo aver verificato le richieste di verifica già esistenti."
+
+#: sites/all/modules/custom/rovas_user/rovas_user.module
 msgid "Congratulations, you are now a <strong>Trusted user</strong>!"
 msgstr "Congratulazioni, ora siete un <strong>utente affidabile</strong>!"
 
