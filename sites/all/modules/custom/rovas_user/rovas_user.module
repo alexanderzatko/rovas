@@ -446,11 +446,16 @@ function rovas_user_handle_work_report_publish($node, $author = NULL, $clear_sus
  *   Langcode.
  *
  * @return string
- *   Empty if not trusted; otherwise HTML ending with double &lt;br&gt;.
+ *   Empty if not trusted, or if field_trusted_notify is 1 (banner active);
+ *   otherwise HTML ending with double &lt;br&gt;.
  */
 function rovas_user_trusted_email_notice($account, $language = NULL) {
   $account = rovas_user_load_account($account);
   if (!$account || !rovas_user_is_trusted($account)) {
+    return '';
+  }
+  // Skip while the site-wide trusted banner is active (notify == 1).
+  if (rovas_user_field_int($account, 'field_trusted_notify') == 1) {
     return '';
   }
   $options = array();

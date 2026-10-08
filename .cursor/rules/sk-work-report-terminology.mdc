@@ -1,0 +1,21 @@
+---
+description: Slovak term for Work report is always Pracovný výkaz
+alwaysApply: true
+---
+
+# Slovak: Work report terminology
+
+When writing or translating UI, email, Rules, or field strings into Slovak:
+
+- **Work report** / **work reports** → **pracovný výkaz** / **pracovné výkazy** (decline as needed: výkazu, výkazov, výkazoch, …).
+- Do **not** use **správa** / **správy** for work reports. In Slovak Rovas copy, *správa* means a message/report in the generic or system sense, not a work report.
+
+```text
+❌ overovať správy iných používateľov
+✅ overovať výkazy iných používateľov
+
+❌ pracovné správy / pracovnej správe
+✅ pracovné výkazy / pracovnom výkaze
+```
+
+Same rule for Czech when aligning terminology: prefer **pracovní výkaz(y)** over **zprávy** for this entity.

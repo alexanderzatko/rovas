@@ -52804,7 +52804,7 @@ msgstr ""
 msgid ""
 "The deadline to verify the report is @date, please do so, as soon as "
 "possible."
-msgstr "Termín na overenie správy je @date, vykonajte to čo najskôr."
+msgstr "Termín na overenie výkazu je @date, vykonajte to čo najskôr."
 
 #: /devel/php
 msgid ""

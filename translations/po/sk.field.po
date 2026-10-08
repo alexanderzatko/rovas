@@ -2078,7 +2078,7 @@ msgid ""
 "lifted when you publish a new work report."
 msgstr ""
 "Začiarknite pre pozastavenie žiadostí o overenie. Ak je "
-"začiarknuté, nebudete musieť overovať správy iných "
+"začiarknuté, nebudete musieť overovať výkazy iných "
 "používateľov. Pozastavenie sa automaticky zruší ak zašlete nový "
 "pracovný výkaz."
 
@@ -2237,7 +2237,7 @@ msgstr "Stav overenia"
 #: field:field_verified_time:verification:description
 msgctxt "field_verified_time:verification:description"
 msgid "The time as reported in the work report this verification relates to."
-msgstr "Čas uvedený v pracovnej správe, ktorej sa toto overenie týka."
+msgstr "Čas uvedený v pracovnom výkaze, ktorého sa toto overenie týka."
 
 #: field:field_verified_time:verification:label
 msgctxt "field_verified_time:verification:label"
@@ -2453,7 +2453,7 @@ msgstr "Dôveryhodný používateľ"
 #: field:field_trusted_auto_approve:user:label
 msgctxt "field_trusted_auto_approve:user:label"
 msgid "I want my reports immediately approved"
-msgstr "Chcem, aby boli moje správy okamžite schválené"
+msgstr "Chcem, aby boli moje pracovné výkazy okamžite schválené"
 
 #: field:field_trusted_verify_level:user:label
 msgctxt "field_trusted_verify_level:user:label"

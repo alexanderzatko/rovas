@@ -293,11 +293,11 @@ msgstr "Dôveryhodným používateľom sa môže stať ten, kto má <a href=\"@g
 
 #: sites/all/modules/custom/rovas_user/rovas_user.module
 msgid "Even when your reports are immediately approved, other users can still challenge them by filing a dispute. Losing a dispute can revoke Trusted user status."
-msgstr "Aj keď sú vaše správy okamžite schválené, iní používatelia ich môžu stále napadnúť podaním sporu. Prehra v spore môže status dôveryhodného používateľa odobrať."
+msgstr "Aj keď sú vaše pracovné výkazy okamžite schválené, iní používatelia ich môžu stále napadnúť podaním sporu. Prehra v spore môže status dôveryhodného používateľa odobrať."
 
 #: sites/all/modules/custom/rovas_user/rovas_user.module
 msgid "I want my reports immediately approved"
-msgstr "Chcem, aby boli moje správy okamžite schválené"
+msgstr "Chcem, aby boli moje pracovné výkazy okamžite schválené"
 
 #: sites/all/modules/custom/rovas_user/rovas_user.module
 msgid "Verification requests"
@@ -305,7 +305,7 @@ msgstr "Žiadosti o overenie"
 
 #: sites/all/modules/custom/rovas_user/rovas_user.module
 msgid "I am willing to keep verifying any work reports as needed"
-msgstr "Som ochotný naďalej overovať pracovné správy podľa potreby"
+msgstr "Som ochotný naďalej overovať pracovné výkazy podľa potreby"
 
 #: sites/all/modules/custom/rovas_user/rovas_user.module
 msgid "I do not want to receive the mandatory verification requests"
@@ -317,11 +317,11 @@ msgstr "Nechcem dostávať žiadne žiadosti o overenie"
 
 #: sites/all/modules/custom/rovas_user/rovas_user.module
 msgid "You will be receiving verification requests from your domain of expertise, and occasionally also requests for reports out of your domain of expertise."
-msgstr "Budete dostávať žiadosti o overenie z vašej oblasti odbornosti a príležitostne aj žiadosti o správy mimo vašej oblasti."
+msgstr "Budete dostávať žiadosti o overenie z vašej oblasti odbornosti a príležitostne aj žiadosti o výkazy mimo vašej oblasti."
 
 #: sites/all/modules/custom/rovas_user/rovas_user.module
 msgid "You might occasionally receive requests for reports out of your domain of expertise that you can refuse to verify without penalties."
-msgstr "Príležitostne môžete dostať žiadosti o správy mimo vašej oblasti odbornosti, ktoré môžete odmietnuť overiť bez sankcií."
+msgstr "Príležitostne môžete dostať žiadosti o výkazy mimo vašej oblasti odbornosti, ktoré môžete odmietnuť overiť bez sankcií."
 
 #: sites/all/modules/custom/rovas_user/rovas_user.module
 msgid "You will not receive any verification requests."
@@ -337,7 +337,7 @@ msgstr "Blahoželáme, stali ste sa <strong>dôveryhodným používateľom</stro
 
 #: sites/all/modules/custom/rovas_user/rovas_user.module
 msgid "You can have your work reports immediately approved and can also stop verifying other users' reports. You can set these benefits in your <a href=\"@profile\">account settings</a>."
-msgstr "Vaše pracovné výkazy môžete mať okamžite schválené a môžete aj prestať overovať správy iných používateľov. Tieto výhody si môžete nastaviť v <a href=\"@profile\">nastaveniach účtu</a>."
+msgstr "Vaše pracovné výkazy môžete mať okamžite schválené a môžete aj prestať overovať výkazy iných používateľov. Tieto výhody si môžete nastaviť v <a href=\"@profile\">nastaveniach účtu</a>."
 
 #: sites/all/modules/custom/rovas_user/rovas_user.module
 msgid "Do not show this message again"
