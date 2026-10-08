@@ -282,8 +282,8 @@ msgid "I am willing to keep verifying any work reports as needed"
 msgstr "Jsem ochoten nadále ověřovat pracovní zprávy podle potřeby"
 
 #: sites/all/modules/custom/rovas_user/rovas_user.module
-msgid "I opt out of receiving the mandatory verification requests"
-msgstr "Odmítám dostávat povinné žádosti o ověření"
+msgid "I do not want to receive the mandatory verification requests"
+msgstr "Nechci dostávat povinné žádosti o ověření"
 
 #: sites/all/modules/custom/rovas_user/rovas_user.module
 msgid "I do not want to receive any verification requests"

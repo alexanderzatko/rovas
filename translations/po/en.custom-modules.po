@@ -177,7 +177,7 @@ msgid "I am willing to keep verifying any work reports as needed"
 msgstr ""
 
 #: sites/all/modules/custom/rovas_user/rovas_user.module
-msgid "I opt out of receiving the mandatory verification requests"
+msgid "I do not want to receive the mandatory verification requests"
 msgstr ""
 
 #: sites/all/modules/custom/rovas_user/rovas_user.module

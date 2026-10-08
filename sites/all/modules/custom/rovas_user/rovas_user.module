@@ -616,7 +616,7 @@ function rovas_user_attach_trusted_settings_fieldset(&$form, &$form_state, $acco
     '#disabled' => !$is_trusted,
     '#options' => array(
       ROVAS_USER_TRUSTED_VERIFY_KEEP => t('I am willing to keep verifying any work reports as needed'),
-      ROVAS_USER_TRUSTED_VERIFY_OPT_OUT_MANDATORY => t('I opt out of receiving the mandatory verification requests'),
+      ROVAS_USER_TRUSTED_VERIFY_OPT_OUT_MANDATORY => t('I do not want to receive the mandatory verification requests'),
       ROVAS_USER_TRUSTED_VERIFY_NONE => t('I do not want to receive any verification requests'),
     ),
     '#states' => array(
