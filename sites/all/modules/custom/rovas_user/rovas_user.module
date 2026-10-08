@@ -456,7 +456,10 @@ function rovas_user_trusted_email_notice($account, $language = NULL) {
     $options['langcode'] = $language;
   }
   $profile = '/user/' . (int) $account->uid . '/edit';
-  $text = t('You are now a Trusted user. You can have your work reports automatically approved and can limit or stop verification requests in your <a href="@profile">account settings</a>.', array(
+  // Same copy as the site-wide trusted banner (minus dismiss link).
+  $text = t('Congratulations, you are now a <strong>Trusted user</strong>!', array(), $options);
+  $text .= '<br><br>';
+  $text .= t('You can have your work reports immediately approved and can also stop verifying other users\' reports. You can set these benefits in your <a href="@profile">account settings</a>.', array(
     '@profile' => $profile,
   ), $options);
   return $text . '<br><br>';

@@ -294,9 +294,5 @@ msgid "Do not show this message again"
 msgstr "Non mostrare più questo messaggio"
 
 #: sites/all/modules/custom/rovas_user/rovas_user.module
-msgid "You are now a Trusted user. You can have your work reports automatically approved and can limit or stop verification requests in your <a href=\"@profile\">account settings</a>."
-msgstr "Siete un utente affidabile. Potete far approvare automaticamente i vostri rapporti di lavoro e limitare o interrompere le richieste di verifica nelle <a href=\"@profile\">impostazioni dell’account</a>."
-
-#: sites/all/modules/custom/rovas_user/rovas_user.module
 msgid "Dismiss trusted notification"
 msgstr "Chiudi notifica utente affidabile"

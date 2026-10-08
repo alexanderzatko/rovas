@@ -314,9 +314,5 @@ msgid "Do not show this message again"
 msgstr "Tuto zprávu již nezobrazovat"
 
 #: sites/all/modules/custom/rovas_user/rovas_user.module
-msgid "You are now a Trusted user. You can have your work reports automatically approved and can limit or stop verification requests in your <a href=\"@profile\">account settings</a>."
-msgstr "Jste důvěryhodný uživatel. Můžete mít pracovní zprávy automaticky schválené a můžete omezit nebo zastavit žádosti o ověření v <a href=\"@profile\">nastavení účtu</a>."
-
-#: sites/all/modules/custom/rovas_user/rovas_user.module
 msgid "Dismiss trusted notification"
 msgstr "Zavřít upozornění o důvěryhodném stavu"

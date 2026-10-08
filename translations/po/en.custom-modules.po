@@ -209,9 +209,5 @@ msgid "Do not show this message again"
 msgstr ""
 
 #: sites/all/modules/custom/rovas_user/rovas_user.module
-msgid "You are now a Trusted user. You can have your work reports automatically approved and can limit or stop verification requests in your <a href=\"@profile\">account settings</a>."
-msgstr ""
-
-#: sites/all/modules/custom/rovas_user/rovas_user.module
 msgid "Dismiss trusted notification"
 msgstr ""
