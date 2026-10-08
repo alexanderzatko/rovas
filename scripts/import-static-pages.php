@@ -121,4 +121,7 @@ if ($errors) {
   fwrite(STDOUT, ", {$errors} error(s)");
 }
 fwrite(STDOUT, ".\n");
-exit($errors ? 1 : 0);
+// Do not call exit() — Drush scr treats it as an unrecoverable error.
+if ($errors && function_exists('drush_set_error')) {
+  return drush_set_error('STATIC_PAGES_IMPORT', "Import finished with {$errors} error(s).");
+}
