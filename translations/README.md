@@ -1,9 +1,13 @@
 # Translation files workflow (Drupal 7 + Potx)
 
-This directory stores versioned translation artifacts:
+This directory stores versioned **UI / interface** translation artifacts:
 
 - `po/` - importable language files (`*.po`) with `msgstr` translations.
 - `templates/` - extracted templates (`*.pot`) generated from source code.
+
+Basic page titles and bodies are **not** in PO files. They live under
+[`content/pages/`](../content/pages/) (Markdown + Entity Translation import).
+See [`docs/static-pages.md`](../docs/static-pages.md).
 
 ## Quickstart (easy mode)
 

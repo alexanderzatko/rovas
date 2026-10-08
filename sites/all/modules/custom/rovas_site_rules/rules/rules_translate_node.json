@@ -28,8 +28,7 @@
           "bundle": {
             "value": {
               "project": "project",
-              "work_report": "work_report",
-              "page": "page"
+              "work_report": "work_report"
             }
           }
         }

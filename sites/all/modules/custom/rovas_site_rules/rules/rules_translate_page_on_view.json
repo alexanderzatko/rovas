@@ -3,6 +3,7 @@
     "PLUGIN" : "reaction rule",
     "OWNER" : "rules",
     "TAGS" : [ "translations" ],
+    "ACTIVE" : false,
     "REQUIRES" : [ "rules", "rules_conditional", "php" ],
     "ON" : { "node_view--page" : { "bundle" : "page" } },
     "DO" : [

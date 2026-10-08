@@ -1,0 +1,4 @@
+# Path aliases of Basic page (page) nodes managed in Git.
+# Populate via: scripts/export-static-pages-all.sh [uri] content/pages discover
+# Import/export only touch aliases listed here.
+aliases: []

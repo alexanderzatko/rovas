@@ -17,7 +17,11 @@ Local code is ready. On each environment (typically **dev** first, then **prod**
    - `rules_dispute_maximal_penalty`
 4. Clear caches: `drush74 cc all`
 5. Import English (and other locale) PO as you usually do for Rovas translations (`translations/po/en.custom-modules.po`, `en.field.po`, then CS/SK/IT when translated).
-6. Smoke-test:
+6. If `content/pages/` changed, import static page Markdown (see [`static-pages.md`](static-pages.md)):
+   ```bash
+   scripts/import-static-pages-all.sh dev.rovas.app replace yes
+   ```
+7. Smoke-test:
    - Profile → **Trusted user settings** visible (disabled until eligible).
    - Trusted + auto-approve → new published WR has status approved, `Auto-approved` shown, no new obligation slots.
    - Verification request email to a trusted user starts with the trusted notice.
