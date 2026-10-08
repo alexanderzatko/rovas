@@ -1,6 +1,6 @@
 # Path aliases of Basic page (page) nodes managed in Git.
 # Populate via: scripts/export-static-pages-all.sh [uri] content/pages discover
-# Import/export only touch aliases listed here.
+# Optional nids: pin an alias when url_alias is ambiguous/duplicated.
 aliases:
   - glossary
   - info
@@ -8,3 +8,10 @@ aliases:
   - rules
   - tos
   - welcome-to-rovas
+nids:
+  glossary: 35379
+  info: 18179
+  privacy: 17091
+  rules: 1838
+  tos: 1977
+  welcome-to-rovas: 1

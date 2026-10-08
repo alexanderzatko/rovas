@@ -35,16 +35,16 @@ if ($mode === 'discover') {
     fwrite(STDERR, "No published page nodes with path aliases found.\n");
     exit(1);
   }
-  $aliases = array_keys($alias_to_nid);
-  if (!static_pages_write_manifest($pages_dir, $aliases)) {
+  // Pin nids in manifest so later import/export survive duplicate aliases.
+  if (!static_pages_write_manifest($pages_dir, $alias_to_nid)) {
     fwrite(STDERR, "Failed writing manifest.yml\n");
     exit(1);
   }
-  fwrite(STDOUT, "Wrote manifest.yml with " . count($aliases) . " alias(es).\n");
+  fwrite(STDOUT, "Wrote manifest.yml with " . count($alias_to_nid) . " alias(es).\n");
 }
 else {
-  $aliases = static_pages_load_manifest_aliases($pages_dir);
-  if (empty($aliases)) {
+  $alias_to_nid = static_pages_load_manifest($pages_dir);
+  if (empty($alias_to_nid)) {
     fwrite(STDERR, "manifest.yml has no aliases. Run with 'discover' to populate, e.g.:\n");
     fwrite(STDERR, "  scripts/export-static-pages-all.sh dev.rovas.app content/pages discover\n");
     exit(1);
@@ -54,15 +54,11 @@ else {
 $exported = 0;
 $errors = 0;
 
-foreach ($aliases as $alias) {
-  if (isset($alias_to_nid[$alias])) {
-    $node = node_load($alias_to_nid[$alias]);
-  }
-  else {
-    $node = static_pages_load_page_by_alias($alias);
-  }
+foreach ($alias_to_nid as $alias => $pinned_nid) {
+  $err = NULL;
+  $node = static_pages_load_page($alias, $pinned_nid, $err);
   if (!$node) {
-    fwrite(STDERR, "ERROR: no page node for alias '{$alias}'\n");
+    fwrite(STDERR, "ERROR: {$alias}: " . ($err ? $err : 'no page node') . "\n");
     $errors++;
     continue;
   }

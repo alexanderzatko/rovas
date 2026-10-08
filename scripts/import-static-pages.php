@@ -28,8 +28,8 @@ if (!is_dir($pages_dir)) {
   exit(1);
 }
 
-$aliases = static_pages_load_manifest_aliases($pages_dir);
-if (empty($aliases)) {
+$alias_to_nid = static_pages_load_manifest($pages_dir);
+if (empty($alias_to_nid)) {
   fwrite(STDERR, "manifest.yml has no aliases. Nothing to import.\n");
   exit(1);
 }
@@ -38,10 +38,11 @@ $imported = 0;
 $skipped = 0;
 $errors = 0;
 
-foreach ($aliases as $alias) {
-  $node = static_pages_load_page_by_alias($alias);
+foreach ($alias_to_nid as $alias => $pinned_nid) {
+  $err = NULL;
+  $node = static_pages_load_page($alias, $pinned_nid, $err);
   if (!$node) {
-    fwrite(STDERR, "ERROR: no page node for alias '{$alias}'\n");
+    fwrite(STDERR, "ERROR: {$alias}: " . ($err ? $err : 'no page node') . "\n");
     $errors++;
     continue;
   }

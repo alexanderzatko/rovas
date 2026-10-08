@@ -43,8 +43,10 @@ scripts/export-static-pages-all.sh dev.rovas.app content/pages discover
 ```
 
 `discover` fills `manifest.yml` from published `page` nodes that have a path
-alias, then writes `.md` files. Subsequent exports without `discover` only
-touch aliases already listed in the manifest.
+alias (and pins `nids:` for stable import/export), then writes `.md` files.
+Subsequent exports without `discover` only touch aliases already listed in the
+manifest. If an alias is shared by two nodes, pin the correct nid under `nids:`
+or import/export will refuse the ambiguous alias.
 
 2. Edit `.md` files in Git; commit and deploy/rsync.
 

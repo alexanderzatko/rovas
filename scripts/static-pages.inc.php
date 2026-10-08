@@ -44,15 +44,24 @@ function static_pages_effective_args(array $args, $script_basename) {
 }
 
 /**
- * Load aliases from manifest.yml (simple "aliases:" list of "- item" lines).
+ * Load manifest.yml as alias => optional nid map.
+ *
+ * Supports:
+ * @code
+ * aliases:
+ *   - glossary
+ *   - privacy
+ * nids:
+ *   privacy: 17091
+ * @endcode
  *
  * @param string $pages_dir
  *   Absolute pages directory.
  *
- * @return string[]
- *   Alias strings (may be empty).
+ * @return array
+ *   Keys are aliases; values are int nid or NULL when unset.
  */
-function static_pages_load_manifest_aliases($pages_dir) {
+function static_pages_load_manifest($pages_dir) {
   $path = $pages_dir . '/manifest.yml';
   if (!is_file($path)) {
     return array();
@@ -62,53 +71,82 @@ function static_pages_load_manifest_aliases($pages_dir) {
     return array();
   }
   $aliases = array();
-  $in_list = FALSE;
+  $nids = array();
+  $section = NULL;
   foreach ($lines as $line) {
     $trim = trim($line);
     if ($trim === '' || $trim[0] === '#') {
       continue;
     }
     if (preg_match('/^aliases\s*:\s*(.*)$/', $trim, $m)) {
-      $in_list = TRUE;
+      $section = 'aliases';
       $inline = trim($m[1]);
       if ($inline === '[]' || $inline === '') {
         continue;
       }
-      // Rare inline form: aliases: [a, b]
       if ($inline[0] === '[' && substr($inline, -1) === ']') {
         $inner = trim($inline, '[]');
         if ($inner !== '') {
           foreach (explode(',', $inner) as $part) {
             $alias = trim($part, " \t\"'");
             if ($alias !== '') {
-              $aliases[] = $alias;
+              $aliases[$alias] = NULL;
             }
           }
         }
       }
       continue;
     }
-    if ($in_list && preg_match('/^-\s+(.+)$/', $trim, $m)) {
+    if (preg_match('/^nids\s*:\s*$/', $trim)) {
+      $section = 'nids';
+      continue;
+    }
+    if ($section === 'aliases' && preg_match('/^-\s+(.+)$/', $trim, $m)) {
       $alias = trim($m[1], " \t\"'");
       if ($alias !== '') {
-        $aliases[] = $alias;
+        $aliases[$alias] = NULL;
       }
       continue;
     }
-    if ($in_list && !preg_match('/^\s/', $line) && strpos($trim, ':') !== FALSE) {
-      $in_list = FALSE;
+    if ($section === 'nids' && preg_match('/^([A-Za-z0-9_\/-]+)\s*:\s*(\d+)\s*$/', $trim, $m)) {
+      $nids[trim($m[1], '/')] = (int) $m[2];
+      continue;
+    }
+    if (!preg_match('/^\s/', $line) && strpos($trim, ':') !== FALSE) {
+      $section = NULL;
     }
   }
-  return array_values(array_unique($aliases));
+  foreach ($nids as $alias => $nid) {
+    if (!array_key_exists($alias, $aliases)) {
+      $aliases[$alias] = $nid;
+    }
+    else {
+      $aliases[$alias] = $nid;
+    }
+  }
+  return $aliases;
 }
 
 /**
- * Write manifest.yml with the given aliases.
+ * Load aliases from manifest.yml (list of alias strings).
  *
  * @param string $pages_dir
  *   Absolute pages directory.
- * @param string[] $aliases
- *   Path aliases.
+ *
+ * @return string[]
+ *   Alias strings (may be empty).
+ */
+function static_pages_load_manifest_aliases($pages_dir) {
+  return array_keys(static_pages_load_manifest($pages_dir));
+}
+
+/**
+ * Write manifest.yml with aliases and optional nid pins.
+ *
+ * @param string $pages_dir
+ *   Absolute pages directory.
+ * @param string[]|array $aliases
+ *   Path aliases, or alias => nid|null map.
  *
  * @return bool
  *   TRUE on success.
@@ -117,16 +155,37 @@ function static_pages_write_manifest($pages_dir, array $aliases) {
   if (!is_dir($pages_dir) && !mkdir($pages_dir, 0775, TRUE)) {
     return FALSE;
   }
+  // Normalize to alias => nid|null.
+  $map = array();
+  $is_list = array_keys($aliases) === range(0, count($aliases) - 1);
+  if ($is_list) {
+    foreach ($aliases as $alias) {
+      $map[(string) $alias] = NULL;
+    }
+  }
+  else {
+    foreach ($aliases as $alias => $nid) {
+      $map[(string) $alias] = ($nid !== NULL && $nid !== '' && (int) $nid > 0) ? (int) $nid : NULL;
+    }
+  }
+
   $out = "# Path aliases of Basic page (page) nodes managed in Git.\n";
   $out .= "# Populate via: scripts/export-static-pages-all.sh [uri] content/pages discover\n";
-  $out .= "# Import/export only touch aliases listed here.\n";
-  if (empty($aliases)) {
+  $out .= "# Optional nids: pin an alias when url_alias is ambiguous/duplicated.\n";
+  if (empty($map)) {
     $out .= "aliases: []\n";
   }
   else {
     $out .= "aliases:\n";
-    foreach ($aliases as $alias) {
+    foreach (array_keys($map) as $alias) {
       $out .= '  - ' . static_pages_yaml_scalar($alias) . "\n";
+    }
+    $pinned = array_filter($map);
+    if (!empty($pinned)) {
+      $out .= "nids:\n";
+      foreach ($pinned as $alias => $nid) {
+        $out .= '  ' . $alias . ': ' . (int) $nid . "\n";
+      }
     }
   }
   return file_put_contents($pages_dir . '/manifest.yml', $out) !== FALSE;
@@ -247,40 +306,111 @@ function static_pages_markdown_to_html($markdown) {
 }
 
 /**
- * Resolve a path alias to a published Basic page node.
+ * Resolve a page node by optional nid pin and/or path alias.
  *
  * @param string $alias
  *   Path alias without leading slash.
+ * @param int|null $nid
+ *   Optional explicit nid from manifest.
+ * @param string|null $error
+ *   Optional error message output.
  *
  * @return object|null
  *   Node object or NULL.
  */
-function static_pages_load_page_by_alias($alias) {
+function static_pages_load_page($alias, $nid = NULL, &$error = NULL) {
+  $error = NULL;
+  $alias = trim($alias, '/');
+  if ($nid !== NULL && (int) $nid > 0) {
+    $node = node_load((int) $nid);
+    if (!$node || $node->type !== 'page') {
+      $error = "nid {$nid} is missing or not a page node";
+      return NULL;
+    }
+    return $node;
+  }
+  return static_pages_load_page_by_alias($alias, $error);
+}
+
+/**
+ * Resolve a path alias to a published Basic page node.
+ *
+ * Fails when multiple url_alias rows share the same alias (ambiguous).
+ *
+ * @param string $alias
+ *   Path alias without leading slash.
+ * @param string|null $error
+ *   Optional error message output.
+ *
+ * @return object|null
+ *   Node object or NULL.
+ */
+function static_pages_load_page_by_alias($alias, &$error = NULL) {
+  $error = NULL;
   $alias = trim($alias, '/');
   if ($alias === '') {
+    $error = 'empty alias';
     return NULL;
   }
-  $source = drupal_lookup_path('source', $alias);
-  if (!$source) {
-    // Try language-neutral lookup via url_alias table.
-    $source = db_query('SELECT source FROM {url_alias} WHERE alias = :alias ORDER BY language ASC', array(
-      ':alias' => $alias,
-    ))->fetchField();
+
+  $sources = db_query('SELECT DISTINCT source FROM {url_alias} WHERE alias = :alias ORDER BY source', array(
+    ':alias' => $alias,
+  ))->fetchCol();
+  if (empty($sources)) {
+    $source = drupal_lookup_path('source', $alias);
+    if ($source) {
+      $sources = array($source);
+    }
   }
-  if (!$source || !preg_match('~^node/(\d+)$~', $source, $m)) {
+  if (empty($sources)) {
+    $error = "no url_alias for '{$alias}'";
+    return NULL;
+  }
+  if (count($sources) > 1) {
+    $error = "ambiguous alias '{$alias}' maps to " . implode(', ', $sources) . ' — pin nid in manifest.yml under nids:';
+    return NULL;
+  }
+  if (!preg_match('~^node/(\d+)$~', $sources[0], $m)) {
+    $error = "alias '{$alias}' source is not a node: {$sources[0]}";
     return NULL;
   }
   $node = node_load((int) $m[1]);
   if (!$node || $node->type !== 'page') {
+    $error = "alias '{$alias}' node missing or not type page";
     return NULL;
   }
   return $node;
 }
 
 /**
+ * Rough content richness score for choosing among duplicate aliases.
+ *
+ * @param object $node
+ *   Node object.
+ *
+ * @return int
+ *   Higher is richer.
+ */
+function static_pages_node_content_score($node) {
+  $score = 0;
+  foreach (static_pages_node_content_languages($node) as $lang) {
+    $values = static_pages_get_node_lang_values($node, $lang);
+    $body_len = strlen(trim($values['body']));
+    if ($body_len > 20) {
+      $score += 10 + min(50, (int) ($body_len / 100));
+    }
+    if (trim($values['title']) !== '') {
+      $score += 1;
+    }
+  }
+  return $score;
+}
+
+/**
  * Discover published page nodes that have a path alias.
  *
  * Prefers LANGUAGE_NONE alias, else any language; skips nodes without alias.
+ * On duplicate aliases, keeps the richer node and warns on STDERR.
  *
  * @return array
  *   Map of alias => nid.
@@ -288,6 +418,7 @@ function static_pages_load_page_by_alias($alias) {
 function static_pages_discover_page_aliases() {
   $nids = db_query("SELECT nid FROM {node} WHERE type = 'page' AND status = 1 ORDER BY nid")->fetchCol();
   $map = array();
+  $scores = array();
   foreach ($nids as $nid) {
     $nid = (int) $nid;
     $alias = db_query("SELECT alias FROM {url_alias} WHERE source = :src AND language = :und ORDER BY pid DESC", array(
@@ -303,9 +434,21 @@ function static_pages_discover_page_aliases() {
       continue;
     }
     $alias = trim($alias, '/');
-    // Prefer first nid if duplicate aliases (should not happen).
+    $node = node_load($nid);
+    $score = $node ? static_pages_node_content_score($node) : 0;
     if (!isset($map[$alias])) {
       $map[$alias] = $nid;
+      $scores[$alias] = $score;
+      continue;
+    }
+    fwrite(STDERR, "WARNING: duplicate alias '{$alias}' for nid {$map[$alias]} and {$nid}; ");
+    if ($score > $scores[$alias]) {
+      fwrite(STDERR, "keeping richer nid {$nid}.\n");
+      $map[$alias] = $nid;
+      $scores[$alias] = $score;
+    }
+    else {
+      fwrite(STDERR, "keeping richer nid {$map[$alias]}.\n");
     }
   }
   ksort($map);
