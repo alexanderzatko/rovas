@@ -158,6 +158,10 @@
                           {
                             "ELSE IF" : { "data_is" : { "data" : [ "result" ], "value" : "-3" } },
                             "DO" : [ { "data_set" : { "data" : [ "created-wr-nid" ], "value" : "-2" } } ]
+                          },
+                          {
+                            "ELSE IF" : { "data_is" : { "data" : [ "result" ], "value" : "-4" } },
+                            "DO" : [ { "data_set" : { "data" : [ "created-wr-nid" ], "value" : "-4" } } ]
                           }
                         ]
                       }

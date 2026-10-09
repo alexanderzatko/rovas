@@ -1210,7 +1210,8 @@ components:
         date_started:
           type: integer
           format: int64
-          description: the date and time in UNIX timestamp format
+          description: the date and time in UNIX timestamp format; must be within the
+            last 30 days
           example: 1594538979
         access_token:
           type: string
@@ -1235,7 +1236,8 @@ components:
             author of the report is not a shareholder of the parent project; -2: the
             date_started is earlier that the date when the author registered in Rovas;
             -3: the report-filing author has more than one pending verification slot,
-            so no verifiers were invited to verify the report;'
+            so no verifiers were invited to verify the report; -4: date_started is
+            more than 30 days before now;'
           example: 19008
     DeleteWorkReport:
       required:

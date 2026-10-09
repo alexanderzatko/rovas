@@ -2,3 +2,4 @@ name = Work report form adjustments
 description = Customizations to the work report form
 core = 7.x
 package = Rovas
+dependencies[] = rovas_base

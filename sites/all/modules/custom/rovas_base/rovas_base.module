@@ -27,6 +27,41 @@ function rovas_base_rules_set_fresh_timestamps($node) {
   $node->changed = $now;
 }
 
+/**
+ * Maximum age (seconds) of work start date when filing a work report.
+ */
+define('ROVAS_WORK_REPORT_MAX_AGE', 30 * 86400);
+
+/**
+ * Normalize a Rules/date field value to a Unix timestamp.
+ */
+function rovas_work_report_date_unix($date) {
+  if (is_numeric($date)) {
+    return (int) $date;
+  }
+  if (is_object($date) && isset($date->value)) {
+    return (int) $date->value;
+  }
+  if (is_string($date) && $date !== '') {
+    return (int) strtotime($date);
+  }
+  return 0;
+}
+
+/**
+ * Whether work start time is within the allowed filing lookback from $now.
+ */
+function rovas_work_report_date_within_lookback($date_unix, $now = NULL) {
+  $date_unix = (int) $date_unix;
+  if ($date_unix <= 0) {
+    return FALSE;
+  }
+  if ($now === NULL) {
+    $now = REQUEST_TIME;
+  }
+  return $date_unix >= ($now - ROVAS_WORK_REPORT_MAX_AGE);
+}
+
 /*
 * recursively calculate total time for a project and its children
 * params:

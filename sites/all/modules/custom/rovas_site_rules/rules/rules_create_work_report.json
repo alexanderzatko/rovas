@@ -29,13 +29,22 @@
     "ACTION SET" : [
       { "CONDITIONAL" : [
           {
-            "IF" : { "data_is" : {
-                "data" : [ "site:current-user:created" ],
-                "op" : "\u003C",
-                "value" : { "select" : "date-started", "date_offset" : { "value" : 86400 } }
-              }
-            },
+            "IF" : { "php_eval" : { "code" : "$ts = rovas_work_report_date_unix($date_started);\r\nreturn !rovas_work_report_date_within_lookback($ts);" } },
             "DO" : [
+              { "data_set" : { "data" : [ "result" ], "value" : "-4" } },
+              { "data_set" : { "data" : [ "created-wr" ], "value" : [ "" ] } }
+            ]
+          },
+          { "ELSE" : [
+              { "CONDITIONAL" : [
+                  {
+                    "IF" : { "data_is" : {
+                        "data" : [ "site:current-user:created" ],
+                        "op" : "\u003C",
+                        "value" : { "select" : "date-started", "date_offset" : { "value" : 86400 } }
+                      }
+                    },
+                    "DO" : [
               { "variable_add" : {
                   "USING" : {
                     "type" : "list\u003Ctaxonomy_term\u003E",
@@ -169,11 +178,15 @@
                 ]
               },
               { "data_set" : { "data" : [ "created-wr" ], "value" : [ "created-work-report" ] } }
-            ]
-          },
-          { "ELSE" : [
-              { "data_set" : { "data" : [ "result" ], "value" : "-3" } },
-              { "data_set" : { "data" : [ "created-wr" ], "value" : [ "" ] } }
+                    ]
+                  },
+                  { "ELSE" : [
+                      { "data_set" : { "data" : [ "result" ], "value" : "-3" } },
+                      { "data_set" : { "data" : [ "created-wr" ], "value" : [ "" ] } }
+                    ]
+                  }
+                ]
+              }
             ]
           }
         ]

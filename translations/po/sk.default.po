@@ -52070,6 +52070,11 @@ msgstr ""
 "Len práca vykonaná po vašej registrácii v Rováši (@regdate) môže byť "
 "odmenená."
 
+#: sites/all/modules/custom/rovas_report_form/rovas_report_form.module
+msgid "Work can only be reported if it started within the last 30 days."
+msgstr ""
+"Prácu je možné nahlásiť len ak začala v posledných 30 dňoch."
+
 #: /user/289/chrons
 msgid "Legend"
 msgstr "Vysvetlivky"

@@ -33,7 +33,7 @@ Práca v NEO má nasledujúce atribúty:
 
 Aby osoba mohla získať štandardných 10 chronov za každú odpracovanú hodinu, musí v Rováši vyplniť pracovný výkaz. Výkaz musí obsahovať nasledujúce informácie:
 
-- dátum a čas začiatku práce,
+- dátum a čas začiatku práce (najviac 30 dní pred podaním pracovného výkazu),
 - dĺžka odpracovaného času,
 - hlavná kategória NACE, do ktorej činnosť patrí,
 - dôkaz o tom, že nahlásená práca bola skutočne vykonaná. Poskytnutý dôkaz závisí od typu vykonanej práce, pričom najčastejšie sa používa webová adresa a fotografie alebo videá zobrazujúce stav pred a po vykonaní práce.
@@ -56,8 +56,9 @@ V NEO je akákoľvek aktivita odmenená, ak:
 
 1. činnosť bola preukázateľne vykonaná. Toto posúdenie robia overovatelia, ktorí svoje rozhodnutie zakladajú najmä na dôkaze o práci poskytnutom používateľom podávajúcim pracovnú správu,
 2. práca bola vykonaná po registrácii používateľa v Rováši. Práca vykonaná predtým, ako si používateľ vytvoril účet v Rováši, nemôže byť odmenená,
-3. dielo produkuje tovary alebo služby, ktoré sú bezplatné alebo sa dajú kúpiť za chrony,
-4. Overovatelia sa domnievajú, že činnosť nie je v rozpore s hodnotami komunity.
+3. práca začala najviac pred 30 dňami od podania pracovného výkazu. Prácu so starším dátumom začiatku nie je možné odmeniť,
+4. dielo produkuje tovary alebo služby, ktoré sú bezplatné alebo sa dajú kúpiť za chrony,
+5. Overovatelia sa domnievajú, že činnosť nie je v rozpore s hodnotami komunity.
 
 **Transparentnosť**
 

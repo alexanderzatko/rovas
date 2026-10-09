@@ -33,7 +33,7 @@ Lavorare in NEO presenta le seguenti caratteristiche:
 
 Per ricevere i 10 chron standard per ogni ora lavorata, è necessario compilare un rapporto di lavoro in Rovas. Il rapporto deve contenere le seguenti informazioni:
 
-- la data e l'ora di inizio dei lavori,
+- la data e l'ora di inizio dei lavori (non oltre 30 giorni prima della presentazione),
 - la durata del lavoro,
 - la principale categoria NACE in cui rientra l'attività,
 - Una prova che il lavoro segnalato sia stato effettivamente eseguito. La prova fornita dipende dal tipo di lavoro svolto; la più comune è un indirizzo web e foto o video che mostrino lo stato di avanzamento prima e dopo l'esecuzione del lavoro.
@@ -56,8 +56,9 @@ In NEO, ogni attività viene premiata se:
 
 1. l'attività è stata dimostrabilmente eseguita. Tale giudizio è espresso dai verificatori, che basano la loro decisione principalmente sulla prova del lavoro fornita dall'utente che presenta il rapporto di lavoro,
 2. Il lavoro è stato svolto dopo che l'utente si è registrato su Rovas. Il lavoro svolto prima che l'utente abbia creato un account su Rovas non può essere retribuito.
-3. l'opera produce beni o servizi che sono gratuiti o possono essere acquistati con chrons,
-4. I verificatori ritengono che l'attività non violi i valori della comunità.
+3. il lavoro è iniziato non oltre 30 giorni prima della presentazione del rapporto. Il lavoro con data di inizio più vecchia non può essere retribuito,
+4. l'opera produce beni o servizi che sono gratuiti o possono essere acquistati con chrons,
+5. I verificatori ritengono che l'attività non violi i valori della comunità.
 
 **Trasparenza**
 

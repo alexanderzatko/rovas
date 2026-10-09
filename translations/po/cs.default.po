@@ -51916,6 +51916,11 @@ msgstr ""
 "href=\"@apiurl\" target=\"_blank\">Rováš API</a>"
 
 #: /node/add/work-report/32289
+msgid "Work can only be reported if it started within the last 30 days."
+msgstr ""
+"Práci lze nahlásit pouze tehdy, pokud začala v posledních 30 dnech."
+
+#: sites/all/modules/custom/rovas_report_form/rovas_report_form.module
 msgid "Only work performed after you registered (@regdate) can be rewarded."
 msgstr ""
 "Pouze práce provedená po vaší registraci v Rováši (@regdate) může být "

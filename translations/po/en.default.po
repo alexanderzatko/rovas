@@ -46875,6 +46875,10 @@ msgstr ""
 msgid "Only work performed after you registered (@regdate) can be rewarded."
 msgstr ""
 
+#: sites/all/modules/custom/rovas_report_form/rovas_report_form.module
+msgid "Work can only be reported if it started within the last 30 days."
+msgstr ""
+
 #: /user/289/edit
 msgid "Rovas API"
 msgstr ""

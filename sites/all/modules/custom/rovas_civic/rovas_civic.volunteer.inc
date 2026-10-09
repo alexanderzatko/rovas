@@ -422,6 +422,9 @@ function rovas_civic_services_create_work_report($data) {
     }
   }
 
+  // Services loads only this .inc for civic_create_work_report; geofield helpers live elsewhere.
+  module_load_include('inc', 'rovas_civic', 'rovas_civic.geofield');
+
   $field_location = rovas_civic_parse_field_location_geojson($field_location_raw);
   if (is_array($field_location) && isset($field_location['error'])) {
     return rovas_civic_volunteer_error(400, 'invalid_input', $field_location['error']);

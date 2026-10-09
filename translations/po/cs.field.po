@@ -1308,12 +1308,14 @@ msgstr "Datum"
 #: field:field_date:work_report:description
 msgctxt "field_date:work_report:description"
 msgid ""
-"Enter the starting date the work was performed. Please note that according "
-"to the NEO rules, only work performed after registering in Rovas will be "
-"accepted."
+"Enter the starting date the work was performed. Please note that "
+"according to the NEO rules, only work performed after registering in "
+"Rovas will be accepted, and the work must have started within the last "
+"30 days."
 msgstr ""
 "Zadejte datum zahájení práce. Upozorňujeme, že podle pravidel NEO budou "
-"akceptovány pouze práce provedené po registraci v Rováši."
+"akceptovány pouze práce provedené po registraci v Rováši a práce musela "
+"začít nejvýše před 30 dny."
 
 #: field:field_date:work_report:label
 msgctxt "field_date:work_report:label"

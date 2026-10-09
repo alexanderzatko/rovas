@@ -201,6 +201,9 @@ function _wr_date_check($element, &$form_state, $form) {
 	if ($date > 0 && $user->created > $date) {
 		form_error($element, t('Only work performed after you registered (@regdate) can be rewarded.',array('@regdate' => $formdate)));
 	}
+	elseif ($date > 0 && !rovas_work_report_date_within_lookback($date)) {
+		form_error($element, t('Work can only be reported if it started within the last 30 days.'));
+	}
 }
 
 /*

@@ -33,7 +33,7 @@ Work in NEO has the following attributes:
 
 In order to receive the standard 10 chrons for every hour worked, a person needs to fill a work report in Rovas. The report must contain the following information:
 
-- the date and time the work started,
+- the date and time the work started (no more than 30 days before filing),
 - the length of time worked,
 - the main NACE category the activity falls into,
 - a proof that the work reported was actually performed. The proof provided depends on the type of work performed, the most commonly used being a web address and photos or videos showing the status before and after the work is performed.
@@ -56,8 +56,9 @@ In NEO, any activity is rewarded if:
 
 1. the activity has been provably performed. This judgement is made by the verifiers, who base their decision mostly on the proof of labor provided by the work report-filing user,
 2. the work was performed after the user registered in Rovas. Work performed before the user has created an account in Rovas cannot be rewarded,
-3. the work produces goods or services that are free, or can be purchased with chrons,
-4. the verifiers believe, that the activity is not in violation of the community values.
+3. the work started no more than 30 days before the report is filed. Work whose start date is older than that cannot be rewarded,
+4. the work produces goods or services that are free, or can be purchased with chrons,
+5. the verifiers believe, that the activity is not in violation of the community values.
 
 **Transparency**
 

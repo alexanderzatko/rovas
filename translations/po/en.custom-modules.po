@@ -215,3 +215,7 @@ msgstr ""
 #: sites/all/modules/custom/rovas_user/rovas_user.module
 msgid "Dismiss trusted notification"
 msgstr ""
+
+#: sites/all/modules/custom/rovas_report_form/rovas_report_form.module
+msgid "Work can only be reported if it started within the last 30 days."
+msgstr ""
