@@ -3,4 +3,33 @@ title: Osobné údaje
 format: filtered_html
 ---
 
-<p>Spoločnosť Rovas prevádzkuje spoločnosť <a href="https://neofund.sk" target="_blank">NeoFund s.r.o.</a> V tomto dokumente sa na túto organizáciu bude odkazovať ako na <strong>„my“</strong> .</p><p> <strong>Osobné údaje</strong></p><p> <strong>Údaje, ktoré zhromažďujeme</strong></p><p> Rovas môžu používať anonymní aj registrovaní používatelia. Anonymní používatelia majú iba obmedzený prístup k stránkam projektu na čítanie. Aby získali prístup ku všetkým funkciám Rovasu, musia sa používatelia zaregistrovať v aplikácii výberom svojho <strong>používateľského mena</strong> a zadaním platnej <strong>e-mailovej adresy</strong> a <strong>krajiny pobytu</strong> . Používatelia si tiež môžu vo svojom používateľskom profile vybrať preferovaný <strong>jazyk</strong> pre rozhranie Rovasu.</p><p> Ak používateľ plánuje používať funkciu forexu, musí tiež uviesť <strong>číslo svojho bankového účtu</strong> alebo <strong>e-mailovú adresu PayPal</strong> .</p><p> <strong>Ako sa údaje používajú</strong></p><p> Údaje o používateľoch, ktoré zhromažďujeme, sa používajú výlučne na to, aby používatelia mohli používať aplikáciu. Konkrétne sa používateľské mená používajú na identifikáciu obsahu generovaného používateľmi, e-mailové adresy sa používajú na odosielanie správ používateľom, krajina pobytu sa používa na filtrovanie relevantného obsahu a nastavenie jazyka nám umožňuje zobraziť rozhranie vo vybranom jazyku. Voliteľné e-mailové adresy bankového účtu a PayPal sa používajú iba na odosielanie platieb používateľom.</p><p> S výnimkou používateľského mena sú všetky zhromaždené osobné údaje súkromné. Žiadne informácie poskytnuté používateľmi nepoužívame na žiadne iné účely, než tie, ktoré sú výslovne uvedené tu alebo v <a href="/rules">pravidlách Rovas</a> .</p><p> <strong>Odstránenie používateľských údajov</strong></p><p> Používatelia môžu kedykoľvek natrvalo odstrániť svoj účet a všetky súvisiace osobné údaje prihlásením sa do svojho používateľského profilu na adrese:</p><p> <a href="https://rovas.app/user/" target="_blank">https://rovas.app/user/</a></p><p> Po prihlásení môže používateľ iniciovať vymazanie účtu na karte <strong>Upraviť</strong> profil. Po potvrdení vymazania sa používateľský účet a všetky súvisiace osobné údaje (vrátane e-mailovej adresy, krajiny, nastavení jazyka a identifikátorov platieb) natrvalo a bez zbytočného odkladu odstránia z našich systémov. Všetok verejný používateľský obsah je priradený anonymnému používateľovi. Táto akcia je nezvratná.</p><p> <strong>Súbory cookie</strong></p><p> Tento portál používa súbory cookie na podporu nasledujúcich funkcií:</p><ol><li> Zlepšiť používateľskú skúsenosť vrátane možnosti ukladať prihlasovacie údaje, čo používateľom umožňuje opakovane navštevovať portál bez nutnosti prihlasovania sa zakaždým.</li><li> Sledovať, aký obsah používateľ navštívil, aby sa predišlo opakovanému zobrazovaniu rovnakých informácií.</li></ol>
+Spoločnosť Rovas prevádzkuje spoločnosť <a href="https://neofund.sk" target="_blank">NeoFund s.r.o.</a> V tomto dokumente sa na túto organizáciu bude odkazovať ako na **„my“**.
+
+**Osobné údaje**
+
+**Údaje, ktoré zhromažďujeme**
+
+Rovas môžu používať anonymní aj registrovaní používatelia. Anonymní používatelia majú iba obmedzený prístup k stránkam projektu na čítanie. Aby získali prístup ku všetkým funkciám Rovasu, musia sa používatelia zaregistrovať v aplikácii výberom svojho **používateľského mena** a zadaním platnej **e-mailovej adresy** a **krajiny pobytu**. Používatelia si tiež môžu vo svojom používateľskom profile vybrať preferovaný **jazyk** pre rozhranie Rovasu.
+
+Ak používateľ plánuje používať funkciu forexu, musí tiež uviesť **číslo svojho bankového účtu** alebo **e-mailovú adresu PayPal**.
+
+**Ako sa údaje používajú**
+
+Údaje o používateľoch, ktoré zhromažďujeme, sa používajú výlučne na to, aby používatelia mohli používať aplikáciu. Konkrétne sa používateľské mená používajú na identifikáciu obsahu generovaného používateľmi, e-mailové adresy sa používajú na odosielanie správ používateľom, krajina pobytu sa používa na filtrovanie relevantného obsahu a nastavenie jazyka nám umožňuje zobraziť rozhranie vo vybranom jazyku. Voliteľné e-mailové adresy bankového účtu a PayPal sa používajú iba na odosielanie platieb používateľom.
+
+S výnimkou používateľského mena sú všetky zhromaždené osobné údaje súkromné. Žiadne informácie poskytnuté používateľmi nepoužívame na žiadne iné účely, než tie, ktoré sú výslovne uvedené tu alebo v [pravidlách Rovas](/rules).
+
+**Odstránenie používateľských údajov**
+
+Používatelia môžu kedykoľvek natrvalo odstrániť svoj účet a všetky súvisiace osobné údaje prihlásením sa do svojho používateľského profilu na adrese:
+
+<a href="https://rovas.app/user/" target="_blank">https://rovas.app/user/</a>
+
+Po prihlásení môže používateľ iniciovať vymazanie účtu na karte **Upraviť** profil. Po potvrdení vymazania sa používateľský účet a všetky súvisiace osobné údaje (vrátane e-mailovej adresy, krajiny, nastavení jazyka a identifikátorov platieb) natrvalo a bez zbytočného odkladu odstránia z našich systémov. Všetok verejný používateľský obsah je priradený anonymnému používateľovi. Táto akcia je nezvratná.
+
+**Súbory cookie**
+
+Tento portál používa súbory cookie na podporu nasledujúcich funkcií:
+
+1. Zlepšiť používateľskú skúsenosť vrátane možnosti ukladať prihlasovacie údaje, čo používateľom umožňuje opakovane navštevovať portál bez nutnosti prihlasovania sa zakaždým.
+2. Sledovať, aký obsah používateľ navštívil, aby sa predišlo opakovanému zobrazovaniu rovnakých informácií.
