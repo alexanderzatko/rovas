@@ -242,6 +242,7 @@ function rovas_civic_project_charity_json($project, $lang = NULL) {
       'organization' => NULL,
       'donate_instructions' => NULL,
       'donate_url' => NULL,
+      'donate_iban' => NULL,
     );
   }
   $org = rovas_civic_project_charity_org($project);
@@ -253,7 +254,42 @@ function rovas_civic_project_charity_json($project, $lang = NULL) {
     'organization' => $legal !== '' ? $legal : NULL,
     'donate_instructions' => rovas_civic_project_donate_instructions($project, $org, $lang),
     'donate_url' => rovas_civic_project_donate_url($project, $org, $lang),
+    'donate_iban' => rovas_civic_project_donate_iban($org, $status),
   );
+}
+
+/**
+ * Compact verified IBAN for Civic gift transfers, or NULL.
+ *
+ * Only when the org is NeoFund-approved, staff marked the IBAN verified, and
+ * the stored value normalizes to a plausible SEPA IBAN. Unverified / pending /
+ * empty IBANs must never leave Rovas.
+ *
+ * @param object|null $org
+ * @param string|null $status
+ *   Org status from rovas_civic_charity_org_status().
+ *
+ * @return string|null
+ */
+function rovas_civic_project_donate_iban($org, $status = NULL) {
+  if (empty($org)) {
+    return NULL;
+  }
+  if ($status === NULL) {
+    $status = rovas_civic_charity_org_status($org);
+  }
+  if ($status !== ROVAS_CIVIC_CHARITY_STATUS_APPROVED) {
+    return NULL;
+  }
+  if (!rovas_civic_charity_iban_verified($org)) {
+    return NULL;
+  }
+  $raw = rovas_civic_node_text_field($org, 'field_charity_iban');
+  if ($raw === NULL || $raw === '') {
+    return NULL;
+  }
+  $normalized = rovas_civic_normalize_iban($raw);
+  return $normalized !== FALSE ? $normalized : NULL;
 }
 
 /**

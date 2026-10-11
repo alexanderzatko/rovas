@@ -2328,6 +2328,7 @@ function rovas_civic_project_detail($project, $limit = ROVAS_CIVIC_WR_DEFAULT_LI
     'organization' => $charity['organization'],
     'donate_instructions' => $charity['donate_instructions'],
     'donate_url' => $charity['donate_url'],
+    'donate_iban' => $charity['donate_iban'],
     'owner_username' => $labels['username'],
     'owner_display_name' => $labels['display_name'],
     'total_hours' => rovas_civic_node_float_field($project, 'field_project_total_hours'),
