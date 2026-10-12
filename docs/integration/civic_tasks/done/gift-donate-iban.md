@@ -10,9 +10,13 @@ updated: 2026-10-11
 
 **Product:** Civic’s Gifts org-detail modal lets donors start a SEPA transfer
 (Pay by Square share/preview) to a nonprofit. For the demo slice, the
-beneficiary is the organisation’s own IBAN — but only when NeoFund staff have
-verified that the org controls that account
-(`field_charity_iban_verified`). Unverified IBANs must never leave Rovas.
+beneficiary is the organisation’s own IBAN.
+
+> **Superseded (gating):** [charity-org-basic-info](../active/charity-org-basic-info.md)
+> now returns `donate_iban` whenever a valid IBAN is stored, plus
+> `iban_verified`, so Civic can show unverified IBANs with at-own-risk copy.
+> The verified-only / approved-only rules below describe the original demo
+> contract and are no longer enforced on Rovas.
 
 **Owner:** `both` — Rovas adds `donate_iban` on `GET /rovas/civic_project/{nid}`;
 Civic proxies it on `GET /projects/:nid` and builds the Expo Pay by Square UI.
