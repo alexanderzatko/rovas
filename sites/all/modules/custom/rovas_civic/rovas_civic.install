@@ -241,6 +241,33 @@ function rovas_civic_schema() {
     ),
   );
 
+  $schema['civic_user_prefs'] = array(
+    'description' => 'Per-user Civic preferences (receipt history retention, …).',
+    'fields' => array(
+      'uid' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+      'receipt_history_retention' => array(
+        'description' => 'keep | policy | NULL (unanswered).',
+        'type' => 'varchar',
+        'length' => 16,
+        'not null' => FALSE,
+      ),
+      'updated' => array(
+        'type' => 'int',
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+    ),
+    'primary key' => array('uid'),
+    'indexes' => array(
+      'receipt_history_retention' => array('receipt_history_retention'),
+    ),
+  );
+
   $schema['civic_work_report_reward'] = array(
     'description' => 'Civic volunteer WR reward preference (chrons vs merits after verification).',
     'fields' => array(
@@ -692,4 +719,18 @@ function rovas_civic_update_7025() {
   return $fixed
     ? t('Repaired field_charity_contact_email widget to email_textfield.')
     : t('field_charity_contact_email widget already correct or field absent; nothing to repair.');
+}
+
+/**
+ * Receipt history retention prefs + POST preference API.
+ */
+function rovas_civic_update_7026() {
+  if (!db_table_exists('civic_user_prefs')) {
+    $schema = rovas_civic_schema();
+    db_create_table('civic_user_prefs', $schema['civic_user_prefs']);
+  }
+  if (function_exists('rovas_civic_ensure_services_resources')) {
+    rovas_civic_ensure_services_resources();
+  }
+  return t('Civic receipt history retention ({civic_user_prefs}, POST /rovas/civic_receipt_history_preference); /rovas/me exposes receipt_history_retention.');
 }

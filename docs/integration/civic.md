@@ -38,7 +38,8 @@ env): [`civic-deploy.md`](civic-deploy.md).
 
 | Status | Slug | File | Notes |
 |--------|------|------|-------|
-| done | gift-donate-iban | [`done/gift-donate-iban.md`](civic_tasks/done/gift-donate-iban.md) | Verified org IBAN as `donate_iban` on `civic_project` for Civic Pay by Square gift demo; deploy/smoke on rovdev |
+| done | receipt-history-retention | [`done/receipt-history-retention.md`](civic_tasks/done/receipt-history-retention.md) | Keep vs 90-day policy on `/rovas/me` + `POST /rovas/civic_receipt_history_preference`; scrub merchant/purchase_at; deploy/smoke on rovdev |
+| done | gift-donate-iban | [`done/gift-donate-iban.md`](civic_tasks/done/gift-donate-iban.md) | Verified org IBAN as `donate_iban` on `civic_project` for Civic Pay by Square gift demo; smoked on rovdev |
 | done | donor-add-charity-org | [`done/donor-add-charity-org.md`](civic_tasks/done/donor-add-charity-org.md) | Donor adds public-benefit org from Civic; SK auto-verify; claim email; smoked on rovdev |
 | done | oauth-authorize-intent | [`done/oauth-authorize-intent.md`](civic_tasks/done/oauth-authorize-intent.md) | `intent=login\|register` on authorize → land on login vs register; deploy/smoke on rovdev |
 | done | merit-period-index | [`done/merit-period-index.md`](civic_tasks/done/merit-period-index.md) | ME•ter period leaderboard; deploy/smoke on rovdev when ready |
@@ -59,7 +60,7 @@ Open tasks: see `civic_tasks/active/`. Naming and archival rules:
 | Expo login (PKCE)                    | Civic mobile                                                                                                                               | **Done** against `dev.rovas.app`                                                                                                                                                       |
 | Civic API Bearer introspect          | Civic `GET /oauth2/tokens/{token}`                                                                                                         | **Done** — resolves Drupal `user_id` (uid)                                                                                                                                             |
 | Services OAuth2 on `rovas_endpoint`  | Admin / `rovas_oauth_ensure_civic_resources()`                                                                                             | Server machine name `**civic**`; API-key auth disabled on Civic resources                                                                                                              |
-| Home Merits reads                    | `/rovas/me`, `/rovas/contributions/aggregate`, `/rovas/merit_distribution`                                                                 | Implemented; `/rovas/me` includes `total_chr` (Chron wallet)                                                                                                                           |
+| Home Merits reads                    | `/rovas/me`, `/rovas/contributions/aggregate`, `/rovas/merit_distribution`                                                                 | Implemented; `/rovas/me` includes `total_chr` + `receipt_history_retention` (`null`\|`keep`\|`policy`) — see [receipt-history-retention](civic_tasks/done/receipt-history-retention.md) |
 | `rovas_civic`                        | `sites/all/modules/custom/rovas_civic`                                                                                                     | National rates, donor Merit issuance, State Treasury, VAT claim                                                                                                                        |
 | Claim rule + split claims            | `POST /rovas/rules/rules_proxy_claim_vat_receipt`                                                                                          | Implemented in `rovas_civic` (enable via updb / admin)                                                                                                                                 |
 | Claim reads + summary                | `GET /rovas/civic_claims`, `…/summary`                                                                                                     | Implemented in `rovas_civic` (`rovas_civic_update_7002`); **Civic proxies live** (`GET /receipts`, `/me/contributions/summary`)                                                        |
@@ -264,7 +265,8 @@ In `rovas_oauth` (`rovas_oauth_me_index()`).
   "total_me": 1248.35,
   "total_chr": 320.0,
   "created": "2019-03-12T14:22:01+00:00",
-  "language": "sk"
+  "language": "sk",
+  "receipt_history_retention": null
 }
 ```
 
@@ -278,6 +280,7 @@ In `rovas_oauth` (`rovas_oauth_me_index()`).
 | `total_chr`    | `field_chrons_balance` on the user account (numeric; `0` when empty)                                                                          |
 | `created`      | ISO-8601 from Drupal `$account->created` (`gmdate('c')`); `null` if missing/invalid                                                           |
 | `language`     | `$account->language` (raw Drupal langcode); `null` if empty/`und` — see [preferred language](civic_tasks/done/_historical-pre-split.md#next-work-expose-preferred-language-on-rovasme) |
+| `receipt_history_retention` | `null` \| `keep` \| `policy` from `{civic_user_prefs}` — see [receipt-history-retention](civic_tasks/done/receipt-history-retention.md) |
 
 
 #### 3. `GET /rovas/contributions/aggregate` (public) — **implemented**

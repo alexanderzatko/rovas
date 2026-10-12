@@ -45,7 +45,7 @@ Other gift-path fields (`is_charity`, `charity_status`, `organization`,
 
 1. [x] On `civic_project` serialize: resolve linked org; if approved + IBAN verified + IBAN present → set `donate_iban` (strip spaces, uppercase)
 2. [x] Never include `donate_iban` for unverified / pending / missing IBAN
-3. [ ] Deploy rovdev + smoke (human unless asked)
+3. [x] Deploy rovdev + smoke (human unless asked)
 
 ### Smoke test
 

@@ -1325,7 +1325,7 @@ function rovas_oauth_me_access() {
  *
  * @return array
  *   uid, username, display_name, total_me, total_chr, created (ISO-8601 or null),
- *   language (Drupal langcode or null).
+ *   language (Drupal langcode or null), receipt_history_retention (keep|policy|null).
  */
 function rovas_oauth_me_index() {
   global $user;
@@ -1375,6 +1375,17 @@ function rovas_oauth_me_index() {
     $total_chr = (float) $chr_items[0]['value'];
   }
 
+  $receipt_history_retention = NULL;
+  if (function_exists('rovas_civic_receipt_history_retention_get')) {
+    $receipt_history_retention = rovas_civic_receipt_history_retention_get($uid);
+  }
+  elseif (module_exists('rovas_civic')) {
+    module_load_include('inc', 'rovas_civic', 'rovas_civic.receipt_history');
+    if (function_exists('rovas_civic_receipt_history_retention_get')) {
+      $receipt_history_retention = rovas_civic_receipt_history_retention_get($uid);
+    }
+  }
+
   return array(
     'uid' => $uid,
     'username' => $account->name,
@@ -1383,6 +1394,7 @@ function rovas_oauth_me_index() {
     'total_chr' => $total_chr,
     'created' => $created,
     'language' => $language,
+    'receipt_history_retention' => $receipt_history_retention,
   );
 }
 

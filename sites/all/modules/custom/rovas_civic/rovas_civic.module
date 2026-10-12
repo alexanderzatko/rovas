@@ -38,6 +38,12 @@ define('ROVAS_CIVIC_CHARITY_CATALOG_MAX_LIMIT', 20);
 define('ROVAS_CIVIC_CHARITY_CUSTODIAL_UID_VAR', 'rovas_civic_charity_custodial_uid');
 /** ŠÚ SR RPO public search (IČO / nonprofit source registers). */
 define('ROVAS_CIVIC_SK_RPO_SEARCH_URL', 'https://api.statistics.sk/rpo/v1/search');
+/** Receipt scanning-history retention (NeoFund 90-day scrub vs keep). */
+define('ROVAS_CIVIC_RECEIPT_HISTORY_KEEP', 'keep');
+define('ROVAS_CIVIC_RECEIPT_HISTORY_POLICY', 'policy');
+define('ROVAS_CIVIC_RECEIPT_HISTORY_RETENTION_DAYS', 90);
+/** Max claim rows scrubbed per cron run across all policy users. */
+define('ROVAS_CIVIC_RECEIPT_HISTORY_CRON_BUDGET', 500);
 
 /**
  * Implements hook_permission().
@@ -198,6 +204,10 @@ function rovas_civic_cron() {
   if (function_exists('rovas_civic_merit_index_snapshot_cron')) {
     rovas_civic_merit_index_snapshot_cron();
   }
+  module_load_include('inc', 'rovas_civic', 'rovas_civic.receipt_history');
+  if (function_exists('rovas_civic_receipt_history_cron')) {
+    rovas_civic_receipt_history_cron();
+  }
 }
 
 /**
@@ -283,6 +293,7 @@ function rovas_civic_node_insert($node) {
  * - GET  /rovas/civic_merit_period_index (ME•ter period leaderboard)
  * - GET  /rovas/civic_charity_projects (public approved-charity catalog)
  * - POST /rovas/civic_create_charity_org (donor add public-benefit org)
+ * - POST /rovas/civic_receipt_history_preference (keep vs 90-day scrub)
  *
  * Note: Services aliases must be slash-free. Do not use aliases like
  * civic/claims — Services treats the first segment as the resource name.
@@ -328,6 +339,11 @@ function rovas_civic_services_resources() {
     'type' => 'inc',
     'module' => 'rovas_civic',
     'name' => 'rovas_civic.charity',
+  );
+  $receipt_history_file = array(
+    'type' => 'inc',
+    'module' => 'rovas_civic',
+    'name' => 'rovas_civic.receipt_history',
   );
 
   return array(
@@ -1162,6 +1178,27 @@ function rovas_civic_services_resources() {
               'name' => 'data',
               'type' => 'struct',
               'description' => 'Org fields: name, country, website_url, contact_email, org_id, iban.',
+              'source' => 'data',
+              'optional' => FALSE,
+            ),
+          ),
+        ),
+      ),
+    ),
+    'civic_receipt_history_preference' => array(
+      'operations' => array(
+        'create' => array(
+          'help' => 'Set receipt scanning-history retention. Body: retention keep|policy. Bearer; API-key off. Switching to policy scrubs aged merchant/purchase detail.',
+          'callback' => 'rovas_civic_services_receipt_history_preference',
+          'file' => $receipt_history_file,
+          'access callback' => $bearer_auth['access callback'],
+          'access arguments' => $bearer_auth['access arguments'],
+          'access arguments append' => $bearer_auth['access arguments append'],
+          'args' => array(
+            array(
+              'name' => 'data',
+              'type' => 'struct',
+              'description' => 'Fields: retention (keep|policy).',
               'source' => 'data',
               'optional' => FALSE,
             ),
@@ -3343,7 +3380,12 @@ function rovas_civic_ensure_services_resources() {
       'create' => $bearer_op,
     ),
   );
-  foreach (array('civic_create_project', 'civic_create_work_report', 'civic_create_charity_org') as $res_name) {
+  foreach (array(
+    'civic_create_project',
+    'civic_create_work_report',
+    'civic_create_charity_org',
+    'civic_receipt_history_preference',
+  ) as $res_name) {
     if (empty($endpoint->resources[$res_name])
       || $endpoint->resources[$res_name] != $civic_create_resource) {
       $endpoint->resources[$res_name] = $civic_create_resource;
