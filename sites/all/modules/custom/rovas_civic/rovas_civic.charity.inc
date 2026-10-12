@@ -240,6 +240,10 @@ function rovas_civic_project_charity_json($project, $lang = NULL) {
       'is_charity' => FALSE,
       'charity_status' => NULL,
       'organization' => NULL,
+      'org_id' => NULL,
+      'country' => NULL,
+      'website_url' => NULL,
+      'iban_verified' => NULL,
       'donate_instructions' => NULL,
       'donate_url' => NULL,
       'donate_iban' => NULL,
@@ -248,14 +252,66 @@ function rovas_civic_project_charity_json($project, $lang = NULL) {
   $org = rovas_civic_project_charity_org($project);
   $status = rovas_civic_charity_org_status($org);
   $legal = $org ? trim((string) $org->title) : '';
+  $basic = rovas_civic_project_charity_org_basic_info($org);
   return array(
     'is_charity' => TRUE,
     'charity_status' => $status,
     'organization' => $legal !== '' ? $legal : NULL,
+    'org_id' => $basic['org_id'],
+    'country' => $basic['country'],
+    'website_url' => $basic['website_url'],
+    'iban_verified' => $basic['iban_verified'],
     'donate_instructions' => rovas_civic_project_donate_instructions($project, $org, $lang),
     'donate_url' => rovas_civic_project_donate_url($project, $org, $lang),
     'donate_iban' => rovas_civic_project_donate_iban($org, $status),
   );
+}
+
+/**
+ * Org registry fields for Civic Nonprofit Basic info (not IBAN-gated).
+ *
+ * @param object|null $org
+ *
+ * @return array
+ *   keys: org_id, country, website_url (string|null); iban_verified (bool|null)
+ */
+function rovas_civic_project_charity_org_basic_info($org) {
+  $out = array(
+    'org_id' => NULL,
+    'country' => NULL,
+    'website_url' => NULL,
+    'iban_verified' => NULL,
+  );
+  if (empty($org)) {
+    return $out;
+  }
+
+  $org_id = rovas_civic_node_text_field($org, 'field_charity_ico');
+  if ($org_id !== NULL && $org_id !== '') {
+    $out['org_id'] = $org_id;
+  }
+
+  $country = rovas_civic_node_text_field($org, 'field_charity_country');
+  if ($country !== NULL && $country !== '') {
+    $country = drupal_strtoupper($country);
+    if (preg_match('/^[A-Z]{2}$/', $country)) {
+      $out['country'] = $country;
+    }
+  }
+
+  $website = rovas_civic_node_text_field($org, 'field_charity_website');
+  if ($website !== NULL && $website !== '') {
+    $normalized = rovas_civic_normalize_http_url($website);
+    if ($normalized !== FALSE) {
+      $out['website_url'] = $normalized;
+    }
+  }
+
+  // Staff flag (also requires a stored IBAN). Not gated on org approval —
+  // donate_iban still requires approved + verified.
+  $out['iban_verified'] = rovas_civic_charity_iban_verified($org);
+
+  return $out;
 }
 
 /**

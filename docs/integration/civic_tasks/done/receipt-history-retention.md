@@ -103,7 +103,7 @@ scrubbed (so the first-claim consent modal remains meaningful). Users with
 3. [x] Services resource `POST /rovas/civic_receipt_history_preference` (Bearer only)
 4. [x] Immediate scrub on transition to `policy` (incl. first set to policy)
 5. [x] Cron / periodic scrub for `policy` users
-6. [ ] Deploy rovdev + smoke (human unless asked)
+6. [x] Deploy rovdev + smoke (human unless asked)
 
 ### Smoke test
 
