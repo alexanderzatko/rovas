@@ -39,6 +39,35 @@ function rovas_civic_admin_form($form, &$form_state) {
     '#submit' => array('rovas_civic_admin_bootstrap_treasury_submit'),
   );
 
+  $buy_me_nid = (int) variable_get(ROVAS_CIVIC_EUR_BUY_MERITS_PROJECT_VAR, ROVAS_CIVIC_EUR_BUY_MERITS_PROJECT_DEFAULT);
+  $buy_me = $buy_me_nid ? node_load($buy_me_nid) : FALSE;
+  $form['eur_buy_merits'] = array(
+    '#type' => 'fieldset',
+    '#title' => t('EUR buy-Merits attribution (Civic Gifts)'),
+    '#description' => t('Merits purchased with EUR are attributed to this project in users_lookup top_charities. Default is the platform Rovas project (nid @nid).', array(
+      '@nid' => ROVAS_CIVIC_EUR_BUY_MERITS_PROJECT_DEFAULT,
+    )),
+  );
+  $form['eur_buy_merits']['status'] = array(
+    '#type' => 'item',
+    '#title' => t('Current project'),
+    '#markup' => ($buy_me && $buy_me->type === 'project')
+      ? t('Nid @nid: !link', array(
+        '@nid' => $buy_me_nid,
+        '!link' => l(check_plain($buy_me->title), 'node/' . $buy_me_nid),
+      ))
+      : t('Not set or invalid — save a project nid below (default @nid).', array(
+        '@nid' => ROVAS_CIVIC_EUR_BUY_MERITS_PROJECT_DEFAULT,
+      )),
+  );
+  $form['eur_buy_merits']['rovas_civic_eur_buy_merits_project_nid'] = array(
+    '#type' => 'textfield',
+    '#title' => t('EUR buy-Merits project nid'),
+    '#default_value' => $buy_me_nid > 0 ? $buy_me_nid : ROVAS_CIVIC_EUR_BUY_MERITS_PROJECT_DEFAULT,
+    '#description' => t('Project shown under Gifts → Top organisations for EUR Merit purchases. Does not re-grant Merits.'),
+    '#size' => 10,
+  );
+
   $form['rates'] = array(
     '#type' => 'fieldset',
     '#title' => t('National hourly rates (EUR / hour)'),
@@ -163,6 +192,21 @@ function rovas_civic_admin_form_submit($form, &$form_state) {
   else {
     variable_del('rovas_civic_state_treasury_nid');
     drupal_set_message(t('State Treasury nid cleared.'));
+  }
+
+  if (isset($form_state['values']['rovas_civic_eur_buy_merits_project_nid'])) {
+    $buy_nid = (int) $form_state['values']['rovas_civic_eur_buy_merits_project_nid'];
+    if ($buy_nid < 1) {
+      form_set_error('rovas_civic_eur_buy_merits_project_nid', t('EUR buy-Merits project nid is required.'));
+      return;
+    }
+    $buy_node = node_load($buy_nid);
+    if (!$buy_node || $buy_node->type !== 'project') {
+      form_set_error('rovas_civic_eur_buy_merits_project_nid', t('EUR buy-Merits nid must be a project node.'));
+      return;
+    }
+    variable_set(ROVAS_CIVIC_EUR_BUY_MERITS_PROJECT_VAR, $buy_nid);
+    drupal_set_message(t('EUR buy-Merits attribution project set to nid @nid.', array('@nid' => $buy_nid)));
   }
 
   if (isset($form_state['values']['rovas_civic_merit_index_snapshot_interval_hours'])) {

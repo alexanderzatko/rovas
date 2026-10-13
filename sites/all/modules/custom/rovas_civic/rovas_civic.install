@@ -734,3 +734,31 @@ function rovas_civic_update_7026() {
   }
   return t('Civic receipt history retention ({civic_user_prefs}, POST /rovas/civic_receipt_history_preference); /rovas/me exposes receipt_history_retention.');
 }
+
+/**
+ * EUR buy-Merits → top_charities: seed project nid + backfill attribution.
+ *
+ * Sets rovas_civic_eur_buy_merits_project_nid (default 1992 = Rovas project)
+ * and writes missing {rovas_merit_issuance} rows (source_type eur_buy_merits)
+ * for historical EUR purchase_merits grants. Does not re-grant Merits.
+ *
+ * Re-run: drush rovas-civic-backfill-eur-buy-merits
+ */
+function rovas_civic_update_7027() {
+  $nid = 0;
+  if (function_exists('rovas_civic_ensure_eur_buy_merits_project')) {
+    $nid = rovas_civic_ensure_eur_buy_merits_project(ROVAS_CIVIC_EUR_BUY_MERITS_PROJECT_DEFAULT);
+  }
+  else {
+    variable_set('rovas_civic_eur_buy_merits_project_nid', 1992);
+    $nid = 1992;
+  }
+  $inserted = 0;
+  if (function_exists('rovas_civic_backfill_eur_buy_merits_attribution')) {
+    $inserted = rovas_civic_backfill_eur_buy_merits_attribution();
+  }
+  return t('EUR buy-Merits attribution project nid=@nid; backfilled @n issuance row(s).', array(
+    '@nid' => $nid,
+    '@n' => $inserted,
+  ));
+}

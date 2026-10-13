@@ -8,6 +8,12 @@
  */
 
 define('ROVAS_CIVIC_STATE_TREASURY_VAR', 'rovas_civic_state_treasury_nid');
+/** Project nid receiving EUR buy-Merits attribution for Civic top_charities. */
+define('ROVAS_CIVIC_EUR_BUY_MERITS_PROJECT_VAR', 'rovas_civic_eur_buy_merits_project_nid');
+/** Default: platform Rovas project (prod/dev nid 1992). */
+define('ROVAS_CIVIC_EUR_BUY_MERITS_PROJECT_DEFAULT', 1992);
+/** A3 source_type for EUR Commerce buy-Merits (audit only; ledger already granted). */
+define('ROVAS_CIVIC_SOURCE_EUR_BUY_MERITS', 'eur_buy_merits');
 define('ROVAS_CIVIC_DEFAULT_COUNTRY', 'SK');
 define('ROVAS_CIVIC_ME_PER_HOUR', 10.0);
 define('ROVAS_CIVIC_SHARE_PCT_TOLERANCE', 0.01);
@@ -1747,14 +1753,17 @@ function rovas_civic_users_lookup_expertise_categories($uid) {
 /**
  * Top charity/donation projects for a user.
  *
- * Uses NeoFund A3 issuance rows (`rovas_merit_issuance`) with source_type
- * `project_reward_order` — i.e. Path-1 donor Merits from project donations.
+ * Sums project-attributable Gifts ME:
+ * - A3 issuance `project_reward_order` (Path-1 donor Merits)
+ * - A3 issuance `eur_buy_merits` (EUR Commerce buy-Merits → configured project)
+ * - timeshare_merit_allocation field_merits_earned (purchased share rewards)
  *
  * Do NOT use raw `purchase_receipt` rows: those also cover ordinary Merit
  * spending (rewarding others' work, platform fees, etc.) and would falsely
  * surface as charity (e.g. freemap.sk / Rováš tips).
  *
- * Excludes State Treasury (VAT path uses source_type `civic_vat_claim`).
+ * Excludes State Treasury, CHR→ME (`volunteer`), and co_worker labor ME
+ * (`volunteer_work` — those belong in top_volunteer_projects).
  *
  * @param int $uid
  * @param string|null $lang
@@ -1770,49 +1779,108 @@ function rovas_civic_users_lookup_top_charities($uid, $lang = NULL) {
   }
 
   $treasury_nid = (int) variable_get(ROVAS_CIVIC_STATE_TREASURY_VAR, 0);
+  $by_nid = array();
 
-  $query = db_select('rovas_merit_issuance', 'i');
-  $query->join('node', 'pn', 'pn.nid = i.project_nid');
-  $query->fields('pn', array('nid', 'title'));
-  $query->addExpression('SUM(i.amount)', 'me');
-  $query->condition('i.uid', $uid);
-  $query->condition('i.source_type', 'project_reward_order');
-  $query->condition('i.amount', 0, '>');
-  if ($treasury_nid > 0) {
-    $query->condition('i.project_nid', $treasury_nid, '<>');
+  // Path-1 + EUR buy-Merits issuance (disjoint source_types; sum per project).
+  if (db_table_exists('rovas_merit_issuance')) {
+    $query = db_select('rovas_merit_issuance', 'i');
+    $query->join('node', 'pn', 'pn.nid = i.project_nid');
+    $query->fields('pn', array('nid', 'title'));
+    $query->addExpression('SUM(i.amount)', 'me');
+    $query->condition('i.uid', $uid);
+    $query->condition('i.source_type', array(
+      'project_reward_order',
+      ROVAS_CIVIC_SOURCE_EUR_BUY_MERITS,
+    ), 'IN');
+    $query->condition('i.amount', 0, '>');
+    if ($treasury_nid > 0) {
+      $query->condition('i.project_nid', $treasury_nid, '<>');
+    }
+    $query->groupBy('pn.nid');
+    $query->groupBy('pn.title');
+    foreach ($query->execute() as $row) {
+      $nid = (int) $row->nid;
+      $me = (float) $row->me;
+      if ($nid < 1 || $me <= 0) {
+        continue;
+      }
+      if (!isset($by_nid[$nid])) {
+        $by_nid[$nid] = array('name' => trim((string) $row->title), 'me' => 0.0);
+      }
+      $by_nid[$nid]['me'] += $me;
+    }
   }
-  $query->groupBy('pn.nid');
-  $query->groupBy('pn.title');
-  $query->orderBy('me', 'DESC');
-  $query->range(0, 3);
 
-  $rows = array();
-  $nids = array();
-  foreach ($query->execute() as $row) {
-    $me = (float) $row->me;
+  // Timeshare shareholder ME (Gifts) — same linkage as volunteer allocations.
+  $ts_sql = "
+    SELECT pn.nid AS nid, pn.title AS title, SUM(me.field_merits_earned_value) AS me
+    FROM {node} n
+    INNER JOIN {field_data_field_coworker} cw
+      ON cw.entity_id = n.nid AND cw.entity_type = 'node' AND cw.deleted = 0
+    INNER JOIN {field_data_field_project} p
+      ON p.entity_id = n.nid AND p.entity_type = 'node' AND p.deleted = 0
+    INNER JOIN {node} pn ON pn.nid = p.field_project_target_id
+    INNER JOIN {field_data_field_merits_earned} me
+      ON me.entity_id = n.nid AND me.entity_type = 'node' AND me.deleted = 0
+    WHERE n.type = 'timeshare_merit_allocation'
+      AND n.status = 1
+      AND cw.field_coworker_target_id = :uid
+      AND me.field_merits_earned_value > 0
+  ";
+  $ts_args = array(':uid' => $uid);
+  if ($treasury_nid > 0) {
+    $ts_sql .= ' AND pn.nid <> :treasury';
+    $ts_args[':treasury'] = $treasury_nid;
+  }
+  $ts_sql .= ' GROUP BY pn.nid, pn.title';
+  foreach (db_query($ts_sql, $ts_args) as $row) {
     $nid = (int) $row->nid;
-    if ($me <= 0 || $nid < 1) {
+    $me = (float) $row->me;
+    $name = trim((string) $row->title);
+    if ($nid < 1 || $me <= 0) {
       continue;
     }
-    $rows[] = array(
-      'nid' => $nid,
-      'title' => trim((string) $row->title),
-      'me' => $me,
-    );
-    $nids[] = $nid;
+    if (!isset($by_nid[$nid])) {
+      $by_nid[$nid] = array('name' => $name, 'me' => 0.0);
+    }
+    $by_nid[$nid]['me'] += $me;
+    if ($by_nid[$nid]['name'] === '' && $name !== '') {
+      $by_nid[$nid]['name'] = $name;
+    }
   }
 
-  $titles = rovas_civic_project_titles_for_nids($nids, $lang);
+  if (empty($by_nid)) {
+    return array();
+  }
+
+  uasort($by_nid, function ($a, $b) {
+    if ($a['me'] == $b['me']) {
+      return 0;
+    }
+    return ($a['me'] > $b['me']) ? -1 : 1;
+  });
+
+  $top_nids = array();
+  $i = 0;
+  foreach ($by_nid as $nid => $row) {
+    $top_nids[] = $nid;
+    $i++;
+    if ($i >= 3) {
+      break;
+    }
+  }
+  $titles = rovas_civic_project_titles_for_nids($top_nids, $lang);
+
   $out = array();
-  foreach ($rows as $row) {
-    $name = isset($titles[$row['nid']]) ? $titles[$row['nid']] : $row['title'];
+  foreach ($top_nids as $nid) {
+    $name = isset($titles[$nid]) ? $titles[$nid] : $by_nid[$nid]['name'];
     if ($name === '') {
       continue;
     }
     $out[] = array(
-      'project_nid' => (string) $row['nid'],
+      'project_nid' => (string) $nid,
       'name' => $name,
-      'me' => round($row['me'], 2),
+      'me' => round($by_nid[$nid]['me'], 2),
     );
   }
   return $out;
@@ -2908,6 +2976,245 @@ function rovas_civic_base_fund_hourly_rate($eur = 10.0) {
 /* ===========================================================================
  * Merit issuance (A3) + donor reward
  * ========================================================================= */
+
+/**
+ * Project nid used to attribute EUR buy-Merits in Civic top_charities.
+ *
+ * @return int
+ *   Valid project nid, or 0 if unset / missing.
+ */
+function rovas_civic_eur_buy_merits_project_nid() {
+  $nid = (int) variable_get(ROVAS_CIVIC_EUR_BUY_MERITS_PROJECT_VAR, ROVAS_CIVIC_EUR_BUY_MERITS_PROJECT_DEFAULT);
+  if ($nid < 1) {
+    $nid = (int) ROVAS_CIVIC_EUR_BUY_MERITS_PROJECT_DEFAULT;
+  }
+  if ($nid < 1) {
+    return 0;
+  }
+  $node = node_load($nid);
+  if (!$node || $node->type !== 'project') {
+    return 0;
+  }
+  return $nid;
+}
+
+/**
+ * Ensure the EUR buy-Merits attribution project variable is seeded.
+ *
+ * @param int|null $nid
+ *   Optional override; default platform Rovas project.
+ *
+ * @return int
+ *   Stored project nid, or 0 on failure.
+ */
+function rovas_civic_ensure_eur_buy_merits_project($nid = NULL) {
+  $existing = (int) variable_get(ROVAS_CIVIC_EUR_BUY_MERITS_PROJECT_VAR, 0);
+  if ($existing > 0) {
+    $node = node_load($existing);
+    if ($node && $node->type === 'project') {
+      return $existing;
+    }
+  }
+  $nid = $nid === NULL ? (int) ROVAS_CIVIC_EUR_BUY_MERITS_PROJECT_DEFAULT : (int) $nid;
+  if ($nid < 1) {
+    return 0;
+  }
+  $node = node_load($nid);
+  if (!$node || $node->type !== 'project') {
+    watchdog('rovas_civic', 'EUR buy-Merits project nid @nid missing or not a project.', array(
+      '@nid' => $nid,
+    ), WATCHDOG_ERROR);
+    return 0;
+  }
+  variable_set(ROVAS_CIVIC_EUR_BUY_MERITS_PROJECT_VAR, $nid);
+  return $nid;
+}
+
+/**
+ * Record A3 attribution for EUR buy-Merits (no second ledger credit).
+ *
+ * Called after `_rovas_forex_grant_merits(..., charitable_donation)` has
+ * already applied the wallet / disbursement. Idempotent on
+ * (uid, source_type, source_id).
+ *
+ * @param object $account
+ *   Buyer user object.
+ * @param float $merits
+ *   Merits granted.
+ * @param int $receipt_nid
+ *   purchase_merits node nid (preferred source_id).
+ * @param int $order_id
+ *   Optional Commerce order_id; used only when receipt_nid is missing.
+ *
+ * @return bool
+ *   TRUE when attribution exists or was written; FALSE on skip/failure.
+ */
+function rovas_civic_attribute_eur_buy_merits($account, $merits, $receipt_nid = 0, $order_id = 0) {
+  $merits = (float) $merits;
+  $receipt_nid = (int) $receipt_nid;
+  $order_id = (int) $order_id;
+  if (empty($account->uid) || $merits <= 0) {
+    return FALSE;
+  }
+  if (!db_table_exists('rovas_merit_issuance')) {
+    return FALSE;
+  }
+
+  $project_nid = rovas_civic_eur_buy_merits_project_nid();
+  if ($project_nid < 1) {
+    watchdog('rovas_civic', 'EUR buy-Merits attribution skipped: no project configured (uid @u).', array(
+      '@u' => (int) $account->uid,
+    ), WATCHDOG_WARNING);
+    return FALSE;
+  }
+
+  if ($receipt_nid > 0) {
+    $source_id = 'purchase_merits:' . $receipt_nid;
+  }
+  elseif ($order_id > 0) {
+    $source_id = 'order:' . $order_id;
+  }
+  else {
+    // Last resort: still attribute once per grant without a stable key.
+    $source_id = 'eur_buy_merits:uid:' . (int) $account->uid . ':t:' . REQUEST_TIME . ':me:' . $merits;
+  }
+
+  $exists = db_query("SELECT 1 FROM {rovas_merit_issuance} WHERE uid = :u AND source_type = :t AND source_id = :s", array(
+    ':u' => (int) $account->uid,
+    ':t' => ROVAS_CIVIC_SOURCE_EUR_BUY_MERITS,
+    ':s' => $source_id,
+  ))->fetchField();
+  if ($exists) {
+    return TRUE;
+  }
+
+  $desc = t('EUR buy-Merits attributed to project @nid', array('@nid' => $project_nid));
+  db_insert('rovas_merit_issuance')
+    ->fields(array(
+      'uid' => (int) $account->uid,
+      'amount' => $merits,
+      'project_nid' => $project_nid,
+      'source_type' => ROVAS_CIVIC_SOURCE_EUR_BUY_MERITS,
+      'source_id' => $source_id,
+      'description' => $desc,
+      'created' => REQUEST_TIME,
+    ))
+    ->execute();
+
+  return TRUE;
+}
+
+/**
+ * Backfill eur_buy_merits issuance for historical EUR purchase_merits grants.
+ *
+ * Does not grant Merits; only writes missing A3 attribution rows to the
+ * currently configured buy-ME project.
+ *
+ * @param int|null $only_uid
+ *   Optional limit to one user.
+ *
+ * @return int
+ *   Number of issuance rows inserted.
+ */
+function rovas_civic_backfill_eur_buy_merits_attribution($only_uid = NULL) {
+  if (!db_table_exists('rovas_merit_issuance')) {
+    return 0;
+  }
+  $project_nid = rovas_civic_ensure_eur_buy_merits_project();
+  if ($project_nid < 1) {
+    return 0;
+  }
+
+  module_load_include('inc', 'rovas_merit', 'rovas_merit.ledger');
+
+  $sql = "
+    SELECT n.nid AS disbursement_nid,
+      n.created AS created,
+      rec.field_reward_recipient_target_id AS uid,
+      amt.field_reward_amount_value AS amount,
+      parent.field_parent_purchase_receipt_target_id AS receipt_nid
+    FROM {node} n
+    INNER JOIN {field_data_field_reward_recipient} rec
+      ON rec.entity_id = n.nid AND rec.entity_type = 'node' AND rec.deleted = 0
+    INNER JOIN {field_data_field_reward_amount} amt
+      ON amt.entity_id = n.nid AND amt.entity_type = 'node' AND amt.deleted = 0
+    INNER JOIN {field_data_field_parent_purchase_receipt} parent
+      ON parent.entity_id = n.nid AND parent.entity_type = 'node' AND parent.deleted = 0
+    INNER JOIN {node} pr
+      ON pr.nid = parent.field_parent_purchase_receipt_target_id
+      AND pr.type = 'purchase_merits'
+    LEFT JOIN {field_data_field_merit_source} src
+      ON src.entity_id = n.nid AND src.entity_type = 'node' AND src.deleted = 0
+    WHERE n.type = 'merits_disbursement'
+      AND n.status = 1
+      AND amt.field_reward_amount_value > 0
+      AND (
+        src.field_merit_source_value = :charity
+        OR src.field_merit_source_value IS NULL
+        OR src.field_merit_source_value = ''
+      )
+  ";
+  $args = array(':charity' => ROVAS_MERIT_SOURCE_CHARITABLE_DONATION);
+  if ($only_uid !== NULL && (int) $only_uid > 0) {
+    $sql .= ' AND rec.field_reward_recipient_target_id = :uid';
+    $args[':uid'] = (int) $only_uid;
+  }
+  $sql .= ' ORDER BY n.nid ASC';
+
+  $inserted = 0;
+  foreach (db_query($sql, $args) as $row) {
+    $uid = (int) $row->uid;
+    $amount = (float) $row->amount;
+    $receipt_nid = (int) $row->receipt_nid;
+    $created = (int) $row->created;
+    if ($uid < 1 || $amount <= 0 || $receipt_nid < 1) {
+      continue;
+    }
+
+    // Skip CHR→ME purchase_merits (volunteer) when source was unset/legacy.
+    $src = db_query("SELECT field_merit_source_value FROM {field_data_field_merit_source}
+      WHERE entity_id = :nid AND entity_type = 'node' AND deleted = 0 LIMIT 1", array(
+      ':nid' => (int) $row->disbursement_nid,
+    ))->fetchField();
+    if ($src === ROVAS_MERIT_SOURCE_VOLUNTEER) {
+      continue;
+    }
+    if ($src !== ROVAS_MERIT_SOURCE_CHARITABLE_DONATION) {
+      // Unset/legacy: only EUR-funded Commerce merits orders.
+      if (!function_exists('_rovas_merit_purchase_merits_was_eur_funded')
+        || !_rovas_merit_purchase_merits_was_eur_funded($uid, $created, $amount)) {
+        continue;
+      }
+    }
+
+    $source_id = 'purchase_merits:' . $receipt_nid;
+    $exists = db_query("SELECT 1 FROM {rovas_merit_issuance} WHERE uid = :u AND source_type = :t AND source_id = :s", array(
+      ':u' => $uid,
+      ':t' => ROVAS_CIVIC_SOURCE_EUR_BUY_MERITS,
+      ':s' => $source_id,
+    ))->fetchField();
+    if ($exists) {
+      continue;
+    }
+
+    db_insert('rovas_merit_issuance')
+      ->fields(array(
+        'uid' => $uid,
+        'amount' => $amount,
+        'project_nid' => $project_nid,
+        'source_type' => ROVAS_CIVIC_SOURCE_EUR_BUY_MERITS,
+        'source_id' => $source_id,
+        'description' => t('Backfill: EUR buy-Merits attributed to project @nid', array(
+          '@nid' => $project_nid,
+        )),
+        'created' => $created > 0 ? $created : REQUEST_TIME,
+      ))
+      ->execute();
+    $inserted++;
+  }
+
+  return $inserted;
+}
 
 /**
  * Issue Merits to a donor with full paper trail + A3 audit row.

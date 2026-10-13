@@ -59,6 +59,10 @@ function rovas_merit_source_from_civic_audit($source_type) {
       // Donor Path-1 ME for paying into a project (not shareholder split).
       return ROVAS_MERIT_SOURCE_CHARITABLE_DONATION;
 
+    case 'eur_buy_merits':
+      // EUR Commerce buy-Merits — same Gifts ledger source as Path-1.
+      return ROVAS_MERIT_SOURCE_CHARITABLE_DONATION;
+
     default:
       return ROVAS_MERIT_SOURCE_LEGACY;
   }

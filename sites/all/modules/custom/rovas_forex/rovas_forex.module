@@ -1364,6 +1364,12 @@ function _rovas_forex_grant_merits($user, $merits, $chrons, $merit_source = NULL
 	}
 
 	rovas_merit_apply($uid, $merits, $merit_source, $nace_tid, $context);
+
+	// EUR buy-Merits: attribute to Civic top_charities project (audit only).
+	if ($merit_source === ROVAS_MERIT_SOURCE_CHARITABLE_DONATION
+		&& function_exists('rovas_civic_attribute_eur_buy_merits')) {
+		rovas_civic_attribute_eur_buy_merits($user, $merits, $receipt_id);
+	}
 }
 
 //for the current user, deletes the lock and temp basket
