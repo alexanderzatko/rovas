@@ -84,6 +84,14 @@
                   "PROVIDE" : { "variable_added" : { "verif_score" : "verif score" } }
                 }
               },
+              { "variable_add" : {
+                  "USING" : {
+                    "type" : "integer",
+                    "value" : [ "work-report:field-verification-status" ]
+                  },
+                  "PROVIDE" : { "variable_added" : { "verif_status_original" : "original verif status" } }
+                }
+              },
               { "CONDITIONAL" : [
                   {
                     "IF" : { "data_is" : { "data" : [ "outcome" ], "value" : "1" } },
@@ -99,42 +107,55 @@
                           "value" : [ "chrons-for-wr" ]
                         }
                       },
-                      { "component_rules_update_user_chron_account" : {
-                          "user_object" : [ "work-report:author" ],
-                          "chrons_to_add" : [ "chrons-for-wr" ],
-                          "fxsp_id" : {
-                            "select" : "site:current-user:uid",
-                            "php" : { "code" : "return NULL;" }
-                          }
-                        }
-                      },
-                      { "component_rules_create_aur" : {
-                          "USING" : {
-                            "owner_project" : "1992",
-                            "usage_fee" : [ "rovas-fee" ],
-                            "consumer" : [ "work-report:author" ],
-                            "note" : "Rovas use fee of [rovas-fee:value] CH",
-                            "work_report" : [ "work_report" ]
-                          },
-                          "PROVIDE" : { "result" : { "result" : "Result" } }
-                        }
-                      },
                       { "CONDITIONAL" : [
                           {
-                            "IF" : { "data_is" : { "data" : [ "result" ], "value" : "0" } },
+                            "IF" : { "NOT data_is" : { "data" : [ "verif-status-original" ], "value" : "1" } },
                             "DO" : [
-                              { "mail" : {
-                                  "to" : [ "site:mail" ],
-                                  "subject" : "Could not create AUR for Rovas usage",
-                                  "message" : "It seems not enough funds were available to pay for Rovas usage, when user [work-report:author] created verified work report [work-report:menu-link].",
-                                  "from" : [ "site:mail" ],
-                                  "language" : "en"
+                              { "component_rules_update_user_chron_account" : {
+                                  "user_object" : [ "work-report:author" ],
+                                  "chrons_to_add" : [ "chrons-for-wr" ],
+                                  "fxsp_id" : {
+                                    "select" : "site:current-user:uid",
+                                    "php" : { "code" : "return NULL;" }
+                                  }
                                 }
                               },
-                              { "drupal_watchdog" : {
-                                  "type" : "Verify work report",
-                                  "message" : "failed to collect fee for Rovas usage when work repor [work-report:menu-link] was found valid",
-                                  "severity" : "6"
+                              { "component_rules_create_aur" : {
+                                  "USING" : {
+                                    "owner_project" : "1992",
+                                    "usage_fee" : [ "rovas-fee" ],
+                                    "consumer" : [ "work-report:author" ],
+                                    "note" : "Rovas use fee of [rovas-fee:value] CH",
+                                    "work_report" : [ "work_report" ]
+                                  },
+                                  "PROVIDE" : { "result" : { "result" : "Result" } }
+                                }
+                              },
+                              { "CONDITIONAL" : [
+                                  {
+                                    "IF" : { "data_is" : { "data" : [ "result" ], "value" : "0" } },
+                                    "DO" : [
+                                      { "mail" : {
+                                          "to" : [ "site:mail" ],
+                                          "subject" : "Could not create AUR for Rovas usage",
+                                          "message" : "It seems not enough funds were available to pay for Rovas usage, when user [work-report:author] created verified work report [work-report:menu-link].",
+                                          "from" : [ "site:mail" ],
+                                          "language" : "en"
+                                        }
+                                      },
+                                      { "drupal_watchdog" : {
+                                          "type" : "Verify work report",
+                                          "message" : "failed to collect fee for Rovas usage when work repor [work-report:menu-link] was found valid",
+                                          "severity" : "6"
+                                        }
+                                      }
+                                    ]
+                                  }
+                                ]
+                              },
+                              { "component_rules_process_fx_sandbox_project" : {
+                                  "project" : [ "work-report:field-project" ],
+                                  "work_report" : [ "work_report" ]
                                 }
                               }
                             ]
@@ -142,12 +163,7 @@
                         ]
                       },
                       { "data_set" : { "data" : [ "send-notification" ], "value" : "1" } },
-                      { "component_rules_delete_voluntary_verification_slips" : { "work_report" : [ "work_report" ] } },
-                      { "component_rules_process_fx_sandbox_project" : {
-                          "project" : [ "work-report:field-project" ],
-                          "work_report" : [ "work_report" ]
-                        }
-                      }
+                      { "component_rules_delete_voluntary_verification_slips" : { "work_report" : [ "work_report" ] } }
                     ]
                   },
                   { "ELSE" : [
@@ -165,6 +181,26 @@
                                   "data" : [ "work-report:author:field-verification-score" ],
                                   "value" : { "select" : "verif-score", "num_offset" : { "value" : "-1" } }
                                 }
+                              },
+                              { "CONDITIONAL" : [
+                                  {
+                                    "IF" : { "data_is" : { "data" : [ "verif-status-original" ], "value" : "1" } },
+                                    "DO" : [
+                                      { "component_rules_update_user_chron_account" : {
+                                          "user_object" : [ "work-report:author" ],
+                                          "chrons_to_add" : {
+                                            "select" : "work-report:field-chrons-to-grant",
+                                            "php" : { "code" : "return -1 * $value;" }
+                                          },
+                                          "fxsp_id" : {
+                                            "select" : "site:current-user:uid",
+                                            "php" : { "code" : "return NULL;" }
+                                          }
+                                        }
+                                      }
+                                    ]
+                                  }
+                                ]
                               },
                               { "component_rules_update_user_s_labor_count_for_a_project_" : {
                                   "project_id" : [ "work-report:field-project:nid" ],

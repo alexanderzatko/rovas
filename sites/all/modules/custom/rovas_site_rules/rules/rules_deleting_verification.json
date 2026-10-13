@@ -171,6 +171,37 @@
                 }
               }
             ]
+          },
+          {
+            "ELSE IF" : { "AND" : [
+                { "data_is" : { "data" : [ "outcome" ], "value" : "0" } },
+                { "data_is" : { "data" : [ "verif-status-original" ], "value" : "1" } }
+              ]
+            },
+            "DO" : [
+              { "data_set" : {
+                  "data" : [ "node:field-work-report:field-verification-status" ],
+                  "value" : "0"
+                }
+              },
+              { "data_set" : {
+                  "data" : [ "node:field-work-report:author:field-verification-score" ],
+                  "value" : { "select" : "verif-score-original", "num_offset" : { "value" : "-1" } }
+                }
+              },
+              { "component_rules_update_user_chron_account" : {
+                  "user_object" : [ "node:field-work-report:author" ],
+                  "chrons_to_add" : {
+                    "select" : "node:field-work-report:field-chrons-to-grant",
+                    "php" : { "code" : "return -1 * $value;" }
+                  },
+                  "fxsp_id" : {
+                    "select" : "site:current-user:uid",
+                    "php" : { "code" : "return NULL;" }
+                  }
+                }
+              }
+            ]
           }
         ]
       },
