@@ -1,9 +1,9 @@
 ---
-status: active
+status: done
 slug: charity-org-basic-info
 owner_repo: both
 created: 2026-10-12
-updated: 2026-10-12
+updated: 2026-10-13
 ---
 
 
@@ -39,7 +39,7 @@ ISO→name lookup on the client; at-own-risk copy when showing unverified IBAN).
 | `country` | string \| omitted/`null` | ISO 3166-1 alpha-2 from linked org (`field_charity_country`), uppercase. Omit/`null` when empty or no linked org. |
 | `website_url` | string \| omitted/`null` | Absolute `http(s)` website from linked org. Trim; omit/`null` when empty or invalid/missing. |
 | `iban_verified` | bool \| omitted/`null` | Staff IBAN verification from linked org (`field_charity_iban_verified`, and IBAN present). `true`/`false` when linked org exists; omit/`null` when no linked org. |
-| `donate_iban` | string \| omitted/`null` | Compact SEPA IBAN (no spaces, uppercase) from linked org whenever stored value normalizes. **Not** gated on approval or staff verification. Omit/`null` when empty/invalid/no org. Supersedes the verified-only rule in [gift-donate-iban](../done/gift-donate-iban.md). |
+| `donate_iban` | string \| omitted/`null` | Compact SEPA IBAN (no spaces, uppercase) from linked org whenever stored value normalizes. **Not** gated on approval or staff verification. Omit/`null` when empty/invalid/no org. Supersedes the verified-only rule in [gift-donate-iban](gift-donate-iban.md). |
 
 Include these whenever the project has a linked `charity_organization` and
 Civic is already allowed to read the project (same visibility as
@@ -55,7 +55,7 @@ Other gift-path fields (`is_charity`, `charity_status`, `organization`,
 1. [x] On `civic_project` serialize: resolve linked org; set `org_id`, `country`, `website_url`, `iban_verified` from org fields when present
 2. [x] Normalize `country` to uppercase ISO2; trim `org_id` / `website_url`; omit or null when empty
 3. [x] Return `donate_iban` whenever a valid IBAN is stored (not gated on verification/approval)
-4. [ ] Deploy rovdev + smoke (human unless asked)
+4. [x] Deploy rovdev + smoke (human unless asked)
 
 ### Smoke test
 

@@ -12,7 +12,7 @@ updated: 2026-10-11
 (Pay by Square share/preview) to a nonprofit. For the demo slice, the
 beneficiary is the organisation’s own IBAN.
 
-> **Superseded (gating):** [charity-org-basic-info](../active/charity-org-basic-info.md)
+> **Superseded (gating):** [charity-org-basic-info](charity-org-basic-info.md)
 > now returns `donate_iban` whenever a valid IBAN is stored, plus
 > `iban_verified`, so Civic can show unverified IBANs with at-own-risk copy.
 > The verified-only / approved-only rules below describe the original demo
