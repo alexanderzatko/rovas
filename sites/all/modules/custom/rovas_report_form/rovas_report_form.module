@@ -288,3 +288,11 @@ function _rrf_validate_rovrep($element, &$form_state, $form) {
 		form_error($element, t('Slect appropriate work report in the Rovas report field'));
 	}
 }
+
+
+/**
+ * Implements hook_views_api().
+ */
+function rovas_report_form_views_api($module = NULL, $api = NULL) {
+  return array('api' => '3.0');
+}

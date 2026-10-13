@@ -115,3 +115,11 @@ function rovas_commerce_order_theme($existing, $type, $theme, $path) {
     ),
   );
 }
+
+
+/**
+ * Implements hook_views_api().
+ */
+function rovas_commerce_order_views_api($module = NULL, $api = NULL) {
+  return array('api' => '3.0');
+}

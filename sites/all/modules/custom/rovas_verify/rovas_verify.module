@@ -1235,3 +1235,11 @@ function _rv_count_experts ($classif,$userex) {
 
 	return $ciel['count'];
 }
+
+
+/**
+ * Implements hook_views_api().
+ */
+function rovas_verify_views_api($module = NULL, $api = NULL) {
+  return array('api' => '3.0');
+}

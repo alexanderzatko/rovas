@@ -788,3 +788,11 @@ function rovas_user_views_pre_render(&$view) {
     $view->build_info['title'] = $user->name;
   }
 }
+
+
+/**
+ * Implements hook_views_api().
+ */
+function rovas_user_views_api($module = NULL, $api = NULL) {
+  return array('api' => '3.0');
+}

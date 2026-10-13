@@ -3,6 +3,9 @@ sites/*/files/
 sites/*/private/
 sites/*/tmp/
 
+# Local scratch (e.g. Views export tarballs)
+/tmp/
+
 # Secrets / per-env settings
 sites/*/settings.php
 sites/*/settings.local.php

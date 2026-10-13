@@ -2,3 +2,4 @@ name = Rovas Money Transfer Form
 description = Modifies the New Money Transfer form
 core = 7.x
 package = Rovas
+dependencies[] = views

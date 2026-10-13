@@ -9,3 +9,4 @@ dependencies[] = userpoints
 files[] = rovas_merit.module
 files[] = rovas_merit.ledger.inc
 files[] = rovas_merit.drush.inc
+dependencies[] = views

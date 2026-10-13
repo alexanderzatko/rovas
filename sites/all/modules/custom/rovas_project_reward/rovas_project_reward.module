@@ -7621,3 +7621,11 @@ function _rovas_project_reward_bank_notification_content($mail_key, array $param
 
   return $content;
 }
+
+
+/**
+ * Implements hook_views_api().
+ */
+function rovas_project_reward_views_api($module = NULL, $api = NULL) {
+  return array('api' => '3.0');
+}

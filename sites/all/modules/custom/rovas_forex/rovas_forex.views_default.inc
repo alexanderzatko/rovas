@@ -284,5 +284,28 @@ echo isset($data->_field_data[\'order_id\'][\'entity\']->data[\'p_processor_bala
 
   $export['forex_purchases'] = $view;
 
+  $export += _rovas_forex_views_load_default_views();
+  return $export;
+}
+
+
+/**
+ * Load additional exported Views from views/*.inc.
+ */
+function _rovas_forex_views_load_default_views() {
+  $export = array();
+  $path = drupal_get_path('module', 'rovas_forex') . '/views';
+  if (!is_dir($path)) {
+    return $export;
+  }
+  foreach (glob($path . '/*.inc') as $file) {
+    $view = NULL;
+    $handler = NULL;
+    include $file;
+    if (isset($view) && is_object($view) && !empty($view->name)) {
+      $export[$view->name] = $view;
+    }
+    unset($view, $handler, $translatables);
+  }
   return $export;
 }

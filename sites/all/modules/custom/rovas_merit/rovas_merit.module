@@ -139,3 +139,11 @@ function rovas_merit_reconcile_report_page() {
   );
   return $build;
 }
+
+
+/**
+ * Implements hook_views_api().
+ */
+function rovas_merit_views_api($module = NULL, $api = NULL) {
+  return array('api' => '3.0');
+}

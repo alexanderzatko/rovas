@@ -40,3 +40,11 @@ function _my_transfer_validator($form, &$form_state) {
 	}
 	
 }
+
+
+/**
+ * Implements hook_views_api().
+ */
+function rovas_money_transfer_views_api($module = NULL, $api = NULL) {
+  return array('api' => '3.0');
+}

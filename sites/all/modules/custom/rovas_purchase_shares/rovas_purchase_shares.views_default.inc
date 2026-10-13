@@ -997,5 +997,28 @@ function rovas_purchase_shares_views_default_views() {
 
   $export['project_merit_rewards_chart'] = $view;
 
+  $export += _rovas_purchase_shares_views_load_default_views();
+  return $export;
+}
+
+
+/**
+ * Load additional exported Views from views/*.inc.
+ */
+function _rovas_purchase_shares_views_load_default_views() {
+  $export = array();
+  $path = drupal_get_path('module', 'rovas_purchase_shares') . '/views';
+  if (!is_dir($path)) {
+    return $export;
+  }
+  foreach (glob($path . '/*.inc') as $file) {
+    $view = NULL;
+    $handler = NULL;
+    include $file;
+    if (isset($view) && is_object($view) && !empty($view->name)) {
+      $export[$view->name] = $view;
+    }
+    unset($view, $handler, $translatables);
+  }
   return $export;
 }

@@ -1,0 +1,6 @@
+name = Rovas Site Views
+description = Catch-all default Views that do not belong to a domain module. One PHP export per file under views/.
+core = 7.x
+package = Rovas
+
+dependencies[] = views

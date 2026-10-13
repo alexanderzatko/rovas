@@ -1096,3 +1096,11 @@ function _rovas_project_edit_prevent_ownership_change_submit($form, &$form_state
     }
   }
 }
+
+
+/**
+ * Implements hook_views_api().
+ */
+function rovas_project_edit_views_api($module = NULL, $api = NULL) {
+  return array('api' => '3.0');
+}

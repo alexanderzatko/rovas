@@ -2,3 +2,4 @@ name = Rank page for the unspecific category
 description = Generates the rank page for the unspecific category
 core = 7.x
 package = Rovas
+dependencies[] = views
