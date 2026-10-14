@@ -100,6 +100,21 @@ function rovas_chron_create_adjustment($uid, $amount, $source, array $context = 
   if (function_exists('rovas_base_rules_set_fresh_timestamps')) {
     rovas_base_rules_set_fresh_timestamps($node);
   }
+  // WR-linked rows must sort after the parent work_report. Trusted auto-approve
+  // creates the grant in the same request/second as the WR; without a bump the
+  // Chron tab (created DESC) can list the grant before the WR line.
+  if ($wr_nid > 0) {
+    $wr = node_load($wr_nid);
+    if ($wr && !empty($wr->created)) {
+      $after_wr = ((int) $wr->created) + 1;
+      if ((int) $node->created < $after_wr) {
+        $node->created = $after_wr;
+      }
+      if ((int) $node->changed < (int) $node->created) {
+        $node->changed = (int) $node->created;
+      }
+    }
+  }
   $node = node_submit($node);
   node_save($node);
   return !empty($node->nid) ? (int) $node->nid : 0;
