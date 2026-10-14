@@ -85,7 +85,7 @@ Phase 3 (opening balance + Chron-tab UX)
 ----------------------------------------
   drush74 updb -y
   drush74 cc all
-  # Chron views: header copy (full Chron history note)
+  # Chron views: send-money CTA removed from Chron tab header
   drush74 php-eval "module_load_include('inc', 'rovas_money_transfer', 'rovas_money_transfer.views_migration'); rovas_money_transfer_views_migration_run();"
 
 Cutover rows so Chron-tab sum matches wallet (ledger-only; never changes
@@ -99,10 +99,9 @@ Verify:
 1. Chron tab shows an "adjustment" opening-balance row; wallet unchanged.
 2. Re-run opening-balance for same uid: no second row.
 3. reconcile |diff| within min-diff (default 0.01).
-4. Chron tab header states this is Chron history (not transfers-only).
-5. Send-money CTA is not shown on the Chron tab.
+4. Send-money CTA is not shown on the Chron tab.
 
-Import new locale strings (sk/cs/it) after deploy, e.g. sk.default.po +
+Import Chron ledger locale strings (sk/cs/it) after deploy, e.g.
 sk.custom-modules.po (and cs/it peers), then clear caches.
 
 Not in Phase 3: Civic chron history API; forex / fiat CHR wallet wiring.

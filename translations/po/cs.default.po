@@ -49990,16 +49990,6 @@ msgstr ""
 msgid "Send money"
 msgstr "Poslat peníze"
 
-#: /user/%/chrons
-msgid ""
-"This page shows Chron history: work grants and clawbacks, transfers, "
-"purchases, and adjustments. Your Chron wallet balance is authoritative if "
-"the list total differs."
-msgstr ""
-"Tato stránka zobrazuje historii Chronů: granty a storno z pracovních "
-"výkazů, převody, nákupy a úpravy. Pokud se součet seznamu liší, je "
-"směrodatný zůstatek Chronů na účtu."
-
 #: /dash
 msgid "Transactions"
 msgstr "Transakce"

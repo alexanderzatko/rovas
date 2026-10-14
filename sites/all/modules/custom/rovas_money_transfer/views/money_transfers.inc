@@ -233,9 +233,6 @@ $handler->display->display_options['header']['php']['table'] = 'views';
 $handler->display->display_options['header']['php']['field'] = 'php';
 $handler->display->display_options['header']['php']['php_output'] = '<?php
 
-echo \'<div class="chron-history-note">\';
-echo t(\'This page shows Chron history: work grants and clawbacks, transfers, purchases, and adjustments. Your Chron wallet balance is authoritative if the list total differs.\');
-echo \'</div>\';
 // Send-money CTA intentionally not rendered (disabled on Chron tab).
 echo \'<div class="ldgr-legend">\';
 echo \'<div class="legend-title">\';
@@ -811,9 +808,6 @@ $handler->display->display_options['header']['php']['id'] = 'php';
 $handler->display->display_options['header']['php']['table'] = 'views';
 $handler->display->display_options['header']['php']['field'] = 'php';
 $handler->display->display_options['header']['php']['php_output'] = '<?php
-echo \'<div class="chron-history-note">\';
-echo t(\'This page shows Chron history: work grants and clawbacks, transfers, purchases, and adjustments. Your Chron wallet balance is authoritative if the list total differs.\');
-echo \'</div>\';
 // Send-money CTA intentionally not rendered (disabled on Chron tab).
 echo \'<div class="ldgr-legend">\';
 echo \'<div class="legend-title">\';
@@ -2148,6 +2142,5 @@ $translatables['money_transfers'] = array(
   t('Type (translated)'),
   t('Page'),
   t('Sum Chrons'),
-  t('This page shows Chron history: work grants and clawbacks, transfers, purchases, and adjustments. Your Chron wallet balance is authoritative if the list total differs.'),
 );
 

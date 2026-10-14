@@ -144,8 +144,7 @@ sumchrons includes purchase_merits; reconcile dry-run sensible.
   ledger-only `chron_adjustment` with `source=opening_balance`, ikey
   `opening_balance:{uid}`; Drush `rovas-chron-opening-balance` (`--dry-run` /
   `--uid` / `--min-diff`). Never touches `field_chrons_balance`.
-- Chron-tab UX copy: header clarifies full Chron history (grants/clawbacks,
-  transfers, purchases, adjustments); wallet remains authoritative.
+- Chron-tab UX: send-money CTA removed from the Chron tab header (legend kept).
 - **Not planned:** `GET /rovas/civic_chron_history` (Civic only needs
   `total_chr` on `/me`; no task requests Chron history).
 - Still out of scope: forex / fiat CHR purchase wallet wiring (UI inactive for
@@ -177,7 +176,7 @@ sumchrons includes purchase_merits; reconcile dry-run sensible.
 3. ~~Historical clawbacks/grants~~ → **cutover:** opening_balance rows for
    drift; no full WR historical backfill.
 4. ~~Dedicated chron ledger view?~~ → keep heterogeneous `money_transfers`;
-   clarify UX copy only.
+   Chron-tab UX = hide send-money CTA (no history blurb).
 5. ~~Merit-only Chron pollution strategy~~ → **decided:** ledger-only offset.
 6. ~~Forex / fiat CHR wallet credit~~ → **out of scope** (UI inactive /
    regulatory); do not wire `rovas_chron_mutate` for euros_to_chrons now.
@@ -207,7 +206,8 @@ sumchrons includes purchase_merits; reconcile dry-run sensible.
 
 ## How to use this doc
 
-Ships 1–2 verified on rovdev. Ship 3 + Phase 3 (opening balance + Chron-tab UX
-copy; no Civic chron history API) in code — deploy/review on rovdev when ready.
+Ships 1–2 verified on rovdev. Ship 3 + Phase 3 (opening balance + Chron-tab
+send-money CTA removed; no Civic chron history API) in code — deploy/review on
+rovdev when ready.
 View work lands in git (`views/*.inc`); human deploys code and reverts
 overrides — no Rovas admin Views UI required to revise the Chron tab.

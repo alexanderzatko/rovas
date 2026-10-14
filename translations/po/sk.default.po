@@ -50134,16 +50134,6 @@ msgstr ""
 msgid "Send money"
 msgstr "Poslať peniaze"
 
-#: /user/%/chrons
-msgid ""
-"This page shows Chron history: work grants and clawbacks, transfers, "
-"purchases, and adjustments. Your Chron wallet balance is authoritative if "
-"the list total differs."
-msgstr ""
-"Táto stránka zobrazuje históriu Chronov: granty a stiahnutia z pracovných "
-"výkazov, prevody, nákupy a úpravy. Ak sa súčet zoznamu líši, je smerodajný "
-"zostatok Chronov na účte."
-
 #: /dash
 msgid "Transactions"
 msgstr "Transakcie"
