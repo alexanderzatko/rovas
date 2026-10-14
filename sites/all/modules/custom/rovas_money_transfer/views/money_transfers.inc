@@ -236,15 +236,7 @@ $handler->display->display_options['header']['php']['php_output'] = '<?php
 echo \'<div class="chron-history-note">\';
 echo t(\'This page shows Chron history: work grants and clawbacks, transfers, purchases, and adjustments. Your Chron wallet balance is authoritative if the list total differs.\');
 echo \'</div>\';
-global $user;
-$viewed_uid = arg(1) ? arg(1) : 0;
-if ($user->uid == $viewed_uid) {
-	echo \'<div class="send-ch-text">\';
-	echo t(\'Clicking the button below will open a form, which allows you to send Chrons to another person.\');
-	echo \'</div><div class="send-ch-button">\';
-	echo \'<a href="/node/add/money-transfer" class="btn btn-primary" role="button">\' . t(\'Send money\') . \'</a>\';
-	echo \'</div>\';
-}
+// Send-money CTA intentionally not rendered (disabled on Chron tab).
 echo \'<div class="ldgr-legend">\';
 echo \'<div class="legend-title">\';
 echo t(\'Legend\');
@@ -822,15 +814,7 @@ $handler->display->display_options['header']['php']['php_output'] = '<?php
 echo \'<div class="chron-history-note">\';
 echo t(\'This page shows Chron history: work grants and clawbacks, transfers, purchases, and adjustments. Your Chron wallet balance is authoritative if the list total differs.\');
 echo \'</div>\';
-global $user;
-$viewed_uid = arg(1) ? arg(1) : 0;
-if ($user->uid == $viewed_uid) {
-	echo \'<div class="send-ch-text">\';
-	echo t(\'Clicking the button below will open a form, which allows you to send Chrons to another person.\');
-	echo \'</div><div class="send-ch-button">\';
-	echo \'<a href="/node/add/money-transfer" class="btn btn-primary" role="button">\' . t(\'Send money\') . \'</a>\';
-	echo \'</div>\';
-}
+// Send-money CTA intentionally not rendered (disabled on Chron tab).
 echo \'<div class="ldgr-legend">\';
 echo \'<div class="legend-title">\';
 echo t(\'Legend\');

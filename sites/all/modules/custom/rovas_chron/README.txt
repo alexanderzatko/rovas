@@ -100,5 +100,9 @@ Verify:
 2. Re-run opening-balance for same uid: no second row.
 3. reconcile |diff| within min-diff (default 0.01).
 4. Chron tab header states this is Chron history (not transfers-only).
+5. Send-money CTA is not shown on the Chron tab.
+
+Import new locale strings (sk/cs/it) after deploy, e.g. sk.default.po +
+sk.custom-modules.po (and cs/it peers), then clear caches.
 
 Not in Phase 3: Civic chron history API; forex / fiat CHR wallet wiring.

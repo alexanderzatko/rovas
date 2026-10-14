@@ -324,3 +324,23 @@ msgstr "Zavřít upozornění o důvěryhodném stavu"
 #: sites/all/modules/custom/rovas_report_form/rovas_report_form.module
 msgid "Work can only be reported if it started within the last 30 days."
 msgstr "Práci lze nahlásit pouze tehdy, pokud začala v posledních 30 dnech."
+
+#: sites/all/modules/custom/rovas_chron/rovas_chron.module
+msgid "Merit receipt offset"
+msgstr "Vyrovnání Merit potvrzenky"
+
+#: sites/all/modules/custom/rovas_chron/rovas_chron.module
+msgid "Work report grant"
+msgstr "Grant z pracovního výkazu"
+
+#: sites/all/modules/custom/rovas_chron/rovas_chron.module
+msgid "Work report clawback"
+msgstr "Storno z pracovního výkazu"
+
+#: sites/all/modules/custom/rovas_chron/rovas_chron.module
+msgid "Opening balance"
+msgstr "Počáteční zůstatek"
+
+#: sites/all/modules/custom/rovas_chron/rovas_chron.ledger.inc
+msgid "Opening balance at Chron ledger cutover (no wallet change; closes Chron-tab drift)."
+msgstr "Počáteční zůstatek při přechodu na Chron ledger (bez změny peněženky; uzavře odchylku Chron karty)."

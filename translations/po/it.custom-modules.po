@@ -304,3 +304,23 @@ msgstr "Chiudi notifica utente affidabile"
 #: sites/all/modules/custom/rovas_report_form/rovas_report_form.module
 msgid "Work can only be reported if it started within the last 30 days."
 msgstr "Il lavoro può essere segnalato solo se è iniziato negli ultimi 30 giorni."
+
+#: sites/all/modules/custom/rovas_chron/rovas_chron.module
+msgid "Merit receipt offset"
+msgstr "Compensazione ricevuta Merit"
+
+#: sites/all/modules/custom/rovas_chron/rovas_chron.module
+msgid "Work report grant"
+msgstr "Concessione da rapporto di lavoro"
+
+#: sites/all/modules/custom/rovas_chron/rovas_chron.module
+msgid "Work report clawback"
+msgstr "Storno da rapporto di lavoro"
+
+#: sites/all/modules/custom/rovas_chron/rovas_chron.module
+msgid "Opening balance"
+msgstr "Saldo di apertura"
+
+#: sites/all/modules/custom/rovas_chron/rovas_chron.ledger.inc
+msgid "Opening balance at Chron ledger cutover (no wallet change; closes Chron-tab drift)."
+msgstr "Saldo di apertura al passaggio al ledger Chron (senza modifica del portafoglio; chiude lo scostamento della scheda Chron)."

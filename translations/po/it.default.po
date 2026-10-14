@@ -50568,6 +50568,16 @@ msgstr ""
 msgid "Send money"
 msgstr "Invia denaro"
 
+#: /user/%/chrons
+msgid ""
+"This page shows Chron history: work grants and clawbacks, transfers, "
+"purchases, and adjustments. Your Chron wallet balance is authoritative if "
+"the list total differs."
+msgstr ""
+"Questa pagina mostra la cronologia Chron: concessioni e storni da "
+"rapporti di lavoro, trasferimenti, acquisti e rettifiche. Se il totale "
+"dell'elenco differisce, fa fede il saldo Chron del portafoglio."
+
 #: /dash
 msgid "Transactions"
 msgstr "Transazioni"

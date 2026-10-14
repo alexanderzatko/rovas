@@ -32173,6 +32173,13 @@ msgstr ""
 msgid "Send money"
 msgstr ""
 
+#: /user/%/chrons
+msgid ""
+"This page shows Chron history: work grants and clawbacks, transfers, "
+"purchases, and adjustments. Your Chron wallet balance is authoritative if "
+"the list total differs."
+msgstr ""
+
 #: /dash
 msgid "Transactions"
 msgstr ""
