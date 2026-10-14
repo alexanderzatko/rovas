@@ -2,7 +2,7 @@
 
 /**
  * @file
- * Drush commands for Chron ledger offsets.
+ * Drush commands for Chron ledger offsets, reconcile, and opening balance.
  */
 
 /**
@@ -33,6 +33,20 @@ function rovas_chron_drush_command() {
     'examples' => array(
       'drush rovas-chron-reconcile --uid=42' => dt('Compare one user.'),
       'drush rovas-chron-reconcile --limit=20' => dt('Sample active users.'),
+    ),
+  );
+  $items['rovas-chron-opening-balance'] = array(
+    'callback' => 'drush_rovas_chron_opening_balance',
+    'description' => dt('Create ledger-only opening_balance chron_adjustment rows so Chron-tab sum matches field_chrons_balance (never changes the wallet).'),
+    'options' => array(
+      'uid' => dt('Limit to one uid (recommended for first runs).'),
+      'dry-run' => dt('Report only; do not create nodes.'),
+      'min-diff' => dt('Only act when abs(wallet - view) exceeds this (default 0.01).'),
+      'limit' => dt('Max users when scanning all (default 50).'),
+    ),
+    'examples' => array(
+      'drush rovas-chron-opening-balance --uid=42 --dry-run' => dt('Preview cutover row for one user.'),
+      'drush rovas-chron-opening-balance --uid=42' => dt('Write opening_balance adjustment for one user.'),
     ),
   );
   return $items;
@@ -203,41 +217,26 @@ function drush_rovas_chron_reconcile() {
     $limit = 50;
   }
 
-  if ($only_uid !== NULL && $only_uid !== '') {
-    $uids = array((int) $only_uid);
-  }
-  else {
-    $uids = db_query_range('SELECT uid FROM {users} WHERE uid > 0 AND status = 1 ORDER BY access DESC', 0, $limit)->fetchCol();
-  }
-
   $drift_count = 0;
-  foreach ($uids as $uid) {
-    $uid = (int) $uid;
-    $account = user_load($uid);
-    if (!$account) {
+  foreach (_rovas_chron_drush_target_uids($only_uid, $limit) as $uid) {
+    $row = _rovas_chron_wallet_vs_view($uid);
+    if ($row === NULL) {
       continue;
     }
-    $wallet = 0.0;
-    $items = field_get_items('user', $account, 'field_chrons_balance');
-    if (!empty($items[0]['value'])) {
-      $wallet = (float) $items[0]['value'];
-    }
-    $view_sum = _rovas_chron_sumchrons_view_total($uid);
-    if ($view_sum === NULL) {
+    if ($row['view_sum'] === NULL) {
       drush_log(dt('uid @u: wallet=@w view=unparsed', array(
         '@u' => $uid,
-        '@w' => $wallet,
+        '@w' => $row['wallet'],
       )), 'warning');
       continue;
     }
-    $diff = abs($wallet - $view_sum);
-    if ($diff > $min_diff) {
+    if (abs($row['delta']) > $min_diff) {
       $drift_count++;
       drush_log(dt('uid @u: wallet=@w view=@v diff=@d', array(
         '@u' => $uid,
-        '@w' => round($wallet, 2),
-        '@v' => round($view_sum, 2),
-        '@d' => round($wallet - $view_sum, 2),
+        '@w' => round($row['wallet'], 2),
+        '@v' => round($row['view_sum'], 2),
+        '@d' => round($row['delta'], 2),
       )), 'ok');
     }
   }
@@ -245,6 +244,143 @@ function drush_rovas_chron_reconcile() {
     '@n' => $drift_count,
     '@m' => $min_diff,
   )), 'success');
+}
+
+/**
+ * Drush: ledger-only opening_balance rows for Chron-tab cutover drift.
+ *
+ * Never changes field_chrons_balance. Idempotent on opening_balance:{uid}.
+ */
+function drush_rovas_chron_opening_balance() {
+  module_load_include('inc', 'rovas_chron', 'rovas_chron.ledger');
+  module_load_include('install', 'rovas_chron');
+  _rovas_chron_ensure_bundle_and_fields();
+
+  $only_uid = drush_get_option('uid', NULL);
+  $dry_run = (bool) drush_get_option('dry-run', FALSE);
+  $min_diff = (float) drush_get_option('min-diff', 0.01);
+  $limit = (int) drush_get_option('limit', 50);
+  if ($limit < 1) {
+    $limit = 50;
+  }
+
+  $created = 0;
+  $skipped = 0;
+  foreach (_rovas_chron_drush_target_uids($only_uid, $limit) as $uid) {
+    $row = _rovas_chron_wallet_vs_view($uid);
+    if ($row === NULL) {
+      $skipped++;
+      continue;
+    }
+    if ($row['view_sum'] === NULL) {
+      drush_log(dt('uid @u: wallet=@w view=unparsed — skip', array(
+        '@u' => $uid,
+        '@w' => $row['wallet'],
+      )), 'warning');
+      $skipped++;
+      continue;
+    }
+    $delta = $row['delta'];
+    if (abs($delta) <= $min_diff) {
+      $skipped++;
+      continue;
+    }
+
+    $ikey = 'opening_balance:' . $uid;
+    $existing = rovas_chron_find_by_ikey($ikey);
+    if ($existing > 0) {
+      drush_log(dt('uid @u: already has opening_balance nid @n (delta would be @d) — skip', array(
+        '@u' => $uid,
+        '@n' => $existing,
+        '@d' => round($delta, 2),
+      )), 'ok');
+      $skipped++;
+      continue;
+    }
+
+    if ($dry_run) {
+      drush_log(dt('Would create opening_balance uid @u wallet=@w view=@v delta=@d', array(
+        '@u' => $uid,
+        '@w' => round($row['wallet'], 2),
+        '@v' => round($row['view_sum'], 2),
+        '@d' => round($delta, 2),
+      )), 'ok');
+      $created++;
+      continue;
+    }
+
+    $nid = rovas_chron_opening_balance($uid, $delta);
+    if ($nid > 0) {
+      $created++;
+      drush_log(dt('uid @u: opening_balance nid @n wallet=@w view=@v delta=@d', array(
+        '@u' => $uid,
+        '@n' => $nid,
+        '@w' => round($row['wallet'], 2),
+        '@v' => round($row['view_sum'], 2),
+        '@d' => round($delta, 2),
+      )), 'ok');
+    }
+    else {
+      $skipped++;
+      drush_log(dt('uid @u: failed to create opening_balance (delta=@d)', array(
+        '@u' => $uid,
+        '@d' => round($delta, 2),
+      )), 'error');
+    }
+  }
+
+  drush_log(dt('Opening balance: @n created/would-create, @s skipped (dry-run=@d).', array(
+    '@n' => $created,
+    '@s' => $skipped,
+    '@d' => $dry_run ? 'yes' : 'no',
+  )), 'success');
+}
+
+/**
+ * Uids for reconcile / opening-balance Drush commands.
+ *
+ * @param int|string|null $only_uid
+ * @param int $limit
+ *
+ * @return int[]
+ */
+function _rovas_chron_drush_target_uids($only_uid, $limit) {
+  if ($only_uid !== NULL && $only_uid !== '') {
+    return array((int) $only_uid);
+  }
+  return array_map('intval', db_query_range(
+    'SELECT uid FROM {users} WHERE uid > 0 AND status = 1 ORDER BY access DESC',
+    0,
+    $limit
+  )->fetchCol());
+}
+
+/**
+ * Wallet vs Chron-tab view sum for one user.
+ *
+ * @param int $uid
+ *
+ * @return array|null
+ *   Keys: wallet, view_sum (float|null), delta (wallet - view). NULL if no account.
+ */
+function _rovas_chron_wallet_vs_view($uid) {
+  $uid = (int) $uid;
+  $account = user_load($uid);
+  if (!$account) {
+    return NULL;
+  }
+  $wallet = 0.0;
+  $items = field_get_items('user', $account, 'field_chrons_balance');
+  if (!empty($items[0]['value'])) {
+    $wallet = (float) $items[0]['value'];
+  }
+  $view_sum = _rovas_chron_sumchrons_view_total($uid);
+  $delta = ($view_sum === NULL) ? 0.0 : ($wallet - $view_sum);
+  return array(
+    'wallet' => $wallet,
+    'view_sum' => $view_sum,
+    'delta' => $delta,
+  );
 }
 
 /**

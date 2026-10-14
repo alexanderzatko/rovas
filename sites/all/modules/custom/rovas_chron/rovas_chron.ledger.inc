@@ -2,7 +2,7 @@
 
 /**
  * @file
- * Chron adjustment create helpers (Merit offsets + WR grant/clawback).
+ * Chron adjustment create helpers (Merit offsets, WR grant/clawback, opening balance).
  */
 
 /**
@@ -224,6 +224,33 @@ function rovas_chron_offset_merit_receipt($uid, $merits_as_amount, $receipt_nid,
       '@nid' => (int) $receipt_nid,
     )),
     'title' => 'merit-offset-' . (int) $receipt_nid,
+  ));
+}
+
+/**
+ * Ledger-only cutover row so Chron-tab sum can match field_chrons_balance.
+ *
+ * Does **not** change the wallet. Idempotent on ikey opening_balance:{uid}.
+ *
+ * @param int $uid
+ * @param float $signed_delta
+ *   wallet − Chron-tab view sum (positive = Chron-tab credit).
+ * @param string $note
+ *
+ * @return int
+ *   Adjustment nid, existing nid on idempotent hit, or 0 on skip/failure.
+ */
+function rovas_chron_opening_balance($uid, $signed_delta, $note = '') {
+  $uid = (int) $uid;
+  $signed_delta = (float) $signed_delta;
+  if ($uid < 1 || $signed_delta == 0.0) {
+    return 0;
+  }
+  return rovas_chron_create_adjustment($uid, abs($signed_delta), ROVAS_CHRON_SOURCE_OPENING_BALANCE, array(
+    'credit' => ($signed_delta > 0),
+    'ikey' => 'opening_balance:' . $uid,
+    'note' => $note !== '' ? $note : t('Opening balance at Chron ledger cutover (no wallet change; closes Chron-tab drift).'),
+    'title' => 'opening-balance-' . $uid,
   ));
 }
 

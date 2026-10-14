@@ -80,3 +80,25 @@ Verify:
 2. Ship 2 WR grant/clawback still works (uses rovas_chron_mutate under the hood).
 3. /user/<uid>/sumchrons includes Merits-purchase rows when present.
 4. reconcile reports wallet vs view sum without writing.
+
+Phase 3 (opening balance + Chron-tab UX)
+----------------------------------------
+  drush74 updb -y
+  drush74 cc all
+  # Chron views: header copy (full Chron history note)
+  drush74 php-eval "module_load_include('inc', 'rovas_money_transfer', 'rovas_money_transfer.views_migration'); rovas_money_transfer_views_migration_run();"
+
+Cutover rows so Chron-tab sum matches wallet (ledger-only; never changes
+field_chrons_balance). Idempotent on opening_balance:{uid}:
+
+  drush74 rovas-chron-opening-balance --uid=YOUR_UID --dry-run
+  drush74 rovas-chron-opening-balance --uid=YOUR_UID
+  drush74 rovas-chron-reconcile --uid=YOUR_UID
+
+Verify:
+1. Chron tab shows an "adjustment" opening-balance row; wallet unchanged.
+2. Re-run opening-balance for same uid: no second row.
+3. reconcile |diff| within min-diff (default 0.01).
+4. Chron tab header states this is Chron history (not transfers-only).
+
+Not in Phase 3: Civic chron history API; forex / fiat CHR wallet wiring.

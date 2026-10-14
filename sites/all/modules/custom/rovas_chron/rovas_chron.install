@@ -353,3 +353,11 @@ function rovas_chron_update_7002() {
   _rovas_chron_ensure_bundle_and_fields();
   return t('Ensured WR chron ledger fields (field_parent_work_report, field_chron_ikey) and sources.');
 }
+
+/**
+ * Phase 3: opening_balance source for cutover Chron-tab drift rows.
+ */
+function rovas_chron_update_7003() {
+  _rovas_chron_ensure_bundle_and_fields();
+  return t('Added opening_balance chron source for cutover ledger rows.');
+}

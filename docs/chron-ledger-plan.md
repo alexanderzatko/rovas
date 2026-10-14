@@ -138,11 +138,18 @@ nodes):
 **Review gate:** batch adjuster no-ops; WR Ship 2 still works via mutate;
 sumchrons includes purchase_merits; reconcile dry-run sensible.
 
-### Phase 3 — Polish / Civic
+### Phase 3 — Polish (no Civic chron history API)
 
-- Opening balance or backfill strategy.
-- Optional `GET /rovas/civic_chron_history`.
-- Clear UX copy: full chron history vs “transfers & purchases” only.
+- **Cutover opening balance** (not full WR grant/clawback historical backfill):
+  ledger-only `chron_adjustment` with `source=opening_balance`, ikey
+  `opening_balance:{uid}`; Drush `rovas-chron-opening-balance` (`--dry-run` /
+  `--uid` / `--min-diff`). Never touches `field_chrons_balance`.
+- Chron-tab UX copy: header clarifies full Chron history (grants/clawbacks,
+  transfers, purchases, adjustments); wallet remains authoritative.
+- **Not planned:** `GET /rovas/civic_chron_history` (Civic only needs
+  `total_chr` on `/me`; no task requests Chron history).
+- Still out of scope: forex / fiat CHR purchase wallet wiring (UI inactive for
+  regulatory reasons); dedicated chron-only Views bundle.
 
 ## Risks / constraints
 
@@ -165,17 +172,19 @@ sumchrons includes purchase_merits; reconcile dry-run sensible.
 
 ## Open questions for the next discussion
 
-1. ~~Ship order~~ → Ships 1–3 sequenced; Phase 3 polish next after Ship 3 review.
+1. ~~Ship order~~ → Ships 1–3 sequenced; Phase 3 polish (opening balance + UX).
 2. ~~New content type vs overload `money_transfer`?~~ → **decided:** `chron_adjustment`.
-3. Must historical clawbacks/grants be backfilled, or ledger starts at cutover?
-4. Should profile UI keep reconstructing from heterogeneous nodes, or move to a
-   dedicated chron ledger view (still as a `views/*.inc`)?
+3. ~~Historical clawbacks/grants~~ → **cutover:** opening_balance rows for
+   drift; no full WR historical backfill.
+4. ~~Dedicated chron ledger view?~~ → keep heterogeneous `money_transfers`;
+   clarify UX copy only.
 5. ~~Merit-only Chron pollution strategy~~ → **decided:** ledger-only offset.
-6. Does `rules_process_forex_order` euros_to_chrons need an explicit wallet
-   credit via `rovas_chron_mutate(..., ledger=skip)`, or is wallet credited
-   elsewhere? Confirm on live before changing (double-credit risk).
+6. ~~Forex / fiat CHR wallet credit~~ → **out of scope** (UI inactive /
+   regulatory); do not wire `rovas_chron_mutate` for euros_to_chrons now.
 7. ~~Batch adjuster~~ → **decided Ship 3:** disabled (do not invert until
    reconcile is trusted).
+8. ~~Civic chron history API~~ → **not planned** (no Civic task; `/me`
+   `total_chr` is enough).
 
 ## Related code (anchors)
 
@@ -192,12 +201,13 @@ sumchrons includes purchase_merits; reconcile dry-run sensible.
 | Chron views (code defaults) | `rovas_money_transfer/views/*.inc`, `README.views.txt`, `docs/views-inventory.md` |
 | Central mutator (Ship 3) | `rovas_chron_mutate()` |
 | Drift report (read-only) | `drush rovas-chron-reconcile` |
+| Cutover opening balance | `drush rovas-chron-opening-balance` (ledger-only) |
 | Batch adjuster (disabled) | `rules_chrons_batch_adjuster` |
 | Merit parallel | `rovas_merit.ledger.inc`, `merits_disbursement`, `merit_history` |
 
 ## How to use this doc
 
-Ships 1–2 verified on rovdev. Ship 3 awaits deploy/review; then Phase 3 polish
-(opening balance / Civic chron history / UX copy) as needed.
+Ships 1–2 verified on rovdev. Ship 3 + Phase 3 (opening balance + Chron-tab UX
+copy; no Civic chron history API) in code — deploy/review on rovdev when ready.
 View work lands in git (`views/*.inc`); human deploys code and reverts
 overrides — no Rovas admin Views UI required to revise the Chron tab.

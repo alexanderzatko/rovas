@@ -16,6 +16,9 @@ define('ROVAS_CHRON_SOURCE_WR_GRANT', 'wr_grant');
 /** WR Chron clawback (wallet debit + Chron-tab debit). */
 define('ROVAS_CHRON_SOURCE_WR_CLAWBACK', 'wr_clawback');
 
+/** Cutover opening balance (ledger-only; closes wallet vs Chron-tab drift). */
+define('ROVAS_CHRON_SOURCE_OPENING_BALANCE', 'opening_balance');
+
 /**
  * Allowed field_chron_source values.
  *
@@ -27,6 +30,7 @@ function rovas_chron_source_options() {
     ROVAS_CHRON_SOURCE_MERIT_RECEIPT_OFFSET => t('Merit receipt offset'),
     ROVAS_CHRON_SOURCE_WR_GRANT => t('Work report grant'),
     ROVAS_CHRON_SOURCE_WR_CLAWBACK => t('Work report clawback'),
+    ROVAS_CHRON_SOURCE_OPENING_BALANCE => t('Opening balance'),
   );
 }
 
