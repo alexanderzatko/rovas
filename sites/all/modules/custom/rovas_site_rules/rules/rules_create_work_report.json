@@ -136,15 +136,7 @@
                           "PROVIDE" : { "result" : { "chrons_earned" : "Chrons earned" } }
                         }
                       },
-                      { "component_rules_update_user_chron_account" : {
-                          "user_object" : [ "parent-project:author" ],
-                          "chrons_to_add" : [ "chrons-earned" ],
-                          "fxsp_id" : {
-                            "select" : "site:current-user:uid",
-                            "php" : { "code" : "return NULL;" }
-                          }
-                        }
-                      },
+                      { "php_eval" : { "code" : "module_load_include('inc', 'rovas_chron', 'rovas_chron.ledger');\n$amt = isset($chrons_earned) ? (float) $chrons_earned : 0;\n$payee = !empty($parent_project->uid) ? (int) $parent_project->uid : 0;\n$wr_nid = !empty($created_work_report->nid) ? (int) $created_work_report->nid : 0;\n$ikey = 'wr_grant:' . $wr_nid . ':system';\nif (function_exists('rovas_chron_apply_wr_delta') && $payee && $wr_nid) {\n  rovas_chron_apply_wr_delta($payee, $amt, 'wr_grant', $wr_nid, $ikey, array('note' => 'WR grant (system report → project author)'));\n}\nelseif (function_exists('rules_invoke_component') && $payee) {\n  rules_invoke_component('rules_update_user_chron_account', user_load($payee), $amt, NULL);\n}" } },
                       { "data_set" : {
                           "data" : [ "created-work-report:field-chrons-to-grant" ],
                           "value" : [ "chrons-earned" ]

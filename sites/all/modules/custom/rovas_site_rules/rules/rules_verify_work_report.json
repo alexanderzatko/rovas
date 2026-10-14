@@ -111,15 +111,7 @@
                           {
                             "IF" : { "NOT data_is" : { "data" : [ "verif-status-original" ], "value" : "1" } },
                             "DO" : [
-                              { "component_rules_update_user_chron_account" : {
-                                  "user_object" : [ "work-report:author" ],
-                                  "chrons_to_add" : [ "chrons-for-wr" ],
-                                  "fxsp_id" : {
-                                    "select" : "site:current-user:uid",
-                                    "php" : { "code" : "return NULL;" }
-                                  }
-                                }
-                              },
+                              { "php_eval" : { "code" : "module_load_include('inc', 'rovas_chron', 'rovas_chron.ledger');\nif (function_exists('rovas_chron_apply_wr_delta')) {\n  $amt = isset($chrons_for_wr) ? (float) $chrons_for_wr : 0;\n  $ikey = 'wr_grant:' . $work_report->nid . ':v' . $node->nid;\n  rovas_chron_apply_wr_delta((int) $work_report->uid, $amt, 'wr_grant', (int) $work_report->nid, $ikey, array('note' => 'WR grant (peer verify)'));\n}\nelseif (function_exists('rules_invoke_component')) {\n  rules_invoke_component('rules_update_user_chron_account', user_load($work_report->uid), isset($chrons_for_wr) ? $chrons_for_wr : 0, NULL);\n}" } },
                               { "component_rules_create_aur" : {
                                   "USING" : {
                                     "owner_project" : "1992",
@@ -186,18 +178,7 @@
                                   {
                                     "IF" : { "data_is" : { "data" : [ "verif-status-original" ], "value" : "1" } },
                                     "DO" : [
-                                      { "component_rules_update_user_chron_account" : {
-                                          "user_object" : [ "work-report:author" ],
-                                          "chrons_to_add" : {
-                                            "select" : "work-report:field-chrons-to-grant",
-                                            "php" : { "code" : "return -1 * $value;" }
-                                          },
-                                          "fxsp_id" : {
-                                            "select" : "site:current-user:uid",
-                                            "php" : { "code" : "return NULL;" }
-                                          }
-                                        }
-                                      }
+                                      { "php_eval" : { "code" : "module_load_include('inc', 'rovas_chron', 'rovas_chron.ledger');\n$chr = 0;\nif (!empty($work_report->field_chrons_to_grant[LANGUAGE_NONE][0]['value'])) {\n  $chr = (float) $work_report->field_chrons_to_grant[LANGUAGE_NONE][0]['value'];\n}\n$amt = -1 * $chr;\n$ikey = 'wr_clawback:' . $work_report->nid . ':deny:v' . $node->nid;\nif (function_exists('rovas_chron_apply_wr_delta')) {\n  rovas_chron_apply_wr_delta((int) $work_report->uid, $amt, 'wr_clawback', (int) $work_report->nid, $ikey, array('note' => 'WR clawback (deny after approved)'));\n}\nelseif (function_exists('rules_invoke_component')) {\n  rules_invoke_component('rules_update_user_chron_account', user_load($work_report->uid), $amt, NULL);\n}" } }
                                     ]
                                   }
                                 ]

@@ -89,7 +89,7 @@ Prefer shipping and reviewing each ship on rovdev before the next.
   vs Merit-only paper trail (`rovas_civic_issue_donor_merits` and any peers).
 - Document clawback/grant guards already in Rules (status was `1`, etc.).
 
-### Ship 1 — Merit-receipt Chron-tab offsets (**implemented in code; awaiting deploy**)
+### Ship 1 — Merit-receipt Chron-tab offsets (**verified on rovdev 2026-10-14**)
 
 Scope: fix VAT / Path-1 false Chron debits only. No WR grant/clawback yet.
 
@@ -101,16 +101,26 @@ Scope: fix VAT / Path-1 false Chron debits only. No WR grant/clawback yet.
 - Drush: `rovas-chron-backfill-merit-offsets` (+ `--dry-run` / `--uid`).
 - Deploy notes: `sites/all/modules/custom/rovas_chron/README.txt`.
 
-**Review gate:** Chron balance unchanged; Chron tab nets purchase + adjustment;
-Merit tab unchanged; idempotent re-claim; backfill dry-run looks sane.
+**Review gate (passed):** offset records created in the correct amounts against
+the correct purchase receipts; Chron wallet unchanged by design.
 
-### Ship 2 — WR grant / clawback ledger rows (next)
+### Ship 2 — WR grant / clawback ledger rows (**implemented in code; awaiting deploy**)
 
-- On WR chron **grant** and **clawback**, write `chron_adjustment` **and** keep
-  the balance update (same guards as Rules).
-- Guard against double writes on delete-then-deny paths.
-- Optional: authoritative balance at top of chron tab / drift banner.
-- After deploy: revert Chron view overrides if the view changes again.
+- `rovas_chron_apply_wr_delta()`: chron_adjustment **then** wallet mutator;
+  idempotent on `field_chron_ikey` (no double wallet hit).
+- Sources: `wr_grant`, `wr_clawback`; ER `field_parent_work_report`.
+- Wired: peer verify grant/deny, auto-approve, system WR grant, verification
+  delete clawbacks (3 arms), delete approved WR (`ledger_only_if_grant` so
+  legacy WRs without `wr_grant` do not double-debit the Chron tab).
+- Chron view: when a WR has a `wr_grant` adjustment, the `work_report` row is
+  treated as noop (0 CH) so grants are not double-counted.
+- Rules JSON changed — re-import via `rovas_site_rules` migration after deploy.
+- Optional: authoritative balance / drift banner deferred.
+
+**Review gate:** approve → wallet +CH + `wr_grant` line; deny/del-verif while
+approved → wallet −CH + `wr_clawback`; WR row shows 0 when grant exists;
+delete approved WR without prior `wr_grant` → wallet −CH, no extra Chron debit;
+idempotent re-fire of same ikey does not double-mutate.
 
 ### Ship 3 / Phase 2 — Central chron ledger (after Ship 2)
 

@@ -397,8 +397,21 @@ function rovas_user_auto_approve_work_report($node) {
   }
   node_save($node);
 
-  if (function_exists('rules_invoke_component') && $chrons != 0) {
-    rules_invoke_component('rules_update_user_chron_account', $author, $chrons, NULL);
+  if ($chrons != 0) {
+    if (module_exists('rovas_chron')) {
+      module_load_include('inc', 'rovas_chron', 'rovas_chron.ledger');
+      rovas_chron_apply_wr_delta(
+        (int) $author->uid,
+        (float) $chrons,
+        'wr_grant',
+        (int) $node->nid,
+        'wr_grant:' . (int) $node->nid . ':auto',
+        array('note' => 'WR grant (trusted auto-approve)')
+      );
+    }
+    elseif (function_exists('rules_invoke_component')) {
+      rules_invoke_component('rules_update_user_chron_account', $author, $chrons, NULL);
+    }
   }
   return TRUE;
 }

@@ -10,8 +10,14 @@ define('ROVAS_CHRON_BUNDLE', 'chron_adjustment');
 /** Ledger-only Chron-tab offset for Merit purchase_receipt paper trail. */
 define('ROVAS_CHRON_SOURCE_MERIT_RECEIPT_OFFSET', 'merit_receipt_offset');
 
+/** WR Chron grant (wallet credit + Chron-tab credit). */
+define('ROVAS_CHRON_SOURCE_WR_GRANT', 'wr_grant');
+
+/** WR Chron clawback (wallet debit + Chron-tab debit). */
+define('ROVAS_CHRON_SOURCE_WR_CLAWBACK', 'wr_clawback');
+
 /**
- * Allowed field_chron_source values (extend as grant/clawback land).
+ * Allowed field_chron_source values.
  *
  * @return array
  *   Machine name => label.
@@ -19,6 +25,8 @@ define('ROVAS_CHRON_SOURCE_MERIT_RECEIPT_OFFSET', 'merit_receipt_offset');
 function rovas_chron_source_options() {
   return array(
     ROVAS_CHRON_SOURCE_MERIT_RECEIPT_OFFSET => t('Merit receipt offset'),
+    ROVAS_CHRON_SOURCE_WR_GRANT => t('Work report grant'),
+    ROVAS_CHRON_SOURCE_WR_CLAWBACK => t('Work report clawback'),
   );
 }
 
@@ -36,8 +44,6 @@ function rovas_chron_permission() {
 
 /**
  * Implements hook_node_info().
- *
- * Declares the type for Features/UI discovery; install also node_type_save().
  */
 function rovas_chron_node_info() {
   return array(
@@ -56,7 +62,5 @@ function rovas_chron_node_info() {
  * Implements hook_menu().
  */
 function rovas_chron_menu() {
-  $items = array();
-  // No public UI yet — ledger nodes are created programmatically.
-  return $items;
+  return array();
 }

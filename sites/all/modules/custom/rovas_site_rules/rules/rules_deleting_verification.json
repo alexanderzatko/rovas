@@ -97,18 +97,7 @@
                           "value" : { "select" : "verif-score-original", "num_offset" : { "value" : "-1" } }
                         }
                       },
-                      { "component_rules_update_user_chron_account" : {
-                          "user_object" : [ "node:field-work-report:author" ],
-                          "chrons_to_add" : {
-                            "select" : "node:field-work-report:field-chrons-to-grant",
-                            "php" : { "code" : "return -1 * $value;" }
-                          },
-                          "fxsp_id" : {
-                            "select" : "site:current-user:uid",
-                            "php" : { "code" : "return NULL;" }
-                          }
-                        }
-                      }
+                      { "php_eval" : { "code" : "module_load_include('inc', 'rovas_chron', 'rovas_chron.ledger');\n$wr_nid = 0;\nif (!empty($node->field_work_report[LANGUAGE_NONE][0]['target_id'])) {\n  $wr_nid = (int) $node->field_work_report[LANGUAGE_NONE][0]['target_id'];\n}\n$wr = $wr_nid ? node_load($wr_nid) : FALSE;\nif ($wr) {\n  $chr = !empty($wr->field_chrons_to_grant[LANGUAGE_NONE][0]['value']) ? (float) $wr->field_chrons_to_grant[LANGUAGE_NONE][0]['value'] : 0;\n  $amt = -1 * $chr;\n  $ikey = 'wr_clawback:' . $wr_nid . ':delver:v' . $node->nid . ':c0';\n  if (function_exists('rovas_chron_apply_wr_delta')) {\n    rovas_chron_apply_wr_delta((int) $wr->uid, $amt, 'wr_clawback', $wr_nid, $ikey, array('note' => 'WR clawback (delete verification, count<2)'));\n  }\n  elseif (function_exists('rules_invoke_component')) {\n    rules_invoke_component('rules_update_user_chron_account', user_load($wr->uid), $amt, NULL);\n  }\n}" } }
                     ]
                   }
                 ]
@@ -149,18 +138,7 @@
                           "value" : { "select" : "verif-score-original", "num_offset" : { "value" : "-1" } }
                         }
                       },
-                      { "component_rules_update_user_chron_account" : {
-                          "user_object" : [ "node:field-work-report:author" ],
-                          "chrons_to_add" : {
-                            "select" : "node:field-work-report:field-chrons-to-grant",
-                            "php" : { "code" : "return -1 * $value;" }
-                          },
-                          "fxsp_id" : {
-                            "select" : "site:current-user:uid",
-                            "php" : { "code" : "return NULL;" }
-                          }
-                        }
-                      }
+                      { "php_eval" : { "code" : "module_load_include('inc', 'rovas_chron', 'rovas_chron.ledger');\n$wr_nid = 0;\nif (!empty($node->field_work_report[LANGUAGE_NONE][0]['target_id'])) {\n  $wr_nid = (int) $node->field_work_report[LANGUAGE_NONE][0]['target_id'];\n}\n$wr = $wr_nid ? node_load($wr_nid) : FALSE;\nif ($wr) {\n  $chr = !empty($wr->field_chrons_to_grant[LANGUAGE_NONE][0]['value']) ? (float) $wr->field_chrons_to_grant[LANGUAGE_NONE][0]['value'] : 0;\n  $amt = -1 * $chr;\n  $ikey = 'wr_clawback:' . $wr_nid . ':delver:v' . $node->nid . ':neg';\n  if (function_exists('rovas_chron_apply_wr_delta')) {\n    rovas_chron_apply_wr_delta((int) $wr->uid, $amt, 'wr_clawback', $wr_nid, $ikey, array('note' => 'WR clawback (delete verification, outcome -1)'));\n  }\n  elseif (function_exists('rules_invoke_component')) {\n    rules_invoke_component('rules_update_user_chron_account', user_load($wr->uid), $amt, NULL);\n  }\n}" } }
                     ]
                   }
                 ]
@@ -189,18 +167,7 @@
                           "value" : { "select" : "verif-score-original", "num_offset" : { "value" : "-1" } }
                         }
                       },
-                      { "component_rules_update_user_chron_account" : {
-                          "user_object" : [ "node:field-work-report:author" ],
-                          "chrons_to_add" : {
-                            "select" : "node:field-work-report:field-chrons-to-grant",
-                            "php" : { "code" : "return -1 * $value;" }
-                          },
-                          "fxsp_id" : {
-                            "select" : "site:current-user:uid",
-                            "php" : { "code" : "return NULL;" }
-                          }
-                        }
-                      }
+                      { "php_eval" : { "code" : "module_load_include('inc', 'rovas_chron', 'rovas_chron.ledger');\n$wr_nid = 0;\nif (!empty($node->field_work_report[LANGUAGE_NONE][0]['target_id'])) {\n  $wr_nid = (int) $node->field_work_report[LANGUAGE_NONE][0]['target_id'];\n}\n$wr = $wr_nid ? node_load($wr_nid) : FALSE;\nif ($wr) {\n  $chr = !empty($wr->field_chrons_to_grant[LANGUAGE_NONE][0]['value']) ? (float) $wr->field_chrons_to_grant[LANGUAGE_NONE][0]['value'] : 0;\n  $amt = -1 * $chr;\n  $ikey = 'wr_clawback:' . $wr_nid . ':delver:v' . $node->nid . ':zero';\n  if (function_exists('rovas_chron_apply_wr_delta')) {\n    rovas_chron_apply_wr_delta((int) $wr->uid, $amt, 'wr_clawback', $wr_nid, $ikey, array('note' => 'WR clawback (delete verification, outcome 0)'));\n  }\n  elseif (function_exists('rules_invoke_component')) {\n    rules_invoke_component('rules_update_user_chron_account', user_load($wr->uid), $amt, NULL);\n  }\n}" } }
                     ]
                   }
                 ]

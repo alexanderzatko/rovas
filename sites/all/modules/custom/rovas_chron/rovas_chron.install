@@ -144,6 +144,43 @@ function _rovas_chron_ensure_field_bases() {
       ),
     ));
   }
+  if (!field_info_field('field_parent_work_report')) {
+    field_create_field(array(
+      'field_name' => 'field_parent_work_report',
+      'type' => 'entityreference',
+      'module' => 'entityreference',
+      'active' => 1,
+      'locked' => 0,
+      'cardinality' => 1,
+      'translatable' => 0,
+      'settings' => array(
+        'target_type' => 'node',
+        'handler' => 'base',
+        'handler_settings' => array(
+          'target_bundles' => array(
+            'work_report' => 'work_report',
+          ),
+          'sort' => array(
+            'type' => 'none',
+          ),
+        ),
+      ),
+    ));
+  }
+  if (!field_info_field('field_chron_ikey')) {
+    field_create_field(array(
+      'field_name' => 'field_chron_ikey',
+      'type' => 'text',
+      'module' => 'text',
+      'active' => 1,
+      'locked' => 0,
+      'cardinality' => 1,
+      'translatable' => 0,
+      'settings' => array(
+        'max_length' => 190,
+      ),
+    ));
+  }
 }
 
 /**
@@ -239,13 +276,80 @@ function _rovas_chron_ensure_field_instances() {
       ),
     ));
   }
+
+  if (!field_info_instance('node', 'field_parent_work_report', $bundle)) {
+    field_create_instance(array(
+      'field_name' => 'field_parent_work_report',
+      'entity_type' => 'node',
+      'bundle' => $bundle,
+      'label' => 'Parent work report',
+      'description' => 'Work report for wr_grant / wr_clawback ledger lines.',
+      'required' => 0,
+      'widget' => array(
+        'type' => 'entityreference_autocomplete',
+        'module' => 'entityreference',
+        'weight' => 4,
+        'settings' => array(
+          'match_operator' => 'CONTAINS',
+          'size' => 60,
+          'path' => '',
+        ),
+      ),
+      'display' => array(
+        'default' => array(
+          'label' => 'above',
+          'type' => 'entityreference_label',
+          'weight' => 4,
+          'settings' => array(
+            'link' => TRUE,
+          ),
+          'module' => 'entityreference',
+        ),
+      ),
+    ));
+  }
+
+  if (!field_info_instance('node', 'field_chron_ikey', $bundle)) {
+    field_create_instance(array(
+      'field_name' => 'field_chron_ikey',
+      'entity_type' => 'node',
+      'bundle' => $bundle,
+      'label' => 'Chron idempotency key',
+      'description' => 'Unique event key (e.g. wr_grant:123:v456).',
+      'required' => 0,
+      'widget' => array(
+        'type' => 'text_textfield',
+        'module' => 'text',
+        'weight' => 5,
+        'settings' => array(
+          'size' => 60,
+        ),
+      ),
+      'display' => array(
+        'default' => array(
+          'label' => 'above',
+          'type' => 'text_plain',
+          'weight' => 5,
+          'settings' => array(),
+          'module' => 'text',
+        ),
+      ),
+    ));
+  }
 }
 
 /**
  * Implements hook_update_N(): ensure type + fields on existing installs.
  */
 function rovas_chron_update_7001() {
-  module_load_include('inc', 'rovas_chron', 'rovas_chron.ledger');
   _rovas_chron_ensure_bundle_and_fields();
   return t('Ensured chron_adjustment content type and fields.');
+}
+
+/**
+ * Ship 2: WR grant/clawback fields + source values.
+ */
+function rovas_chron_update_7002() {
+  _rovas_chron_ensure_bundle_and_fields();
+  return t('Ensured WR chron ledger fields (field_parent_work_report, field_chron_ikey) and sources.');
 }

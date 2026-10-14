@@ -566,7 +566,10 @@ $handler->display->display_options['fields']['php_4']['php_output'] = '<?php
 
 switch ($data->node_type) {
 	case \'work_report\':
-		print \'credit\';
+		if ((module_exists(\'rovas_chron\') && (module_load_include(\'inc\', \'rovas_chron\', \'rovas_chron.ledger\') || TRUE) && function_exists(\'rovas_chron_wr_has_grant\') && rovas_chron_wr_has_grant((int) $data->nid)))
+			print \'noop\';
+		else
+			print \'credit\';
 	break;
 	case \'chron_adjustment\':
 		if (isset($data->field_field_amount[0][\'raw\'][\'value\']) && $data->field_field_amount[0][\'raw\'][\'value\'] < 0)
@@ -654,7 +657,10 @@ $handler->display->display_options['fields']['php_1']['php_output'] = '<?php
 //this field is used to produce classes for styling the table rows
 switch ($data->node_type) {
 	case \'work_report\':
-		$xfer_type = \'credit\';
+		if ((module_exists(\'rovas_chron\') && (module_load_include(\'inc\', \'rovas_chron\', \'rovas_chron.ledger\') || TRUE) && function_exists(\'rovas_chron_wr_has_grant\') && rovas_chron_wr_has_grant((int) $data->nid)))
+			$xfer_type = \'noop\';
+		else
+			$xfer_type = \'credit\';
 	break;
 	case \'chron_adjustment\':
 		if (isset($data->field_field_amount[0][\'raw\'][\'value\']) && $data->field_field_amount[0][\'raw\'][\'value\'] < 0)
@@ -699,12 +705,16 @@ else
 
 //money sent by others to "me"
 if(isset($data->field_field_amount[0][\'raw\'][\'value\'])) {
-	//change the sign for reimbursements
-	if ($data->field_field_amount[0][\'raw\'][\'value\'] < 0) {
-		print -1 * $data->field_field_amount[0][\'raw\'][\'value\'];
+	$__amt = $data->field_field_amount[0][\'raw\'][\'value\'];
+	// chron_adjustment: signed amount (neg = debit); money_transfer reimbursements flip
+	if ($data->node_type == \'chron_adjustment\') {
+		print ($__amt < 0 ? \'-\' : \'\') . \' \' . abs($__amt);
+	}
+	else if ($__amt < 0) {
+		print -1 * $__amt;
 	}
 	else {
-		print $sign . \' \' . $data->field_field_amount[0][\'raw\'][\'value\'];
+		print $sign . \' \' . $__amt;
 	}
 }
 //money "I" paid for purchases
@@ -721,10 +731,14 @@ else if (isset($data->field_field_conversion_type[0][\'raw\'][\'value\']) && $da
 }
 //money "I" received for work
 else {
-	print $sign . \' \' . $data->field_field_chrons_to_grant[0][\'rendered\'][\'#markup\'];
-
-	if (isset($data->field_field_verification_status[0][\'raw\'][\'value\']) && $data->field_field_verification_status[0][\'raw\'][\'value\'] == 0)
-		print \'&nbsp;(\' . $data->field_field_hours_worked[0][\'rendered\'][\'#markup\'] * 10 . \'*)\';
+	if ($xfer_type == \'noop\') {
+		print \'0\';
+	}
+	else {
+		print $sign . \' \' . $data->field_field_chrons_to_grant[0][\'rendered\'][\'#markup\'];
+		if (isset($data->field_field_verification_status[0][\'raw\'][\'value\']) && $data->field_field_verification_status[0][\'raw\'][\'value\'] == 0)
+			print \'&nbsp;(\' . $data->field_field_hours_worked[0][\'rendered\'][\'#markup\'] * 10 . \'*)\';
+	}
 }
 print \' CH\';
 ?>';
@@ -1123,7 +1137,10 @@ $handler->display->display_options['fields']['php_4']['php_output'] = '<?php
 
 switch ($data->node_type) {
 	case \'work_report\':
-		print \'credit\';
+		if ((module_exists(\'rovas_chron\') && (module_load_include(\'inc\', \'rovas_chron\', \'rovas_chron.ledger\') || TRUE) && function_exists(\'rovas_chron_wr_has_grant\') && rovas_chron_wr_has_grant((int) $data->nid)))
+			print \'noop\';
+		else
+			print \'credit\';
 	break;
 	case \'chron_adjustment\':
 		if (isset($data->field_field_amount[0][\'raw\'][\'value\']) && $data->field_field_amount[0][\'raw\'][\'value\'] < 0)
@@ -1211,7 +1228,10 @@ $handler->display->display_options['fields']['php_1']['php_output'] = '<?php
 //this field is used to produce classes for styling the table rows
 switch ($data->node_type) {
 	case \'work_report\':
-		$xfer_type = \'credit\';
+		if ((module_exists(\'rovas_chron\') && (module_load_include(\'inc\', \'rovas_chron\', \'rovas_chron.ledger\') || TRUE) && function_exists(\'rovas_chron_wr_has_grant\') && rovas_chron_wr_has_grant((int) $data->nid)))
+			$xfer_type = \'noop\';
+		else
+			$xfer_type = \'credit\';
 	break;
 	case \'chron_adjustment\':
 		if (isset($data->field_field_amount[0][\'raw\'][\'value\']) && $data->field_field_amount[0][\'raw\'][\'value\'] < 0)
@@ -1262,12 +1282,16 @@ else
 
 //money sent by others to "me"
 if(isset($data->field_field_amount[0][\'raw\'][\'value\'])) {
-	//change the sign for reimbursements
-	if ($data->field_field_amount[0][\'raw\'][\'value\'] < 0) {
-		print -1 * $data->field_field_amount[0][\'raw\'][\'value\'];
+	$__amt = $data->field_field_amount[0][\'raw\'][\'value\'];
+	// chron_adjustment: signed amount (neg = debit); money_transfer reimbursements flip
+	if ($data->node_type == \'chron_adjustment\') {
+		print ($__amt < 0 ? \'-\' : \'\') . \' \' . abs($__amt);
+	}
+	else if ($__amt < 0) {
+		print -1 * $__amt;
 	}
 	else {
-		print $sign . \' \' . $data->field_field_amount[0][\'raw\'][\'value\'];
+		print $sign . \' \' . $__amt;
 	}
 }
 //money "I" paid for purchases
@@ -1284,10 +1308,14 @@ else if (isset($data->field_field_conversion_type[0][\'raw\'][\'value\']) && $da
 }
 //money "I" received for work
 else {
-	print $sign . \' \' . $data->field_field_chrons_to_grant[0][\'rendered\'][\'#markup\'];
-
-	if (isset($data->field_field_verification_status[0][\'raw\'][\'value\']) && $data->field_field_verification_status[0][\'raw\'][\'value\'] == 0)
-		print \'&nbsp;(\' . $data->field_field_hours_worked[0][\'rendered\'][\'#markup\'] * 10 . \'*)\';
+	if ($xfer_type == \'noop\') {
+		print \'0\';
+	}
+	else {
+		print $sign . \' \' . $data->field_field_chrons_to_grant[0][\'rendered\'][\'#markup\'];
+		if (isset($data->field_field_verification_status[0][\'raw\'][\'value\']) && $data->field_field_verification_status[0][\'raw\'][\'value\'] == 0)
+			print \'&nbsp;(\' . $data->field_field_hours_worked[0][\'rendered\'][\'#markup\'] * 10 . \'*)\';
+	}
 }
 print \' CH\';
 ?>';
@@ -1843,7 +1871,10 @@ $handler->display->display_options['fields']['php_4']['php_output'] = '<?php
 
 switch ($data->node_type) {
 	case \'work_report\':
-		print \'credit\';
+		if ((module_exists(\'rovas_chron\') && (module_load_include(\'inc\', \'rovas_chron\', \'rovas_chron.ledger\') || TRUE) && function_exists(\'rovas_chron_wr_has_grant\') && rovas_chron_wr_has_grant((int) $data->nid)))
+			print \'noop\';
+		else
+			print \'credit\';
 	break;
 	case \'chron_adjustment\':
 		if (isset($data->field_field_amount[0][\'raw\'][\'value\']) && $data->field_field_amount[0][\'raw\'][\'value\'] < 0)
@@ -1939,7 +1970,10 @@ isset($handler->last_tokens[\'%3\']) ? $handler->last_tokens[\'%3\'] : arg(1);
 
 switch ($data->node_type) {
 	case \'work_report\':
-		$xfer_type = \'credit\';
+		if ((module_exists(\'rovas_chron\') && (module_load_include(\'inc\', \'rovas_chron\', \'rovas_chron.ledger\') || TRUE) && function_exists(\'rovas_chron_wr_has_grant\') && rovas_chron_wr_has_grant((int) $data->nid)))
+			$xfer_type = \'noop\';
+		else
+			$xfer_type = \'credit\';
 	break;
 	case \'chron_adjustment\':
 		if (isset($data->field_field_amount[0][\'raw\'][\'value\']) && $data->field_field_amount[0][\'raw\'][\'value\'] < 0)
@@ -1984,12 +2018,16 @@ else
 
 //money sent by others to "me"
 if(isset($data->field_field_amount[0][\'raw\'][\'value\'])) {
-	//change the sign for reimbursements
-	if ($data->field_field_amount[0][\'raw\'][\'value\'] < 0) {
-		print -1 * $data->field_field_amount[0][\'raw\'][\'value\'];
+	$__amt = $data->field_field_amount[0][\'raw\'][\'value\'];
+	// chron_adjustment: signed amount (neg = debit); money_transfer reimbursements flip
+	if ($data->node_type == \'chron_adjustment\') {
+		print ($__amt < 0 ? \'-\' : \'\') . \' \' . abs($__amt);
+	}
+	else if ($__amt < 0) {
+		print -1 * $__amt;
 	}
 	else {
-		print $sign . \' \' . $data->field_field_amount[0][\'raw\'][\'value\'];
+		print $sign . \' \' . $__amt;
 	}
 }
 //money "I" paid for purchases
@@ -2006,10 +2044,14 @@ else if (isset($data->field_field_conversion_type[0][\'raw\'][\'value\']) && $da
 }
 //money "I" received for work
 else {
-	print $sign . \' \' . $data->field_field_chrons_to_grant[0][\'rendered\'][\'#markup\'];
-
-	if (isset($data->field_field_verification_status[0][\'raw\'][\'value\']) && $data->field_field_verification_status[0][\'raw\'][\'value\'] == 0)
-		print \'&nbsp;(\' . $data->field_field_hours_worked[0][\'rendered\'][\'#markup\'] * 10 . \'*)\';
+	if ($xfer_type == \'noop\') {
+		print \'0\';
+	}
+	else {
+		print $sign . \' \' . $data->field_field_chrons_to_grant[0][\'rendered\'][\'#markup\'];
+		if (isset($data->field_field_verification_status[0][\'raw\'][\'value\']) && $data->field_field_verification_status[0][\'raw\'][\'value\'] == 0)
+			print \'&nbsp;(\' . $data->field_field_hours_worked[0][\'rendered\'][\'#markup\'] * 10 . \'*)\';
+	}
 }
 print \' CH\';
 ?>';
