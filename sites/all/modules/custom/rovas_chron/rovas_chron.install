@@ -7,17 +7,12 @@
 
 /**
  * Implements hook_install().
+ *
+ * Do not also run the full ensure from hook_enable(): on this site Drush's
+ * post-enable path can hit a broken service_container Drupal::service() and
+ * print a scary (secondary) exception even when install succeeded.
  */
 function rovas_chron_install() {
-  module_load_include('inc', 'rovas_chron', 'rovas_chron.ledger');
-  _rovas_chron_ensure_bundle_and_fields();
-}
-
-/**
- * Implements hook_enable().
- */
-function rovas_chron_enable() {
-  module_load_include('inc', 'rovas_chron', 'rovas_chron.ledger');
   _rovas_chron_ensure_bundle_and_fields();
 }
 

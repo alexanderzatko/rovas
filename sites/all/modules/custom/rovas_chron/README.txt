@@ -18,7 +18,13 @@ On rovdev (or prod when ready):
   drush74 updb -y
   drush74 cc all
 
-Revert Chron view overrides so money_transfers.inc wins:
+If Drush prints a service_container / Drupal::service() error after enable,
+check watchdog: "rovas_chron module installed/enabled" means success; that
+PHP error is a known secondary crash on this stack, not a failed install.
+Confirm with: drush74 pm-info rovas_chron  (Status: enabled, schema 7001)
+
+Revert Chron view overrides so money_transfers.inc wins (skip if already code
+default — no row in {views_view} for money_transfers):
 
   drush74 php-eval "module_load_include('inc', 'rovas_money_transfer', 'rovas_money_transfer.views_migration'); rovas_money_transfer_views_migration_run();"
 
