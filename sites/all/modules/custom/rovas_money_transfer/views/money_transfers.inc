@@ -459,6 +459,9 @@ switch ($data->node_type) {
 	case \'money_transfer\':
 		print t(\'transaction\') . \' <a href="/node/\'.$data->_field_data[\'nid\'][\'entity\']->nid.\'">\'.$data->_field_data[\'nid\'][\'entity\']->title.\'</a>\';
 	break;
+	case \'chron_adjustment\':
+		print t(\'adjustment\') . \' <a href="/node/\'.$data->_field_data[\'nid\'][\'entity\']->nid.\'">\'.$data->_field_data[\'nid\'][\'entity\']->title.\'</a>\';
+	break;
 	case \'purchase_receipt\':
 		if ($data->field_field_amount_paid < 0)
 			print t(\'cancel. purchase\') . \' <a href="/node/\'.$data->_field_data[\'nid\'][\'entity\']->nid.\'">\'.$data->_field_data[\'nid\'][\'entity\']->title.\'</a>\';
@@ -500,6 +503,9 @@ switch ($data->node_type) {
 	case \'forex_transaction\':
 		print \'<a href="/user/\'.$data->field_field_buyer[0][\'raw\'][\'target_id\'].\'">\'.$data->field_field_buyer[0][\'rendered\'][\'#label\'].\'</a>\';
 	break;
+	case \'chron_adjustment\':
+		print \'Rovas\';
+	break;
 	default: //work report
 		print \'Rovas\';
 }
@@ -536,6 +542,9 @@ switch ($data->node_type) {
 	case \'forex_transaction\':
 		print \'<a href="/user/\'.$data->field_field_buyer[0][\'raw\'][\'target_id\'].\'">\'.$data->field_field_buyer[0][\'rendered\'][\'#label\'].\'</a>\';
 	break;
+	case \'chron_adjustment\':
+		print \'<a href="/user/\'.$data->_field_data[\'users_node_uid\'][\'entity\']->uid.\'">\'.$data->_field_data[\'users_node_uid\'][\'entity\']->name.\'</a>\';
+	break;
 	default: //work report
 		print \'<a href="/user/\'.$data->_field_data[\'users_node_uid\'][\'entity\']->uid.\'">\'.$data->_field_data[\'users_node_uid\'][\'entity\']->name.\'</a>\';
 }
@@ -558,6 +567,12 @@ $handler->display->display_options['fields']['php_4']['php_output'] = '<?php
 switch ($data->node_type) {
 	case \'work_report\':
 		print \'credit\';
+	break;
+	case \'chron_adjustment\':
+		if (isset($data->field_field_amount[0][\'raw\'][\'value\']) && $data->field_field_amount[0][\'raw\'][\'value\'] < 0)
+			print \'debit\';
+		else
+			print \'credit\';
 	break;
 	case \'purchase_receipt\':
 		if ($data->field_field_amount_paid[0][\'raw\'][\'value\'] < 0)
@@ -640,6 +655,12 @@ $handler->display->display_options['fields']['php_1']['php_output'] = '<?php
 switch ($data->node_type) {
 	case \'work_report\':
 		$xfer_type = \'credit\';
+	break;
+	case \'chron_adjustment\':
+		if (isset($data->field_field_amount[0][\'raw\'][\'value\']) && $data->field_field_amount[0][\'raw\'][\'value\'] < 0)
+			$xfer_type = \'debit\';
+		else
+			$xfer_type = \'credit\';
 	break;
 	case \'purchase_receipt\':
 		if ($data->field_field_amount_paid[0][\'raw\'][\'value\'] < 0)
@@ -757,6 +778,7 @@ $handler->display->display_options['filters']['type_i18n']['table'] = 'node';
 $handler->display->display_options['filters']['type_i18n']['field'] = 'type_i18n';
 $handler->display->display_options['filters']['type_i18n']['value'] = array(
   'asset_usage_record' => 'asset_usage_record',
+  'chron_adjustment' => 'chron_adjustment',
   'forex_transaction' => 'forex_transaction',
   'money_transfer' => 'money_transfer',
   'purchase_receipt' => 'purchase_receipt',
@@ -983,6 +1005,9 @@ switch ($data->node_type) {
 	case \'money_transfer\':
 		print t(\'transaction\') . \' <a href="/node/\'.$data->_field_data[\'nid\'][\'entity\']->nid.\'">\'.$data->_field_data[\'nid\'][\'entity\']->title.\'</a>\';
 	break;
+	case \'chron_adjustment\':
+		print t(\'adjustment\') . \' <a href="/node/\'.$data->_field_data[\'nid\'][\'entity\']->nid.\'">\'.$data->_field_data[\'nid\'][\'entity\']->title.\'</a>\';
+	break;
 	case \'purchase_receipt\':
 		if ($data->field_field_amount_paid < 0)
 			print t(\'cancel. purchase\') . \' <a href="/node/\'.$data->_field_data[\'nid\'][\'entity\']->nid.\'">\'.$data->_field_data[\'nid\'][\'entity\']->title.\'</a>\';
@@ -1035,6 +1060,9 @@ switch ($data->node_type) {
 	case \'forex_transaction\':
 		print \'<a href="/user/\'.$data->field_field_buyer[0][\'raw\'][\'target_id\'].\'">\'.$data->field_field_buyer[0][\'rendered\'][\'#label\'].\'</a>\';
 	break;
+	case \'chron_adjustment\':
+		print \'Rovas\';
+	break;
 	default: //work report
 		print \'Rovas\';
 }
@@ -1071,6 +1099,9 @@ switch ($data->node_type) {
 	case \'forex_transaction\':
 		print \'<a href="/user/\'.$data->field_field_buyer[0][\'raw\'][\'target_id\'].\'">\'.$data->field_field_buyer[0][\'rendered\'][\'#label\'].\'</a>\';
 	break;
+	case \'chron_adjustment\':
+		print \'<a href="/user/\'.$data->users_node_uid.\'">\'.$data->users_node_name.\'</a>\';
+	break;
 	default: //work report
 		print \'<a href="/user/\'.$data->users_node_uid.\'">\'.$data->users_node_name.\'</a>\';
 }
@@ -1093,6 +1124,12 @@ $handler->display->display_options['fields']['php_4']['php_output'] = '<?php
 switch ($data->node_type) {
 	case \'work_report\':
 		print \'credit\';
+	break;
+	case \'chron_adjustment\':
+		if (isset($data->field_field_amount[0][\'raw\'][\'value\']) && $data->field_field_amount[0][\'raw\'][\'value\'] < 0)
+			print \'debit\';
+		else
+			print \'credit\';
 	break;
 	case \'purchase_receipt\':
 		if ($data->field_field_amount_paid[0][\'raw\'][\'value\'] < 0)
@@ -1175,6 +1212,12 @@ $handler->display->display_options['fields']['php_1']['php_output'] = '<?php
 switch ($data->node_type) {
 	case \'work_report\':
 		$xfer_type = \'credit\';
+	break;
+	case \'chron_adjustment\':
+		if (isset($data->field_field_amount[0][\'raw\'][\'value\']) && $data->field_field_amount[0][\'raw\'][\'value\'] < 0)
+			$xfer_type = \'debit\';
+		else
+			$xfer_type = \'credit\';
 	break;
 	case \'purchase_receipt\':
 		if ($data->field_field_amount_paid[0][\'raw\'][\'value\'] < 0)
@@ -1264,6 +1307,7 @@ $handler->display->display_options['filters']['type_i18n']['id'] = 'type_i18n';
 $handler->display->display_options['filters']['type_i18n']['table'] = 'node';
 $handler->display->display_options['filters']['type_i18n']['field'] = 'type_i18n';
 $handler->display->display_options['filters']['type_i18n']['value'] = array(
+  'chron_adjustment' => 'chron_adjustment',
   'forex_transaction' => 'forex_transaction',
   'money_transfer' => 'money_transfer',
   'purchase_receipt' => 'purchase_receipt',
@@ -1673,6 +1717,9 @@ switch ($row->type) {
 	case \'money_transfer\':
 		print t(\'transaction\') . \' \' . $row->title; // . \' [ \' . $row->name . \'] \';
 	break;
+	case \'chron_adjustment\':
+		print t(\'adjustment\') . \' \' . $row->title;
+	break;
 	case \'purchase_receipt\':
 		if ($row->field_amount_paid < 0)
 			print t(\'cancel. purchase\') . \' \' . $row->title;
@@ -1727,6 +1774,9 @@ switch ($data->node_type) {
 	case \'forex_transaction\':
 		print \'<a href="/user/\'.$data->field_field_buyer[0][\'raw\'][\'target_id\'].\'">\'.$data->field_field_buyer[0][\'rendered\'][\'#label\'].\'</a>\';
 	break;
+	case \'chron_adjustment\':
+		print \'Rovas\';
+	break;
 	default: //work report
 		print \'Rovas\';
 }
@@ -1769,6 +1819,9 @@ switch ($data->node_type) {
 	case \'forex_transaction\':
 		print \'<a href="/user/\'.$data->field_field_buyer[0][\'raw\'][\'target_id\'].\'">\'.$data->field_field_buyer[0][\'rendered\'][\'#label\'].\'</a>\';
 	break;
+	case \'chron_adjustment\':
+		print \'<a href="/user/\'.$data->_field_data[\'users_node_uid\'][\'entity\']->uid.\'">\'.$data->_field_data[\'users_node_uid\'][\'entity\']->name.\'</a>\';
+	break;
 	default: //work report
 		print \'<a href="/user/\'.$data->_field_data[\'users_node_uid\'][\'entity\']->uid.\'">\'.$data->_field_data[\'users_node_uid\'][\'entity\']->name.\'</a>\';
 }
@@ -1791,6 +1844,12 @@ $handler->display->display_options['fields']['php_4']['php_output'] = '<?php
 switch ($data->node_type) {
 	case \'work_report\':
 		print \'credit\';
+	break;
+	case \'chron_adjustment\':
+		if (isset($data->field_field_amount[0][\'raw\'][\'value\']) && $data->field_field_amount[0][\'raw\'][\'value\'] < 0)
+			print \'debit\';
+		else
+			print \'credit\';
 	break;
 	case \'purchase_receipt\':
 		if ($data->field_field_amount_paid[0][\'raw\'][\'value\'] < 0)
@@ -1882,6 +1941,12 @@ switch ($data->node_type) {
 	case \'work_report\':
 		$xfer_type = \'credit\';
 	break;
+	case \'chron_adjustment\':
+		if (isset($data->field_field_amount[0][\'raw\'][\'value\']) && $data->field_field_amount[0][\'raw\'][\'value\'] < 0)
+			$xfer_type = \'debit\';
+		else
+			$xfer_type = \'credit\';
+	break;
 	case \'purchase_receipt\':
 		if ($data->field_field_amount_paid[0][\'raw\'][\'value\'] < 0)
 			$xfer_type = \'credit\';
@@ -1964,6 +2029,7 @@ $handler->display->display_options['filters']['type_i18n']['id'] = 'type_i18n';
 $handler->display->display_options['filters']['type_i18n']['table'] = 'node';
 $handler->display->display_options['filters']['type_i18n']['field'] = 'type_i18n';
 $handler->display->display_options['filters']['type_i18n']['value'] = array(
+  'chron_adjustment' => 'chron_adjustment',
   'forex_transaction' => 'forex_transaction',
   'money_transfer' => 'money_transfer',
   'purchase_receipt' => 'purchase_receipt',

@@ -33,10 +33,13 @@ not wiped by a bulk migrate.
 
 | View | Storage | Paths |
 |------|---------|-------|
-| `money_transfers` | Normal | `user/%/chrons`, `user/%/sumchrons` |
+| `money_transfers` | Normal | `user/%/chrons`, `user/%/sumchrons` (includes `chron_adjustment` as of Ship 1) |
 | `chron_balance` | Normal | |
 | `chron_holders_list` | Normal | `chron-holders-list` |
 | `total_chrons` | Normal | `total-chrons` |
+
+Related: `rovas_chron` owns `chron_adjustment` nodes (Merit receipt offsets;
+see `docs/chron-ledger-plan.md`).
 
 ### `rovas_merit`
 

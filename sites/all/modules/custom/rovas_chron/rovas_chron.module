@@ -1,0 +1,62 @@
+<?php
+
+/**
+ * @file
+ * Chron ledger helpers and chron_adjustment content type.
+ */
+
+define('ROVAS_CHRON_BUNDLE', 'chron_adjustment');
+
+/** Ledger-only Chron-tab offset for Merit purchase_receipt paper trail. */
+define('ROVAS_CHRON_SOURCE_MERIT_RECEIPT_OFFSET', 'merit_receipt_offset');
+
+/**
+ * Allowed field_chron_source values (extend as grant/clawback land).
+ *
+ * @return array
+ *   Machine name => label.
+ */
+function rovas_chron_source_options() {
+  return array(
+    ROVAS_CHRON_SOURCE_MERIT_RECEIPT_OFFSET => t('Merit receipt offset'),
+  );
+}
+
+/**
+ * Implements hook_permission().
+ */
+function rovas_chron_permission() {
+  return array(
+    'administer rovas chron ledger' => array(
+      'title' => t('Administer Rovas Chron ledger'),
+      'description' => t('Create and manage chron_adjustment ledger nodes (normally system-only).'),
+    ),
+  );
+}
+
+/**
+ * Implements hook_node_info().
+ *
+ * Declares the type for Features/UI discovery; install also node_type_save().
+ */
+function rovas_chron_node_info() {
+  return array(
+    ROVAS_CHRON_BUNDLE => array(
+      'name' => t('Chron adjustment'),
+      'base' => 'node_content',
+      'description' => t('Chron ledger line for balance mutators and Merit-receipt Chron-tab offsets.'),
+      'has_title' => '1',
+      'title_label' => t('Title'),
+      'locked' => TRUE,
+    ),
+  );
+}
+
+/**
+ * Implements hook_menu().
+ */
+function rovas_chron_menu() {
+  $items = array();
+  // No public UI yet — ledger nodes are created programmatically.
+  return $items;
+}

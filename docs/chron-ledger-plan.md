@@ -6,16 +6,41 @@ Draft for fine-tuning. Context: clawbacks (and other balance mutators) update
 
 ## Problem
 
-- **Balance:** `field_chrons_balance` on the user (Civic `total_chr`, spending
-  checks) is updated by `rules_update_user_chron_account` with **no ledger row**.
-- **UI:** `money_transfers` on `/user/xxx/chrons` rebuilds history from several
-  node types (`money_transfer`, purchase/forex-related records, etc.) with PHP
-  fields for signed amounts. Clawbacks (and WR verification grants) never appear
-  → view total drifts from balance.
-- Same gap beyond clawback: verification grants, WR delete, trusted auto-approve,
-  and other direct callers of `rules_update_user_chron_account`.
+Drift goes both ways:
+
+1. **Balance changes with no ledger row** — `field_chrons_balance` (Civic
+   `total_chr`, spending checks) is updated by `rules_update_user_chron_account`
+   with **no ledger row**. Clawbacks, WR verification grants, WR delete, trusted
+   auto-approve, and other direct callers never appear on `/user/xxx/chrons`
+   → view total drifts from balance.
+2. **Ledger rows that are not Chron** — `money_transfers` rebuilds history from
+   heterogeneous node types. Every positive `purchase_receipt` is shown as a
+   Chron **purchase debit** (`−X CH`), but Civic Merit-only issuers reuse
+   `purchase_receipt` as Merit paper trail with `field_amount_paid` = **Merit
+   units**, and never call the Chron mutator. Result: VAT claims (and Path-1
+   EUR gifts via the same issuer) appear to subtract Chrons on the Chron tab
+   even though `field_chrons_balance` is unchanged. The false debit amount
+   matches Merits awarded, not EUR/VAT.
+
+   **Preferred fix (aligned with B = `chron_adjustment`):** keep the Merit
+   `purchase_receipt` (Merit tab / Source = Project stays intact) and create a
+   matching **ledger-only** `chron_adjustment` credit that counter-balances the
+   Chron-tab purchase debit (same magnitude as `field_amount_paid`). Do **not**
+   call `rules_update_user_chron_account` for these offsets — wallet is already
+   correct. Reason/source e.g. `merit_receipt_offset` with optional ref to the
+   receipt. Same pattern for Path-1 gift receipts from
+   `rovas_civic_issue_donor_merits`. Wire `chron_adjustment` into
+   `money_transfers.inc` as a credit (and later for real balance mutators too).
+
+   Caveats: Chron tab shows two canceling lines (noisier than filtering the
+   receipt out). Do not combine offset **and** exclude the same receipt from the
+   Chron view. Filtering Merit-only receipts remains a valid alternative if UX
+   prefers one fewer row; offset is preferred because it reuses the planned
+   adjustment type and does not special-case Civic receipts in the view.
+
 - Legacy `rules_chrons_batch_adjuster` treats the **view sum as truth** and can
-  overwrite balance — opposite of “balance is authoritative.”
+  overwrite balance — opposite of “balance is authoritative.” Pollution from
+  (2) makes that overwrite especially dangerous if the adjuster is still run.
 
 ## Goals (to confirm)
 
@@ -42,34 +67,58 @@ Draft for fine-tuning. Context: clawbacks (and other balance mutators) update
 | F | History | Opening-balance row at deploy vs backfill from WR + known transfers |
 | G | Batch adjuster | Disable, invert (ledger→balance), or leave until ledger exists |
 
-**Suggested default for next discussion:** B = new type; C = centralize at
-mutator; A = start with grant+clawback then expand; D = balance = cache of ledger.
+**Suggested default for next discussion:** B = new `chron_adjustment` type;
+C = centralize at mutator for real Chron deltas, plus **ledger-only** writes for
+Merit-receipt offsets (no balance change); A = start with grant+clawback then
+expand; D = balance = cache of ledger. Merit-pollution offsets are an early
+consumer of B even before every mutator is centralized.
 
-## Phased approach
+## Phased approach (deploy / review between ships)
+
+Prefer shipping and reviewing each ship on rovdev before the next.
 
 ### Phase 0 — Inventory (read-only)
 
-- Export `money_transfers` from DB (not in git today); list bundles + PHP amount
-  logic.
+- Read in-repo Chron views under `rovas_money_transfer/views/` (primary:
+  `money_transfers.inc`); list bundles + PHP amount logic — especially the
+  `purchase_receipt` → debit/credit branch. No DB export or Views UI pass
+  required for inventory.
 - Map every `rules_update_user_chron_account` caller → already has node / needs
   row / synthetic.
+- Map every `purchase_receipt` creator → Chron spend (`rules_process_purchase_core`)
+  vs Merit-only paper trail (`rovas_civic_issue_donor_merits` and any peers).
 - Document clawback/grant guards already in Rules (status was `1`, etc.).
 
-### Phase 1 — Minimal product fix (optional fast path)
+### Ship 1 — Merit-receipt Chron-tab offsets (**implemented in code; awaiting deploy**)
 
-- On WR chron **grant** and **clawback**, write an explicit ledger node + keep
-  balance update.
-- Extend `money_transfers` (or sibling display) to include those rows.
+Scope: fix VAT / Path-1 false Chron debits only. No WR grant/clawback yet.
+
+- New module `rovas_chron`: `chron_adjustment` type +
+  `rovas_chron_offset_merit_receipt()` (ledger-only; never touches
+  `field_chrons_balance`).
+- `rovas_civic_issue_donor_merits` creates the offset after the Merit receipt.
+- `money_transfers.inc` includes `chron_adjustment` on all displays.
+- Drush: `rovas-chron-backfill-merit-offsets` (+ `--dry-run` / `--uid`).
+- Deploy notes: `sites/all/modules/custom/rovas_chron/README.txt`.
+
+**Review gate:** Chron balance unchanged; Chron tab nets purchase + adjustment;
+Merit tab unchanged; idempotent re-claim; backfill dry-run looks sane.
+
+### Ship 2 — WR grant / clawback ledger rows (next)
+
+- On WR chron **grant** and **clawback**, write `chron_adjustment` **and** keep
+  the balance update (same guards as Rules).
 - Guard against double writes on delete-then-deny paths.
-- Show authoritative balance at top of chron tab; optional drift banner.
+- Optional: authoritative balance at top of chron tab / drift banner.
+- After deploy: revert Chron view overrides if the view changes again.
 
-### Phase 2 — Central chron ledger (preferred medium term)
+### Ship 3 / Phase 2 — Central chron ledger (after Ship 2)
 
-- PHP helper (Merit-style: e.g. `rovas_chron.ledger.inc`) invoked from one front
-  door.
-- Fields: signed amount, reason/source, optional entity ref (WR, transfer,
-  receipt), timestamp.
-- Export chron view into repo; reconcile Drush (wallet vs ledger sum).
+- Expand `rovas_chron.ledger.inc` as the one front door for all real Chron
+  deltas (balance mutator + ledger row).
+- Extend `field_chron_source` values; optional WR/transfer refs as needed.
+- Keep Chron UI views in `rovas_money_transfer/views/*.inc`; revise in repo.
+- Reconcile Drush (wallet vs ledger sum).
 - Retire or invert `rules_chrons_batch_adjuster`.
 
 ### Phase 3 — Polish / Civic
@@ -85,16 +134,30 @@ mutator; A = start with grant+clawback then expand; D = balance = cache of ledge
   mutate.”
 - Clawback in both `rules_deleting_verification` and deny branch of
   `rules_verify_work_report` — ledger must use the same guards as balance.
-- View lives in DB until exported — plan changes depend on Phase 0 inventory.
-- Deploy / Rules re-import stays human-owned (deploy-owner rule).
+- Dual-use `purchase_receipt`: Chron tab and Merit tab both read it. Do not
+  remove receipt create in the Civic issuer (Merit Source = Project). Preferred
+  Chron fix: ledger-only `chron_adjustment` offset (see Problem §2). Offset
+  rows must never touch `field_chrons_balance`. Do not also filter the same
+  receipts out of `money_transfers` or the Chron sum double-credits.
+- Chron views are code-owned (`docs/views-inventory.md`,
+  `rovas_money_transfer/README.views.txt`). Target `views/*.inc` in git; after
+  deploy, clear DB overrides so defaults load. Phase 0 still needs the
+  caller/creator maps above.
+- Deploy / Rules re-import / views-migration stays human-owned (deploy-owner
+  rule).
 
 ## Open questions for the next discussion
 
-1. Minimal (Phase 1) now, or go straight to central ledger (Phase 2)?
-2. New content type vs overload `money_transfer`?
+1. After Ship 1 review: proceed to Ship 2 (WR grant/clawback), or jump to
+   Ship 3 (central mutator)?
+2. ~~New content type vs overload `money_transfer`?~~ → **decided:** `chron_adjustment`
+   (`rovas_chron`).
 3. Must historical clawbacks/grants be backfilled, or ledger starts at cutover?
 4. Should profile UI keep reconstructing from heterogeneous nodes, or move to a
-   dedicated chron ledger view?
+   dedicated chron ledger view (still as a `views/*.inc`)?
+5. ~~Merit-only Chron pollution strategy~~ → **decided for Ship 1:** ledger-only
+   `chron_adjustment` offset (do not also filter those receipts from the Chron
+   view).
 
 ## Related code (anchors)
 
@@ -104,10 +167,16 @@ mutator; A = start with grant+clawback then expand; D = balance = cache of ledge
 | Clawback on verification delete | `rules_deleting_verification` |
 | Clawback on deny-while-approved | deny path in `rules_verify_work_report` |
 | Transfer + node | `rules_make_money_transfer` |
+| Real Chron purchase (debit + receipt) | `rules_process_purchase_core` |
+| Merit-only receipt (no Chron debit) | `rovas_civic_issue_donor_merits` (VAT claim + Path-1 gifts) |
+| Merit receipt Chron offset (Ship 1) | `rovas_chron` — `rovas_chron_offset_merit_receipt()` |
+| Chron tab / purchase debit + adjustment | `rovas_money_transfer/views/money_transfers.inc` |
+| Chron views (code defaults) | `rovas_money_transfer/views/*.inc`, `README.views.txt`, `docs/views-inventory.md` |
 | Drift / batch adjuster | `rules_chrons_batch_adjuster` |
 | Merit parallel | `rovas_merit.ledger.inc`, `merits_disbursement`, `merit_history` |
 
 ## How to use this doc
 
-Lock decisions **A–G** first, then implement Phase 0 → 1 or Phase 0 → 2.
-Update this file when choices are finalized.
+Ship 1 is coded and waiting on deploy/review. Then Ship 2 → Ship 3.
+View work lands in git (`views/*.inc`); human deploys code and reverts
+overrides — no Rovas admin Views UI required to revise the Chron tab.

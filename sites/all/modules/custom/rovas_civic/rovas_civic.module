@@ -3328,6 +3328,27 @@ function rovas_civic_issue_donor_merits($account, $merits, $project_nid, $source
     ))
     ->execute();
 
+  // 7) Chron-tab ledger-only offset: Merit purchase_receipt looks like a Chron
+  // debit on /user/*/chrons; cancel it without touching field_chrons_balance.
+  if (module_exists('rovas_chron')) {
+    module_load_include('inc', 'rovas_chron', 'rovas_chron.ledger');
+    $offset_nid = rovas_chron_offset_merit_receipt(
+      (int) $account->uid,
+      $receipt_me,
+      $receipt_id,
+      t('Chron-tab offset for Civic Merit receipt (source @s).', array(
+        '@s' => $source_type,
+      ))
+    );
+    if ($offset_nid < 1) {
+      watchdog('rovas_civic', 'Donor Merit: chron offset failed for uid @u receipt @r source @s.', array(
+        '@u' => $account->uid,
+        '@r' => $receipt_id,
+        '@s' => $source_id,
+      ), WATCHDOG_WARNING);
+    }
+  }
+
   return TRUE;
 }
 

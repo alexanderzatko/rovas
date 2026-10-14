@@ -1,0 +1,15 @@
+name = Rovas Chron Ledger
+description = Chron adjustment content type and ledger helpers (Chron tab vs field_chrons_balance).
+core = 7.x
+package = Rovas
+
+dependencies[] = rovas_base
+dependencies[] = entityreference
+dependencies[] = list
+dependencies[] = options
+dependencies[] = number
+dependencies[] = text
+
+files[] = rovas_chron.module
+files[] = rovas_chron.ledger.inc
+files[] = rovas_chron.drush.inc

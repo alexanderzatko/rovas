@@ -1,0 +1,256 @@
+<?php
+
+/**
+ * @file
+ * Install / update for Rovas Chron ledger (chron_adjustment).
+ */
+
+/**
+ * Implements hook_install().
+ */
+function rovas_chron_install() {
+  module_load_include('inc', 'rovas_chron', 'rovas_chron.ledger');
+  _rovas_chron_ensure_bundle_and_fields();
+}
+
+/**
+ * Implements hook_enable().
+ */
+function rovas_chron_enable() {
+  module_load_include('inc', 'rovas_chron', 'rovas_chron.ledger');
+  _rovas_chron_ensure_bundle_and_fields();
+}
+
+/**
+ * Ensure chron_adjustment type and fields exist.
+ */
+function _rovas_chron_ensure_bundle_and_fields() {
+  _rovas_chron_ensure_type();
+  _rovas_chron_ensure_field_bases();
+  _rovas_chron_ensure_field_instances();
+  field_cache_clear();
+  node_types_rebuild();
+}
+
+/**
+ * Create or refresh chron_adjustment node type.
+ */
+function _rovas_chron_ensure_type() {
+  $name = 'Chron adjustment';
+  $description = 'Chron ledger line for balance mutators and Merit-receipt Chron-tab offsets.';
+  $types = node_type_get_types();
+  if (isset($types[ROVAS_CHRON_BUNDLE])) {
+    $type = $types[ROVAS_CHRON_BUNDLE];
+    if ($type->name !== $name || $type->description !== $description) {
+      $type->name = $name;
+      $type->description = $description;
+      node_type_save($type);
+    }
+    return;
+  }
+  $type = array(
+    'type' => ROVAS_CHRON_BUNDLE,
+    'name' => $name,
+    'base' => 'node_content',
+    'description' => $description,
+    'custom' => 1,
+    'modified' => 1,
+    'locked' => 1,
+    'disabled' => 0,
+    'module' => 'node',
+    'has_title' => 1,
+    'title_label' => 'Title',
+    'help' => '',
+  );
+  $type = node_type_set_defaults($type);
+  node_type_save($type);
+  node_types_rebuild();
+  node_add_body_field($type, 'Note');
+}
+
+/**
+ * Field bases: reuse field_amount / field_parent_purchase_receipt when present.
+ */
+function _rovas_chron_ensure_field_bases() {
+  if (!field_info_field('field_chron_source')) {
+    $allowed = array();
+    foreach (array_keys(rovas_chron_source_options()) as $key) {
+      $allowed[$key] = $key;
+    }
+    field_create_field(array(
+      'field_name' => 'field_chron_source',
+      'type' => 'list_text',
+      'module' => 'list',
+      'active' => 1,
+      'locked' => 0,
+      'cardinality' => 1,
+      'translatable' => 0,
+      'settings' => array(
+        'allowed_values' => $allowed,
+        'allowed_values_function' => '',
+      ),
+    ));
+  }
+  else {
+    // Merge new allowed values if the field already exists.
+    $field = field_info_field('field_chron_source');
+    $allowed = isset($field['settings']['allowed_values']) ? $field['settings']['allowed_values'] : array();
+    $changed = FALSE;
+    foreach (array_keys(rovas_chron_source_options()) as $key) {
+      if (!isset($allowed[$key])) {
+        $allowed[$key] = $key;
+        $changed = TRUE;
+      }
+    }
+    if ($changed) {
+      $field['settings']['allowed_values'] = $allowed;
+      field_update_field($field);
+    }
+  }
+
+  // field_amount and field_parent_purchase_receipt are legacy site fields —
+  // create only if missing (fresh/dev DBs).
+  if (!field_info_field('field_amount')) {
+    field_create_field(array(
+      'field_name' => 'field_amount',
+      'type' => 'number_decimal',
+      'module' => 'number',
+      'active' => 1,
+      'locked' => 0,
+      'cardinality' => 1,
+      'translatable' => 0,
+      'settings' => array(
+        'precision' => 10,
+        'scale' => 2,
+        'decimal_separator' => '.',
+      ),
+    ));
+  }
+  if (!field_info_field('field_parent_purchase_receipt')) {
+    field_create_field(array(
+      'field_name' => 'field_parent_purchase_receipt',
+      'type' => 'entityreference',
+      'module' => 'entityreference',
+      'active' => 1,
+      'locked' => 0,
+      'cardinality' => 1,
+      'translatable' => 0,
+      'settings' => array(
+        'target_type' => 'node',
+        'handler' => 'base',
+        'handler_settings' => array(
+          'target_bundles' => array(
+            'purchase_receipt' => 'purchase_receipt',
+          ),
+          'sort' => array(
+            'type' => 'none',
+          ),
+        ),
+      ),
+    ));
+  }
+}
+
+/**
+ * Attach fields to chron_adjustment.
+ */
+function _rovas_chron_ensure_field_instances() {
+  $bundle = ROVAS_CHRON_BUNDLE;
+
+  if (!field_info_instance('node', 'field_amount', $bundle)) {
+    field_create_instance(array(
+      'field_name' => 'field_amount',
+      'entity_type' => 'node',
+      'bundle' => $bundle,
+      'label' => 'Chron amount',
+      'description' => 'Signed Chron delta for the Chron tab (positive = credit). Does not by itself change field_chrons_balance.',
+      'required' => 1,
+      'widget' => array(
+        'type' => 'number',
+        'module' => 'number',
+        'weight' => 1,
+        'settings' => array(),
+      ),
+      'display' => array(
+        'default' => array(
+          'label' => 'above',
+          'type' => 'number_decimal',
+          'weight' => 1,
+          'settings' => array(
+            'thousand_separator' => '',
+            'decimal_separator' => '.',
+            'scale' => 2,
+            'prefix_suffix' => TRUE,
+          ),
+          'module' => 'number',
+        ),
+      ),
+    ));
+  }
+
+  if (!field_info_instance('node', 'field_chron_source', $bundle)) {
+    field_create_instance(array(
+      'field_name' => 'field_chron_source',
+      'entity_type' => 'node',
+      'bundle' => $bundle,
+      'label' => 'Chron source',
+      'required' => 1,
+      'widget' => array(
+        'type' => 'options_select',
+        'module' => 'options',
+        'weight' => 2,
+        'settings' => array(),
+      ),
+      'display' => array(
+        'default' => array(
+          'label' => 'above',
+          'type' => 'list_default',
+          'weight' => 2,
+          'settings' => array(),
+          'module' => 'list',
+        ),
+      ),
+    ));
+  }
+
+  if (!field_info_instance('node', 'field_parent_purchase_receipt', $bundle)) {
+    field_create_instance(array(
+      'field_name' => 'field_parent_purchase_receipt',
+      'entity_type' => 'node',
+      'bundle' => $bundle,
+      'label' => 'Parent purchase receipt',
+      'description' => 'For merit_receipt_offset: the Merit purchase_receipt this line cancels on the Chron tab.',
+      'required' => 0,
+      'widget' => array(
+        'type' => 'entityreference_autocomplete',
+        'module' => 'entityreference',
+        'weight' => 3,
+        'settings' => array(
+          'match_operator' => 'CONTAINS',
+          'size' => 60,
+          'path' => '',
+        ),
+      ),
+      'display' => array(
+        'default' => array(
+          'label' => 'above',
+          'type' => 'entityreference_label',
+          'weight' => 3,
+          'settings' => array(
+            'link' => TRUE,
+          ),
+          'module' => 'entityreference',
+        ),
+      ),
+    ));
+  }
+}
+
+/**
+ * Implements hook_update_N(): ensure type + fields on existing installs.
+ */
+function rovas_chron_update_7001() {
+  module_load_include('inc', 'rovas_chron', 'rovas_chron.ledger');
+  _rovas_chron_ensure_bundle_and_fields();
+  return t('Ensured chron_adjustment content type and fields.');
+}
