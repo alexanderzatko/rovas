@@ -22,6 +22,19 @@ function rovas_chron_drush_command() {
       'drush rovas-chron-backfill-merit-offsets --uid=42 --dry-run' => dt('Preview for one user.'),
     ),
   );
+  $items['rovas-chron-reconcile'] = array(
+    'callback' => 'drush_rovas_chron_reconcile',
+    'description' => dt('Report drift between field_chrons_balance and money_transfers sumchrons view sum (read-only; does not overwrite balances).'),
+    'options' => array(
+      'uid' => dt('Limit to one uid (recommended).'),
+      'min-diff' => dt('Only report when abs(wallet - view) exceeds this (default 0.01).'),
+      'limit' => dt('Max users when scanning all (default 50).'),
+    ),
+    'examples' => array(
+      'drush rovas-chron-reconcile --uid=42' => dt('Compare one user.'),
+      'drush rovas-chron-reconcile --limit=20' => dt('Sample active users.'),
+    ),
+  );
   return $items;
 }
 
@@ -177,4 +190,81 @@ function _rovas_chron_merit_receipts_needing_offset($only_uid = NULL, $limit = 5
     }
   }
   return $out;
+}
+
+/**
+ * Drush: report wallet vs Chron-tab (sumchrons) drift. Never overwrites.
+ */
+function drush_rovas_chron_reconcile() {
+  $only_uid = drush_get_option('uid', NULL);
+  $min_diff = (float) drush_get_option('min-diff', 0.01);
+  $limit = (int) drush_get_option('limit', 50);
+  if ($limit < 1) {
+    $limit = 50;
+  }
+
+  if ($only_uid !== NULL && $only_uid !== '') {
+    $uids = array((int) $only_uid);
+  }
+  else {
+    $uids = db_query_range('SELECT uid FROM {users} WHERE uid > 0 AND status = 1 ORDER BY access DESC', 0, $limit)->fetchCol();
+  }
+
+  $drift_count = 0;
+  foreach ($uids as $uid) {
+    $uid = (int) $uid;
+    $account = user_load($uid);
+    if (!$account) {
+      continue;
+    }
+    $wallet = 0.0;
+    $items = field_get_items('user', $account, 'field_chrons_balance');
+    if (!empty($items[0]['value'])) {
+      $wallet = (float) $items[0]['value'];
+    }
+    $view_sum = _rovas_chron_sumchrons_view_total($uid);
+    if ($view_sum === NULL) {
+      drush_log(dt('uid @u: wallet=@w view=unparsed', array(
+        '@u' => $uid,
+        '@w' => $wallet,
+      )), 'warning');
+      continue;
+    }
+    $diff = abs($wallet - $view_sum);
+    if ($diff > $min_diff) {
+      $drift_count++;
+      drush_log(dt('uid @u: wallet=@w view=@v diff=@d', array(
+        '@u' => $uid,
+        '@w' => round($wallet, 2),
+        '@v' => round($view_sum, 2),
+        '@d' => round($wallet - $view_sum, 2),
+      )), 'ok');
+    }
+  }
+  drush_log(dt('Reconcile done: @n user(s) with |diff| > @m (read-only).', array(
+    '@n' => $drift_count,
+    '@m' => $min_diff,
+  )), 'success');
+}
+
+/**
+ * Parse money_transfers|page_1 embedded sum for a uid (same scrape as old batch adjuster).
+ *
+ * @param int $uid
+ *
+ * @return float|null
+ */
+function _rovas_chron_sumchrons_view_total($uid) {
+  $uid = (int) $uid;
+  if ($uid < 1 || !function_exists('views_embed_view')) {
+    return NULL;
+  }
+  $vdata = views_embed_view('money_transfers', 'page_1', $uid, $uid, $uid);
+  if (!is_string($vdata) || $vdata === '') {
+    return NULL;
+  }
+  if (preg_match('/<div class="label">.+<\/div>(.+)<\/td>/', $vdata, $matches)) {
+    return (float) round((float) $matches[1], 2);
+  }
+  return NULL;
 }

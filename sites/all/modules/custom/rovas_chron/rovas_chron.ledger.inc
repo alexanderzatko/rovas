@@ -228,28 +228,100 @@ function rovas_chron_offset_merit_receipt($uid, $merits_as_amount, $receipt_nid,
 }
 
 /**
- * Apply a WR Chron delta: optional chron_adjustment + wallet mutator.
+ * Central Chron mutator front door (Ship 3).
  *
- * Idempotent on $ikey: if the adjustment already exists, the wallet mutator is
- * NOT called again.
+ * Optionally writes a chron_adjustment, then updates field_chrons_balance via
+ * rules_update_user_chron_account. Idempotent on ikey when writing an
+ * adjustment: existing ikey → no second wallet change.
  *
  * @param int $uid
- *   Wallet / Chron-tab user.
  * @param float $signed_amount
- *   Positive = grant (credit); negative = clawback (debit).
+ *   Positive = credit wallet; negative = debit.
+ * @param string $source
+ *   field_chron_source machine name (must be in rovas_chron_source_options()
+ *   when ledger=adjustment).
+ * @param array $context
+ *   - ledger: 'adjustment' (default) | 'skip' (wallet only; Chron tab already
+ *     has another node type for this event)
+ *   - ikey (string) — required for ledger=adjustment idempotency
+ *   - wr_nid, receipt_nid, note, title — passed to create_adjustment
+ *   - fxsp_id — optional 3rd arg to rules_update_user_chron_account
+ *
+ * @return int
+ *   Adjustment nid when created/found; 0 when ledger skipped or failed.
+ */
+function rovas_chron_mutate($uid, $signed_amount, $source, array $context = array()) {
+  $uid = (int) $uid;
+  $signed_amount = (float) $signed_amount;
+  $source = (string) $source;
+  $ledger = isset($context['ledger']) ? $context['ledger'] : 'adjustment';
+  if ($uid < 1 || $signed_amount == 0.0) {
+    return 0;
+  }
+
+  $ikey = !empty($context['ikey']) ? (string) $context['ikey'] : '';
+  $adj_nid = 0;
+
+  if ($ledger === 'adjustment') {
+    if ($ikey === '') {
+      watchdog('rovas_chron', 'mutate: ledger=adjustment requires ikey (source @s)', array(
+        '@s' => $source,
+      ), WATCHDOG_WARNING);
+      return 0;
+    }
+    $existing = rovas_chron_find_by_ikey($ikey);
+    if ($existing > 0) {
+      return $existing;
+    }
+    $was_existing = FALSE;
+    $adj_nid = rovas_chron_create_adjustment($uid, abs($signed_amount), $source, array(
+      'credit' => ($signed_amount > 0),
+      'wr_nid' => !empty($context['wr_nid']) ? (int) $context['wr_nid'] : 0,
+      'receipt_nid' => !empty($context['receipt_nid']) ? (int) $context['receipt_nid'] : 0,
+      'ikey' => $ikey,
+      'note' => !empty($context['note']) ? $context['note'] : '',
+      'title' => !empty($context['title']) ? $context['title'] : ($source . '-' . substr(md5($ikey), 0, 8)),
+    ), $was_existing);
+    if ($was_existing) {
+      return $adj_nid;
+    }
+    if ($adj_nid < 1) {
+      watchdog('rovas_chron', 'mutate: failed adjustment ikey @k', array('@k' => $ikey), WATCHDOG_ERROR);
+      return 0;
+    }
+  }
+  elseif ($ledger !== 'skip') {
+    watchdog('rovas_chron', 'mutate: unknown ledger mode @m', array('@m' => $ledger), WATCHDOG_WARNING);
+    return 0;
+  }
+
+  if (!function_exists('rules_invoke_component')) {
+    watchdog('rovas_chron', 'mutate: rules_invoke_component missing', array(), WATCHDOG_ERROR);
+    return $adj_nid;
+  }
+  $account = user_load($uid);
+  if (!$account) {
+    return $adj_nid;
+  }
+  $fxsp = array_key_exists('fxsp_id', $context) ? $context['fxsp_id'] : NULL;
+  rules_invoke_component('rules_update_user_chron_account', $account, $signed_amount, $fxsp);
+  return $adj_nid;
+}
+
+/**
+ * Apply a WR Chron delta: chron_adjustment + wallet mutator.
+ *
+ * @param int $uid
+ * @param float $signed_amount
  * @param string $source
  *   ROVAS_CHRON_SOURCE_WR_GRANT or ROVAS_CHRON_SOURCE_WR_CLAWBACK.
  * @param int $wr_nid
- *   Work report nid.
  * @param string $ikey
- *   Unique idempotency key for this event.
  * @param array $options
  *   - note (string)
- *   - ledger_only_if_grant (bool) — for delete-WR clawback: skip ledger row when
- *     no wr_grant exists (legacy WRs: Chron tab already loses the WR credit).
+ *   - ledger_only_if_grant (bool) — delete-WR: skip ledger when no wr_grant
  *
  * @return int
- *   Adjustment nid, or 0 when ledger skipped / failed (mutator may still run).
  */
 function rovas_chron_apply_wr_delta($uid, $signed_amount, $source, $wr_nid, $ikey, array $options = array()) {
   $uid = (int) $uid;
@@ -264,49 +336,21 @@ function rovas_chron_apply_wr_delta($uid, $signed_amount, $source, $wr_nid, $ike
     return 0;
   }
 
-  $existing = rovas_chron_find_by_ikey($ikey);
-  if ($existing > 0) {
-    return $existing;
-  }
-
-  $write_ledger = TRUE;
+  $ledger = 'adjustment';
   if ($source === ROVAS_CHRON_SOURCE_WR_CLAWBACK
     && !empty($options['ledger_only_if_grant'])
     && !rovas_chron_wr_has_grant($wr_nid)) {
-    $write_ledger = FALSE;
+    $ledger = 'skip';
   }
 
-  $adj_nid = 0;
-  if ($write_ledger) {
-    $was_existing = FALSE;
-    $credit = ($signed_amount > 0);
-    $adj_nid = rovas_chron_create_adjustment($uid, abs($signed_amount), $source, array(
-      'credit' => $credit,
-      'wr_nid' => $wr_nid,
-      'ikey' => $ikey,
-      'note' => !empty($options['note']) ? $options['note'] : '',
-      'title' => $source . '-' . $wr_nid . '-' . substr(md5($ikey), 0, 8),
-    ), $was_existing);
-    if ($was_existing) {
-      return $adj_nid;
-    }
-    if ($adj_nid < 1) {
-      watchdog('rovas_chron', 'WR delta: failed to create adjustment ikey @k', array(
-        '@k' => $ikey,
-      ), WATCHDOG_ERROR);
-      return 0;
-    }
-  }
+  $adj_nid = rovas_chron_mutate($uid, $signed_amount, $source, array(
+    'ledger' => $ledger,
+    'ikey' => $ikey,
+    'wr_nid' => $wr_nid,
+    'note' => !empty($options['note']) ? $options['note'] : '',
+    'title' => $source . '-' . $wr_nid . '-' . substr(md5($ikey), 0, 8),
+  ));
 
-  if (!function_exists('rules_invoke_component')) {
-    watchdog('rovas_chron', 'WR delta: rules_invoke_component missing', array(), WATCHDOG_ERROR);
-    return $adj_nid;
-  }
-  $account = user_load($uid);
-  if (!$account) {
-    return $adj_nid;
-  }
-  rules_invoke_component('rules_update_user_chron_account', $account, $signed_amount, NULL);
   if ($source === ROVAS_CHRON_SOURCE_WR_GRANT && $adj_nid > 0) {
     $cached = &drupal_static('rovas_chron_wr_has_grant', array());
     $cached[$wr_nid] = TRUE;

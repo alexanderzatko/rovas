@@ -1754,6 +1754,12 @@ switch ($row->type) {
 		else
 			print t(\'purchase\') . \' \' . $row->title;
 	break;
+	case \'purchase_merits\':
+		if ($row->field_amount_paid < 0)
+			print t(\'cancel. purchase\') . \' \' . $row->title;
+		else
+			print t(\'Merits purchase\') . \' \' . $row->title;
+	break;
 	case \'forex_transaction\':
 		if ($row->field_conversion_type == \'chrons_to_euros\')
 			print t(\'Chrons sale\') . \' \' . $row->title;
@@ -1790,6 +1796,9 @@ switch ($data->node_type) {
 		else {
 			print \'<a href="/user/\'.$data->field_field_buyer[0][\'raw\'][\'target_id\'].\'">\'.$data->field_field_buyer[0][\'rendered\'][\'#label\'].\'</a>\';
 		}
+	break;
+	case \'purchase_merits\':
+		print \'<a href="/user/\'.$data->field_field_buyer[0][\'raw\'][\'target_id\'].\'">\'.$data->field_field_buyer[0][\'rendered\'][\'#label\'].\'</a>\';
 	break;
 	case \'money_transfer\':
 		if (isset($data->_field_data[\'users_node_uid\'])) {
@@ -1883,6 +1892,12 @@ switch ($data->node_type) {
 			print \'credit\';
 	break;
 	case \'purchase_receipt\':
+		if ($data->field_field_amount_paid[0][\'raw\'][\'value\'] < 0)
+			print \'credit\';
+		else
+			print \'debit\';
+	break;
+	case \'purchase_merits\':
 		if ($data->field_field_amount_paid[0][\'raw\'][\'value\'] < 0)
 			print \'credit\';
 		else
@@ -1987,6 +2002,12 @@ switch ($data->node_type) {
 		else
 			$xfer_type = \'debit\';
 	break;
+	case \'purchase_merits\':
+		if ($data->field_field_amount_paid[0][\'raw\'][\'value\'] < 0)
+			$xfer_type = \'credit\';
+		else
+			$xfer_type = \'debit\';
+	break;
 	case \'money_transfer\':
 		if ($data->users_field_data_field_recipient_uid == $data->node_uid) //recipient is the same as sender
 			$xfer_type = \'noop\';
@@ -2074,6 +2095,7 @@ $handler->display->display_options['filters']['type_i18n']['value'] = array(
   'chron_adjustment' => 'chron_adjustment',
   'forex_transaction' => 'forex_transaction',
   'money_transfer' => 'money_transfer',
+  'purchase_merits' => 'purchase_merits',
   'purchase_receipt' => 'purchase_receipt',
   'work_report' => 'work_report',
 );

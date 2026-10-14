@@ -54,9 +54,6 @@ Re-import changed Rules (verify / deleting verification / delete WR / create WR)
 
   drush74 php-eval "module_load_include('inc', 'rovas_site_rules', 'rovas_site_rules.migration'); rovas_site_rules_migration_run();"
 
-(If that helper takes a component list, import only the four changed rules —
-see rovas_site_rules/README.txt.)
-
 Verify:
 1. Peer-approve a WR: wallet +CH; Chron tab shows adjustment credit; WR row 0 CH.
 2. Deny while approved: wallet −CH; clawback adjustment debit.
@@ -65,3 +62,21 @@ Verify:
    does not gain an extra debit beyond losing the WR credit.
 5. Trusted auto-approve: one wr_grant, one wallet credit.
 6. Re-run same event (same ikey): no second wallet change.
+
+Ship 3 (central front door + safety)
+------------------------------------
+  drush74 cc all
+  # Rules: batch adjuster disabled (re-import required)
+  drush74 php-eval "module_load_include('inc', 'rovas_site_rules', 'rovas_site_rules.migration'); rovas_site_rules_migration_run();"
+  # Chron views: sumchrons now includes purchase_merits
+  drush74 php-eval "module_load_include('inc', 'rovas_money_transfer', 'rovas_money_transfer.views_migration'); rovas_money_transfer_views_migration_run();"
+
+Report-only drift check (never overwrites balances):
+
+  drush74 rovas-chron-reconcile --uid=YOUR_UID
+
+Verify:
+1. Invoking "chrons batch adjuster" only shows a warning; balances unchanged.
+2. Ship 2 WR grant/clawback still works (uses rovas_chron_mutate under the hood).
+3. /user/<uid>/sumchrons includes Merits-purchase rows when present.
+4. reconcile reports wallet vs view sum without writing.

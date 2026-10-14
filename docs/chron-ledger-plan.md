@@ -104,7 +104,7 @@ Scope: fix VAT / Path-1 false Chron debits only. No WR grant/clawback yet.
 **Review gate (passed):** offset records created in the correct amounts against
 the correct purchase receipts; Chron wallet unchanged by design.
 
-### Ship 2 — WR grant / clawback ledger rows (**implemented in code; awaiting deploy**)
+### Ship 2 — WR grant / clawback ledger rows (**verified on rovdev 2026-10-14**)
 
 - `rovas_chron_apply_wr_delta()`: chron_adjustment **then** wallet mutator;
   idempotent on `field_chron_ikey` (no double wallet hit).
@@ -117,19 +117,26 @@ the correct purchase receipts; Chron wallet unchanged by design.
 - Rules JSON changed — re-import via `rovas_site_rules` migration after deploy.
 - Optional: authoritative balance / drift banner deferred.
 
-**Review gate:** approve → wallet +CH + `wr_grant` line; deny/del-verif while
-approved → wallet −CH + `wr_clawback`; WR row shows 0 when grant exists;
-delete approved WR without prior `wr_grant` → wallet −CH, no extra Chron debit;
-idempotent re-fire of same ikey does not double-mutate.
+**Review gate (passed):** tests OK on rovdev.
 
-### Ship 3 / Phase 2 — Central chron ledger (after Ship 2)
+### Ship 3 — Central front door + safety (**implemented in code; awaiting deploy**)
 
-- Expand `rovas_chron.ledger.inc` as the one front door for all real Chron
-  deltas (balance mutator + ledger row).
-- Extend `field_chron_source` values; optional WR/transfer refs as needed.
-- Keep Chron UI views in `rovas_money_transfer/views/*.inc`; revise in repo.
-- Reconcile Drush (wallet vs ledger sum).
-- Retire or invert `rules_chrons_batch_adjuster`.
+Scope (not “wrap every mutator” — most remaining callers already have Chron-tab
+nodes):
+
+- `rovas_chron_mutate()` — one PHP front door (`ledger=adjustment|skip`);
+  `rovas_chron_apply_wr_delta()` uses it.
+- **Disable** `rules_chrons_batch_adjuster` (view-sum-as-truth overwrite).
+- sumchrons display: include `purchase_merits` (parity with Chron tab).
+- Drush `rovas-chron-reconcile` — wallet vs Chron-tab view sum (report only).
+- Do **not** add `chron_adjustment` beside existing money_transfer /
+  purchase_receipt / forex_transaction / purchase_merits rows.
+- EUR→CHR wallet credit in `rules_process_forex_order` left unchanged pending
+  live confirmation (Chron tab already shows forex credit; wallet may be
+  credited elsewhere — avoid double-credit).
+
+**Review gate:** batch adjuster no-ops; WR Ship 2 still works via mutate;
+sumchrons includes purchase_merits; reconcile dry-run sensible.
 
 ### Phase 3 — Polish / Civic
 
@@ -158,16 +165,17 @@ idempotent re-fire of same ikey does not double-mutate.
 
 ## Open questions for the next discussion
 
-1. After Ship 1 review: proceed to Ship 2 (WR grant/clawback), or jump to
-   Ship 3 (central mutator)?
-2. ~~New content type vs overload `money_transfer`?~~ → **decided:** `chron_adjustment`
-   (`rovas_chron`).
+1. ~~Ship order~~ → Ships 1–3 sequenced; Phase 3 polish next after Ship 3 review.
+2. ~~New content type vs overload `money_transfer`?~~ → **decided:** `chron_adjustment`.
 3. Must historical clawbacks/grants be backfilled, or ledger starts at cutover?
 4. Should profile UI keep reconstructing from heterogeneous nodes, or move to a
    dedicated chron ledger view (still as a `views/*.inc`)?
-5. ~~Merit-only Chron pollution strategy~~ → **decided for Ship 1:** ledger-only
-   `chron_adjustment` offset (do not also filter those receipts from the Chron
-   view).
+5. ~~Merit-only Chron pollution strategy~~ → **decided:** ledger-only offset.
+6. Does `rules_process_forex_order` euros_to_chrons need an explicit wallet
+   credit via `rovas_chron_mutate(..., ledger=skip)`, or is wallet credited
+   elsewhere? Confirm on live before changing (double-credit risk).
+7. ~~Batch adjuster~~ → **decided Ship 3:** disabled (do not invert until
+   reconcile is trusted).
 
 ## Related code (anchors)
 
@@ -182,11 +190,14 @@ idempotent re-fire of same ikey does not double-mutate.
 | Merit receipt Chron offset (Ship 1) | `rovas_chron` — `rovas_chron_offset_merit_receipt()` |
 | Chron tab / purchase debit + adjustment | `rovas_money_transfer/views/money_transfers.inc` |
 | Chron views (code defaults) | `rovas_money_transfer/views/*.inc`, `README.views.txt`, `docs/views-inventory.md` |
-| Drift / batch adjuster | `rules_chrons_batch_adjuster` |
+| Central mutator (Ship 3) | `rovas_chron_mutate()` |
+| Drift report (read-only) | `drush rovas-chron-reconcile` |
+| Batch adjuster (disabled) | `rules_chrons_batch_adjuster` |
 | Merit parallel | `rovas_merit.ledger.inc`, `merits_disbursement`, `merit_history` |
 
 ## How to use this doc
 
-Ship 1 is coded and waiting on deploy/review. Then Ship 2 → Ship 3.
+Ships 1–2 verified on rovdev. Ship 3 awaits deploy/review; then Phase 3 polish
+(opening balance / Civic chron history / UX copy) as needed.
 View work lands in git (`views/*.inc`); human deploys code and reverts
 overrides — no Rovas admin Views UI required to revise the Chron tab.
