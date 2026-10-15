@@ -75,7 +75,7 @@ No new endpoint. Expected relationship on
 |----------|------|
 | `by_source.penalty` | If present and ≠ 0, document how much hits `volunteer` after proportional split ([penalty-proportional-by-category](../done/penalty-proportional-by-category.md)). |
 | Without penalty | `sum(top_volunteer_projects[].me)` ≤ `by_source.volunteer_work` and ≤ `by_category.volunteer`. |
-| With penalty only | Tab may drop below gross project rows after remap (e.g. LAO: volunteer **~3** vs projects sum **~7.53**). Scaling project rows to the post-penalty category is a **Civic** follow-up — Rovas keeps gross earned attribution. |
+| With penalty only | Tab may drop below gross project rows after remap (e.g. LAO: volunteer **~3** vs projects sum **~7.53**). Rovas keeps gross earned attribution; **Civic** scales displayed project ME to the post-penalty category (`capProjectRowsToCategory` in `@civic/shared`, applied in `users/lookup` + `ContributionBreakdown`). |
 
 ### Checklist
 
@@ -116,4 +116,9 @@ print "sum_top=$sum by_category.volunteer=$vol delta=" . ($vol - $sum) . "\n";
 `ContributionBreakdown` shows `by_category.volunteer` on the tab and
 `top_volunteer_projects` in the drawer (`ProjectMeTable`). After the Rovas
 deploy, pull-to-refresh / re-open `@Filip009` should show Volunteer tab ME
-≥ Openstreetmap (and any other) project ME. No Civic code change.
+≥ Openstreetmap (and any other) project ME.
+
+**Penalty follow-up (Civic, 2026-10-15):** for users like **LAO** (penalty
+present), Civic caps displayed charity/volunteer project rows so
+`sum(display ME) === displayMerits(by_category.*)` — see
+`packages/shared/src/project-me-cap.ts`. Rovas JSON remains gross.

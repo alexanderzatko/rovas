@@ -39,7 +39,7 @@ env): [`civic-deploy.md`](civic-deploy.md).
 | Status | Slug | File | Notes |
 |--------|------|------|-------|
 | active | gifts-top-charities-attribution | [`active/gifts-top-charities-attribution.md`](civic_tasks/active/gifts-top-charities-attribution.md) | EUR buy-ME → project 1992 (configurable); `top_charities` += buy-ME + timeshare; deploy/smoke pending |
-| done | volunteer-tab-vs-top-projects | [`done/volunteer-tab-vs-top-projects.md`](civic_tasks/done/volunteer-tab-vs-top-projects.md) | Ledger-based `top_volunteer_projects`; with penalty, tab &lt; gross projects is Civic-side |
+| done | volunteer-tab-vs-top-projects | [`done/volunteer-tab-vs-top-projects.md`](civic_tasks/done/volunteer-tab-vs-top-projects.md) | Ledger-based `top_volunteer_projects`; Civic caps displayed project ME after penalty (`capProjectRowsToCategory`) |
 | done | penalty-proportional-by-category | [`done/penalty-proportional-by-category.md`](civic_tasks/done/penalty-proportional-by-category.md) | Proportional penalty in Rovas `by_category`; smoked on rovdev |
 | done | charity-org-basic-info | [`done/charity-org-basic-info.md`](civic_tasks/done/charity-org-basic-info.md) | `org_id`, `country`, `website_url`, `iban_verified` + ungated `donate_iban` on `civic_project`; smoked on rovdev |
 | done | receipt-history-retention | [`done/receipt-history-retention.md`](civic_tasks/done/receipt-history-retention.md) | Keep vs 90-day policy on `/rovas/me` + `POST /rovas/civic_receipt_history_preference`; scrub merchant/purchase_at; smoked on rovdev |
