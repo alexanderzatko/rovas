@@ -1,5 +1,5 @@
 ---
-status: active
+status: done
 slug: volunteer-tab-vs-top-projects
 owner_repo: rovas
 created: 2026-10-15
@@ -75,7 +75,7 @@ No new endpoint. Expected relationship on
 |----------|------|
 | `by_source.penalty` | If present and ≠ 0, document how much hits `volunteer` after proportional split ([penalty-proportional-by-category](../done/penalty-proportional-by-category.md)). |
 | Without penalty | `sum(top_volunteer_projects[].me)` ≤ `by_source.volunteer_work` and ≤ `by_category.volunteer`. |
-| With penalty only | Tab may drop below gross project rows after remap; document if needed. **Not** Filip009. |
+| With penalty only | Tab may drop below gross project rows after remap (e.g. LAO: volunteer **~3** vs projects sum **~7.53**). Scaling project rows to the post-penalty category is a **Civic** follow-up — Rovas keeps gross earned attribution. |
 
 ### Checklist
 
@@ -84,8 +84,8 @@ No new endpoint. Expected relationship on
 3. [x] Break down Openstreetmap: co_worker allocation **21.39**, WR ledger **0**, ledger OSM volunteer_work **7.48** — allocation drift, not double-count.
 4. [x] Charity **147.28** = timeshare on project 35259; OSM ME not misclassified as charity.
 5. [x] Fix: ledger-based `top_volunteer_projects` (code in `rovas_civic.module`).
-6. [ ] Re-smoke Filip009 + Jožo Sečík on rovdev after deploy.
-7. [ ] Deploy rovdev + smoke (human unless asked).
+6. [x] Re-smoke Filip009 + Jožo Sečík on rovdev after deploy.
+7. [x] Deploy rovdev + smoke (human unless asked).
 
 ### Smoke test
 
