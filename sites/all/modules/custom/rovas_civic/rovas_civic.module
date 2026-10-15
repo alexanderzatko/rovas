@@ -1889,11 +1889,16 @@ function rovas_civic_users_lookup_top_charities($uid, $lang = NULL) {
 /**
  * Top volunteer projects for a user.
  *
- * Sums (1) shareholder labor Merits on project / co-worker allocations and
- * (2) individually rewarded work-report Merits from the ledger (parent receipt
- * has field_rewarded_report → WR → field_project). CHR→ME / forex
- * (field_merit_source = volunteer) and rows without a rewarded report are
- * excluded from (2).
+ * Attributes ledger Merits already in the volunteer bucket
+ * (`field_merit_source` = volunteer_work or empty) to projects via:
+ * (1) shareholder project rewards — parent receipt `field_receipt_project`
+ *     (excludes WR receipts so paths stay disjoint);
+ * (2) individually rewarded work reports — parent receipt
+ *     `field_rewarded_report` → WR → `field_project`.
+ *
+ * Does **not** use allocation `field_merits_earned` (can drift above what the
+ * ledger credited). CHR→ME / forex (`volunteer`) is excluded. Sum of returned
+ * `me` is therefore ≤ `by_source.volunteer_work` (modulo rounding).
  *
  * @param int $uid
  * @param string|null $lang
@@ -1908,36 +1913,35 @@ function rovas_civic_users_lookup_top_volunteer_projects($uid, $lang = NULL) {
     return array();
   }
 
-  // Allocations + WR-linked ledger (disjoint today; UNION ALL then merge).
+  // Shareholder ledger + WR-linked ledger (disjoint; UNION ALL then merge).
   $sql = "
-    SELECT pn.nid AS nid, pn.title AS title, SUM(me.field_merits_earned_value) AS me
+    SELECT pn.nid AS nid, pn.title AS title, SUM(amt.field_reward_amount_value) AS me
     FROM {node} n
-    INNER JOIN {field_data_field_project} p
-      ON p.entity_id = n.nid AND p.entity_type = 'node' AND p.deleted = 0
-    INNER JOIN {node} pn ON pn.nid = p.field_project_target_id
-    INNER JOIN {field_data_field_merits_earned} me
-      ON me.entity_id = n.nid AND me.entity_type = 'node' AND me.deleted = 0
-    WHERE n.type = 'project_merit_allocation'
+    INNER JOIN {field_data_field_reward_recipient} rec
+      ON rec.entity_id = n.nid AND rec.entity_type = 'node' AND rec.deleted = 0
+    INNER JOIN {field_data_field_reward_amount} amt
+      ON amt.entity_id = n.nid AND amt.entity_type = 'node' AND amt.deleted = 0
+    INNER JOIN {field_data_field_parent_purchase_receipt} parent
+      ON parent.entity_id = n.nid AND parent.entity_type = 'node' AND parent.deleted = 0
+    INNER JOIN {field_data_field_receipt_project} rp
+      ON rp.entity_id = parent.field_parent_purchase_receipt_target_id
+      AND rp.entity_type = 'node' AND rp.deleted = 0
+    INNER JOIN {node} pn ON pn.nid = rp.field_receipt_project_target_id
+    LEFT JOIN {field_data_field_merit_source} src
+      ON src.entity_id = n.nid AND src.entity_type = 'node' AND src.deleted = 0
+    LEFT JOIN {field_data_field_rewarded_report} wr
+      ON wr.entity_id = parent.field_parent_purchase_receipt_target_id
+      AND wr.entity_type = 'node' AND wr.deleted = 0
+    WHERE n.type = 'merits_disbursement'
       AND n.status = 1
-      AND n.uid = :uid
-      AND me.field_merits_earned_value > 0
-    GROUP BY pn.nid, pn.title
-
-    UNION ALL
-
-    SELECT pn.nid AS nid, pn.title AS title, SUM(me.field_merits_earned_value) AS me
-    FROM {node} n
-    INNER JOIN {field_data_field_coworker} cw
-      ON cw.entity_id = n.nid AND cw.entity_type = 'node' AND cw.deleted = 0
-    INNER JOIN {field_data_field_project} p
-      ON p.entity_id = n.nid AND p.entity_type = 'node' AND p.deleted = 0
-    INNER JOIN {node} pn ON pn.nid = p.field_project_target_id
-    INNER JOIN {field_data_field_merits_earned} me
-      ON me.entity_id = n.nid AND me.entity_type = 'node' AND me.deleted = 0
-    WHERE n.type = 'co_worker_merit_allocation'
-      AND n.status = 1
-      AND cw.field_coworker_target_id = :uid
-      AND me.field_merits_earned_value > 0
+      AND rec.field_reward_recipient_target_id = :uid
+      AND amt.field_reward_amount_value > 0
+      AND wr.entity_id IS NULL
+      AND (
+        src.field_merit_source_value IS NULL
+        OR src.field_merit_source_value = ''
+        OR src.field_merit_source_value = 'volunteer_work'
+      )
     GROUP BY pn.nid, pn.title
 
     UNION ALL

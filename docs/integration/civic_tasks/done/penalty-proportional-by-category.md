@@ -1,5 +1,5 @@
 ---
-status: active
+status: done
 slug: penalty-proportional-by-category
 owner_repo: both
 created: 2026-10-15
@@ -43,9 +43,9 @@ Do **not** fold all of `penalty` into `volunteer`.
 
 1. [x] Update `rovas_merit_user_by_category()` in `rovas_merit.ledger.inc` to apply the same proportional penalty rules (allow negative category values; stop skipping `penalty` / `me <= 0` wholesale without allocation).
 2. [x] Align any doc comments / `civic-deploy.md` table that still say “Civic folds penalty into volunteer” / “Rovas `by_category` excludes penalty”.
-3. [ ] Rebuild merit-index snapshot on rovdev after deploy so stored `by_category` matches (cron or admin rebuild).
-4. [ ] Smoke-test below on rovdev (and optionally prod uid 2138 after prod deploy).
-5. [ ] Deploy rovdev + smoke (human unless asked)
+3. [x] Rebuild merit-index snapshot on rovdev after deploy so stored `by_category` matches (cron or admin rebuild).
+4. [x] Smoke-test below on rovdev (and optionally prod uid 2138 after prod deploy).
+5. [x] Deploy rovdev + smoke (human unless asked)
 
 ### Smoke test
 
