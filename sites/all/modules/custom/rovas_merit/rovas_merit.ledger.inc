@@ -738,26 +738,108 @@ function rovas_merit_user_by_source($uid) {
 }
 
 /**
+ * Map a by_source breakdown to Civic by_category buckets.
+ *
+ * Same rules as Civic @civic/shared categoriesFromMeritSources:
+ * tax_payment→taxes, charitable_donation→charity, volunteer_work+volunteer→volunteer;
+ * penalty is split across non-zero buckets proportionally (may go negative).
+ *
+ * @param array $by_source
+ *   source => float (from rovas_merit_user_by_source or sparse map).
+ *
+ * @return array
+ *   keys taxes, charity, volunteer (floats, 2 dp; may be negative).
+ */
+function rovas_merit_categories_from_by_source(array $by_source) {
+  $taxes = 0.0;
+  $charity = 0.0;
+  $volunteer = 0.0;
+  $penalty = 0.0;
+
+  foreach ($by_source as $source => $me) {
+    $me = (float) $me;
+    switch ($source) {
+      case ROVAS_MERIT_SOURCE_TAX_PAYMENT:
+        $taxes += $me;
+        break;
+
+      case ROVAS_MERIT_SOURCE_CHARITABLE_DONATION:
+        $charity += $me;
+        break;
+
+      case ROVAS_MERIT_SOURCE_VOLUNTEER_WORK:
+      case ROVAS_MERIT_SOURCE_VOLUNTEER:
+        $volunteer += $me;
+        break;
+
+      case ROVAS_MERIT_SOURCE_PENALTY:
+        $penalty += $me;
+        break;
+    }
+  }
+
+  if ($penalty != 0.0) {
+    $bases = array(
+      'taxes' => $taxes,
+      'charity' => $charity,
+      'volunteer' => $volunteer,
+    );
+    $weights = array();
+    foreach ($bases as $key => $value) {
+      if ($value > 0) {
+        $weights[$key] = $value;
+      }
+    }
+    if (empty($weights)) {
+      foreach ($bases as $key => $value) {
+        if ($value != 0.0) {
+          $weights[$key] = abs($value);
+        }
+      }
+    }
+    if (empty($weights)) {
+      $share = $penalty / 3.0;
+      $taxes += $share;
+      $charity += $share;
+      $volunteer += $share;
+    }
+    else {
+      $weight_sum = array_sum($weights);
+      foreach ($weights as $key => $weight) {
+        $share = $penalty * ($weight / $weight_sum);
+        if ($key === 'taxes') {
+          $taxes += $share;
+        }
+        elseif ($key === 'charity') {
+          $charity += $share;
+        }
+        else {
+          $volunteer += $share;
+        }
+      }
+    }
+  }
+
+  return array(
+    'taxes' => round($taxes, 2),
+    'charity' => round($charity, 2),
+    'volunteer' => round($volunteer, 2),
+  );
+}
+
+/**
  * Derive Civic by_category buckets from ledger sources.
+ *
+ * Allocates penalty proportionally across non-zero earned buckets (same as
+ * Civic categoriesFromMeritSources). Bucket totals may be negative.
  *
  * @param int $uid
  *
  * @return array
- *   keys taxes, charity, volunteer (non-negative floats).
+ *   keys taxes, charity, volunteer (floats, 2 dp; may be negative).
  */
 function rovas_merit_user_by_category($uid) {
-  $by_source = rovas_merit_user_by_source($uid);
-  $out = array('taxes' => 0.0, 'charity' => 0.0, 'volunteer' => 0.0);
-  foreach ($by_source as $source => $me) {
-    if ($me <= 0) {
-      continue;
-    }
-    $cat = rovas_merit_source_to_category($source);
-    if ($cat) {
-      $out[$cat] += $me;
-    }
-  }
-  return $out;
+  return rovas_merit_categories_from_by_source(rovas_merit_user_by_source($uid));
 }
 
 /**

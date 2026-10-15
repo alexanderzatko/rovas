@@ -272,7 +272,7 @@ inference — including the distinction between:
 | `volunteer` | volunteer | CHR→ME purchase |
 | `charitable_donation` | charity | EUR donations / EUR merit purchase; purchased **timeshare** ME |
 | `tax_payment` | taxes | Civic VAT claims |
-| `penalty` | (Rovas `by_category` excludes; Civic UI folds into volunteer) | Merit penalties |
+| `penalty` | Split across non-zero taxes/charity/volunteer proportionally (`rovas_merit_user_by_category()` + Civic `categoriesFromMeritSources`) | Merit penalties |
 
 So after code that improved source inference, always reclassify:
 
