@@ -1181,6 +1181,11 @@ section#block-rovas-comment-watch-pending .rovas-comment-watch-item {
     margin-bottom: 0.35em;
 }
 
+section#block-rovas-comment-watch-pending .rovas-comment-watch-dismiss {
+    margin-top: 4px;
+    margin-left: 0.6em;
+}
+
 fieldset#edit-about-author,
 fieldset#edit-report-info {
 	background-color: #d9edf7;

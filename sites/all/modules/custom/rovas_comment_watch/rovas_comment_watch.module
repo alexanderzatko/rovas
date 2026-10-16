@@ -447,8 +447,9 @@ function rovas_comment_watch_block_view($delta = '') {
     $dismiss = l(t('Do not show this message again'), 'comment-watch/dismiss/' . $row['nid'], array(
       'query' => drupal_get_destination(),
     ));
+    // Spacing via CSS class (same approach as trusted-user banner).
     $items[] = array(
-      'data' => '<div class="rovas-comment-watch-item">' . $text . ' ' . $dismiss . '</div>',
+      'data' => '<div class="rovas-comment-watch-item"><div class="rovas-comment-watch-text">' . $text . '</div><div class="rovas-comment-watch-dismiss">' . $dismiss . '</div></div>',
       'class' => array('rovas-comment-watch-li'),
     );
   }
