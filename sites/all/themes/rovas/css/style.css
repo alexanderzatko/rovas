@@ -1181,9 +1181,18 @@ section#block-rovas-comment-watch-pending .rovas-comment-watch-item {
     margin-bottom: 0.35em;
 }
 
+section#block-rovas-comment-watch-pending .rovas-comment-watch-node-link {
+    font-weight: bold;
+}
+
+/* Pull flush left with the block title (cancel list indent). */
 section#block-rovas-comment-watch-pending .rovas-comment-watch-dismiss {
     margin-top: 4px;
-    margin-left: 0.6em;
+    margin-left: -1.2em;
+}
+
+section#block-rovas-comment-watch-pending .rovas-comment-watch-dismiss-link {
+    font-weight: bold;
 }
 
 fieldset#edit-about-author,

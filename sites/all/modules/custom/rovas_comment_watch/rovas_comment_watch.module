@@ -433,7 +433,9 @@ function rovas_comment_watch_block_view($delta = '') {
 
   $items = array();
   foreach ($grouped as $row) {
-    $title_link = l($row['node_title'], $row['comment_path']);
+    $title_link = l($row['node_title'], $row['comment_path'], array(
+      'attributes' => array('class' => array('rovas-comment-watch-node-link')),
+    ));
     if ($row['count'] > 1) {
       $text = t('There are new comments on !title you are watching.', array(
         '!title' => $title_link,
@@ -446,6 +448,7 @@ function rovas_comment_watch_block_view($delta = '') {
     }
     $dismiss = l(t('Do not show this message again'), 'comment-watch/dismiss/' . $row['nid'], array(
       'query' => drupal_get_destination(),
+      'attributes' => array('class' => array('rovas-comment-watch-dismiss-link')),
     ));
     // Spacing via CSS class (same approach as trusted-user banner).
     $items[] = array(
