@@ -203,6 +203,7 @@ API-key auth **disabled** on these; Bearer `user_profile` where required.
 - `civic_merit_history`, `civic_my_projects`, `civic_projects_search`, `civic_nace_tree`
 - `civic_create_project`, `civic_create_work_report`, `civic_work_report_map_config`
 - `civic_pending_verifications`, `civic_work_report`, `civic_submit_verification`
+- `civic_pending_comment_notices` (requires module `rovas_comment_watch`)
 - `civic_merit_index`, `civic_merit_index_countries`
 
 **AI (`rovas_ai`):** `civic_ai_nace`

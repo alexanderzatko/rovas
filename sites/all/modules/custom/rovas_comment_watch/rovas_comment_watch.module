@@ -1,0 +1,463 @@
+<?php
+
+/**
+ * @file
+ * In-app + API notices for new comments on watched nodes.
+ *
+ * Audience matches Comment Notify email recipients. Persistence is separate
+ * from comment_notify.notified (which only means "email already sent").
+ */
+
+define('ROVAS_COMMENT_WATCH_PENDING', 'pending');
+define('ROVAS_COMMENT_WATCH_DISMISSED', 'dismissed');
+
+/**
+ * Implements hook_menu().
+ */
+function rovas_comment_watch_menu() {
+  $items['comment-watch/dismiss/%'] = array(
+    'title' => 'Dismiss comment watch notice',
+    'page callback' => 'rovas_comment_watch_dismiss_nid',
+    'page arguments' => array(2),
+    'access callback' => 'user_is_logged_in',
+    'type' => MENU_CALLBACK,
+  );
+  return $items;
+}
+
+/**
+ * Permanently dismiss all pending notices for the current user on a node.
+ *
+ * @param int $nid
+ *   Node id.
+ */
+function rovas_comment_watch_dismiss_nid($nid) {
+  global $user;
+  $nid = (int) $nid;
+  if (!empty($user->uid) && $nid > 0) {
+    rovas_comment_watch_dismiss_for_user_node($user->uid, $nid);
+  }
+  $destination = drupal_get_destination();
+  if (!empty($destination['destination'])) {
+    drupal_goto($destination['destination']);
+  }
+  drupal_goto('<front>');
+}
+
+/**
+ * Implements hook_init().
+ *
+ * Auto-clear a pending notice when the user opens the comment permalink
+ * (comment/{cid}), before comment_permalink rewrites the path to node/{nid}.
+ */
+function rovas_comment_watch_init() {
+  global $user;
+  if (empty($user->uid) || drupal_is_cli()) {
+    return;
+  }
+  if (arg(0) !== 'comment' || !is_numeric(arg(1))) {
+    return;
+  }
+  // Only the permalink itself (not edit/delete/approve).
+  if (arg(2) !== NULL && arg(2) !== '') {
+    return;
+  }
+  rovas_comment_watch_dismiss_for_user_comment($user->uid, (int) arg(1));
+}
+
+/**
+ * Implements hook_comment_insert().
+ */
+function rovas_comment_watch_comment_insert($comment) {
+  if (!empty($comment->status) && (int) $comment->status === COMMENT_PUBLISHED) {
+    rovas_comment_watch_create_notices_for_comment($comment);
+  }
+}
+
+/**
+ * Implements hook_comment_publish().
+ */
+function rovas_comment_watch_comment_publish($comment) {
+  rovas_comment_watch_create_notices_for_comment($comment);
+}
+
+/**
+ * Implements hook_comment_update().
+ *
+ * Mirror Comment Notify: only act on published comments that have not already
+ * been notification-processed (edits should not re-notify).
+ */
+function rovas_comment_watch_comment_update($comment) {
+  if (empty($comment->status) || (int) $comment->status !== COMMENT_PUBLISHED) {
+    return;
+  }
+  // comment_notify sets notified=1 after first mail; skip re-create on edits.
+  if (!empty($comment->notified)) {
+    return;
+  }
+  // If we already have any notice rows for this cid, treat as already handled.
+  $exists = (bool) db_query_range('SELECT 1 FROM {rovas_comment_watch_notice} WHERE cid = :cid', 0, 1, array(
+    ':cid' => (int) $comment->cid,
+  ))->fetchField();
+  if ($exists) {
+    return;
+  }
+  rovas_comment_watch_create_notices_for_comment($comment);
+}
+
+/**
+ * Implements hook_comment_unpublish().
+ */
+function rovas_comment_watch_comment_unpublish($comment) {
+  rovas_comment_watch_delete_for_comment($comment->cid);
+}
+
+/**
+ * Implements hook_comment_delete().
+ */
+function rovas_comment_watch_comment_delete($comment) {
+  rovas_comment_watch_delete_for_comment($comment->cid);
+}
+
+/**
+ * Create pending notice rows for Comment Notify-equivalent recipients.
+ *
+ * @param object $comment
+ *   Comment entity.
+ */
+function rovas_comment_watch_create_notices_for_comment($comment) {
+  if (!module_exists('comment_notify')) {
+    return;
+  }
+  module_load_include('inc', 'comment_notify', 'comment_notify');
+
+  $comment = (object) $comment;
+  if (empty($comment->cid) || empty($comment->nid)) {
+    return;
+  }
+  if (empty($comment->status) || (int) $comment->status !== COMMENT_PUBLISHED) {
+    return;
+  }
+
+  $node = node_load($comment->nid);
+  if (!$node) {
+    return;
+  }
+
+  $enabled_types = variable_get('comment_notify_node_types', array($node->type => TRUE));
+  if (empty($enabled_types[$node->type])) {
+    return;
+  }
+
+  $uids = rovas_comment_watch_recipient_uids($comment, $node);
+  $created = REQUEST_TIME;
+  foreach ($uids as $uid) {
+    rovas_comment_watch_insert_notice($uid, $comment->nid, $comment->cid, $created);
+  }
+}
+
+/**
+ * Resolve logged-in recipient uids using Comment Notify mail rules.
+ *
+ * @param object $comment
+ * @param object $node
+ *
+ * @return int[]
+ *   Unique user ids (uid > 0 only; anonymous email-only watchers skipped).
+ */
+function rovas_comment_watch_recipient_uids($comment, $node) {
+  global $user;
+
+  $uids = array();
+  $commenter_uid = isset($comment->uid) ? (int) $comment->uid : 0;
+
+  // Node author (same conditions as _comment_notify_mailalert author branch).
+  $author = user_load($node->uid);
+  if ($author && !empty($author->uid)) {
+    $wants_node = (!empty($author->comment_notify_settings->node_notify) && (int) $author->comment_notify_settings->node_notify === 1)
+      || (comment_notify_variable_registry_get('node_notify_default_mailalert') == 1 && !isset($author->comment_notify_settings->node_notify));
+    if ($wants_node
+      && (int) $user->uid !== (int) $author->uid
+      && (int) $commenter_uid !== (int) $author->uid
+      && node_access('view', $node, $author)
+      && !empty($author->mail)) {
+      $uids[(int) $author->uid] = (int) $author->uid;
+    }
+  }
+
+  $thread = isset($comment->thread) ? $comment->thread : '';
+  $watchers = comment_notify_get_watchers($node->nid);
+
+  if (empty($comment->mail)) {
+    $comment_account = !empty($comment->name) ? user_load_by_name($comment->name) : FALSE;
+    $comment_mail = ($comment_account && !empty($comment_account->mail)) ? $comment_account->mail : '';
+  }
+  else {
+    $comment_mail = $comment->mail;
+  }
+  $comment_mail_lc = strtolower($comment_mail);
+  $sent_to = array();
+  if (!empty($author->mail) && isset($uids[(int) $author->uid])) {
+    $sent_to[] = strtolower($author->mail);
+  }
+
+  foreach ($watchers as $alert) {
+    if (empty($alert->uid)) {
+      continue;
+    }
+    $recipient_user = user_load($alert->uid);
+    if (!$recipient_user || empty($recipient_user->uid) || empty($recipient_user->status)) {
+      continue;
+    }
+    $mail = !empty($recipient_user->mail) ? $recipient_user->mail : (isset($alert->cmail) ? $alert->cmail : '');
+    if ($mail === '') {
+      continue;
+    }
+
+    $relevant_thread = drupal_substr($thread, 0, drupal_strlen($alert->thread) - 1);
+    if ((int) $alert->notify === COMMENT_NOTIFY_COMMENT && strcmp($relevant_thread . '/', $alert->thread) != 0) {
+      continue;
+    }
+
+    $mail_lc = strtolower($mail);
+    if ($mail_lc === $comment_mail_lc || in_array($mail_lc, $sent_to, TRUE)) {
+      continue;
+    }
+    if ((int) $alert->uid === $commenter_uid) {
+      continue;
+    }
+    if (!node_access('view', $node, $recipient_user)) {
+      continue;
+    }
+
+    $uids[(int) $alert->uid] = (int) $alert->uid;
+    $sent_to[] = $mail_lc;
+  }
+
+  return array_values($uids);
+}
+
+/**
+ * Insert a pending notice row (no-op if uid+cid already exists).
+ *
+ * @param int $uid
+ * @param int $nid
+ * @param int $cid
+ * @param int $created
+ */
+function rovas_comment_watch_insert_notice($uid, $nid, $cid, $created = NULL) {
+  $uid = (int) $uid;
+  $nid = (int) $nid;
+  $cid = (int) $cid;
+  if ($uid < 1 || $nid < 1 || $cid < 1) {
+    return;
+  }
+  if ($created === NULL) {
+    $created = REQUEST_TIME;
+  }
+
+  $exists = (bool) db_query('SELECT 1 FROM {rovas_comment_watch_notice} WHERE uid = :uid AND cid = :cid', array(
+    ':uid' => $uid,
+    ':cid' => $cid,
+  ))->fetchField();
+  if ($exists) {
+    return;
+  }
+
+  try {
+    db_insert('rovas_comment_watch_notice')
+      ->fields(array(
+        'uid' => $uid,
+        'nid' => $nid,
+        'cid' => $cid,
+        'created' => (int) $created,
+        'status' => ROVAS_COMMENT_WATCH_PENDING,
+      ))
+      ->execute();
+  }
+  catch (Exception $e) {
+    // Race on unique (uid, cid): ignore.
+  }
+}
+
+/**
+ * Dismiss all pending notices for a user on a node.
+ *
+ * @param int $uid
+ * @param int $nid
+ */
+function rovas_comment_watch_dismiss_for_user_node($uid, $nid) {
+  db_update('rovas_comment_watch_notice')
+    ->fields(array('status' => ROVAS_COMMENT_WATCH_DISMISSED))
+    ->condition('uid', (int) $uid)
+    ->condition('nid', (int) $nid)
+    ->condition('status', ROVAS_COMMENT_WATCH_PENDING)
+    ->execute();
+}
+
+/**
+ * Dismiss a pending notice for a user+comment (permalink auto-clear).
+ *
+ * @param int $uid
+ * @param int $cid
+ */
+function rovas_comment_watch_dismiss_for_user_comment($uid, $cid) {
+  db_update('rovas_comment_watch_notice')
+    ->fields(array('status' => ROVAS_COMMENT_WATCH_DISMISSED))
+    ->condition('uid', (int) $uid)
+    ->condition('cid', (int) $cid)
+    ->condition('status', ROVAS_COMMENT_WATCH_PENDING)
+    ->execute();
+}
+
+/**
+ * Delete all notice rows for a comment.
+ *
+ * @param int $cid
+ */
+function rovas_comment_watch_delete_for_comment($cid) {
+  db_delete('rovas_comment_watch_notice')
+    ->condition('cid', (int) $cid)
+    ->execute();
+}
+
+/**
+ * Pending notice rows for a user (flat, newest first).
+ *
+ * @param int $uid
+ *
+ * @return array
+ *   List of assoc arrays: nid, node_title, cid, comment_url, created, count_on_node.
+ *   One entry per pending cid (API shape). Use
+ *   rovas_comment_watch_pending_grouped() for the block.
+ */
+function rovas_comment_watch_pending_for_user($uid) {
+  $uid = (int) $uid;
+  if ($uid < 1) {
+    return array();
+  }
+
+  $rows = db_query('SELECT n.nid, n.cid, n.created, node.title AS node_title
+    FROM {rovas_comment_watch_notice} n
+    INNER JOIN {node} node ON node.nid = n.nid
+    INNER JOIN {comment} c ON c.cid = n.cid AND c.status = :published
+    WHERE n.uid = :uid AND n.status = :pending
+    ORDER BY n.created DESC, n.cid DESC', array(
+    ':uid' => $uid,
+    ':pending' => ROVAS_COMMENT_WATCH_PENDING,
+    ':published' => COMMENT_PUBLISHED,
+  ))->fetchAll(PDO::FETCH_ASSOC);
+
+  // Count pending cids per nid for optional plural UI.
+  $counts = array();
+  foreach ($rows as $row) {
+    $nid = (int) $row['nid'];
+    if (!isset($counts[$nid])) {
+      $counts[$nid] = 0;
+    }
+    $counts[$nid]++;
+  }
+
+  $items = array();
+  foreach ($rows as $row) {
+    $cid = (int) $row['cid'];
+    $nid = (int) $row['nid'];
+    $items[] = array(
+      'nid' => $nid,
+      'node_title' => $row['node_title'],
+      'cid' => $cid,
+      'comment_url' => url('comment/' . $cid, array('absolute' => TRUE)),
+      'created' => (int) $row['created'],
+      'count_on_node' => $counts[$nid],
+    );
+  }
+  return $items;
+}
+
+/**
+ * Pending notices grouped by node for the header block.
+ *
+ * @param int $uid
+ *
+ * @return array
+ *   List keyed by nid with: nid, node_title, cid (newest), count, comment_path.
+ */
+function rovas_comment_watch_pending_grouped($uid) {
+  $flat = rovas_comment_watch_pending_for_user($uid);
+  $grouped = array();
+  foreach ($flat as $item) {
+    $nid = $item['nid'];
+    if (isset($grouped[$nid])) {
+      continue;
+    }
+    $grouped[$nid] = array(
+      'nid' => $nid,
+      'node_title' => $item['node_title'],
+      'cid' => $item['cid'],
+      'count' => $item['count_on_node'],
+      'comment_path' => 'comment/' . $item['cid'],
+    );
+  }
+  return array_values($grouped);
+}
+
+/**
+ * Implements hook_block_info().
+ */
+function rovas_comment_watch_block_info() {
+  return array(
+    'pending' => array(
+      'info' => t('Pending watched-comment notices'),
+      // Notices change when others comment; avoid stale per-user page cache.
+      'cache' => DRUPAL_NO_CACHE,
+    ),
+  );
+}
+
+/**
+ * Implements hook_block_view().
+ */
+function rovas_comment_watch_block_view($delta = '') {
+  if ($delta !== 'pending') {
+    return array();
+  }
+  global $user;
+  if (empty($user->uid)) {
+    return array();
+  }
+
+  $grouped = rovas_comment_watch_pending_grouped($user->uid);
+  if (empty($grouped)) {
+    return array();
+  }
+
+  $items = array();
+  foreach ($grouped as $row) {
+    $title_link = l($row['node_title'], $row['comment_path']);
+    if ($row['count'] > 1) {
+      $text = t('There are new comments on !title you are watching.', array(
+        '!title' => $title_link,
+      ));
+    }
+    else {
+      $text = t('There is a new comment on !title you are watching.', array(
+        '!title' => $title_link,
+      ));
+    }
+    $dismiss = l(t('Do not show this message again'), 'comment-watch/dismiss/' . $row['nid'], array(
+      'query' => drupal_get_destination(),
+    ));
+    $items[] = array(
+      'data' => '<div class="rovas-comment-watch-item">' . $text . ' ' . $dismiss . '</div>',
+      'class' => array('rovas-comment-watch-li'),
+    );
+  }
+
+  return array(
+    'subject' => t('New comments you are watching'),
+    'content' => theme('item_list', array(
+      'items' => $items,
+      'attributes' => array('class' => array('rovas-comment-watch-list')),
+    )),
+  );
+}

@@ -48,6 +48,18 @@ function rovas_api_endpoints_services_resources() {
         ),
       ),
     ),
+    'rovas_comment_notices' => array(
+      'operations' => array(
+        'index' => array(
+          'help' => 'Pending watched-comment notices for the authenticated partner API user (Comment Notify audience).',
+          'callback' => 'rovas_api_endpoints_get_comment_notices',
+          'access callback' => 'rovas_api_endpoints_access_callback',
+          'access arguments' => array('access'),
+          'access arguments append' => FALSE,
+          'args' => array(),
+        ),
+      ),
+    ),
     'rovas_hybridauth_providers' => array(
       'operations' => array(
         'index' => array(
@@ -146,6 +158,47 @@ function rovas_api_endpoints_get_active_verifications() {
   } catch (Exception $e) {
     watchdog('rovas_api_endpoints', 'Error retrieving verifications: @message', array('@message' => $e->getMessage()), WATCHDOG_ERROR);
     return services_error(t('Unable to retrieve verifications'), 500);
+  }
+}
+
+/**
+ * Services callback: pending watched-comment notices for the API user.
+ *
+ * @return array
+ */
+function rovas_api_endpoints_get_comment_notices() {
+  global $user;
+
+  if (empty($user->uid)) {
+    return services_error(t('User not authenticated'), 401);
+  }
+
+  if (!function_exists('rovas_comment_watch_pending_for_user')) {
+    return services_error(t('Comment watch notices not available'), 500);
+  }
+
+  try {
+    $rows = rovas_comment_watch_pending_for_user($user->uid);
+    $notices = array();
+    foreach ($rows as $row) {
+      $notices[] = array(
+        'nid' => (int) $row['nid'],
+        'node_title' => $row['node_title'],
+        'cid' => (int) $row['cid'],
+        'comment_url' => $row['comment_url'],
+        'created' => (int) $row['created'],
+      );
+    }
+
+    return array(
+      'status' => 'success',
+      'count' => count($notices),
+      'notices' => $notices,
+    );
+  }
+  catch (Exception $e) {
+    watchdog('rovas_api_endpoints', 'Error retrieving comment notices: @message', array('@message' => $e->getMessage()), WATCHDOG_ERROR);
+    return services_error(t('Unable to retrieve comment notices'), 500);
   }
 }
 

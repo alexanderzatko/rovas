@@ -1,0 +1,143 @@
+<?php
+
+/**
+ * @file
+ * Install, schema, and updates for Rovas Comment Watch.
+ */
+
+/**
+ * Implements hook_schema().
+ */
+function rovas_comment_watch_schema() {
+  $schema['rovas_comment_watch_notice'] = array(
+    'description' => 'Pending/dismissed in-app notices for Comment Notify watchers.',
+    'fields' => array(
+      'id' => array(
+        'type' => 'serial',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'description' => 'Primary key.',
+      ),
+      'uid' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 0,
+        'description' => 'User who should see the notice.',
+      ),
+      'nid' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 0,
+        'description' => 'Node the comment belongs to.',
+      ),
+      'cid' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 0,
+        'description' => 'Comment that triggered the notice.',
+      ),
+      'created' => array(
+        'type' => 'int',
+        'not null' => TRUE,
+        'default' => 0,
+        'description' => 'Unix timestamp when the notice was created.',
+      ),
+      'status' => array(
+        'type' => 'varchar',
+        'length' => 16,
+        'not null' => TRUE,
+        'default' => 'pending',
+        'description' => 'pending or dismissed.',
+      ),
+    ),
+    'primary key' => array('id'),
+    'unique keys' => array(
+      'uid_cid' => array('uid', 'cid'),
+    ),
+    'indexes' => array(
+      'uid_status' => array('uid', 'status'),
+      'nid' => array('nid'),
+      'cid' => array('cid'),
+    ),
+  );
+
+  return $schema;
+}
+
+/**
+ * Implements hook_install().
+ */
+function rovas_comment_watch_install() {
+  rovas_comment_watch_ensure_header_block();
+}
+
+/**
+ * Implements hook_enable().
+ */
+function rovas_comment_watch_enable() {
+  rovas_comment_watch_ensure_header_block();
+}
+
+/**
+ * Place the pending-notices block in the rovas theme header region.
+ */
+function rovas_comment_watch_ensure_header_block() {
+  $theme = 'rovas';
+  $module = 'rovas_comment_watch';
+  $delta = 'pending';
+
+  $existing = db_query('SELECT bid, status, region FROM {block} WHERE module = :module AND delta = :delta AND theme = :theme', array(
+    ':module' => $module,
+    ':delta' => $delta,
+    ':theme' => $theme,
+  ))->fetchObject();
+
+  if ($existing) {
+    if ((int) $existing->status !== 1 || $existing->region !== 'header') {
+      db_update('block')
+        ->fields(array(
+          'status' => 1,
+          'region' => 'header',
+        ))
+        ->condition('bid', $existing->bid)
+        ->execute();
+    }
+    return;
+  }
+
+  // Place below pending-verifications custom block when present.
+  $weight = 0;
+  $verify_weight = db_query("SELECT weight FROM {block} WHERE theme = :theme AND module = 'block' AND delta = '12'", array(
+    ':theme' => $theme,
+  ))->fetchField();
+  if ($verify_weight !== FALSE) {
+    $weight = ((int) $verify_weight) + 1;
+  }
+
+  db_insert('block')
+    ->fields(array(
+      'module' => $module,
+      'delta' => $delta,
+      'theme' => $theme,
+      'status' => 1,
+      'weight' => $weight,
+      'region' => 'header',
+      'custom' => 0,
+      'visibility' => 0,
+      'pages' => '',
+      'title' => '',
+      'cache' => DRUPAL_NO_CACHE,
+    ))
+    ->execute();
+}
+
+/**
+ * Ensure header block placement after schema install on existing sites.
+ */
+function rovas_comment_watch_update_7001() {
+  rovas_comment_watch_ensure_header_block();
+  return t('Placed Rovas Comment Watch pending block in the rovas header region.');
+}

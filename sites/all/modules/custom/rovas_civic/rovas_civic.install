@@ -762,3 +762,13 @@ function rovas_civic_update_7027() {
     '@n' => $inserted,
   ));
 }
+
+/**
+ * Enable Civic pending watched-comment notices pull API.
+ */
+function rovas_civic_update_7028() {
+  if (function_exists('rovas_civic_ensure_services_resources')) {
+    rovas_civic_ensure_services_resources();
+  }
+  return t('Civic pending comment notices API (GET /rovas/civic_pending_comment_notices) enabled on rovas_endpoint.');
+}

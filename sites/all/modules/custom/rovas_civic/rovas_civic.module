@@ -293,6 +293,7 @@ function rovas_civic_node_insert($node) {
  * - GET  /rovas/civic_work_report_map_config (map proof widget)
  * - GET  /rovas/civic_pending_verifications, civic_work_report/{nid}
  * - POST /rovas/civic_submit_verification
+ * - GET  /rovas/civic_pending_comment_notices (watched-comment pull notices)
  * - GET  /rovas/civic_merit_index (Prínos / Merit Index leaderboard)
  * - GET  /rovas/civic_merit_index_countries (Prínos country filter dropdown)
  * - GET  /rovas/civic_merit_spotlight (period leads by Civic area)
@@ -325,6 +326,11 @@ function rovas_civic_services_resources() {
     'type' => 'inc',
     'module' => 'rovas_civic',
     'name' => 'rovas_civic.verify',
+  );
+  $comment_watch_file = array(
+    'type' => 'inc',
+    'module' => 'rovas_civic',
+    'name' => 'rovas_civic.comment_watch',
   );
   $merit_index_file = array(
     'type' => 'inc',
@@ -840,6 +846,19 @@ function rovas_civic_services_resources() {
               'default value' => '',
             ),
           ),
+        ),
+      ),
+    ),
+    'civic_pending_comment_notices' => array(
+      'operations' => array(
+        'index' => array(
+          'help' => 'Pending watched-comment notices for the Bearer user (Comment Notify audience). Poll-based; Bearer required.',
+          'callback' => 'rovas_civic_services_pending_comment_notices_index',
+          'file' => $comment_watch_file,
+          'access callback' => $bearer_auth['access callback'],
+          'access arguments' => $bearer_auth['access arguments'],
+          'access arguments append' => $bearer_auth['access arguments append'],
+          'args' => array(),
         ),
       ),
     ),
@@ -3735,7 +3754,7 @@ function rovas_civic_ensure_services_resources() {
     $changed = TRUE;
   }
 
-  foreach (array('civic_pending_verifications') as $res_name) {
+  foreach (array('civic_pending_verifications', 'civic_pending_comment_notices') as $res_name) {
     if (empty($endpoint->resources[$res_name])
       || $endpoint->resources[$res_name] != $civic_index_resource) {
       $endpoint->resources[$res_name] = $civic_index_resource;

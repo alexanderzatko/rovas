@@ -1,0 +1,7 @@
+name = Rovas Comment Watch
+description = In-app and API notices for new comments on nodes the user is watching (Comment Notify audience).
+core = 7.x
+package = Rovas
+
+dependencies[] = comment
+dependencies[] = comment_notify

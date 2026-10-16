@@ -1158,6 +1158,29 @@ section#block-block-12 h2.block-title {
     margin-bottom: -9px;
 }
 
+/* Pending watched-comment notices (rovas_comment_watch) */
+section#block-rovas-comment-watch-pending {
+    padding: 15px;
+    border-radius: 12px;
+    margin-bottom: 30px;
+    background-color: rgb(255, 161, 8);
+    width: fit-content;
+}
+
+section#block-rovas-comment-watch-pending h2.block-title {
+    margin-top: unset;
+    margin-bottom: -9px;
+}
+
+section#block-rovas-comment-watch-pending ul.rovas-comment-watch-list {
+    margin: 12px 0 0;
+    padding-left: 1.2em;
+}
+
+section#block-rovas-comment-watch-pending .rovas-comment-watch-item {
+    margin-bottom: 0.35em;
+}
+
 fieldset#edit-about-author,
 fieldset#edit-report-info {
 	background-color: #d9edf7;
