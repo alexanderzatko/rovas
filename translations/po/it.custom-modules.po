@@ -294,6 +294,7 @@ msgid "You can have your work reports immediately approved and can also stop ver
 msgstr "Potete far approvare immediatamente i vostri rapporti di lavoro e anche smettere di verificare i rapporti di altri utenti. Potete impostare questi vantaggi nelle <a href=\"@profile\">impostazioni dell’account</a>."
 
 #: sites/all/modules/custom/rovas_user/rovas_user.module
+#: sites/all/modules/custom/rovas_comment_watch/rovas_comment_watch.module
 msgid "Do not show this message again"
 msgstr "Non mostrare più questo messaggio"
 
@@ -324,3 +325,23 @@ msgstr "Saldo di apertura"
 #: sites/all/modules/custom/rovas_chron/rovas_chron.ledger.inc
 msgid "Opening balance at Chron ledger cutover (no wallet change; closes Chron-tab drift)."
 msgstr "Saldo di apertura al passaggio al ledger Chron (senza modifica del portafoglio; chiude lo scostamento della scheda Chron)."
+
+#: sites/all/modules/custom/rovas_comment_watch/rovas_comment_watch.module
+msgid "Dismiss comment watch notice"
+msgstr "Chiudi avviso commento seguito"
+
+#: sites/all/modules/custom/rovas_comment_watch/rovas_comment_watch.module
+msgid "Pending watched-comment notices"
+msgstr "Avvisi in sospeso sui commenti seguiti"
+
+#: sites/all/modules/custom/rovas_comment_watch/rovas_comment_watch.module
+msgid "New comments you are watching"
+msgstr "Nuovi commenti che stai seguendo"
+
+#: sites/all/modules/custom/rovas_comment_watch/rovas_comment_watch.module
+msgid "There is a new comment on !title you are watching."
+msgstr "C’è un nuovo commento su !title che stai seguendo."
+
+#: sites/all/modules/custom/rovas_comment_watch/rovas_comment_watch.module
+msgid "There are new comments on !title you are watching."
+msgstr "Ci sono nuovi commenti su !title che stai seguendo."

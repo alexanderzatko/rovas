@@ -314,6 +314,7 @@ msgid "You can have your work reports immediately approved and can also stop ver
 msgstr "Vaše pracovní výkazy můžete mít okamžitě schválené a můžete také přestat ověřovat zprávy jiných uživatelů. Tyto výhody si můžete nastavit v <a href=\"@profile\">nastavení účtu</a>."
 
 #: sites/all/modules/custom/rovas_user/rovas_user.module
+#: sites/all/modules/custom/rovas_comment_watch/rovas_comment_watch.module
 msgid "Do not show this message again"
 msgstr "Tuto zprávu již nezobrazovat"
 
@@ -344,3 +345,23 @@ msgstr "Počáteční zůstatek"
 #: sites/all/modules/custom/rovas_chron/rovas_chron.ledger.inc
 msgid "Opening balance at Chron ledger cutover (no wallet change; closes Chron-tab drift)."
 msgstr "Počáteční zůstatek při přechodu na Chron ledger (bez změny peněženky; uzavře odchylku Chron karty)."
+
+#: sites/all/modules/custom/rovas_comment_watch/rovas_comment_watch.module
+msgid "Dismiss comment watch notice"
+msgstr "Zavřít upozornění na komentář"
+
+#: sites/all/modules/custom/rovas_comment_watch/rovas_comment_watch.module
+msgid "Pending watched-comment notices"
+msgstr "Čekající upozornění na sledované komentáře"
+
+#: sites/all/modules/custom/rovas_comment_watch/rovas_comment_watch.module
+msgid "New comments you are watching"
+msgstr "Nové komentáře, které sledujete"
+
+#: sites/all/modules/custom/rovas_comment_watch/rovas_comment_watch.module
+msgid "There is a new comment on !title you are watching."
+msgstr "Na !title, který sledujete, je nový komentář."
+
+#: sites/all/modules/custom/rovas_comment_watch/rovas_comment_watch.module
+msgid "There are new comments on !title you are watching."
+msgstr "Na !title, který sledujete, jsou nové komentáře."

@@ -209,6 +209,7 @@ msgid "You can have your work reports immediately approved and can also stop ver
 msgstr ""
 
 #: sites/all/modules/custom/rovas_user/rovas_user.module
+#: sites/all/modules/custom/rovas_comment_watch/rovas_comment_watch.module
 msgid "Do not show this message again"
 msgstr ""
 
@@ -218,4 +219,24 @@ msgstr ""
 
 #: sites/all/modules/custom/rovas_report_form/rovas_report_form.module
 msgid "Work can only be reported if it started within the last 30 days."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_comment_watch/rovas_comment_watch.module
+msgid "Dismiss comment watch notice"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_comment_watch/rovas_comment_watch.module
+msgid "Pending watched-comment notices"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_comment_watch/rovas_comment_watch.module
+msgid "New comments you are watching"
+msgstr ""
+
+#: sites/all/modules/custom/rovas_comment_watch/rovas_comment_watch.module
+msgid "There is a new comment on !title you are watching."
+msgstr ""
+
+#: sites/all/modules/custom/rovas_comment_watch/rovas_comment_watch.module
+msgid "There are new comments on !title you are watching."
 msgstr ""
