@@ -84,6 +84,7 @@ curl -sS "https://dev.rovas.app/rovas/civic_pending_comment_notices" \
 
 ### Civic will consume
 
-Optional later: poll on home/resume and deep-link to the comment (or show an
-in-app list). Outbound Expo push on notice create is out of scope (same as
-verify Phase 4).
+**Done on Civic:** polls `GET /comment-notices/pending` (proxies this endpoint)
+on home/resume; header banner opens `comment_url` in the system browser for
+now (rewire to in-Civic comments later). Outbound Expo push on notice create
+is out of scope (same as verify Phase 4).

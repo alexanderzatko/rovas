@@ -330,10 +330,10 @@ When **no** Bearer: omit `user_`* fields. When Bearer present: fill them.
 
 ## Related Civic docs
 
+- Public / partner API guides (classic + OAuth): [`../api/`](../api/) — keep NeoFund `rovas-api` pages in sync when contracts change
 - Task specs: [`civic_tasks/`](civic_tasks/)
-
 - Deploy / enable on a prod clone: [`civic-deploy.md`](civic-deploy.md)
 - Plan: `~/Documents/homeProjects/civic/docs/plan.md` (§6 claim SoT, §7 split claims, §8b claim rule, §15 phases)
-- NeoFund: `~/Documents/Business/NeoFund_NP/` (State Treasury, Path-1 donor Merit, A12)
+- NeoFund: `~/Documents/Business/NeoFund_NP/` (State Treasury, Path-1 donor Merit, A12; public API page `web/site/src/content/pages/rovas-api/`)
 - Civic API/Expo: `~/Documents/homeProjects/civic/docs/rovas-integration.md`
 - Mockup (home UX): `~/Documents/homeProjects/civic/mocs/civic-mockup.canvas.tsx`
