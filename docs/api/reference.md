@@ -59,6 +59,7 @@ Schema details for classic Rules bodies: [`rovasApi.yml`](../../sites/all/module
 | `POST` | `/rovas/rules/rules_proxy_check_verifier_by_access_tokens` | see OpenAPI | Verifiability via access tokens |
 | `POST` | `/rovas/rules/rules_proxy_reward_work_report` | API-KEY | Reward a work report |
 | `GET` | `/rovas/rovas_verifications.json` | API-KEY | List work-report verifications |
+| `GET` | `/rovas/rovas_comment_notices.json` | API-KEY | Pending watched-comment notices (Comment Notify audience; same store as Civic Bearer twin) |
 | `PUT` | `/rovas/node/{id}` | API-KEY | Update node owned by key owner |
 | `DELETE` | `/rovas/node/{id}` | API-KEY | Delete node owned by key owner |
 

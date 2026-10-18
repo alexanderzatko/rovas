@@ -1096,6 +1096,59 @@ paths:
         required: false
         example: application/json
         description: Content type of the request.
+  /rovas/rovas_comment_notices.json:
+    get:
+      summary: Get pending watched-comment notices
+      description: |
+        Pending in-app/API notices for new comments on nodes the key owner is watching
+        (same Comment Notify audience as follow-up email). Poll-based; not an outbound
+        webhook. Twin of Bearer `GET /rovas/civic_pending_comment_notices` (different
+        response envelope). Requires module `rovas_comment_watch`. Path is
+        `/rovas/rovas_comment_notices` (not under `/rovas/rules/`).
+      tags:
+      - custom
+      responses:
+        '200':
+          description: JSON list of pending comment notices for the authenticated user
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommentNoticesResponse'
+              example:
+                status: success
+                count: 1
+                notices:
+                - nid: 123
+                  node_title: Example post
+                  cid: 456
+                  comment_url: https://dev.rovas.app/comment/456
+                  created: 1729100000
+        '401':
+          description: Missing or invalid API-KEY / TOKEN
+        '500':
+          description: Comment watch module unavailable or query failure
+      parameters:
+      - in: header
+        name: API-KEY
+        schema:
+          type: string
+        required: true
+        example: vp5OvoSXloq64ksKmwvvtzc2zElJO0uM2MbsDFUYd4o
+        description: From the user profile in Rovas.
+      - in: header
+        name: TOKEN
+        schema:
+          type: string
+        required: true
+        example: 9Lk438dmJJgsmrnhMHBtOCYYO_5DhkesoRXgfjMQmMIXq0
+        description: From the user profile in Rovas.
+      - in: header
+        name: Accept
+        schema:
+          type: string
+        required: false
+        example: application/json
+        description: Expected response format.
   /rovas/rovas_hybridauth_providers.json:
     get:
       tags:
@@ -2872,6 +2925,42 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/VerificationItem'
+    CommentNoticeItem:
+      type: object
+      properties:
+        nid:
+          type: integer
+          description: Node ID the comment belongs to
+          example: 123
+        node_title:
+          type: string
+          example: Example post
+        cid:
+          type: integer
+          description: Comment ID that triggered the notice
+          example: 456
+        comment_url:
+          type: string
+          format: uri
+          description: Absolute comment permalink
+          example: https://dev.rovas.app/comment/456
+        created:
+          type: integer
+          description: UNIX timestamp when the notice was created
+          example: 1729100000
+    CommentNoticesResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          example: success
+        count:
+          type: integer
+          example: 1
+        notices:
+          type: array
+          items:
+            $ref: '#/components/schemas/CommentNoticeItem'
     RulesCreateUserRequest:
       type: object
       required:
