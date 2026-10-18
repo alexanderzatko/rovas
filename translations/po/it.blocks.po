@@ -16,7 +16,7 @@ msgstr ""
 #: blocks:block:12:title
 msgctxt "block:12:title"
 msgid "Your pending verifications"
-msgstr "Le tue dichiarazioni per la verifica"
+msgstr "Elenco dichiarazioni da verificare"
 
 #: blocks:block:13:body
 msgctxt "block:13:body"

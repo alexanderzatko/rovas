@@ -287,11 +287,11 @@ msgstr "Smetterete di ricevere richieste di verifica solo dopo aver verificato l
 
 #: sites/all/modules/custom/rovas_user/rovas_user.module
 msgid "Congratulations, you are now a <strong>Trusted user</strong>!"
-msgstr "Congratulazioni, ora siete un <strong>utente affidabile</strong>!"
+msgstr "Congratulazioni, ora sei un <strong>utente affidabile</strong>!"
 
 #: sites/all/modules/custom/rovas_user/rovas_user.module
 msgid "You can have your work reports immediately approved and can also stop verifying other users' reports. You can set these benefits in your <a href=\"@profile\">account settings</a>."
-msgstr "Potete far approvare immediatamente i vostri rapporti di lavoro e anche smettere di verificare i rapporti di altri utenti. Potete impostare questi vantaggi nelle <a href=\"@profile\">impostazioni dell’account</a>."
+msgstr "Puoi far approvare immediatamente i tuoi rapporti di lavoro e anche smettere di verificare i rapporti di altri utenti. Puoi impostare questi vantaggi nelle <a href=\"@profile\">impostazioni dell’account</a>."
 
 #: sites/all/modules/custom/rovas_user/rovas_user.module
 #: sites/all/modules/custom/rovas_comment_watch/rovas_comment_watch.module

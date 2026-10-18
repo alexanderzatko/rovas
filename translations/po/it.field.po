@@ -2202,7 +2202,7 @@ msgstr ""
 #: field:field_verified_time:verification:label
 msgctxt "field_verified_time:verification:label"
 msgid "Verified time"
-msgstr "Orario verificato"
+msgstr "Tempo di lavoro verificato"
 
 #: field:field_verifier:verification:label
 msgctxt "field_verifier:verification:label"

@@ -75,12 +75,12 @@ msgstr "Transazioni"
 #: menu:item:1902:title
 msgctxt "item:1902:title"
 msgid "My account"
-msgstr "Il mio conto"
+msgstr "Il mio account"
 
 #: menu:item:1903:title
 msgctxt "item:1903:title"
 msgid "Log out"
-msgstr "disconnessione"
+msgstr "Disconnetti"
 
 #: menu:item:2557:description
 msgctxt "item:2557:description"
@@ -135,4 +135,4 @@ msgstr "Progetti"
 #: menu:item:857:title
 msgctxt "item:857:title"
 msgid "Messages"
-msgstr "Notizia"
+msgstr "Comunicazioni"

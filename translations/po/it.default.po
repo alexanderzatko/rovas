@@ -31867,7 +31867,7 @@ msgid "Approve"
 msgstr "Approvare"
 
 msgid "Delete"
-msgstr "Rimuovere"
+msgstr "Rimuovi"
 
 msgid "Operations"
 msgstr "Operazioni"
@@ -32094,7 +32094,7 @@ msgstr "Note sulla versione"
 
 #: ; misc/machine-name.js
 msgid "Edit"
-msgstr "Modificare"
+msgstr "Modifica"
 
 msgid "Date"
 msgstr "La data"
@@ -33427,7 +33427,7 @@ msgid "Germany"
 msgstr "Germania"
 
 msgid "Logout"
-msgstr "disconnessione"
+msgstr "Disconnetti"
 
 msgid "1 new"
 msgid_plural "@count new"
@@ -34395,7 +34395,7 @@ msgid "Choice"
 msgstr "Una possibilità"
 
 msgid "Log out"
-msgstr "disconnessione"
+msgstr "Disconnetti"
 
 msgid "Number of day's top views to display"
 msgstr "Numero di visite giornaliere visualizzate"
@@ -35562,7 +35562,7 @@ msgid "Clean URLs"
 msgstr "URL pulito"
 
 msgid "My account"
-msgstr "Il mio conto"
+msgstr "Il mio account"
 
 msgid "Number of topics"
 msgstr "Numero di discussioni"
@@ -36355,7 +36355,7 @@ msgid "mm/dd/yy"
 msgstr "mm/gg/aa"
 
 msgid "Translate"
-msgstr "Tradurre"
+msgstr "Traduci"
 
 msgid "File to import not found."
 msgstr "Impossibile trovare il file da cui importare."
@@ -49346,7 +49346,7 @@ msgstr "Il motivo"
 
 #: /verify-by-person
 msgid "Private messages"
-msgstr "Notizia"
+msgstr "Comunicazioni"
 
 #: /verify-by-person
 msgid "Filtered markup"
@@ -51088,7 +51088,7 @@ msgstr "Indirizzo web"
 
 #: /node/1122
 msgid "Verify"
-msgstr "Verificare"
+msgstr "Verifica"
 
 #: /money-transfers
 msgid "Verification status"
@@ -51100,7 +51100,7 @@ msgstr "Validità"
 
 #: /node/1208
 msgid "verify"
-msgstr "verificare"
+msgstr "verifica"
 
 #: /find_project
 msgid "- Any -"
@@ -53470,7 +53470,7 @@ msgstr "Seleziona il progetto di destinazione"
 
 #: /node/324969
 msgid "Transfer"
-msgstr "Mossa"
+msgstr "Sposta"
 
 #: /node/324686/edit
 msgid "Reports merging"
