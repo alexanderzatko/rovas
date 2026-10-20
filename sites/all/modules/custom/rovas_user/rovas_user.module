@@ -700,6 +700,22 @@ function rovas_user_attach_trusted_settings_fieldset(&$form, &$form_state, $acco
     $form['trusted_user_settings']['#disabled'] = TRUE;
   }
 
+  // VERIFY_NONE already opts out of all requests: Suspend is redundant — lock it on.
+  if ($is_trusted && isset($form['field_suspend_account'][LANGUAGE_NONE])) {
+    $suspend_when_none = array(
+      ':input[name="trusted_user_settings[auto_approve]"]' => array('checked' => TRUE),
+      ':input[name="trusted_user_settings[verify_level]"]' => array('value' => (string) ROVAS_USER_TRUSTED_VERIFY_NONE),
+    );
+    $form['field_suspend_account'][LANGUAGE_NONE]['#states']['checked'] = $suspend_when_none;
+    // Do not toggle disabled via states if PHP already disabled it (open obligations).
+    if (empty($form['field_suspend_account']['#disabled'])) {
+      $form['field_suspend_account'][LANGUAGE_NONE]['#states']['disabled'] = $suspend_when_none;
+    }
+    if ($auto && $level == ROVAS_USER_TRUSTED_VERIFY_NONE) {
+      $form['field_suspend_account'][LANGUAGE_NONE]['#default_value'] = 1;
+    }
+  }
+
   $form['#validate'][] = 'rovas_user_trusted_settings_validate';
   $form['#submit'][] = 'rovas_user_trusted_settings_submit';
 }
@@ -716,6 +732,14 @@ function rovas_user_trusted_settings_validate($form, &$form_state) {
   if (!$account || !rovas_user_is_trusted($account)) {
     // Ignore submitted prefs when not trusted.
     unset($form_state['values']['trusted_user_settings']);
+    return;
+  }
+  $vals = $form_state['values']['trusted_user_settings'];
+  $auto = !empty($vals['auto_approve']);
+  $level = isset($vals['verify_level']) ? (int) $vals['verify_level'] : ROVAS_USER_TRUSTED_VERIFY_KEEP;
+  // Disabled checkboxes are omitted from POST; force Suspend on when VERIFY_NONE.
+  if ($auto && $level == ROVAS_USER_TRUSTED_VERIFY_NONE) {
+    $form_state['values']['field_suspend_account'][LANGUAGE_NONE][0]['value'] = 1;
   }
 }
 
@@ -742,6 +766,9 @@ function rovas_user_trusted_settings_submit($form, &$form_state) {
   }
   rovas_user_set_field_value($account, 'field_trusted_auto_approve', $auto);
   rovas_user_set_field_value($account, 'field_trusted_verify_level', $level);
+  if ($auto && $level == ROVAS_USER_TRUSTED_VERIFY_NONE) {
+    rovas_user_set_field_value($account, 'field_suspend_account', 1);
+  }
   user_save($account);
 }
 
