@@ -97,6 +97,13 @@ Open tasks: see `civic_tasks/active/`. Naming and archival rules:
 | OAuth authorize intent               | `GET /oauth2/authorize?intent=login\|register`                                                                                             | **Implemented** in `rovas_oauth` — session stash + goto rewrite to `/user/register` when `intent=register`. Deploy + smoke. See [oauth-authorize-intent](civic_tasks/done/oauth-authorize-intent.md).   |
 
 
+## Deferred (not scheduled)
+
+| Topic | Doc | Notes |
+|-------|-----|--------|
+| Trusted User via Slovak eID (slovensko.sk) | [`../trusted-user-eid.md`](../trusted-user-eid.md) | Third Trusted eligibility path (SAML SP + NASES). When scheduled, open a `civic_tasks/active/` task for `/rovas/me` fields (`trusted_user`, `eid_verified`) before Civic consumes them. |
+
+
 ## OAuth endpoints (live on dev)
 
 - Authorize: `https://dev.rovas.app/oauth2/authorize`

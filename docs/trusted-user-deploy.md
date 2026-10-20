@@ -1,5 +1,8 @@
 # Trusted user status — deploy notes
 
+**Deferred design (not scheduled):** government ID (slovensko.sk / eID) as a
+third Trusted eligibility path — [`trusted-user-eid.md`](trusted-user-eid.md).
+
 Local code is ready. On each environment (typically **dev** first, then **prod**):
 
 1. Deploy / rsync the repo (including `rovas_user`, `rovas_verify`, `rovas_site_rules` JSON, `translations/po`).
