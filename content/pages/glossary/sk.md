@@ -64,10 +64,6 @@ Každý pracovný výkaz musí obsahovať informácie o druhu vykonanej práce. 
 
 Spor je procedúra, pri ktorej jeden používateľ môže obviniť iného, z porušenia [pravidiel NEO](/rules). Porušenie sa môže týkať napríklad [pracovného výkazu](#workReport) za prácu, ktorá nebola nevykonaná, alebo takého, ktorého produkt nie je možné požívať bezplatne alebo získať za [chrony](#chron). Po podaní sporu si obe strany vyžiadajú podporu od ostatných používateľov, ktorí dajú svoj hlas svojmu kandidátovi. Po uplynutí stanovenej doby sa kumulatívne [merit](#merit) skóre priaznivcov oboch strán spočíta a obidve čísla sa porovnajú. Strana, ktorá má viac meritov vyhráva. Podrobnejší popis procesu je uvedený na stránke [Spory](/disputes).
 
-**<a id="meritware" name="meritware"></a>Meritware**
-
-Vlastník [projektu](#project) môže slobodne určiť, ako bude naložené s odmenami udelenými projektu. Predvolené nastavenie pre novovytvorený projekt je také, že 100% potenciálnej odmeny je prevedené na merity, čo znamená že projekt je **meritware**. Dôvod na existenciu tohoto konceptu je poskytnúť ľahko pochopiteľný signál, že akákoľvek potenciálna odmena pre projekt bude 100% prevedená na merity, a teda žiadna jej časť nebude použitá na finančné obohatenie vlastníka projektu.
-
 **<a id="projectMEalloc" name="projectMEalloc"></a>Meritová časť odmeny**
 
 Vlastník [projektu](#project) v ňom môže nastaviť, ako bude naložené s odmenami vyplatenými projektu. V projektovom formulári je na to pole **Meritová časť odmeny**, ktoré môže nechať prázdne, alebo doň vpísať číslo medzi 0 a 100. Číslo udáva tú časť sumy vyplatenej projektu (v percentách), ktorá bude premenená na [merity](#merit). Zvyšná časť platby je zaslaná v [chronoch](#chron) na účet vlastníka, alebo benefaktora projektu. Prázdna hodnota nastaví meritovú časť odmeny na 100%.

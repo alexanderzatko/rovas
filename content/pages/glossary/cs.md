@@ -64,10 +64,6 @@ Každý pracovní výkaz musí obsahovat informace o typu vykonané práce. NEO 
 
 Spor je postup, v němž může jeden uživatel NEO obvinit druhého z porušení pravidel NEO. Porušení se může týkat pracovní zprávy podané za práci, která nebyla provedena, nebo takové, která generuje produkt či službu, kterou nelze volně konzumovat ani kupovat za platformu Chron. Po podání sporu obě strany požádají o podporu ostatní uživatele, kteří hlasují pro jejich kandidáta. Po uplynutí stanovené doby se sečtou kumulativní skóre příznivců obou stran a obě čísla se porovnají. Strana s větším počtem Meritů vyhrává. Podrobnější popis procesu naleznete na [stránce Spory](/disputes).
 
-**<a id="meritware" name="meritware"></a>Meritware**
-
-Vlastník projektu si může svobodně určit, jak bude s odměnami udělenými za jeho projekt nakládáno. Výchozí nastavení pro nově vytvořený projekt je, že 100 % odměny je převedeno na Merity, což takový projekt činí **Meritovým**. Tato koncepce existuje proto, aby poskytla jasný signál, že jakákoli potenciální odměna pro projekt bude 100 % převedena na Merity, a proto vlastníka projektu finančně neobohatí.
-
 **<a id="projectMEalloc" name="projectMEalloc"></a>Rozdělení Meritů**
 
 Vlastník [projektu](#project) může určit, jak budou odměny vyplacené projektu přiděleny. V poli Přidělení podle Meritů může buď ponechat prázdné, nebo nastavit číslo mezi 0 a 100. Číslo udává část částky vyplacené projektu (v procentech), která bude převedena na [Merity](#merit). Zbývající část platby je odeslána v [chronech](#chron) na účet vlastníka nebo příjemce projektu. Prázdná hodnota nastaví část odměny podle Meritů na 100 %.

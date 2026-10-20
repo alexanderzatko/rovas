@@ -64,10 +64,6 @@ Ogni rapporto di lavoro deve contenere informazioni sul tipo di lavoro svolto. N
 
 La procedura di contestazione prevede che un utente NEO possa accusare un altro di aver violato le regole della piattaforma. La violazione potrebbe riguardare un report di lavoro non eseguito o la generazione di un prodotto o servizio impossibile da consumare o acquistare liberamente con i chron. Dopo aver presentato una contestazione, entrambe le parti sollecitano il supporto di altri utenti che votano per il proprio candidato. Trascorso un determinato periodo di tempo, i punteggi di merito cumulativi dei sostenitori di entrambe le parti vengono sommati e i due valori confrontati. La parte con il punteggio di merito più alto vince. Una descrizione più dettagliata del processo è disponibile nella [pagina dedicata alle contestazioni](/disputes).
 
-**<a id="meritware" name="meritware"></a>Meritware**
-
-Il proprietario di un progetto è libero di decidere come gestire le ricompense assegnate al suo progetto. L'impostazione predefinita per un progetto appena creato prevede la conversione del 100% di una ricompensa in meriti, rendendolo di fatto un **"meritware"**. Questo concetto serve a fornire un segnale chiaro: qualsiasi potenziale ricompensa al progetto verrà convertita al 100% in meriti e, pertanto, non arricchirà economicamente il proprietario del progetto.
-
 **<a id="projectMEalloc" name="projectMEalloc"></a>Assegnazione dei premi al merito**
 
 Il responsabile [di un progetto](#project) può specificare come verranno ripartiti i premi erogati al progetto. Utilizzando il campo "Allocazione dei premi" del modulo di progetto, può lasciarlo vuoto oppure inserire un numero compreso tra 0 e 100. Il numero indica la percentuale dell'importo erogato al progetto che verrà convertita in [premi](#merit). La parte restante del pagamento viene inviata in [rate,](#chron) sul conto del responsabile o al beneficiario del progetto. Un valore vuoto imposta la quota di premi in premi al 100%.

@@ -64,10 +64,6 @@ Every work report must contain information about the type of work performed. NEO
 
 Dispute is a procedure, where one NEO user can accuse another for violating the NEO rules. The violation might concern a work report filed for work that was not performed, or one that generates product or service impossible to freely consume or buy with chrons. After filing a dispute, both parties solicit support from other users who vote for their candidate. After a set period of time, the cummulative merit scores of the supporters of both parties are tallied and the two numbers compared. The party with more merits wins. A more detailed description of the process can be found on the [Disputes page](/disputes).
 
-**<a id="meritware" name="meritware"></a>Meritware**
-
-The owner of a project is free to determine how rewards granted to their project will be handled. The default setting for a newly created project is to have 100% of a reward converted to merits, which makes such a project **meritware**. The concept exists to provide a clear signal that any potential reward to the project will be converted 100% into merits and therefore will not monetarily enrich the project owner.
-
 **<a id="projectMEalloc" name="projectMEalloc"></a>Reward merit allocation**
 
 A [project](#project) owner can specify how the rewards paid to the project will be allocated. Using the Reward merit allocation field of the project form, they can either leave it blank, or set a number between 0 and 100. The number indicates the part of the amount paid to the project (in percent), which will be converted to [merits](#merit). The remaining part of the payment is sent in [chrons,](#chron) to the account of the owner, or to the beneficiary of the project. An empty value sets the merit part of the reward to 100%.
