@@ -1,5 +1,5 @@
 ---
-title: Glosář
+title: Glossary
 format: filtered_html
 ---
 
@@ -51,6 +51,10 @@ The score is decreased by 1 when:
 - the user fails to verify a work report
 
 Once user's compliance score reaches value -3, Rovas subtracts 10 merits form the user's score and resets the compliance score back to 0.
+
+**<a name="trustedUser"></a>Trusted user**
+
+A Trusted user is a Rovas account that has earned sticky trusted status. Eligibility requires either a [Compliance score](#complianceScore) of at least 50, or owning a published [project](#project) that has received more than 500 [Merits](#merit) from rewards to that project (owning shares alone is not enough). Once granted, Trusted status stays until eligibility fails after a lost [dispute](#dispute). Trusted users may optionally have their own [work reports](#workReport) approved immediately without peer [verification](#verification), and may reduce or stop receiving verification requests. These preferences are set on the user profile. Other users can still challenge auto-approved reports by opening a dispute.
 
 **<a name="nace"></a>NACE**
 

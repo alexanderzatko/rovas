@@ -52,6 +52,10 @@ Skóre je naopak znížené o 1, ak:
 
 Akonáhle skóre súladu používateľa dosiahne hodnotu -3 Rováš mu odčíta 10 meritov a skóre vynuluje.
 
+**<a name="trustedUser"></a>Dôveryhodný používateľ**
+
+Dôveryhodný používateľ je účet v Rováši so stálym statusom dôveryhodnosti. Na získanie statusu stačí buď [skóre súladu](#complianceScore) aspoň 50, alebo vlastníctvo zverejneného [projektu](#project), z ktorého odmien používateľ získal viac ako 500 [meritov](#merit) (samotné vlastníctvo podielov nestačí). Po udelení status zostáva, kým po prehre v [spore](#dispute) používateľ prestane spĺňať podmienky. Dôveryhodný používateľ si môže voliteľne nechať vlastné [pracovné výkazy](#workReport) okamžite schváliť bez peer [overovania](#verification) a môže obmedziť alebo zastaviť prijímanie žiadostí o overenie. Tieto preferencie sa nastavujú v profile. Iní používatelia môžu okamžite schválené výkazy stále napadnúť sporom.
+
 **<a name="nace"></a>NACE**
 
 Každý pracovný výkaz musí obsahovať informácie o druhu vykonanej práce. NEO používa schému klasifikácie pracovných typov [NACE](https://en.wikipedia.org/wiki/Statistical_Classification_of_Economic_Activities_in_the_European_Community). NACE kategóriu volí používateľ pri vyplňovaní pracovného výkazu. Hlavným dôvodom, prečo musia správy obsahovať túto informáciu, je podpora [procesu overovania](#verification) výkazov. Rováš používa kód NACE na pridelenie daného výkazu na overenie takým používateľom, ktorí podali vlastné výkazy s rovnakou alebo podobnou kategóriou NACE, aby bola zabezpečená účinnosť procesu overovania. Priradenie kategórií NACE k pracovným výkazom tiež uľahčuje vyhľadávanie pracovníkov s požadovaným typom a úrovňou odbornosti.

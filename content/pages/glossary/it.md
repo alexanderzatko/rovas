@@ -1,5 +1,5 @@
 ---
-title: Glosář
+title: Glossario
 format: filtered_html
 ---
 
@@ -51,6 +51,10 @@ Il punteggio viene diminuito di 1 quando:
 - l'utente non riesce a verificare un rapporto di lavoro
 
 Quando il punteggio di conformità dell'utente raggiunge il valore di -3, Rovas sottrae 10 punti merito dal punteggio dell'utente e lo azzera.
+
+**<a name="trustedUser"></a>Utente affidabile**
+
+Un utente affidabile è un account Rovas con stato di fiducia permanente. Per ottenerlo occorre un [punteggio di conformità](#complianceScore) di almeno 50, oppure essere proprietari di un [progetto](#project) pubblicato che abbia ricevuto più di 500 [Meriti](#merit) da ricompense a quel progetto (possedere solo quote non basta). Una volta concesso, lo stato resta finché, dopo una [controversia](#dispute) persa, l'utente non soddisfa più i requisiti. Gli utenti affidabili possono far approvare immediatamente i propri [rapporti di lavoro](#workReport) senza [verifica](#verification) tra pari e possono ridurre o interrompere le richieste di verifica. Queste preferenze si impostano nel profilo. Altri utenti possono comunque contestare i rapporti auto-approvati aprendo una controversia.
 
 **<a name="nace"></a>NACE**
 
