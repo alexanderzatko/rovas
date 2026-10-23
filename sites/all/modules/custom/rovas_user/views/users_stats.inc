@@ -45,8 +45,9 @@ $handler->display->display_options['style_options']['columns'] = array(
   'field_country' => 'field_country',
   'access' => 'access',
   'created' => 'created',
-  'field_rovas_user_id' => 'field_rovas_user_id',
-  'field_unpaid_post' => 'field_unpaid_post',
+  'rid' => 'rid',
+  'field_verification_score' => 'field_verification_score',
+  'php' => 'php',
 );
 $handler->display->display_options['style_options']['default'] = 'created';
 $handler->display->display_options['style_options']['info'] = array(
@@ -78,15 +79,22 @@ $handler->display->display_options['style_options']['info'] = array(
     'separator' => '',
     'empty_column' => 0,
   ),
-  'field_rovas_user_id' => array(
+  'rid' => array(
     'sortable' => 0,
     'default_sort_order' => 'asc',
     'align' => '',
     'separator' => '',
     'empty_column' => 0,
   ),
-  'field_unpaid_post' => array(
+  'field_verification_score' => array(
     'sortable' => 1,
+    'default_sort_order' => 'desc',
+    'align' => '',
+    'separator' => '',
+    'empty_column' => 0,
+  ),
+  'php' => array(
+    'sortable' => 0,
     'default_sort_order' => 'asc',
     'align' => '',
     'separator' => '',
@@ -126,6 +134,41 @@ $handler->display->display_options['fields']['created']['second_date_format'] = 
 $handler->display->display_options['fields']['rid']['id'] = 'rid';
 $handler->display->display_options['fields']['rid']['table'] = 'users_roles';
 $handler->display->display_options['fields']['rid']['field'] = 'rid';
+/* Field: User: Compliance score */
+$handler->display->display_options['fields']['field_verification_score']['id'] = 'field_verification_score';
+$handler->display->display_options['fields']['field_verification_score']['table'] = 'field_data_field_verification_score';
+$handler->display->display_options['fields']['field_verification_score']['field'] = 'field_verification_score';
+$handler->display->display_options['fields']['field_verification_score']['label'] = 'Compliance score';
+$handler->display->display_options['fields']['field_verification_score']['settings'] = array(
+  'thousand_separator' => '',
+  'prefix_suffix' => 1,
+);
+/* Field: User: Trusted status notification (excluded; 2 = dismissed) */
+$handler->display->display_options['fields']['field_trusted_notify']['id'] = 'field_trusted_notify';
+$handler->display->display_options['fields']['field_trusted_notify']['table'] = 'field_data_field_trusted_notify';
+$handler->display->display_options['fields']['field_trusted_notify']['field'] = 'field_trusted_notify';
+$handler->display->display_options['fields']['field_trusted_notify']['label'] = '';
+$handler->display->display_options['fields']['field_trusted_notify']['exclude'] = TRUE;
+$handler->display->display_options['fields']['field_trusted_notify']['element_label_colon'] = FALSE;
+$handler->display->display_options['fields']['field_trusted_notify']['settings'] = array(
+  'thousand_separator' => '',
+  'prefix_suffix' => 0,
+);
+/* Field: Global: PHP — Yes if dismissed via /dismiss_trusted_notify */
+$handler->display->display_options['fields']['php']['id'] = 'php';
+$handler->display->display_options['fields']['php']['table'] = 'views';
+$handler->display->display_options['fields']['php']['field'] = 'php';
+$handler->display->display_options['fields']['php']['label'] = 'Trusted notify dismissed';
+$handler->display->display_options['fields']['php']['use_php_setup'] = 0;
+$handler->display->display_options['fields']['php']['php_output'] = '<?php
+$val = 0;
+if (isset($data->field_field_trusted_notify[0][\'raw\'][\'value\'])) {
+  $val = (int) $data->field_field_trusted_notify[0][\'raw\'][\'value\'];
+}
+print ($val === 2) ? t(\'Yes\') : t(\'No\');
+?>';
+$handler->display->display_options['fields']['php']['use_php_click_sortable'] = '0';
+$handler->display->display_options['fields']['php']['php_click_sortable'] = '';
 /* Sort criterion: User: Created date */
 $handler->display->display_options['sorts']['created']['id'] = 'created';
 $handler->display->display_options['sorts']['created']['table'] = 'users';
@@ -210,6 +253,10 @@ $translatables['users_stats'] = array(
   t('Last access'),
   t('Created'),
   t('Roles'),
+  t('Compliance score'),
+  t('Trusted notify dismissed'),
+  t('Yes'),
+  t('No'),
   t('E-mail'),
   t('Page'),
 );
