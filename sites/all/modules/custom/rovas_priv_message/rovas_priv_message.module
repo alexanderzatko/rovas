@@ -1,23 +1,24 @@
 <?php
 
+/**
+ * Implements hook_form_alter().
+ *
+ * Hide the reply form when the thread includes user 1 (site admin messages
+ * that should not be answered via the UI).
+ */
 function rovas_priv_message_form_alter(&$form, &$form_state, $form_id) {
-	if ($form['#id'] == 'privatemsg-form-reply') {
-	
-		$participants = $form_state['build_info']['args'][0]['participants'];
-	
-		$show = 1;
-	
-		foreach ($participants as $cipok => $cipov) {
-			if($cipok == 'user_1') {
-				$show = 0;
-				break;
-			}
-		}
-	
-		if ($show == 0) {
-			$form['reply'] = '';
-			$form['body'] = '';
-			$form['actions'] = '';
-		}
-	}
+  if ($form_id !== 'privatemsg_form_reply') {
+    return;
+  }
+
+  if (empty($form_state['build_info']['args'][0]['participants'])) {
+    return;
+  }
+
+  $participants = $form_state['build_info']['args'][0]['participants'];
+  if (isset($participants['user_1'])) {
+    // Do not leave empty-string "elements": form_builder() requires arrays
+    // (PHP 7.1+ fatals on $element += … when $element is a string).
+    $form['#access'] = FALSE;
+  }
 }
