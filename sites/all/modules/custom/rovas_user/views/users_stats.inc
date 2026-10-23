@@ -48,6 +48,8 @@ $handler->display->display_options['style_options']['columns'] = array(
   'rid' => 'rid',
   'field_verification_score' => 'field_verification_score',
   'php' => 'php',
+  'php_1' => 'php_1',
+  'field_trusted_verify_level' => 'field_trusted_verify_level',
 );
 $handler->display->display_options['style_options']['default'] = 'created';
 $handler->display->display_options['style_options']['info'] = array(
@@ -95,6 +97,20 @@ $handler->display->display_options['style_options']['info'] = array(
   ),
   'php' => array(
     'sortable' => 0,
+    'default_sort_order' => 'asc',
+    'align' => '',
+    'separator' => '',
+    'empty_column' => 0,
+  ),
+  'php_1' => array(
+    'sortable' => 0,
+    'default_sort_order' => 'asc',
+    'align' => '',
+    'separator' => '',
+    'empty_column' => 0,
+  ),
+  'field_trusted_verify_level' => array(
+    'sortable' => 1,
     'default_sort_order' => 'asc',
     'align' => '',
     'separator' => '',
@@ -169,6 +185,33 @@ print ($val === 2) ? t(\'Yes\') : t(\'No\');
 ?>';
 $handler->display->display_options['fields']['php']['use_php_click_sortable'] = '0';
 $handler->display->display_options['fields']['php']['php_click_sortable'] = '';
+/* Field: User: I want my reports immediately approved (excluded) */
+$handler->display->display_options['fields']['field_trusted_auto_approve']['id'] = 'field_trusted_auto_approve';
+$handler->display->display_options['fields']['field_trusted_auto_approve']['table'] = 'field_data_field_trusted_auto_approve';
+$handler->display->display_options['fields']['field_trusted_auto_approve']['field'] = 'field_trusted_auto_approve';
+$handler->display->display_options['fields']['field_trusted_auto_approve']['label'] = '';
+$handler->display->display_options['fields']['field_trusted_auto_approve']['exclude'] = TRUE;
+$handler->display->display_options['fields']['field_trusted_auto_approve']['element_label_colon'] = FALSE;
+/* Field: Global: PHP — Yes if auto-approve enabled */
+$handler->display->display_options['fields']['php_1']['id'] = 'php_1';
+$handler->display->display_options['fields']['php_1']['table'] = 'views';
+$handler->display->display_options['fields']['php_1']['field'] = 'php';
+$handler->display->display_options['fields']['php_1']['label'] = 'Auto-approve';
+$handler->display->display_options['fields']['php_1']['use_php_setup'] = 0;
+$handler->display->display_options['fields']['php_1']['php_output'] = '<?php
+$val = 0;
+if (isset($data->field_field_trusted_auto_approve[0][\'raw\'][\'value\'])) {
+  $val = (int) $data->field_field_trusted_auto_approve[0][\'raw\'][\'value\'];
+}
+print ($val === 1) ? t(\'Yes\') : t(\'No\');
+?>';
+$handler->display->display_options['fields']['php_1']['use_php_click_sortable'] = '0';
+$handler->display->display_options['fields']['php_1']['php_click_sortable'] = '';
+/* Field: User: Trusted verification preference */
+$handler->display->display_options['fields']['field_trusted_verify_level']['id'] = 'field_trusted_verify_level';
+$handler->display->display_options['fields']['field_trusted_verify_level']['table'] = 'field_data_field_trusted_verify_level';
+$handler->display->display_options['fields']['field_trusted_verify_level']['field'] = 'field_trusted_verify_level';
+$handler->display->display_options['fields']['field_trusted_verify_level']['label'] = 'Verify level';
 /* Sort criterion: User: Created date */
 $handler->display->display_options['sorts']['created']['id'] = 'created';
 $handler->display->display_options['sorts']['created']['table'] = 'users';
@@ -255,6 +298,8 @@ $translatables['users_stats'] = array(
   t('Roles'),
   t('Compliance score'),
   t('Trusted notify dismissed'),
+  t('Auto-approve'),
+  t('Verify level'),
   t('Yes'),
   t('No'),
   t('E-mail'),
