@@ -62,7 +62,7 @@ Every work report must contain information about the type of work performed. NEO
 
 **<a name="dispute"></a>Dispute**
 
-Dispute is a procedure, where one NEO user can accuse another for violating the NEO rules. The violation might concern a work report filed for work that was not performed, or one that generates product or service impossible to freely consume or buy with chrons. After filing a dispute, both parties solicit support from other users who vote for their candidate. After a set period of time, the cummulative merit scores of the supporters of both parties are tallied and the two numbers compared. The party with more merits wins. A more detailed description of the process can be found on the [Disputes page](/disputes).
+Dispute is a procedure, where one NEO user can accuse another for violating the NEO rules. The violation might concern a work report filed for work that was not performed, or one that generates product or service impossible to freely consume or buy with chrons. The disputed document is identified by its Work report ID or Project ID. After filing a dispute, both parties recruit [Trusted users](#trustedUser) to their camps. After a set period of time, Rovas counts Trusted users in each camp; the camp with more Trusted users wins. A third dispute that does not end in a win or a tie for the accused is punished as a loss even if they remedy the complaint. A more detailed description of the process can be found on the [Disputes page](/disputes).
 
 **<a id="projectMEalloc" name="projectMEalloc"></a>Reward merit allocation**
 

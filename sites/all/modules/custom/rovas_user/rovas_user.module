@@ -5,6 +5,8 @@
  * User profile alterations and trusted-user status.
  */
 
+module_load_include('inc', 'rovas_user', 'rovas_user.dispute');
+
 /**
  * Compliance score required for trusted eligibility via verification path.
  */

@@ -629,7 +629,8 @@ div.view-work-reports span.glyphicon-scale {
 	top: 3px;
 }
 
-.form-item-field-project-id-value {
+.form-item-field-project-id-value,
+.form-item-field-work-report-id-und-0-value {
     width: 95px;
 }
 

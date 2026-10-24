@@ -1142,13 +1142,12 @@ msgstr ""
 #: field:field_object_of_complaint:dispute:description
 msgctxt "field_object_of_complaint:dispute:description"
 msgid ""
-"Type the name of the document you are filing the complaint. It could "
-"be a work report, or a project, but most often it will be "
-"verification, like in cases when a work report is rejected. The names "
-"of all verifications are listed on the work report page. You can also "
-"use the node number of the document, which you can find in the "
-"document URL (.../node/XXXXX). Once submitted, this value can not be "
-"changed."
+"Enter the ID of the document you are filing the complaint against "
+"(Work report ID or Project ID, shown on the document page). It could "
+"be a work report or a project, but most often it will be a "
+"verification, like when a work report is rejected. Verification IDs "
+"are listed on the work report page. Type the numeric ID to select the "
+"document. Once submitted, this value can not be changed."
 msgstr ""
 
 #: field:field_object_of_complaint:dispute:label
@@ -2306,3 +2305,14 @@ msgstr ""
 msgctxt "field_auto_approved:work_report:description"
 msgid "Set when a trusted user’s preferences caused immediate approval without peer verification."
 msgstr ""
+
+#: field:field_work_report_id:work_report:label
+msgctxt "field_work_report_id:work_report:label"
+msgid "Work report ID"
+msgstr ""
+
+#: field:field_work_report_id:work_report:description
+msgctxt "field_work_report_id:work_report:description"
+msgid "Numeric identifier of this work report (same as the node ID). Use this value when filing a dispute."
+msgstr ""
+

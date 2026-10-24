@@ -1,11 +1,25 @@
 <?php
 
-/*
-* implements hook_form_alter()
-*/
+/**
+ * Implements hook_form_FORM_ID_alter() for work_report_node_form.
+ */
 function rovas_report_form_form_work_report_node_form_alter(&$form, &$form_state, $form_id) {
 
 //dsm($form_state);
+
+	// Work report ID mirrors Project ID: show nid, not editable.
+	if (isset($form['field_work_report_id'])) {
+		$nid = !empty($form['nid']['#value']) ? (int) $form['nid']['#value'] : 0;
+		if ($nid > 0) {
+			$form['field_work_report_id'][LANGUAGE_NONE][0]['value']['#default_value'] = $nid;
+		}
+		$form['field_work_report_id'][LANGUAGE_NONE][0]['value']['#disabled'] = TRUE;
+		$form['field_work_report_id'][LANGUAGE_NONE][0]['value']['#description'] = t('Assigned automatically when the work report is saved. Use this ID when filing a dispute.');
+		if ($nid < 1) {
+			// Not yet saved — hide until an ID exists.
+			$form['field_work_report_id']['#access'] = FALSE;
+		}
+	}
 
 	if (!in_array('_recalc_time',$form['#validate'])) {
 
@@ -289,6 +303,26 @@ function _rrf_validate_rovrep($element, &$form_state, $form) {
 	}
 }
 
+
+/**
+ * Implements hook_node_insert().
+ *
+ * Persist Work report ID (= nid), same pattern as Project ID on projects.
+ */
+function rovas_report_form_node_insert($node) {
+  if (empty($node->type) || $node->type !== 'work_report' || empty($node->nid)) {
+    return;
+  }
+  if (!field_info_field('field_work_report_id')) {
+    return;
+  }
+  $lang = field_language('node', $node, 'field_work_report_id');
+  if ($lang === FALSE || $lang === NULL) {
+    $lang = LANGUAGE_NONE;
+  }
+  $node->field_work_report_id[$lang][0]['value'] = (int) $node->nid;
+  field_attach_update('node', $node);
+}
 
 /**
  * Implements hook_views_api().

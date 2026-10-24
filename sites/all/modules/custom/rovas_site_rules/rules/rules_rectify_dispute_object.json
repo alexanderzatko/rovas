@@ -1,139 +1,364 @@
-{ "rules_rectify_dispute_object" : {
-    "LABEL" : "Rectify dispute object",
-    "PLUGIN" : "action set",
-    "OWNER" : "rules",
-    "TAGS" : [ "dispute" ],
-    "REQUIRES" : [ "rules", "rules_conditional", "userpoints_rules", "rules_i18n" ],
-    "USES VARIABLES" : {
-      "node" : { "label" : "Object to process", "type" : "node" },
-      "triggering_actor" : { "label" : "Triggering actor", "type" : "text" }
+{
+  "rules_rectify_dispute_object": {
+    "LABEL": "Rectify dispute object",
+    "PLUGIN": "action set",
+    "OWNER": "rules",
+    "TAGS": [
+      "dispute"
+    ],
+    "REQUIRES": [
+      "rules",
+      "rules_conditional",
+      "userpoints_rules",
+      "rules_i18n",
+      "php"
+    ],
+    "USES VARIABLES": {
+      "node": {
+        "label": "Object to process",
+        "type": "node"
+      },
+      "triggering_actor": {
+        "label": "Triggering actor",
+        "type": "text"
+      }
     },
-    "ACTION SET" : [
-      { "entity_query" : {
-          "USING" : {
-            "type" : "node",
-            "property" : "field_object_of_complaint",
-            "value" : [ "node" ],
-            "limit" : "1000000000"
+    "ACTION SET": [
+      {
+        "entity_query": {
+          "USING": {
+            "type": "node",
+            "property": "field_object_of_complaint",
+            "value": [
+              "node"
+            ],
+            "limit": "1000000000"
           },
-          "PROVIDE" : { "entity_fetched" : { "affected_disputes" : "Affected disputes" } }
+          "PROVIDE": {
+            "entity_fetched": {
+              "affected_disputes": "Affected disputes"
+            }
+          }
         }
       },
-      { "LOOP" : {
-          "USING" : { "list" : [ "affected-disputes" ] },
-          "ITEM" : { "this_dispute" : "this dispute" },
-          "DO" : [
-            { "CONDITIONAL" : [
+      {
+        "LOOP": {
+          "USING": {
+            "list": [
+              "affected-disputes"
+            ]
+          },
+          "ITEM": {
+            "this_dispute": "this dispute"
+          },
+          "DO": [
+            {
+              "CONDITIONAL": [
                 {
-                  "IF" : { "entity_is_of_bundle" : {
-                      "entity" : [ "this-dispute" ],
-                      "type" : "node",
-                      "bundle" : { "value" : { "dispute" : "dispute" } }
+                  "IF": {
+                    "entity_is_of_bundle": {
+                      "entity": [
+                        "this-dispute"
+                      ],
+                      "type": "node",
+                      "bundle": {
+                        "value": {
+                          "dispute": "dispute"
+                        }
+                      }
                     }
                   },
-                  "DO" : [
-                    { "data_set" : { "data" : [ "this-dispute:comment" ], "value" : "1" } },
-                    { "data_set" : {
-                        "data" : [ "this-dispute:field-date-rectified" ],
-                        "value" : [ "site:current-date" ]
+                  "DO": [
+                    {
+                      "data_set": {
+                        "data": [
+                          "this-dispute:comment"
+                        ],
+                        "value": "1"
                       }
                     },
-                    { "entity_save" : { "data" : [ "this-dispute" ], "immediate" : "1" } },
-                    { "data_convert" : {
-                        "USING" : { "type" : "integer", "value" : [ "this-dispute:field-date-rectified" ] },
-                        "PROVIDE" : { "conversion_result" : { "now_in_seconds" : "Now in seconds" } }
+                    {
+                      "data_set": {
+                        "data": [
+                          "this-dispute:field-date-rectified"
+                        ],
+                        "value": [
+                          "site:current-date"
+                        ]
                       }
                     },
-                    { "data_convert" : {
-                        "USING" : {
-                          "type" : "integer",
-                          "value" : [ "this-dispute:field-dispute-start-date" ]
+                    {
+                      "entity_save": {
+                        "data": [
+                          "this-dispute"
+                        ],
+                        "immediate": "1"
+                      }
+                    },
+                    {
+                      "data_convert": {
+                        "USING": {
+                          "type": "integer",
+                          "value": [
+                            "this-dispute:field-date-rectified"
+                          ]
                         },
-                        "PROVIDE" : { "conversion_result" : { "dispute_start_date" : "Dispute start date" } }
+                        "PROVIDE": {
+                          "conversion_result": {
+                            "now_in_seconds": "Now in seconds"
+                          }
+                        }
                       }
                     },
-                    { "data_calc" : {
-                        "USING" : {
-                          "input_1" : [ "now-in-seconds" ],
-                          "op" : "-",
-                          "input_2" : [ "dispute-start-date" ]
+                    {
+                      "data_convert": {
+                        "USING": {
+                          "type": "integer",
+                          "value": [
+                            "this-dispute:field-dispute-start-date"
+                          ]
                         },
-                        "PROVIDE" : { "result" : { "time_difference" : "time difference" } }
+                        "PROVIDE": {
+                          "conversion_result": {
+                            "dispute_start_date": "Dispute start date"
+                          }
+                        }
                       }
                     },
-                    { "CONDITIONAL" : [
+                    {
+                      "data_calc": {
+                        "USING": {
+                          "input_1": [
+                            "now-in-seconds"
+                          ],
+                          "op": "-",
+                          "input_2": [
+                            "dispute-start-date"
+                          ]
+                        },
+                        "PROVIDE": {
+                          "result": {
+                            "time_difference": "time difference"
+                          }
+                        }
+                      }
+                    },
+                    {
+                      "variable_add": {
+                        "USING": {
+                          "type": "integer",
+                          "value": {
+                            "select": "this-dispute:nid",
+                            "php": {
+                              "code": "return function_exists('rovas_dispute_should_force_lost_on_remedy') && rovas_dispute_should_force_lost_on_remedy((int) $value) ? 1 : 0;"
+                            }
+                          }
+                        },
+                        "PROVIDE": {
+                          "variable_added": {
+                            "force_lost_penalty": "Force lost penalty"
+                          }
+                        }
+                      }
+                    },
+                    {
+                      "CONDITIONAL": [
                         {
-                          "IF" : { "data_is" : { "data" : [ "time-difference" ], "op" : "\u003C", "value" : "86400" } },
-                          "DO" : [
-                            { "data_set" : { "data" : [ "this-dispute:field-dispute-status" ], "value" : "2" } },
-                            { "component_rules_set_role_for_the_accused" : {
-                                "affected_dispute" : [ "this-dispute" ],
-                                "role_to_set" : { "value" : [ "4" ] }
+                          "IF": {
+                            "data_is": {
+                              "data": [
+                                "force-lost-penalty"
+                              ],
+                              "value": "1"
+                            }
+                          },
+                          "DO": [
+                            {
+                              "component_rules_dispute_maximal_penalty": {
+                                "dispute_node": [
+                                  "this-dispute"
+                                ]
                               }
                             }
                           ]
                         },
                         {
-                          "ELSE IF" : { "data_is" : { "data" : [ "time-difference" ], "op" : "\u003C", "value" : "259200" } },
-                          "DO" : [
-                            { "userpoints_rules_get_current_points" : {
-                                "USING" : { "user" : [ "this-dispute:field-accused" ], "tid" : "all" },
-                                "PROVIDE" : { "loaded_points" : { "user_merits" : "user merits" } }
-                              }
-                            },
-                            { "component_rules_erase_merits_in_punishment" : {
-                                "reason" : "Object of dispute deleted 24 hours after start.",
-                                "dispute" : [ "this-dispute" ],
-                                "amount" : [ "user-merits" ]
-                              }
-                            },
-                            { "data_set" : { "data" : [ "this-dispute:field-dispute-status" ], "value" : "2" } },
-                            { "component_rules_set_role_for_the_accused" : {
-                                "affected_dispute" : [ "this-dispute" ],
-                                "role_to_set" : { "value" : [ "4" ] }
-                              }
+                          "ELSE": [
+                            {
+                              "CONDITIONAL": [
+                                {
+                                  "IF": {
+                                    "data_is": {
+                                      "data": [
+                                        "time-difference"
+                                      ],
+                                      "op": "<",
+                                      "value": "86400"
+                                    }
+                                  },
+                                  "DO": [
+                                    {
+                                      "data_set": {
+                                        "data": [
+                                          "this-dispute:field-dispute-status"
+                                        ],
+                                        "value": "2"
+                                      }
+                                    },
+                                    {
+                                      "component_rules_set_role_for_the_accused": {
+                                        "affected_dispute": [
+                                          "this-dispute"
+                                        ],
+                                        "role_to_set": {
+                                          "value": [
+                                            "4"
+                                          ]
+                                        }
+                                      }
+                                    }
+                                  ]
+                                },
+                                {
+                                  "ELSE IF": {
+                                    "data_is": {
+                                      "data": [
+                                        "time-difference"
+                                      ],
+                                      "op": "<",
+                                      "value": "259200"
+                                    }
+                                  },
+                                  "DO": [
+                                    {
+                                      "userpoints_rules_get_current_points": {
+                                        "USING": {
+                                          "user": [
+                                            "this-dispute:field-accused"
+                                          ],
+                                          "tid": "all"
+                                        },
+                                        "PROVIDE": {
+                                          "loaded_points": {
+                                            "user_merits": "user merits"
+                                          }
+                                        }
+                                      }
+                                    },
+                                    {
+                                      "component_rules_erase_merits_in_punishment": {
+                                        "reason": "Object of dispute deleted 24 hours after start.",
+                                        "dispute": [
+                                          "this-dispute"
+                                        ],
+                                        "amount": [
+                                          "user-merits"
+                                        ]
+                                      }
+                                    },
+                                    {
+                                      "data_set": {
+                                        "data": [
+                                          "this-dispute:field-dispute-status"
+                                        ],
+                                        "value": "2"
+                                      }
+                                    },
+                                    {
+                                      "component_rules_set_role_for_the_accused": {
+                                        "affected_dispute": [
+                                          "this-dispute"
+                                        ],
+                                        "role_to_set": {
+                                          "value": [
+                                            "4"
+                                          ]
+                                        }
+                                      }
+                                    }
+                                  ]
+                                },
+                                {
+                                  "ELSE": [
+                                    {
+                                      "component_rules_dispute_maximal_penalty": {
+                                        "dispute_node": [
+                                          "this-dispute"
+                                        ]
+                                      }
+                                    }
+                                  ]
+                                }
+                              ]
                             }
-                          ]
-                        },
-                        { "ELSE" : [
-                            { "component_rules_dispute_maximal_penalty" : { "dispute_node" : [ "this-dispute" ] } }
                           ]
                         }
                       ]
                     },
-                    { "CONDITIONAL" : [
+                    {
+                      "CONDITIONAL": [
                         {
-                          "IF" : { "data_is" : { "data" : [ "triggering-actor" ], "value" : "user" } },
-                          "DO" : [
-                            { "rules_i18n_t" : {
-                                "USING" : {
-                                  "text" : "User [this-dispute:field-accused] had deleted the object of complaint \u0022[node:title]\u0022 from dispute \u0022[this-dispute:title]\u0022. As a consequence the dispute was dismissed.\r\n\r\nPlease do not respond to this message, as the sender account is not monitored.",
-                                  "language" : [ "site:current-page:language" ]
+                          "IF": {
+                            "data_is": {
+                              "data": [
+                                "triggering-actor"
+                              ],
+                              "value": "user"
+                            }
+                          },
+                          "DO": [
+                            {
+                              "rules_i18n_t": {
+                                "USING": {
+                                  "text": "User [this-dispute:field-accused] had deleted the object of complaint \"[node:title]\" from dispute \"[this-dispute:title]\". As a consequence the dispute was dismissed.\r\n\r\nPlease do not respond to this message, as the sender account is not monitored.",
+                                  "language": [
+                                    "site:current-page:language"
+                                  ]
                                 },
-                                "PROVIDE" : { "text" : { "message_body" : "message body" } }
+                                "PROVIDE": {
+                                  "text": {
+                                    "message_body": "message body"
+                                  }
+                                }
                               }
                             },
-                            { "component_rules_send_email_to_dispute_parties" : {
-                                "dispute_node" : [ "this-dispute" ],
-                                "message_body" : "[message-body:value]",
-                                "user_to_skip" : [ "this-dispute:field-accused" ]
+                            {
+                              "component_rules_send_email_to_dispute_parties": {
+                                "dispute_node": [
+                                  "this-dispute"
+                                ],
+                                "message_body": "[message-body:value]",
+                                "user_to_skip": [
+                                  "this-dispute:field-accused"
+                                ]
                               }
                             }
                           ]
                         },
-                        { "ELSE" : [
-                            { "rules_i18n_t" : {
-                                "USING" : {
-                                  "text" : "The three day contest period for dispute \u003Ca href=\u0022\/node\/[this-dispute:nid]\u0022\u003E[this-dispute:title]\u003C\/a\u003E in which you took a part expired and the dispute was closed.\r\n\r\nPlease do not respond to this message, as the sender account is not monitored.",
-                                  "language" : [ "site:current-page:language" ]
+                        {
+                          "ELSE": [
+                            {
+                              "rules_i18n_t": {
+                                "USING": {
+                                  "text": "The three day contest period for dispute <a href=\"/node/[this-dispute:nid]\">[this-dispute:title]</a> in which you took a part expired and the dispute was closed.\r\n\r\nPlease do not respond to this message, as the sender account is not monitored.",
+                                  "language": [
+                                    "site:current-page:language"
+                                  ]
                                 },
-                                "PROVIDE" : { "text" : { "message_body" : "message body" } }
+                                "PROVIDE": {
+                                  "text": {
+                                    "message_body": "message body"
+                                  }
+                                }
                               }
                             },
-                            { "component_rules_send_email_to_dispute_parties" : {
-                                "dispute_node" : [ "this-dispute" ],
-                                "message_body" : "[message-body:value]",
-                                "user_to_skip" : "1"
+                            {
+                              "component_rules_send_email_to_dispute_parties": {
+                                "dispute_node": [
+                                  "this-dispute"
+                                ],
+                                "message_body": "[message-body:value]",
+                                "user_to_skip": "1"
                               }
                             }
                           ]

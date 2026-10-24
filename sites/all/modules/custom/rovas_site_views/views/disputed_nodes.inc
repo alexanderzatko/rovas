@@ -41,7 +41,7 @@ $handler->display->display_options['fields']['title']['table'] = 'node';
 $handler->display->display_options['fields']['title']['field'] = 'title';
 $handler->display->display_options['fields']['title']['label'] = '';
 $handler->display->display_options['fields']['title']['alter']['alter_text'] = TRUE;
-$handler->display->display_options['fields']['title']['alter']['text'] = '[type] - [title] ([nid])';
+$handler->display->display_options['fields']['title']['alter']['text'] = '[nid] — [type] — [title]';
 $handler->display->display_options['fields']['title']['alter']['word_boundary'] = FALSE;
 $handler->display->display_options['fields']['title']['alter']['ellipsis'] = FALSE;
 $handler->display->display_options['fields']['title']['element_label_colon'] = FALSE;
@@ -91,7 +91,7 @@ $handler->display->display_options['defaults']['style_plugin'] = FALSE;
 $handler->display->display_options['style_plugin'] = 'entityreference_style';
 $handler->display->display_options['style_options']['search_fields'] = array(
   'nid' => 'nid',
-  'title' => 'title',
+  'title' => 0,
   'type' => 0,
 );
 $handler->display->display_options['defaults']['style_options'] = FALSE;
@@ -115,7 +115,7 @@ $translatables['disputed_nodes'] = array(
   t('last »'),
   t('Nid'),
   t('Type'),
-  t('[type] - [title] ([nid])'),
+  t('[nid] — [type] — [title]'),
   t('All'),
   t('Entity Reference'),
 );

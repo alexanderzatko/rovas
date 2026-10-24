@@ -42,7 +42,7 @@
             "value": {
               "select": "dispute-node:nid",
               "php": {
-                "code": "$sql = \"\r\n  SELECT \r\n    SUM(CASE WHEN pos.field_position_value = 1 THEN p.points ELSE 0 END) AS supporters_sum,\r\n    SUM(CASE WHEN pos.field_position_value = 2 THEN p.points ELSE 0 END) AS defenders_sum\r\n  FROM {node} node\r\n  LEFT JOIN {users} users_node ON node.uid = users_node.uid\r\n  LEFT JOIN {field_data_field_dispute} d ON node.nid = d.entity_id AND (d.entity_type = 'node' AND d.deleted = '0')\r\n  LEFT JOIN {field_data_field_position} pos ON node.nid = pos.entity_id AND (pos.entity_type = 'node' AND pos.deleted = '0')\r\n  LEFT JOIN {userpoints_total} p ON node.uid = p.uid\r\n  WHERE d.field_dispute_target_id = :dispute\r\n  AND node.status = '1'\r\n  AND node.type = 'dispute_party'\r\n\";\r\n\r\n$result = db_query($sql, array(':dispute' => $value));\r\n$resarray = $result->fetchAll();\r\n\r\n$sup = isset($resarray[0]->supporters_sum) ? $resarray[0]->supporters_sum : 0;\r\n$def = isset($resarray[0]->defenders_sum) ? $resarray[0]->defenders_sum : 0;\r\n\r\nreturn $sup - $def;\r\n"
+                "code": "return function_exists('rovas_dispute_camp_diff_for_penalty') ? rovas_dispute_camp_diff_for_penalty((int) $value) : 0;"
               }
             }
           },

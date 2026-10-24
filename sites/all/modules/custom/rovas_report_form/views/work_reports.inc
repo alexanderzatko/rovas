@@ -36,6 +36,7 @@ $handler->display->display_options['style_plugin'] = 'table';
 $handler->display->display_options['style_options']['row_class'] = 'wr-row-[field_verification_status_1]';
 $handler->display->display_options['style_options']['columns'] = array(
   'nid' => 'nid',
+  'field_work_report_id' => 'field_work_report_id',
   'field_project' => 'field_project',
   'created' => 'created',
   'field_date' => 'field_date',
@@ -55,6 +56,13 @@ $handler->display->display_options['style_options']['class'] = '';
 $handler->display->display_options['style_options']['default'] = 'created';
 $handler->display->display_options['style_options']['info'] = array(
   'nid' => array(
+    'sortable' => 1,
+    'default_sort_order' => 'asc',
+    'align' => '',
+    'separator' => '',
+    'empty_column' => 0,
+  ),
+  'field_work_report_id' => array(
     'sortable' => 1,
     'default_sort_order' => 'asc',
     'align' => '',
@@ -219,6 +227,17 @@ $handler->display->display_options['fields']['nid']['field'] = 'nid';
 $handler->display->display_options['fields']['nid']['label'] = '';
 $handler->display->display_options['fields']['nid']['exclude'] = TRUE;
 $handler->display->display_options['fields']['nid']['element_label_colon'] = FALSE;
+/* Field: Content: Work report ID */
+$handler->display->display_options['fields']['field_work_report_id']['id'] = 'field_work_report_id';
+$handler->display->display_options['fields']['field_work_report_id']['table'] = 'field_data_field_work_report_id';
+$handler->display->display_options['fields']['field_work_report_id']['field'] = 'field_work_report_id';
+$handler->display->display_options['fields']['field_work_report_id']['label'] = 'Work report ID';
+$handler->display->display_options['fields']['field_work_report_id']['alter']['make_link'] = TRUE;
+$handler->display->display_options['fields']['field_work_report_id']['alter']['path'] = 'node/[nid]';
+$handler->display->display_options['fields']['field_work_report_id']['settings'] = array(
+  'thousand_separator' => '',
+  'prefix_suffix' => 1,
+);
 /* Field: Content: Project */
 $handler->display->display_options['fields']['field_project']['id'] = 'field_project';
 $handler->display->display_options['fields']['field_project']['table'] = 'field_data_field_project';
@@ -497,6 +516,7 @@ if (is_numeric(arg(1))) {
 ?>'),
   t('Nobody submitted a work report yet.'),
   t('author'),
+  t('Work report ID'),
   t('Added'),
   t('Date'),
   t('Worker'),

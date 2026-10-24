@@ -1,0 +1,123 @@
+<?php
+
+/**
+ * @file
+ * Install/update for work report form module.
+ */
+
+/**
+ * Implements hook_install().
+ */
+function rovas_report_form_install() {
+  _rovas_report_form_ensure_work_report_id_field();
+}
+
+/**
+ * Create and attach field_work_report_id (mirrors project field_project_id).
+ */
+function _rovas_report_form_ensure_work_report_id_field() {
+  if (!field_info_field('field_work_report_id')) {
+    field_create_field(array(
+      'field_name' => 'field_work_report_id',
+      'type' => 'number_integer',
+      'module' => 'number',
+      'active' => 1,
+      'locked' => 0,
+      'cardinality' => 1,
+      'translatable' => 0,
+      'settings' => array(),
+    ));
+  }
+
+  $instance = field_info_instance('node', 'field_work_report_id', 'work_report');
+  if (!$instance) {
+    field_create_instance(array(
+      'field_name' => 'field_work_report_id',
+      'entity_type' => 'node',
+      'bundle' => 'work_report',
+      'label' => 'Work report ID',
+      'required' => 0,
+      'description' => 'Numeric identifier of this work report (same as the node ID). Use this value when filing a dispute.',
+      'default_value' => NULL,
+      'settings' => array(
+        'min' => '',
+        'max' => '',
+        'prefix' => '',
+        'suffix' => '',
+      ),
+      'widget' => array(
+        'type' => 'number',
+        'module' => 'number',
+        'weight' => -50,
+        'settings' => array(),
+      ),
+      'display' => array(
+        'default' => array(
+          'label' => 'inline',
+          'type' => 'number_integer',
+          'weight' => -50,
+          'settings' => array(
+            'thousand_separator' => '',
+            'prefix_suffix' => TRUE,
+          ),
+          'module' => 'number',
+        ),
+        'teaser' => array(
+          'label' => 'inline',
+          'type' => 'number_integer',
+          'weight' => -50,
+          'settings' => array(
+            'thousand_separator' => '',
+            'prefix_suffix' => TRUE,
+          ),
+          'module' => 'number',
+        ),
+      ),
+    ));
+  }
+}
+
+/**
+ * Implements hook_update_N().
+ *
+ * Add Work report ID field and backfill from nid.
+ */
+function rovas_report_form_update_7101() {
+  _rovas_report_form_ensure_work_report_id_field();
+  _rovas_report_form_backfill_work_report_ids();
+  return t('Created field_work_report_id and backfilled existing work reports.');
+}
+
+/**
+ * Set field_work_report_id = nid for all work reports missing a value.
+ */
+function _rovas_report_form_backfill_work_report_ids() {
+  if (!field_info_field('field_work_report_id')) {
+    return;
+  }
+
+  $nids = db_query("
+    SELECT n.nid
+    FROM {node} n
+    LEFT JOIN {field_data_field_work_report_id} f
+      ON f.entity_id = n.nid
+      AND f.entity_type = 'node'
+      AND f.deleted = 0
+    WHERE n.type = 'work_report'
+      AND f.field_work_report_id_value IS NULL
+  ")->fetchCol();
+
+  foreach ($nids as $nid) {
+    $nid = (int) $nid;
+    $node = node_load($nid);
+    if (!$node) {
+      continue;
+    }
+    $lang = field_language('node', $node, 'field_work_report_id');
+    if ($lang === FALSE || $lang === NULL) {
+      $lang = LANGUAGE_NONE;
+    }
+    $node->field_work_report_id[$lang][0]['value'] = $nid;
+    field_attach_update('node', $node);
+  }
+}

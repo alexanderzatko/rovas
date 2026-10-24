@@ -62,7 +62,7 @@ Každý pracovný výkaz musí obsahovať informácie o druhu vykonanej práce. 
 
 **<a name="dispute"></a>Spor**
 
-Spor je procedúra, pri ktorej jeden používateľ môže obviniť iného, z porušenia [pravidiel NEO](/rules). Porušenie sa môže týkať napríklad [pracovného výkazu](#workReport) za prácu, ktorá nebola nevykonaná, alebo takého, ktorého produkt nie je možné požívať bezplatne alebo získať za [chrony](#chron). Po podaní sporu si obe strany vyžiadajú podporu od ostatných používateľov, ktorí dajú svoj hlas svojmu kandidátovi. Po uplynutí stanovenej doby sa kumulatívne [merit](#merit) skóre priaznivcov oboch strán spočíta a obidve čísla sa porovnajú. Strana, ktorá má viac meritov vyhráva. Podrobnejší popis procesu je uvedený na stránke [Spory](/disputes).
+Spor je procedúra, pri ktorej jeden používateľ môže obviniť iného z porušenia [pravidiel NEO](/rules). Porušenie sa môže týkať napríklad [pracovného výkazu](#workReport) za prácu, ktorá nebola vykonaná, alebo takého, ktorého produkt nie je možné požívať bezplatne alebo získať za [chrony](#chron). Spomínaný dokument sa identifikuje podľa ID pracovného výkazu alebo ID projektu. Po podaní sporu obe strany získavajú do svojich táborov [dôveryhodných používateľov](#trustedUser). Po uplynutí stanovenej doby Rováš spočíta dôveryhodných používateľov v každom tábore; vyhráva tábor s väčším počtom. Tretí spor, ktorý pre obvineného neskončí výhrou ani remízou, je potrestaný ako prehra, aj keď sťažnosť napraví. Podrobnejší popis procesu je uvedený na stránke [Spory](/disputes).
 
 **<a id="projectMEalloc" name="projectMEalloc"></a>Meritová časť odmeny**
 

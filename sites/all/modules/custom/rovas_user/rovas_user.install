@@ -20,6 +20,20 @@ function rovas_user_update_7001() {
 }
 
 /**
+ * Update dispute object-of-complaint help to prefer document IDs.
+ */
+function rovas_user_update_7002() {
+  $instance = field_info_instance('node', 'field_object_of_complaint', 'dispute');
+  if (!$instance) {
+    return t('field_object_of_complaint on dispute not found; skipped.');
+  }
+  $instance['description'] = 'Enter the ID of the document you are filing the complaint against (Work report ID or Project ID, shown on the document page). It could be a work report or a project, but most often it will be a verification, like when a work report is rejected. Verification IDs are listed on the work report page. Type the numeric ID to select the document. Once submitted, this value can not be changed.';
+  field_update_instance($instance);
+  field_cache_clear();
+  return t('Updated object of complaint field help text.');
+}
+
+/**
  * Ensure all trusted / auto-approved field bases and instances exist.
  */
 function _rovas_user_ensure_trusted_fields() {
