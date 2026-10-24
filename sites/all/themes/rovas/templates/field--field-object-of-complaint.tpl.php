@@ -54,10 +54,32 @@
       <?php //print render($item); ?>
 <?php 
 	$obj = entity_metadata_wrapper('node', $item['#item']['entity']);
-	if($obj->getBundle() == 'work_report')
+	$bundle = $obj->getBundle();
+	if ($bundle == 'work_report') {
 		print t('Work report') . ' ' . render($item) . ' ' . t('of project') . ' <a href="/node/'.$obj->field_project->getIdentifier().'">' . $obj->field_project->label() . '</a>';
-	else
-		print t('Project') . ' ' . render($item); 
+	}
+	elseif ($bundle == 'verification') {
+		$wr_label = '';
+		$wr_nid = 0;
+		try {
+			if ($obj->field_work_report->value()) {
+				$wr_nid = (int) $obj->field_work_report->getIdentifier();
+				$wr_label = $obj->field_work_report->label();
+			}
+		}
+		catch (Exception $e) {
+			// Missing WR reference.
+		}
+		if ($wr_nid) {
+			print t('Verification') . ' ' . render($item) . ' ' . t('of work report') . ' <a href="/node/' . $wr_nid . '">' . check_plain($wr_label) . '</a>';
+		}
+		else {
+			print t('Verification') . ' ' . render($item);
+		}
+	}
+	else {
+		print t('Project') . ' ' . render($item);
+	}
 ?>
       <?php //print_r($item['#item']['entity']); ?>
       </div>

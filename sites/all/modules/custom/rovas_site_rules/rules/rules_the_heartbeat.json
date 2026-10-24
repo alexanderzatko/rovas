@@ -321,7 +321,7 @@
                                                 "ELSE IF": {
                                                   "entity_is_of_bundle": {
                                                     "entity": [
-                                                      "this-dispute"
+                                                      "this-dispute:field-object-of-complaint"
                                                     ],
                                                     "type": "node",
                                                     "bundle": {
@@ -333,10 +333,11 @@
                                                 },
                                                 "DO": [
                                                   {
-                                                    "entity_delete": {
-                                                      "data": [
-                                                        "this-dispute"
-                                                      ]
+                                                    "component_rules_delete_verification": {
+                                                      "node": [
+                                                        "this-dispute:field-object-of-complaint"
+                                                      ],
+                                                      "triggering_actor": "schedule"
                                                     }
                                                   }
                                                 ]

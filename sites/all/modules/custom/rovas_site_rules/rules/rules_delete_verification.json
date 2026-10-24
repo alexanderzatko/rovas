@@ -1,0 +1,58 @@
+{
+  "rules_delete_verification": {
+    "LABEL": "delete verification",
+    "PLUGIN": "rule",
+    "OWNER": "rules",
+    "TAGS": [
+      "verification",
+      "dispute"
+    ],
+    "REQUIRES": [
+      "rules"
+    ],
+    "USES VARIABLES": {
+      "node": {
+        "label": "verification node",
+        "type": "node"
+      },
+      "triggering_actor": {
+        "label": "Triggering actor",
+        "type": "text"
+      }
+    },
+    "IF": [
+      {
+        "entity_is_of_bundle": {
+          "entity": [
+            "node"
+          ],
+          "type": "node",
+          "bundle": {
+            "value": {
+              "verification": "verification"
+            }
+          }
+        }
+      }
+    ],
+    "DO": [
+      {
+        "component_rules_rectify_dispute_object": {
+          "node": [
+            "node"
+          ],
+          "triggering_actor": [
+            "triggering-actor"
+          ]
+        }
+      },
+      {
+        "entity_delete": {
+          "data": [
+            "node"
+          ]
+        }
+      }
+    ]
+  }
+}
