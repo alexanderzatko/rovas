@@ -49675,6 +49675,10 @@ msgstr "Spor byl ukončen."
 #: /node/628
 msgid "of project"
 msgstr "projektu"
+#: sites/all/themes/rovas/templates/field--field-object-of-complaint.tpl.php
+msgid "of work report"
+msgstr "pracovního výkazu"
+
 
 #: /verify-by-person
 msgid "Type name of the user who will verify your account"

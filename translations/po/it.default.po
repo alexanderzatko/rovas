@@ -50244,6 +50244,10 @@ msgstr "La controversia è stata chiusa."
 #: /node/628
 msgid "of project"
 msgstr "progetto"
+#: sites/all/themes/rovas/templates/field--field-object-of-complaint.tpl.php
+msgid "of work report"
+msgstr "del rapporto di lavoro"
+
 
 #: /verify-by-person
 msgid "Type name of the user who will verify your account"

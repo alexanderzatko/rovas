@@ -30435,6 +30435,10 @@ msgstr ""
 #: /node/628
 msgid "of project"
 msgstr ""
+#: sites/all/themes/rovas/templates/field--field-object-of-complaint.tpl.php
+msgid "of work report"
+msgstr ""
+
 
 #: /node/619
 msgid "End date"
