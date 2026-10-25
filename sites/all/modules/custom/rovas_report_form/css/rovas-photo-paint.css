@@ -101,6 +101,15 @@
   vertical-align: middle;
 }
 
+.rovas-photo-paint-straight {
+  user-select: none;
+}
+
+.rovas-photo-paint-straight-cb {
+  margin: 0;
+  vertical-align: middle;
+}
+
 .rovas-photo-paint-canvas-wrap {
   overflow: auto;
   max-height: calc(94vh - 5rem);

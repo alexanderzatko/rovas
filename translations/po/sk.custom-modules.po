@@ -421,7 +421,11 @@ msgid "Marker size"
 msgstr "Hrúbka popisovača"
 
 #: sites/all/modules/custom/rovas_report_form/rovas_report_form.module
-msgid "Undo"
+msgid "Make lines straight"
+msgstr "Narovnať čiary"
+
+#: sites/all/modules/custom/rovas_report_form/rovas_report_form.module
+msgid "Back"
 msgstr "Späť"
 
 #: sites/all/modules/custom/rovas_report_form/rovas_report_form.module

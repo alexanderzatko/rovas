@@ -178,7 +178,10 @@
     var drawing = false;
     var lastX = 0;
     var lastY = 0;
+    var startX = 0;
+    var startY = 0;
     var brush = parseInt(t('defaultBrush', 24), 10) || 24;
+    var straighten = false;
 
     var $size = $('<label/>').append(
       document.createTextNode(t('brushLabel', 'Marker size') + ' '),
@@ -194,13 +197,24 @@
       brush = parseInt(this.value, 10) || 24;
     });
 
-    var $undo = $('<button/>', { type: 'button', 'class': 'button', text: t('undoLabel', 'Undo') });
+    var $straight = $('<label/>', { 'class': 'rovas-photo-paint-straight' }).append(
+      $('<input/>', {
+        type: 'checkbox',
+        'class': 'rovas-photo-paint-straight-cb'
+      }),
+      document.createTextNode(' ' + t('straightLabel', 'Make lines straight'))
+    );
+    $straight.find('input').on('change', function () {
+      straighten = !!this.checked;
+    });
+
+    var $undo = $('<button/>', { type: 'button', 'class': 'button', text: t('undoLabel', 'Back') });
     var $clear = $('<button/>', { type: 'button', 'class': 'button', text: t('clearLabel', 'Clear marks') });
     var $apply = $('<button/>', { type: 'button', 'class': 'button button-primary', text: t('applyLabel', 'Apply') });
     var $cancel = $('<button/>', { type: 'button', 'class': 'button', text: t('cancelLabel', 'Cancel') });
     var $status = $('<span/>', { 'class': 'rovas-photo-paint-status' });
 
-    toolbar.append($size, $undo, $clear, $apply, $cancel, $status);
+    toolbar.append($size, $straight, $undo, $clear, $apply, $cancel, $status);
     canvasWrap.append(canvas);
     panel.append(toolbar, canvasWrap);
     overlay.append(panel);
@@ -211,12 +225,21 @@
     $undo.prop('disabled', true);
     $clear.prop('disabled', true);
 
+    function updateUndoButtons() {
+      // Keep index 0 as the clean baseline; Back only when a stroke can be undone.
+      var canUndo = undoStack.length > 1;
+      $undo.prop('disabled', !canUndo);
+      $clear.prop('disabled', !canUndo);
+    }
+
     function pushUndo() {
       try {
         undoStack.push(ctx.getImageData(0, 0, canvas.width, canvas.height));
         if (undoStack.length > 25) {
-          undoStack.shift();
+          // Drop oldest stroke snapshot, keep baseline at [0].
+          undoStack.splice(1, 1);
         }
+        updateUndoButtons();
       }
       catch (err) {
         // Ignore quota errors on huge canvases.
@@ -258,8 +281,8 @@
       pushUndo();
       drawing = true;
       var p = canvasPos(evt.originalEvent || evt);
-      lastX = p.x;
-      lastY = p.y;
+      startX = lastX = p.x;
+      startY = lastY = p.y;
       ctx.beginPath();
       ctx.fillStyle = '#000';
       ctx.arc(lastX, lastY, brush / 2, 0, Math.PI * 2);
@@ -281,6 +304,25 @@
       }
       evt.preventDefault();
       drawing = false;
+      if (!straighten || !undoStack.length) {
+        return;
+      }
+      // Replace freehand stroke with a straight segment from first to last point.
+      var endX = lastX;
+      var endY = lastY;
+      try {
+        ctx.putImageData(undoStack[undoStack.length - 1], 0, 0);
+      }
+      catch (err) {
+        return;
+      }
+      lastX = startX;
+      lastY = startY;
+      ctx.beginPath();
+      ctx.fillStyle = '#000';
+      ctx.arc(startX, startY, brush / 2, 0, Math.PI * 2);
+      ctx.fill();
+      strokeTo(endX, endY);
     }
 
     $(canvas).on('mousedown', onDown);
@@ -292,19 +334,21 @@
 
     $undo.on('click', function (e) {
       e.preventDefault();
-      if (!undoStack.length) {
+      if (undoStack.length <= 1) {
         return;
       }
       ctx.putImageData(undoStack.pop(), 0, 0);
+      updateUndoButtons();
     });
 
     $clear.on('click', function (e) {
       e.preventDefault();
-      if (!undoStack.length) {
+      if (undoStack.length <= 1) {
         return;
       }
       ctx.putImageData(undoStack[0], 0, 0);
-      undoStack = [];
+      undoStack = [undoStack[0]];
+      updateUndoButtons();
     });
 
     $cancel.on('click', function (e) {
@@ -389,8 +433,7 @@
         pushUndo();
         $status.text('');
         $apply.prop('disabled', false);
-        $undo.prop('disabled', false);
-        $clear.prop('disabled', false);
+        updateUndoButtons();
       };
       image.onerror = function () {
         $status.text(t('loadErrorLabel', 'Could not load the full image.'));

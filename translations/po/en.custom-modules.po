@@ -270,8 +270,12 @@ msgid "Marker size"
 msgstr "Marker size"
 
 #: sites/all/modules/custom/rovas_report_form/rovas_report_form.module
-msgid "Undo"
-msgstr "Undo"
+msgid "Make lines straight"
+msgstr "Make lines straight"
+
+#: sites/all/modules/custom/rovas_report_form/rovas_report_form.module
+msgid "Back"
+msgstr "Back"
 
 #: sites/all/modules/custom/rovas_report_form/rovas_report_form.module
 msgid "Clear marks"

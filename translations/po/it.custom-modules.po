@@ -375,8 +375,12 @@ msgid "Marker size"
 msgstr "Spessore pennarello"
 
 #: sites/all/modules/custom/rovas_report_form/rovas_report_form.module
-msgid "Undo"
-msgstr "Annulla"
+msgid "Make lines straight"
+msgstr "Rendi le linee dritte"
+
+#: sites/all/modules/custom/rovas_report_form/rovas_report_form.module
+msgid "Back"
+msgstr "Indietro"
 
 #: sites/all/modules/custom/rovas_report_form/rovas_report_form.module
 msgid "Clear marks"
