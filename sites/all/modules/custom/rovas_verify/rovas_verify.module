@@ -1215,6 +1215,152 @@ function rovas_verify_query_role_filter_alter(QueryAlterableInterface $query) {
 }
 
 
+/**
+ * Pick a random user who has an idle (unassigned) obligation verification slot.
+ *
+ * Used as the high-priority pool for rules_ask_user_to_verify_report before
+ * falling back to top_compliant_users. Preference goes to oldest idle slots.
+ *
+ * @param object $report
+ *   Work report node.
+ *
+ * @return array|false
+ *   array('uid' => int, 'slot_nid' => int) or FALSE.
+ */
+function rovas_verify_pick_idle_slot_verifier($report) {
+	if (empty($report->nid)) {
+		return FALSE;
+	}
+
+	$excluded = _rv_excluded_users($report->nid);
+	if (empty($excluded)) {
+		$excluded = array(0);
+	}
+
+	$lang = !empty($report->language) ? $report->language : '';
+
+	$query = "SELECT owner.field_slip_owner_target_id AS uid, node.nid AS slot_nid
+		FROM {node} node
+		INNER JOIN {field_data_field_slip_owner} owner
+			ON node.nid = owner.entity_id AND owner.entity_type = 'node' AND owner.deleted = 0
+		LEFT JOIN {field_data_field_report_to_verify} report
+			ON node.nid = report.entity_id AND report.entity_type = 'node' AND report.deleted = 0
+		LEFT JOIN {field_data_field_voluntary} vol
+			ON node.nid = vol.entity_id AND vol.entity_type = 'node' AND vol.deleted = 0
+		INNER JOIN {users} u ON owner.field_slip_owner_target_id = u.uid
+		LEFT JOIN {users_roles} roles ON u.uid = roles.uid AND roles.rid IN ('5', '9')
+		LEFT JOIN {field_data_field_suspend_account} suspend
+			ON u.uid = suspend.entity_id AND suspend.entity_type = 'user' AND suspend.deleted = 0
+		LEFT JOIN {userpoints_total} usrmer ON u.uid = usrmer.uid
+		WHERE node.type = 'verification_slot'
+			AND node.status = 1
+			AND report.field_report_to_verify_target_id IS NULL
+			AND (vol.field_voluntary_value IS NULL OR vol.field_voluntary_value = 0)
+			AND owner.field_slip_owner_target_id NOT IN (:excluded)
+			AND u.status = 1
+			AND roles.rid IS NULL
+			AND (suspend.field_suspend_account_value IS NULL OR suspend.field_suspend_account_value = 0)
+			AND (usrmer.points IS NULL OR usrmer.points >= 0)
+			AND (:lang = '' OR u.language = :lang)
+		ORDER BY node.nid ASC
+		LIMIT 100";
+
+	$rows = db_query($query, array(
+		':excluded' => $excluded,
+		':lang' => $lang,
+	))->fetchAll();
+
+	if (empty($rows)) {
+		return FALSE;
+	}
+
+	// Oldest slot per user, then shuffle users.
+	$by_uid = array();
+	foreach ($rows as $row) {
+		$uid = (int) $row->uid;
+		if (isset($by_uid[$uid])) {
+			continue;
+		}
+		if (function_exists('rovas_user_accepts_mandatory_verification')
+			&& !rovas_user_accepts_mandatory_verification($uid)) {
+			continue;
+		}
+		$by_uid[$uid] = array(
+			'uid' => $uid,
+			'slot_nid' => (int) $row->slot_nid,
+		);
+	}
+
+	if (empty($by_uid)) {
+		return FALSE;
+	}
+
+	$candidates = array_values($by_uid);
+	shuffle($candidates);
+	return $candidates[0];
+}
+
+/**
+ * Assign a work report to an idle obligation slot, if one is available.
+ *
+ * @param int $report_nid
+ *   Work report node ID.
+ *
+ * @return int
+ *   Assigned verifier uid, or 0 if none.
+ */
+function rovas_verify_assign_idle_slot_verifier($report_nid) {
+	$report_nid = (int) $report_nid;
+	if ($report_nid <= 0) {
+		return 0;
+	}
+
+	$report = node_load($report_nid);
+	if (!$report || $report->type !== 'work_report' || empty($report->status)) {
+		return 0;
+	}
+
+	$picked = rovas_verify_pick_idle_slot_verifier($report);
+	if (!$picked) {
+		return 0;
+	}
+
+	$slot = node_load($picked['slot_nid'], TRUE);
+	if (!$slot || $slot->type !== 'verification_slot') {
+		return 0;
+	}
+
+	// Bail if another process already claimed the slot.
+	if (!empty($slot->field_report_to_verify[LANGUAGE_NONE][0]['target_id'])) {
+		return 0;
+	}
+
+	$owner = user_load($picked['uid']);
+	$hours = variable_get('rv_normal_period') ? (int) variable_get('rv_normal_period') : 24;
+	$score = 0;
+	if (!empty($owner->field_verification_score[LANGUAGE_NONE][0]['value'])) {
+		$score = (int) $owner->field_verification_score[LANGUAGE_NONE][0]['value'];
+	}
+	if ($score < 0) {
+		$hours = variable_get('rv_restrict_period') ? (int) variable_get('rv_restrict_period') : $hours;
+	}
+	if ($hours <= 0) {
+		$hours = 24;
+	}
+
+	$slot->field_report_to_verify[LANGUAGE_NONE][0]['target_id'] = $report_nid;
+	$slot->field_verify_date[LANGUAGE_NONE][0]['value'] = REQUEST_TIME + ($hours * 3600);
+	node_save($slot);
+
+	watchdog('rovas_verify', 'Idle obligation slot @slot assigned to report @report for uid @uid.', array(
+		'@slot' => $picked['slot_nid'],
+		'@report' => $report_nid,
+		'@uid' => $picked['uid'],
+	), WATCHDOG_INFO);
+
+	return (int) $picked['uid'];
+}
+
 /*
 count the number of experts for a given taxonomy ID (NACE code)
 @userex allows excluding some users from the count

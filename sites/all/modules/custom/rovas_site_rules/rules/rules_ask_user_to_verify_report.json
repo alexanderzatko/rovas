@@ -48,37 +48,11 @@
         "variable_add": {
           "USING": {
             "type": "text",
-            "value": "<?php\r\n$usrary = _rv_excluded_users($work_report->nid);\r\necho implode ('+',$usrary);\r\n?>"
+            "value": "<?php\r\necho (int) rovas_verify_assign_idle_slot_verifier($work_report->nid);\r\n?>"
           },
           "PROVIDE": {
             "variable_added": {
-              "excluded_users": "excluded users"
-            }
-          }
-        }
-      },
-      {
-        "views_bulk_operations_action_load_list": {
-          "USING": {
-            "view": "top_compliant_users|default",
-            "args": "[excluded-users:value]\r\n[work-report:language]"
-          },
-          "PROVIDE": {
-            "entity_list": {
-              "user_pool": "user pool"
-            }
-          }
-        }
-      },
-      {
-        "variable_add": {
-          "USING": {
-            "type": "text",
-            "value": "<?php\r\nshuffle($user_pool);\r\n$fuser = 0;\r\nforeach ($user_pool as $candidate) {\r\n  if (!isset($candidate->uid)) {\r\n    continue;\r\n  }\r\n  if (function_exists('rovas_user_accepts_voluntary_verification') && !rovas_user_accepts_voluntary_verification($candidate)) {\r\n    continue;\r\n  }\r\n  $fuser = (int) $candidate->uid;\r\n  break;\r\n}\r\necho $fuser;\r\n?>"
-          },
-          "PROVIDE": {
-            "variable_added": {
-              "random_user": "random user"
+              "idle_uid_text": "idle slot user id text"
             }
           }
         }
@@ -88,12 +62,12 @@
           "USING": {
             "type": "integer",
             "value": [
-              "random-user"
+              "idle-uid-text"
             ]
           },
           "PROVIDE": {
             "conversion_result": {
-              "rand_uid": "random user uid"
+              "idle_uid": "idle slot user id"
             }
           }
         }
@@ -104,7 +78,7 @@
             "IF": {
               "data_is": {
                 "data": [
-                  "rand-uid"
+                  "idle-uid"
                 ],
                 "op": ">",
                 "value": "0"
@@ -116,44 +90,12 @@
                   "USING": {
                     "type": "user",
                     "id": [
-                      "rand-uid"
+                      "idle-uid"
                     ]
                   },
                   "PROVIDE": {
                     "entity_fetched": {
-                      "user": "user"
-                    }
-                  }
-                }
-              },
-              {
-                "component_rules_create_verify_slot": {
-                  "USING": {
-                    "uid": [
-                      "rand-uid"
-                    ],
-                    "report_nid": [
-                      "work-report:nid"
-                    ],
-                    "due_date_offset": "<?php\r\n\techo variable_get('rv_normal_period') ? variable_get('rv_normal_period') : 24;\r\n?>",
-                    "voluntary": "1"
-                  },
-                  "PROVIDE": {
-                    "slot_nid": {
-                      "slot_nid": "slot nid"
-                    }
-                  }
-                }
-              },
-              {
-                "variable_add": {
-                  "USING": {
-                    "type": "text",
-                    "value": "Rovas: help needed with verifying a report"
-                  },
-                  "PROVIDE": {
-                    "variable_added": {
-                      "subject": "subject"
+                      "idle_user": "idle slot user"
                     }
                   }
                 }
@@ -161,10 +103,10 @@
               {
                 "component_rules_send_email": {
                   "recipient": [
-                    "user:mail"
+                    "idle-user:mail"
                   ],
-                  "subject": "<?php\r\n\r\n$language = $user->language;\r\n\r\necho t('Rovas: help needed with verifying a report',[],['langcode' => $language]);\r\n?>",
-                  "message": "<?php\r\n\r\n$language = $user->language;\r\n\r\n$usrname = $user->name;\r\n$replink = '/node/' . $work_report->nid;\r\n\r\n$trusted_notice = '';\r\nif (function_exists('rovas_user_trusted_email_notice')) {\r\n  $trusted_notice = rovas_user_trusted_email_notice($user, $language);\r\n}\r\n$message = $trusted_notice;\r\n$message .= t('Hello @user',['@user' => $usrname],['langcode' => $language]);\r\n$message .= '<br><br>';\r\n$message .= t('A <a href=\"@replink\">report was filed in Rovas</a>, for which we can not find a verifier with the right expertise. Would you be willing to help and verify the report?',['@replink' => $replink],['langcode' => $language]);\r\n$message .= '<br><br>';\r\n$message .= t('You can refuse to do it for any reason without penalties, but we would appreciate if you could indicate your choice on <a href=\"@replink\">the report page</a>, so we can find another user to do the verification.',['@replink' => $replink],['langcode' => $language]);\r\n$message .= '<br><br>';\r\n$message .= t('Thank you.',[],['langcode' => $language]);\r\n$message .= '<br><br><br><br>';\r\n\r\n$message .= t('These requests can be turned off in <a href=\"/user/@uid/edit\">your user profile</a>',['@uid' => $user->uid],['langcode' => $language]);\r\n\r\necho $message;\r\n?>",
+                  "subject": "<?php\r\n\r\n$language = $idle_user->language;\r\n\r\necho t('Rovas verification request',[],['langcode' => $language]);\r\n?>",
+                  "message": "<?php\r\n\r\n$language = $idle_user->language;\r\n\r\n$usrlink = '/user/' . $work_report->uid;\r\n$author = user_load($work_report->uid);\r\n$usrname = $author ? $author->name : '';\r\n$rovlink = '/node/' . $work_report->nid;\r\n\r\n$trusted_notice = '';\r\nif (function_exists('rovas_user_trusted_email_notice')) {\r\n  $trusted_notice = rovas_user_trusted_email_notice($idle_user, $language);\r\n}\r\n$message = $trusted_notice;\r\n$message .= t('You have been chosen to verify work report <strong>@repname</strong> filed by <a href=\"@usrlink\">@usrname</a>.',['@repname' => $work_report->title,'@usrlink' => $usrlink,'@usrname' => $usrname],['langcode' => $language]);\r\n$message .= '<br><br>';\r\n$message .= t('You can <a href=\"@prooflink\">verify the report in Rovas</a>.',['@prooflink' => $rovlink],['langcode' => $language]);\r\n$message .= '<br><br>';\r\n$message .= t('Thank you.',[],['langcode' => $language]);\r\n\r\necho $message;\r\n?>",
                   "language": "en"
                 }
               },
@@ -174,14 +116,14 @@
                     "uid"
                   ],
                   "value": [
-                    "rand-uid"
+                    "idle-uid"
                   ]
                 }
               },
               {
                 "drupal_watchdog": {
                   "type": "rule",
-                  "message": "rules_ask_user_to_verify_report - [user:name] - [user:language] - [translated-body:value]"
+                  "message": "rules_ask_user_to_verify_report idle-slot - [idle-user:name] - [idle-user:language]"
                 }
               }
             ]
@@ -189,11 +131,159 @@
           {
             "ELSE": [
               {
-                "data_set": {
-                  "data": [
-                    "uid"
-                  ]
+                "variable_add": {
+                  "USING": {
+                    "type": "text",
+                    "value": "<?php\r\n$usrary = _rv_excluded_users($work_report->nid);\r\necho implode ('+',$usrary);\r\n?>"
+                  },
+                  "PROVIDE": {
+                    "variable_added": {
+                      "excluded_users": "excluded users"
+                    }
+                  }
                 }
+              },
+              {
+                "views_bulk_operations_action_load_list": {
+                  "USING": {
+                    "view": "top_compliant_users|default",
+                    "args": "[excluded-users:value]\r\n[work-report:language]"
+                  },
+                  "PROVIDE": {
+                    "entity_list": {
+                      "user_pool": "user pool"
+                    }
+                  }
+                }
+              },
+              {
+                "variable_add": {
+                  "USING": {
+                    "type": "text",
+                    "value": "<?php\r\nshuffle($user_pool);\r\n$fuser = 0;\r\nforeach ($user_pool as $candidate) {\r\n  if (!isset($candidate->uid)) {\r\n    continue;\r\n  }\r\n  if (function_exists('rovas_user_accepts_voluntary_verification') && !rovas_user_accepts_voluntary_verification($candidate)) {\r\n    continue;\r\n  }\r\n  $fuser = (int) $candidate->uid;\r\n  break;\r\n}\r\necho $fuser;\r\n?>"
+                  },
+                  "PROVIDE": {
+                    "variable_added": {
+                      "random_user": "random user"
+                    }
+                  }
+                }
+              },
+              {
+                "data_convert": {
+                  "USING": {
+                    "type": "integer",
+                    "value": [
+                      "random-user"
+                    ]
+                  },
+                  "PROVIDE": {
+                    "conversion_result": {
+                      "rand_uid": "random user uid"
+                    }
+                  }
+                }
+              },
+              {
+                "CONDITIONAL": [
+                  {
+                    "IF": {
+                      "data_is": {
+                        "data": [
+                          "rand-uid"
+                        ],
+                        "op": ">",
+                        "value": "0"
+                      }
+                    },
+                    "DO": [
+                      {
+                        "entity_fetch": {
+                          "USING": {
+                            "type": "user",
+                            "id": [
+                              "rand-uid"
+                            ]
+                          },
+                          "PROVIDE": {
+                            "entity_fetched": {
+                              "user": "user"
+                            }
+                          }
+                        }
+                      },
+                      {
+                        "component_rules_create_verify_slot": {
+                          "USING": {
+                            "uid": [
+                              "rand-uid"
+                            ],
+                            "report_nid": [
+                              "work-report:nid"
+                            ],
+                            "due_date_offset": "<?php\r\n\techo variable_get('rv_normal_period') ? variable_get('rv_normal_period') : 24;\r\n?>",
+                            "voluntary": "1"
+                          },
+                          "PROVIDE": {
+                            "slot_nid": {
+                              "slot_nid": "slot nid"
+                            }
+                          }
+                        }
+                      },
+                      {
+                        "variable_add": {
+                          "USING": {
+                            "type": "text",
+                            "value": "Rovas: help needed with verifying a report"
+                          },
+                          "PROVIDE": {
+                            "variable_added": {
+                              "subject": "subject"
+                            }
+                          }
+                        }
+                      },
+                      {
+                        "component_rules_send_email": {
+                          "recipient": [
+                            "user:mail"
+                          ],
+                          "subject": "<?php\r\n\r\n$language = $user->language;\r\n\r\necho t('Rovas: help needed with verifying a report',[],['langcode' => $language]);\r\n?>",
+                          "message": "<?php\r\n\r\n$language = $user->language;\r\n\r\n$usrname = $user->name;\r\n$replink = '/node/' . $work_report->nid;\r\n\r\n$trusted_notice = '';\r\nif (function_exists('rovas_user_trusted_email_notice')) {\r\n  $trusted_notice = rovas_user_trusted_email_notice($user, $language);\r\n}\r\n$message = $trusted_notice;\r\n$message .= t('Hello @user',['@user' => $usrname],['langcode' => $language]);\r\n$message .= '<br><br>';\r\n$message .= t('A <a href=\"@replink\">report was filed in Rovas</a>, for which we can not find a verifier with the right expertise. Would you be willing to help and verify the report?',['@replink' => $replink],['langcode' => $language]);\r\n$message .= '<br><br>';\r\n$message .= t('You can refuse to do it for any reason without penalties, but we would appreciate if you could indicate your choice on <a href=\"@replink\">the report page</a>, so we can find another user to do the verification.',['@replink' => $replink],['langcode' => $language]);\r\n$message .= '<br><br>';\r\n$message .= t('Thank you.',[],['langcode' => $language]);\r\n$message .= '<br><br><br><br>';\r\n\r\n$message .= t('These requests can be turned off in <a href=\"/user/@uid/edit\">your user profile</a>',['@uid' => $user->uid],['langcode' => $language]);\r\n\r\necho $message;\r\n?>",
+                          "language": "en"
+                        }
+                      },
+                      {
+                        "data_set": {
+                          "data": [
+                            "uid"
+                          ],
+                          "value": [
+                            "rand-uid"
+                          ]
+                        }
+                      },
+                      {
+                        "drupal_watchdog": {
+                          "type": "rule",
+                          "message": "rules_ask_user_to_verify_report - [user:name] - [user:language] - [translated-body:value]"
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "ELSE": [
+                      {
+                        "data_set": {
+                          "data": [
+                            "uid"
+                          ]
+                        }
+                      }
+                    ]
+                  }
+                ]
               }
             ]
           }
