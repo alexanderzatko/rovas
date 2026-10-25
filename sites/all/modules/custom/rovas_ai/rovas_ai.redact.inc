@@ -5,9 +5,11 @@
  * Proof-photo PII / face detection (vision) and GD blackout.
  */
 
-define('ROVAS_AI_PROOF_REDACT_CONFIDENCE', 0.5);
-define('ROVAS_AI_PROOF_REDACT_MAX_TOKENS', 1200);
+define('ROVAS_AI_PROOF_REDACT_CONFIDENCE', 0.3);
+define('ROVAS_AI_PROOF_REDACT_MAX_TOKENS', 2500);
 define('ROVAS_AI_PROOF_EDIT_MESSAGE', 'Your image was edited by Rovas');
+/** Expand each painted box by this fraction of image width/height (recall pad). */
+define('ROVAS_AI_PROOF_BOX_PAD', 0.012);
 
 /**
  * Normalize photo_redact_mode from API / form.
@@ -148,7 +150,10 @@ function rovas_ai_redact_proof_image_run($bytes, $mime, $mode, array $options = 
 }
 
 /**
- * Vision detect of PII / persons; returns normalized boxes.
+ * Vision detect of PII / persons; returns normalized boxes on the original image.
+ *
+ * Pre-scales to OpenAI detail:high tile size so model coordinates match pixels
+ * (otherwise boxes are systematically misplaced).
  *
  * @param string $bytes
  * @param string $mime
@@ -166,25 +171,48 @@ function rovas_ai_detect_proof_pii($bytes, $mime, $mode, array $options = array(
   }
 
   $mime = rovas_ai_normalize_image_mime($mime, $bytes);
-  $b64 = base64_encode($bytes);
-  $data_url = 'data:' . $mime . ';base64,' . $b64;
+  $prepared = rovas_ai_proof_vision_prepare($bytes, $mime);
+  if (empty($prepared['ok'])) {
+    return array(
+      'ok' => FALSE,
+      'regions' => array(),
+      'error' => !empty($prepared['error']) ? $prepared['error'] : 'prepare_failed',
+    );
+  }
+
+  $vision_bytes = $prepared['bytes'];
+  $vision_mime = $prepared['mime'];
+  $vw = (int) $prepared['width'];
+  $vh = (int) $prepared['height'];
+  $b64 = base64_encode($vision_bytes);
+  $data_url = 'data:' . $vision_mime . ';base64,' . $b64;
 
   $include_faces = ($mode === 'text_faces');
   $types = $include_faces
     ? 'email, phone, name, person'
     : 'email, phone, name';
 
-  $system = 'You locate sensitive information visible in a screenshot or photo of work proof. '
-    . 'Return ONLY a JSON object: {"regions":[{"type":"<one of: ' . $types . '>","box":{"Left":0,"Top":0,"Width":0,"Height":0},"confidence":0.0}]}. '
-    . 'box values are normalized 0–1 relative to image width/height (Rekognition-style: Left/Top origin top-left, Width/Height size). '
-    . 'type "email" = email addresses; "phone" = phone numbers; "name" = personal full names of people (not project/org brand names); '
+  $system = 'You are a careful PII redaction locator for screenshots (email clients, chat, docs). '
+    . 'Return ONLY JSON: {"regions":[{"type":"email|phone|name'
+    . ($include_faces ? '|person' : '')
+    . '","bbox":[x_min,y_min,x_max,y_max],"confidence":0.0}]}. '
+    . 'Coordinate contract (STRICT): the image is exactly '
+    . $vw . 'x' . $vh . ' pixels. '
+    . 'bbox uses integers 0–999 inclusive in that image’s coordinate space '
+    . '(0,0 = top-left; 999,999 = bottom-right). '
+    . 'x_min < x_max, y_min < y_max. Map pixel x → round(x*999/(W-1)), same for y. '
+    . 'Be EXHAUSTIVE: every email address (headers, To/Cc, body, signatures); '
+    . 'every phone number (incl. Slovak 09xx…); every personal given+family name '
+    . 'of a person (message headers, greetings, signatures, recipient lists). '
+    . 'One region per contiguous span; prefer slightly larger boxes over missing text. '
+    . 'Do NOT redact org/project names alone, prices, or generic UI chrome. '
     . ($include_faces
-      ? '"person" = human faces or clearly identifiable persons. '
-      : 'Do NOT include faces or person boxes. ')
-    . 'Omit regions you are unsure about. Use empty regions array if nothing sensitive is visible. '
-    . 'Tight boxes around the sensitive text or face only.';
+      ? 'Also box human faces / clearly identifiable persons as type person. '
+      : 'Do NOT include face/person boxes. ')
+    . 'Empty regions only if nothing sensitive is visible.';
 
-  $user_text = 'Find regions to redact. Mode: ' . $mode . '. Respond with JSON only.';
+  $user_text = 'Image size: ' . $vw . 'x' . $vh . '. Mode: ' . $mode
+    . '. List ALL sensitive ' . $types . ' regions with bbox [x_min,y_min,x_max,y_max] in 0–999. JSON only.';
 
   $messages = array(
     array(
@@ -202,6 +230,7 @@ function rovas_ai_detect_proof_pii($bytes, $mime, $mode, array $options = array(
           'type' => 'image_url',
           'image_url' => array(
             'url' => $data_url,
+            // Image already matches detail:high geometry — avoid a second resize skew.
             'detail' => 'high',
           ),
         ),
@@ -213,7 +242,7 @@ function rovas_ai_detect_proof_pii($bytes, $mime, $mode, array $options = array(
     'task_id' => 'proof_pii_redact',
     'temperature' => 0,
     'max_tokens' => ROVAS_AI_PROOF_REDACT_MAX_TOKENS,
-    'timeout' => 90,
+    'timeout' => 120,
   ));
 
   if (empty($chat['ok'])) {
@@ -240,9 +269,105 @@ function rovas_ai_detect_proof_pii($bytes, $mime, $mode, array $options = array(
   }
 
   $regions = rovas_ai_normalize_proof_regions($raw, $mode);
+  watchdog('rovas_ai', 'Proof PII detect: @n region(s) on @w x @h vision canvas (orig @ow x @oh)', array(
+    '@n' => count($regions),
+    '@w' => $vw,
+    '@h' => $vh,
+    '@ow' => (int) $prepared['orig_width'],
+    '@oh' => (int) $prepared['orig_height'],
+  ), WATCHDOG_NOTICE);
+
   return array(
     'ok' => TRUE,
     'regions' => $regions,
+    'error' => '',
+  );
+}
+
+/**
+ * OpenAI detail:high effective size (fit 2048², then shortest side = 768).
+ *
+ * @param int $width
+ * @param int $height
+ *
+ * @return array
+ *   array(width, height)
+ */
+function rovas_ai_openai_high_detail_size($width, $height) {
+  $width = max(1, (int) $width);
+  $height = max(1, (int) $height);
+  $scale = min(1.0, 2048.0 / max($width, $height));
+  $w1 = max(1, (int) round($width * $scale));
+  $h1 = max(1, (int) round($height * $scale));
+  $short = min($w1, $h1);
+  $scale2 = 768.0 / $short;
+  $w2 = max(1, (int) round($w1 * $scale2));
+  $h2 = max(1, (int) round($h1 * $scale2));
+  return array($w2, $h2);
+}
+
+/**
+ * Resize proof bytes to the vision canvas OpenAI detail:high would use.
+ *
+ * @param string $bytes
+ * @param string $mime
+ *
+ * @return array
+ *   ok, bytes, mime, width, height, orig_width, orig_height, error
+ */
+function rovas_ai_proof_vision_prepare($bytes, $mime) {
+  if (!function_exists('imagecreatefromstring')) {
+    return array('ok' => FALSE, 'error' => 'gd_unavailable');
+  }
+  $im = @imagecreatefromstring($bytes);
+  if ($im === FALSE) {
+    return array('ok' => FALSE, 'error' => 'decode_failed');
+  }
+  $ow = imagesx($im);
+  $oh = imagesy($im);
+  if ($ow < 1 || $oh < 1) {
+    imagedestroy($im);
+    return array('ok' => FALSE, 'error' => 'invalid_dimensions');
+  }
+
+  list($nw, $nh) = rovas_ai_openai_high_detail_size($ow, $oh);
+  if ($nw === $ow && $nh === $oh) {
+    imagedestroy($im);
+    return array(
+      'ok' => TRUE,
+      'bytes' => $bytes,
+      'mime' => $mime,
+      'width' => $ow,
+      'height' => $oh,
+      'orig_width' => $ow,
+      'orig_height' => $oh,
+      'error' => '',
+    );
+  }
+
+  $dst = imagecreatetruecolor($nw, $nh);
+  if ($dst === FALSE) {
+    imagedestroy($im);
+    return array('ok' => FALSE, 'error' => 'resize_failed');
+  }
+  imagecopyresampled($dst, $im, 0, 0, 0, 0, $nw, $nh, $ow, $oh);
+  imagedestroy($im);
+
+  // JPEG keeps payload smaller for vision upload.
+  $encoded = rovas_ai_gd_encode($dst, 'image/jpeg');
+  imagedestroy($dst);
+  if (empty($encoded['ok'])) {
+    return array('ok' => FALSE, 'error' => 'encode_failed');
+  }
+
+  return array(
+    'ok' => TRUE,
+    'bytes' => $encoded['bytes'],
+    'mime' => $encoded['mime'],
+    'width' => $nw,
+    'height' => $nh,
+    'orig_width' => $ow,
+    'orig_height' => $oh,
     'error' => '',
   );
 }
@@ -309,63 +434,94 @@ function rovas_ai_normalize_proof_regions(array $raw, $mode) {
 /**
  * Extract normalized Left/Top/Width/Height from a region item.
  *
+ * Accepts Rekognition-style maps, x_min/x_max maps, or bbox [x0,y0,x1,y1]
+ * in 0–1 or 0–999 space.
+ *
  * @param array $item
  *
  * @return array|null
  */
 function rovas_ai_normalize_bounding_box(array $item) {
-  $src = NULL;
-  if (!empty($item['box']) && is_array($item['box'])) {
-    $src = $item['box'];
-  }
-  elseif (!empty($item['BoundingBox']) && is_array($item['BoundingBox'])) {
-    $src = $item['BoundingBox'];
-  }
-  elseif (isset($item['Left']) || isset($item['left'])) {
-    $src = $item;
-  }
-  if ($src === NULL) {
-    return NULL;
+  $x0 = $y0 = $x1 = $y1 = NULL;
+
+  // Preferred: bbox [x_min, y_min, x_max, y_max]
+  foreach (array('bbox', 'box', 'BoundingBox') as $key) {
+    if (!isset($item[$key]) || !is_array($item[$key])) {
+      continue;
+    }
+    $arr = $item[$key];
+    if (isset($arr[0]) && isset($arr[1]) && isset($arr[2]) && isset($arr[3])
+      && !isset($arr['Left']) && !isset($arr['left']) && !isset($arr['Width'])) {
+      $x0 = (float) $arr[0];
+      $y0 = (float) $arr[1];
+      $x1 = (float) $arr[2];
+      $y1 = (float) $arr[3];
+      break;
+    }
   }
 
-  // Support x_min/y_min/x_max/y_max in 0–1 or 0–1000.
-  if (isset($src['x_min']) || isset($src['xmin'])) {
-    $x0 = isset($src['x_min']) ? (float) $src['x_min'] : (float) $src['xmin'];
-    $y0 = isset($src['y_min']) ? (float) $src['y_min'] : (isset($src['ymin']) ? (float) $src['ymin'] : 0);
-    $x1 = isset($src['x_max']) ? (float) $src['x_max'] : (isset($src['xmax']) ? (float) $src['xmax'] : $x0);
-    $y1 = isset($src['y_max']) ? (float) $src['y_max'] : (isset($src['ymax']) ? (float) $src['ymax'] : $y0);
-    if ($x1 > 1.5 || $y1 > 1.5) {
-      $x0 /= 1000.0;
-      $y0 /= 1000.0;
-      $x1 /= 1000.0;
-      $y1 /= 1000.0;
+  if ($x0 === NULL) {
+    $src = NULL;
+    if (!empty($item['box']) && is_array($item['box'])) {
+      $src = $item['box'];
     }
-    $left = $x0;
-    $top = $y0;
-    $width = max(0, $x1 - $x0);
-    $height = max(0, $y1 - $y0);
-  }
-  else {
-    $left = isset($src['Left']) ? (float) $src['Left'] : (isset($src['left']) ? (float) $src['left'] : NULL);
-    $top = isset($src['Top']) ? (float) $src['Top'] : (isset($src['top']) ? (float) $src['top'] : NULL);
-    $width = isset($src['Width']) ? (float) $src['Width'] : (isset($src['width']) ? (float) $src['width'] : NULL);
-    $height = isset($src['Height']) ? (float) $src['Height'] : (isset($src['height']) ? (float) $src['height'] : NULL);
-    if ($left === NULL || $top === NULL || $width === NULL || $height === NULL) {
+    elseif (!empty($item['BoundingBox']) && is_array($item['BoundingBox'])) {
+      $src = $item['BoundingBox'];
+    }
+    elseif (!empty($item['bbox']) && is_array($item['bbox'])) {
+      $src = $item['bbox'];
+    }
+    elseif (isset($item['Left']) || isset($item['left']) || isset($item['x_min'])) {
+      $src = $item;
+    }
+    if ($src === NULL) {
       return NULL;
     }
-    // 0–1000 space → 0–1.
-    if ($left > 1.5 || $top > 1.5 || $width > 1.5 || $height > 1.5) {
-      $left /= 1000.0;
-      $top /= 1000.0;
-      $width /= 1000.0;
-      $height /= 1000.0;
+
+    if (isset($src['x_min']) || isset($src['xmin'])) {
+      $x0 = isset($src['x_min']) ? (float) $src['x_min'] : (float) $src['xmin'];
+      $y0 = isset($src['y_min']) ? (float) $src['y_min'] : (isset($src['ymin']) ? (float) $src['ymin'] : 0);
+      $x1 = isset($src['x_max']) ? (float) $src['x_max'] : (isset($src['xmax']) ? (float) $src['xmax'] : $x0);
+      $y1 = isset($src['y_max']) ? (float) $src['y_max'] : (isset($src['ymax']) ? (float) $src['ymax'] : $y0);
+    }
+    else {
+      $left = isset($src['Left']) ? (float) $src['Left'] : (isset($src['left']) ? (float) $src['left'] : NULL);
+      $top = isset($src['Top']) ? (float) $src['Top'] : (isset($src['top']) ? (float) $src['top'] : NULL);
+      $width = isset($src['Width']) ? (float) $src['Width'] : (isset($src['width']) ? (float) $src['width'] : NULL);
+      $height = isset($src['Height']) ? (float) $src['Height'] : (isset($src['height']) ? (float) $src['height'] : NULL);
+      if ($left === NULL || $top === NULL || $width === NULL || $height === NULL) {
+        return NULL;
+      }
+      $x0 = $left;
+      $y0 = $top;
+      $x1 = $left + $width;
+      $y1 = $top + $height;
     }
   }
 
-  $left = max(0.0, min(1.0, $left));
-  $top = max(0.0, min(1.0, $top));
-  $width = max(0.0, min(1.0 - $left, $width));
-  $height = max(0.0, min(1.0 - $top, $height));
+  // 0–999 (or 0–1000) grid → 0–1.
+  if ($x1 > 1.5 || $y1 > 1.5 || $x0 > 1.5 || $y0 > 1.5) {
+    $x0 /= 999.0;
+    $y0 /= 999.0;
+    $x1 /= 999.0;
+    $y1 /= 999.0;
+  }
+
+  if ($x1 < $x0) {
+    $t = $x0;
+    $x0 = $x1;
+    $x1 = $t;
+  }
+  if ($y1 < $y0) {
+    $t = $y0;
+    $y0 = $y1;
+    $y1 = $t;
+  }
+
+  $left = max(0.0, min(1.0, $x0));
+  $top = max(0.0, min(1.0, $y0));
+  $width = max(0.0, min(1.0 - $left, $x1 - $x0));
+  $height = max(0.0, min(1.0 - $top, $y1 - $y0));
   if ($width < 0.001 || $height < 0.001) {
     return NULL;
   }
@@ -430,6 +586,8 @@ function rovas_ai_image_paint_boxes($bytes, $mime, array $regions) {
   $clr = imagecolorallocate($im, 0, 0, 0);
   $painted = 0;
   $threshold = ROVAS_AI_PROOF_REDACT_CONFIDENCE * 100.0;
+  $pad_x = (int) max(4, round($imwidth * ROVAS_AI_PROOF_BOX_PAD));
+  $pad_y = (int) max(4, round($imheight * ROVAS_AI_PROOF_BOX_PAD));
 
   foreach ($regions as $region) {
     if (!is_array($region) || empty($region['BoundingBox']) || !is_array($region['BoundingBox'])) {
@@ -439,10 +597,10 @@ function rovas_ai_image_paint_boxes($bytes, $mime, array $regions) {
       continue;
     }
     $bbox = $region['BoundingBox'];
-    $x1 = (int) floor($bbox['Left'] * $imwidth);
-    $y1 = (int) floor($bbox['Top'] * $imheight);
-    $x2 = (int) ceil(($bbox['Left'] + $bbox['Width']) * $imwidth);
-    $y2 = (int) ceil(($bbox['Top'] + $bbox['Height']) * $imheight);
+    $x1 = (int) floor($bbox['Left'] * $imwidth) - $pad_x;
+    $y1 = (int) floor($bbox['Top'] * $imheight) - $pad_y;
+    $x2 = (int) ceil(($bbox['Left'] + $bbox['Width']) * $imwidth) + $pad_x;
+    $y2 = (int) ceil(($bbox['Top'] + $bbox['Height']) * $imheight) + $pad_y;
     $x1 = max(0, min($imwidth - 1, $x1));
     $y1 = max(0, min($imheight - 1, $y1));
     $x2 = max($x1 + 1, min($imwidth, $x2));

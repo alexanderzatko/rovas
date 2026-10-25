@@ -86,7 +86,7 @@ function rovas_ai_admin_form($form, &$form_state) {
     '#type' => 'textfield',
     '#title' => t('Model override: proof photo redaction'),
     '#default_value' => isset($task_models['proof_pii_redact']) ? $task_models['proof_pii_redact'] : '',
-    '#description' => t('Optional vision-capable model for detecting emails, phones, names, and faces in proof photos. Empty = use default model. Task id: proof_pii_redact. Each redact attempt counts toward the daily budget.'),
+    '#description' => t('Optional vision-capable model for detecting emails, phones, names, and faces in proof photos. Empty = use default model. For denser screenshots prefer gpt-4o over gpt-4o-mini. Task id: proof_pii_redact. Each redact attempt counts toward the daily budget.'),
     '#maxlength' => 128,
   );
 
