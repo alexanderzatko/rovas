@@ -106,6 +106,7 @@ function rovas_ai_redact_proof_image_run($bytes, $mime, $mode, array $options = 
   }
 
   $detect = rovas_ai_detect_proof_pii($bytes, $mime, $mode, $options);
+  // Detect may use 1–2 LLM calls; count once per user action.
   rovas_ai_budget_consume($uid);
   if (empty($detect['ok'])) {
     return array(
@@ -125,7 +126,11 @@ function rovas_ai_redact_proof_image_run($bytes, $mime, $mode, array $options = 
     return $out;
   }
 
-  $painted = rovas_ai_image_paint_boxes($bytes, $mime, $regions);
+  // Paint on the same canvas the model saw, then scale back to the original
+  // pixel size (avoids coordinate skew from OpenAI’s internal resize).
+  $paint_bytes = !empty($detect['vision_bytes']) ? $detect['vision_bytes'] : $bytes;
+  $paint_mime = !empty($detect['vision_mime']) ? $detect['vision_mime'] : $mime;
+  $painted = rovas_ai_image_paint_boxes($paint_bytes, $paint_mime, $regions);
   if (empty($painted['ok'])) {
     return array(
       'ok' => FALSE,
@@ -138,11 +143,30 @@ function rovas_ai_redact_proof_image_run($bytes, $mime, $mode, array $options = 
     );
   }
 
+  $final_bytes = $painted['bytes'];
+  $final_mime = $painted['mime'];
+  $ow = isset($detect['orig_width']) ? (int) $detect['orig_width'] : 0;
+  $oh = isset($detect['orig_height']) ? (int) $detect['orig_height'] : 0;
+  $vw = isset($detect['vision_width']) ? (int) $detect['vision_width'] : 0;
+  $vh = isset($detect['vision_height']) ? (int) $detect['vision_height'] : 0;
+  if ($ow > 0 && $oh > 0 && ($ow !== $vw || $oh !== $vh)) {
+    $scaled = rovas_ai_image_rescale($final_bytes, $final_mime, $ow, $oh, $mime);
+    if (!empty($scaled['ok'])) {
+      $final_bytes = $scaled['bytes'];
+      $final_mime = $scaled['mime'];
+    }
+  }
+
   $count = isset($painted['regions_painted']) ? (int) $painted['regions_painted'] : 0;
+  watchdog('rovas_ai', 'Proof PII paint: @p of @n region(s) applied', array(
+    '@p' => $count,
+    '@n' => count($regions),
+  ), WATCHDOG_NOTICE);
+
   return array(
     'ok' => TRUE,
-    'bytes' => $painted['bytes'],
-    'mime' => $painted['mime'],
+    'bytes' => $final_bytes,
+    'mime' => $final_mime,
     'regions_redacted' => $count,
     'edited' => $count > 0,
     'error' => '',
@@ -188,122 +212,41 @@ function rovas_ai_detect_proof_pii($bytes, $mime, $mode, array $options = array(
   $b64 = base64_encode($vision_bytes);
   $data_url = 'data:' . $vision_mime . ';base64,' . $b64;
 
-  $include_faces = ($mode === 'text_faces');
-  $types = $include_faces
-    ? 'email, phone, name, person'
-    : 'email, phone, name';
-
-  $system = 'You are a careful PII redaction locator for screenshots (email clients, chat, docs). '
-    . 'Return ONLY JSON: {"regions":[{"type":"email|phone|name'
-    . ($include_faces ? '|person' : '')
-    . '","bbox":[x_min,y_min,x_max,y_max],"confidence":0.0}]}. '
-    . 'Coordinate contract (STRICT): the image is exactly '
-    . $vw . 'x' . $vh . ' pixels. '
-    . 'bbox uses integers 0–999 inclusive in that image’s coordinate space '
-    . '(0,0 = top-left; 999,999 = bottom-right). '
-    . 'x_min < x_max, y_min < y_max. Map pixel x → round(x*999/(W-1)), same for y. '
-    . 'Be EXHAUSTIVE: every email address (headers, To/Cc, body, signatures); '
-    . 'every phone number (incl. Slovak 09xx…); every personal given+family name '
-    . 'of a person (message headers, greetings, signatures, recipient lists). '
-    . 'One region per contiguous span; prefer slightly larger boxes over missing text. '
-    . 'Do NOT redact org/project names alone, prices, or generic UI chrome. '
-    . ($include_faces
-      ? 'Also box human faces / clearly identifiable persons as type person. '
-      : 'Do NOT include face/person boxes. ')
-    . 'Empty regions only if nothing sensitive is visible.';
-
-  $user_text = 'Image size: ' . $vw . 'x' . $vh . '. Mode: ' . $mode
-    . '. List ALL sensitive ' . $types . ' regions with bbox [x_min,y_min,x_max,y_max] in 0–999. JSON only.';
-
-  $messages = array(
-    array(
-      'role' => 'system',
-      'content' => $system,
-    ),
-    array(
-      'role' => 'user',
-      'content' => array(
-        array(
-          'type' => 'text',
-          'text' => $user_text,
-        ),
-        array(
-          'type' => 'image_url',
-          'image_url' => array(
-            'url' => $data_url,
-            // Image already matches detail:high geometry — avoid a second resize skew.
-            'detail' => 'high',
-          ),
-        ),
-      ),
-    ),
-  );
-
-  $chat_opts = array(
-    'task_id' => 'proof_pii_redact',
-    'temperature' => 0,
-    'max_tokens' => ROVAS_AI_PROOF_REDACT_MAX_TOKENS,
-    'timeout' => 120,
-  );
-  $chat = rovas_ai_chat($messages, $chat_opts);
-
-  if (empty($chat['ok'])) {
+  $pass = rovas_ai_proof_pii_vision_pass($data_url, $vw, $vh, $mode, FALSE);
+  if (empty($pass['ok'])) {
     return array(
       'ok' => FALSE,
       'regions' => array(),
-      'error' => !empty($chat['error']) ? $chat['error'] : 'chat_failed',
+      'error' => !empty($pass['error']) ? $pass['error'] : 'chat_failed',
     );
   }
 
-  module_load_include('inc', 'rovas_ai', 'rovas_ai.classify');
-  $content = isset($chat['content']) ? $chat['content'] : '';
-  $parsed = rovas_ai_parse_json_object($content);
+  $finish = isset($pass['finish_reason']) ? $pass['finish_reason'] : '';
+  $regions = isset($pass['regions']) ? $pass['regions'] : array();
 
-  // Truncated JSON is common when many regions fill max_tokens — retry once
-  // (capped so OpenRouter credit headroom is less likely to 402).
-  $finish = isset($chat['finish_reason']) ? $chat['finish_reason'] : '';
-  if (!is_array($parsed) || ($finish === 'length' && empty($parsed['regions']))) {
-    $chat_opts['max_tokens'] = min(ROVAS_AI_PROOF_REDACT_MAX_TOKENS + 1000, 3000);
-    $chat_opts['rovas_ai_no_retry'] = TRUE;
-    watchdog('rovas_ai', 'Proof PII JSON retry (finish=@f parse=@p); content head: @c', array(
+  // Truncated output → salvaged boxes are unreliable (wrong/misplaced). 
+  // Second pass: fewer, larger merged boxes that fit in the token budget.
+  if ($finish === 'length' || count($regions) > 40) {
+    watchdog('rovas_ai', 'Proof PII compact retry (finish=@f regions=@n)', array(
       '@f' => $finish,
-      '@p' => is_array($parsed) ? 'partial' : 'fail',
-      '@c' => drupal_substr(preg_replace('/\s+/', ' ', $content), 0, 400),
-    ), WATCHDOG_WARNING);
-    $chat2 = rovas_ai_chat($messages, $chat_opts);
-    if (!empty($chat2['ok'])) {
-      $content = isset($chat2['content']) ? $chat2['content'] : '';
-      $parsed2 = rovas_ai_parse_json_object($content);
-      if (is_array($parsed2)) {
-        $parsed = $parsed2;
-        $finish = isset($chat2['finish_reason']) ? $chat2['finish_reason'] : $finish;
-      }
+      '@n' => count($regions),
+    ), WATCHDOG_NOTICE);
+    $pass2 = rovas_ai_proof_pii_vision_pass($data_url, $vw, $vh, $mode, TRUE);
+    if (!empty($pass2['ok']) && !empty($pass2['regions'])) {
+      $regions = $pass2['regions'];
+      $finish = isset($pass2['finish_reason']) ? $pass2['finish_reason'] : $finish;
+    }
+    elseif ($finish === 'length') {
+      // Do not paint truncated salvage — fail closed.
+      return array(
+        'ok' => FALSE,
+        'regions' => array(),
+        'error' => 'truncated_regions',
+      );
     }
   }
 
-  if (!is_array($parsed)) {
-    watchdog('rovas_ai', 'Proof PII invalid_json (finish=@f json_err=@e); content head: @c', array(
-      '@f' => $finish,
-      '@e' => function_exists('json_last_error_msg') ? json_last_error_msg() : (string) json_last_error(),
-      '@c' => drupal_substr(preg_replace('/\s+/', ' ', $content), 0, 500),
-    ), WATCHDOG_WARNING);
-    return array(
-      'ok' => FALSE,
-      'regions' => array(),
-      'error' => 'invalid_json',
-    );
-  }
-
-  $raw = array();
-  if (!empty($parsed['regions']) && is_array($parsed['regions'])) {
-    $raw = $parsed['regions'];
-  }
-  elseif (isset($parsed[0]) && is_array($parsed[0])) {
-    // Bare list of regions.
-    $raw = $parsed;
-  }
-
-  $regions = rovas_ai_normalize_proof_regions($raw, $mode);
+  $regions = rovas_ai_merge_proof_regions($regions);
   watchdog('rovas_ai', 'Proof PII detect: @n region(s) on @w x @h vision canvas (orig @ow x @oh, finish=@f)', array(
     '@n' => count($regions),
     '@w' => $vw,
@@ -316,6 +259,249 @@ function rovas_ai_detect_proof_pii($bytes, $mime, $mode, array $options = array(
   return array(
     'ok' => TRUE,
     'regions' => $regions,
+    'error' => '',
+    'vision_bytes' => $vision_bytes,
+    'vision_mime' => $vision_mime,
+    'vision_width' => $vw,
+    'vision_height' => $vh,
+    'orig_width' => (int) $prepared['orig_width'],
+    'orig_height' => (int) $prepared['orig_height'],
+  );
+}
+
+/**
+ * One vision chat pass for proof PII boxes.
+ *
+ * @param string $data_url
+ * @param int $vw
+ * @param int $vh
+ * @param string $mode
+ * @param bool $compact
+ *   When TRUE, ask for ≤25 merged larger boxes (fits token budget).
+ *
+ * @return array
+ *   ok, regions, finish_reason, error
+ */
+function rovas_ai_proof_pii_vision_pass($data_url, $vw, $vh, $mode, $compact = FALSE) {
+  $include_faces = ($mode === 'text_faces');
+  $types = $include_faces
+    ? 'email, phone, name, person'
+    : 'email, phone, name';
+
+  if ($compact) {
+    $system = 'You locate PII in a screenshot for black-box redaction. '
+      . 'Return ONLY JSON: {"regions":[{"type":"email|phone|name'
+      . ($include_faces ? '|person' : '')
+      . '","bbox":[x_min,y_min,x_max,y_max],"confidence":0.9}]}. '
+      . 'Image is ' . (int) $vw . 'x' . (int) $vh . ' px. '
+      . 'bbox integers 0–999 (top-left origin). '
+      . 'CRITICAL: at most 25 regions. MERGE nearby sensitive spans into LARGER boxes '
+      . '(e.g. whole header name+email line, whole To: recipient row, whole signature block). '
+      . 'Cover emails, phones, and personal names. Skip prices and org-only names. '
+      . 'Complete the JSON — do not truncate.';
+    $user_text = 'Mode ' . $mode . '. Return ≤25 merged ' . $types . ' boxes in 0–999. Complete JSON only.';
+    $max_tokens = min(ROVAS_AI_PROOF_REDACT_MAX_TOKENS, 1800);
+  }
+  else {
+    $system = 'You locate PII in a screenshot for black-box redaction. '
+      . 'Return ONLY JSON: {"regions":[{"type":"email|phone|name'
+      . ($include_faces ? '|person' : '')
+      . '","bbox":[x_min,y_min,x_max,y_max],"confidence":0.9}]}. '
+      . 'Image is ' . (int) $vw . 'x' . (int) $vh . ' px. '
+      . 'bbox integers 0–999 (top-left origin). Map pixel→999 via round(x*999/(W-1)). '
+      . 'At most 35 regions; merge adjacent PII into larger boxes when possible. '
+      . 'Cover every email, phone, and personal name (headers, To/Cc, body, signatures). '
+      . 'Skip prices and org-only names. Finish the full JSON object.';
+    $user_text = 'Mode ' . $mode . '. List ≤35 ' . $types . ' boxes [x_min,y_min,x_max,y_max] in 0–999. Complete JSON only.';
+    $max_tokens = ROVAS_AI_PROOF_REDACT_MAX_TOKENS;
+  }
+
+  $messages = array(
+    array('role' => 'system', 'content' => $system),
+    array(
+      'role' => 'user',
+      'content' => array(
+        array('type' => 'text', 'text' => $user_text),
+        array(
+          'type' => 'image_url',
+          'image_url' => array(
+            'url' => $data_url,
+            'detail' => 'high',
+          ),
+        ),
+      ),
+    ),
+  );
+
+  $chat = rovas_ai_chat($messages, array(
+    'task_id' => 'proof_pii_redact',
+    'temperature' => 0,
+    'max_tokens' => $max_tokens,
+    'timeout' => 120,
+  ));
+
+  if (empty($chat['ok'])) {
+    return array(
+      'ok' => FALSE,
+      'regions' => array(),
+      'finish_reason' => '',
+      'error' => !empty($chat['error']) ? $chat['error'] : 'chat_failed',
+    );
+  }
+
+  module_load_include('inc', 'rovas_ai', 'rovas_ai.classify');
+  $content = isset($chat['content']) ? $chat['content'] : '';
+  $finish = isset($chat['finish_reason']) ? $chat['finish_reason'] : '';
+  $parsed = rovas_ai_parse_json_object($content);
+
+  if (!is_array($parsed)) {
+    watchdog('rovas_ai', 'Proof PII invalid_json (finish=@f compact=@c); head: @h', array(
+      '@f' => $finish,
+      '@c' => $compact ? '1' : '0',
+      '@h' => drupal_substr(preg_replace('/\s+/', ' ', $content), 0, 400),
+    ), WATCHDOG_WARNING);
+    return array(
+      'ok' => FALSE,
+      'regions' => array(),
+      'finish_reason' => $finish,
+      'error' => 'invalid_json',
+    );
+  }
+
+  $raw = array();
+  if (!empty($parsed['regions']) && is_array($parsed['regions'])) {
+    $raw = $parsed['regions'];
+  }
+  elseif (isset($parsed[0]) && is_array($parsed[0])) {
+    $raw = $parsed;
+  }
+
+  return array(
+    'ok' => TRUE,
+    'regions' => rovas_ai_normalize_proof_regions($raw, $mode),
+    'finish_reason' => $finish,
+    'error' => '',
+  );
+}
+
+/**
+ * Merge heavily overlapping normalized regions (reduces paint noise).
+ *
+ * @param array $regions
+ *
+ * @return array
+ */
+function rovas_ai_merge_proof_regions(array $regions) {
+  if (count($regions) < 2) {
+    return $regions;
+  }
+  $boxes = array();
+  foreach ($regions as $r) {
+    if (empty($r['BoundingBox'])) {
+      continue;
+    }
+    $b = $r['BoundingBox'];
+    $boxes[] = array(
+      'type' => isset($r['type']) ? $r['type'] : 'name',
+      'Confidence' => isset($r['Confidence']) ? $r['Confidence'] : 90,
+      'L' => $b['Left'],
+      'T' => $b['Top'],
+      'R' => $b['Left'] + $b['Width'],
+      'B' => $b['Top'] + $b['Height'],
+    );
+  }
+  $merged = TRUE;
+  while ($merged && count($boxes) > 1) {
+    $merged = FALSE;
+    $n = count($boxes);
+    for ($i = 0; $i < $n; $i++) {
+      for ($j = $i + 1; $j < $n; $j++) {
+        $a = $boxes[$i];
+        $b = $boxes[$j];
+        $inter_l = max($a['L'], $b['L']);
+        $inter_t = max($a['T'], $b['T']);
+        $inter_r = min($a['R'], $b['R']);
+        $inter_b = min($a['B'], $b['B']);
+        $inter = ($inter_r > $inter_l && $inter_b > $inter_t)
+          ? ($inter_r - $inter_l) * ($inter_b - $inter_t) : 0.0;
+        $area_a = max(1e-9, ($a['R'] - $a['L']) * ($a['B'] - $a['T']));
+        $area_b = max(1e-9, ($b['R'] - $b['L']) * ($b['B'] - $b['T']));
+        // Merge if overlap is large vs either box, or boxes nearly touch.
+        $gap = 0.01;
+        $near = ($a['L'] <= $b['R'] + $gap && $b['L'] <= $a['R'] + $gap
+          && $a['T'] <= $b['B'] + $gap && $b['T'] <= $a['B'] + $gap);
+        if ($inter / min($area_a, $area_b) >= 0.35 || ($near && $inter / min($area_a, $area_b) >= 0.05)) {
+          $boxes[$i] = array(
+            'type' => $a['type'],
+            'Confidence' => max($a['Confidence'], $b['Confidence']),
+            'L' => min($a['L'], $b['L']),
+            'T' => min($a['T'], $b['T']),
+            'R' => max($a['R'], $b['R']),
+            'B' => max($a['B'], $b['B']),
+          );
+          array_splice($boxes, $j, 1);
+          $merged = TRUE;
+          break 2;
+        }
+      }
+    }
+  }
+
+  $out = array();
+  foreach ($boxes as $b) {
+    $out[] = array(
+      'type' => $b['type'],
+      'Confidence' => $b['Confidence'],
+      'BoundingBox' => array(
+        'Left' => $b['L'],
+        'Top' => $b['T'],
+        'Width' => max(0.001, $b['R'] - $b['L']),
+        'Height' => max(0.001, $b['B'] - $b['T']),
+      ),
+    );
+  }
+  return $out;
+}
+
+/**
+ * Rescale image bytes to target pixel size.
+ *
+ * @param string $bytes
+ * @param string $mime
+ * @param int $tw
+ * @param int $th
+ * @param string $out_mime
+ *
+ * @return array
+ *   ok, bytes, mime, error
+ */
+function rovas_ai_image_rescale($bytes, $mime, $tw, $th, $out_mime = '') {
+  if (!function_exists('imagecreatefromstring')) {
+    return array('ok' => FALSE, 'error' => 'gd_unavailable');
+  }
+  $im = @imagecreatefromstring($bytes);
+  if ($im === FALSE) {
+    return array('ok' => FALSE, 'error' => 'decode_failed');
+  }
+  $tw = max(1, (int) $tw);
+  $th = max(1, (int) $th);
+  $dst = imagecreatetruecolor($tw, $th);
+  if ($dst === FALSE) {
+    imagedestroy($im);
+    return array('ok' => FALSE, 'error' => 'resize_failed');
+  }
+  imagecopyresampled($dst, $im, 0, 0, 0, 0, $tw, $th, imagesx($im), imagesy($im));
+  imagedestroy($im);
+  $target_mime = $out_mime !== '' ? $out_mime : $mime;
+  $encoded = rovas_ai_gd_encode($dst, $target_mime);
+  imagedestroy($dst);
+  if (empty($encoded['ok'])) {
+    return array('ok' => FALSE, 'error' => 'encode_failed');
+  }
+  return array(
+    'ok' => TRUE,
+    'bytes' => $encoded['bytes'],
+    'mime' => $encoded['mime'],
     'error' => '',
   );
 }
