@@ -6,6 +6,57 @@
  */
 
 /**
+ * Implements hook_schema().
+ */
+function rovas_ai_schema() {
+  $schema = array();
+
+  $schema['rovas_ai_photo_edit'] = array(
+    'description' => 'Proof-photo redaction metadata for Civic / web work reports.',
+    'fields' => array(
+      'fid' => array(
+        'description' => 'Managed file id of the (possibly edited) proof photo.',
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+      ),
+      'nid' => array(
+        'description' => 'work_report node id.',
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+      'mode' => array(
+        'description' => 'Redact mode used: text|text_faces.',
+        'type' => 'varchar',
+        'length' => 32,
+        'not null' => TRUE,
+        'default' => '',
+      ),
+      'regions' => array(
+        'description' => 'Number of regions painted.',
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+      'created' => array(
+        'type' => 'int',
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+    ),
+    'primary key' => array('fid'),
+    'indexes' => array(
+      'nid' => array('nid'),
+    ),
+  );
+
+  return $schema;
+}
+
+/**
  * Implements hook_enable().
  */
 function rovas_ai_enable() {
@@ -21,4 +72,20 @@ function rovas_ai_update_7001() {
     return t('Enabled civic_ai_nace on rovas_endpoint.');
   }
   return t('Could not enable civic_ai_nace (rovas_endpoint missing or Services unavailable).');
+}
+
+/**
+ * Create {rovas_ai_photo_edit} for proof-photo redaction metadata.
+ */
+function rovas_ai_update_7002() {
+  if (!db_table_exists('rovas_ai_photo_edit')) {
+    $schema = drupal_get_schema_unprocessed('rovas_ai', 'rovas_ai_photo_edit');
+    if (empty($schema)) {
+      $full = rovas_ai_schema();
+      $schema = $full['rovas_ai_photo_edit'];
+    }
+    db_create_table('rovas_ai_photo_edit', $schema);
+    return t('Created {rovas_ai_photo_edit}.');
+  }
+  return t('{rovas_ai_photo_edit} already exists.');
 }

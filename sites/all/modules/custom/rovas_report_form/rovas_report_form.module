@@ -120,6 +120,35 @@ function rovas_report_form_form_work_report_node_form_alter(&$form, &$form_state
 		);
 
 	$form['field_photos']['#weight'] = 13;
+
+	if (module_exists('rovas_ai')) {
+		$form['photo_redact'] = array(
+			'#type' => 'fieldset',
+			'#title' => t('Automatically remove'),
+			'#description' => t('Optional. Rovas can black out sensitive details in uploaded photos before they are stored. Leave unchecked to keep photos unchanged.'),
+			'#weight' => 13.5,
+			'#collapsible' => FALSE,
+			'#states' => array(
+				'visible' => array(
+					':input[name="' . $fhsname4 . '"]' => array('checked' => TRUE),
+				),
+			),
+		);
+		$form['photo_redact']['photo_redact_text'] = array(
+			'#type' => 'checkbox',
+			'#title' => t('Sensitive text'),
+			'#default_value' => 0,
+			'#description' => t('Emails, phone numbers, and personal names.'),
+		);
+		$form['photo_redact']['photo_redact_text_faces'] = array(
+			'#type' => 'checkbox',
+			'#title' => t('Sensitive text and faces'),
+			'#default_value' => 0,
+			'#description' => t('Sensitive text plus faces / people in the photo.'),
+		);
+		$form['#validate'][] = 'rovas_report_form_photo_redact_validate';
+	}
+
 	$form['field_rovas_report']['#weight'] = 14;
 	$form['field_classification']['#weight'] = 15;
 	$form['body']['#weight'] = 16;
@@ -295,6 +324,96 @@ function _rrf_validate_pic($element, &$form_state, $form) {
 	}
 }
 
+/**
+ * Resolve photo_redact_mode from form checkboxes (mutually exclusive).
+ *
+ * @param array $form_state
+ *
+ * @return string
+ *   none|text|text_faces
+ */
+function rovas_report_form_photo_redact_mode_from_values(array $form_state) {
+	$text = !empty($form_state['values']['photo_redact_text']);
+	$faces = !empty($form_state['values']['photo_redact_text_faces']);
+	if ($faces) {
+		return 'text_faces';
+	}
+	if ($text) {
+		return 'text';
+	}
+	return 'none';
+}
+
+/**
+ * Opt-in proof-photo redaction before the work report (and files) are saved.
+ */
+function rovas_report_form_photo_redact_validate($form, &$form_state) {
+	if (!module_exists('rovas_ai')) {
+		return;
+	}
+	$text = !empty($form_state['values']['photo_redact_text']);
+	$faces = !empty($form_state['values']['photo_redact_text_faces']);
+	if ($text && $faces) {
+		form_set_error('photo_redact', t('Choose either sensitive text, or sensitive text and faces — not both.'));
+		return;
+	}
+	$mode = rovas_report_form_photo_redact_mode_from_values($form_state);
+	if ($mode === 'none') {
+		return;
+	}
+
+	$lang = LANGUAGE_NONE;
+	if (!empty($form['field_photos']['#language'])) {
+		$lang = $form['field_photos']['#language'];
+	}
+	$items = isset($form_state['values']['field_photos'][$lang]) ? $form_state['values']['field_photos'][$lang] : array();
+	if (!is_array($items)) {
+		return;
+	}
+
+	global $user;
+	module_load_include('inc', 'rovas_ai', 'rovas_ai.redact');
+	$pending = array();
+	$any_edited = FALSE;
+
+	foreach ($items as $delta => $item) {
+		if (!is_array($item) || empty($item['fid'])) {
+			continue;
+		}
+		$file = file_load((int) $item['fid']);
+		if (!$file) {
+			continue;
+		}
+		$result = rovas_ai_redact_managed_file($file, $mode, array(
+			'uid' => !empty($user->uid) ? (int) $user->uid : 0,
+		));
+		if (empty($result['ok'])) {
+			$err = !empty($result['error']) ? $result['error'] : 'photo_redact_failed';
+			form_set_error('field_photos', t('Could not redact proof photo (@err). Uncheck automatic removal or try again later.', array(
+				'@err' => $err,
+			)));
+			return;
+		}
+		if (!empty($result['edited']) && (int) $result['regions_redacted'] > 0 && !empty($result['file']->fid)) {
+			$any_edited = TRUE;
+			$pending[] = array(
+				'fid' => (int) $result['file']->fid,
+				'mode' => $mode,
+				'regions' => (int) $result['regions_redacted'],
+			);
+			// Keep form values pointing at the (possibly renamed) file.
+			$form_state['values']['field_photos'][$lang][$delta]['fid'] = (int) $result['file']->fid;
+		}
+	}
+
+	if (!empty($pending) && isset($form_state['node']) && is_object($form_state['node'])) {
+		$form_state['node']->rovas_photo_edits_pending = $pending;
+	}
+	if ($any_edited) {
+		drupal_set_message(rovas_ai_proof_edit_message());
+	}
+}
+
 function _rrf_validate_rovrep($element, &$form_state, $form) {
 	$lang = $form['field_work_evidence']['#language'];
 //	watchdog('module','rrf e ' . print_r($form_state['values'],1));
@@ -308,20 +427,60 @@ function _rrf_validate_rovrep($element, &$form_state, $form) {
  * Implements hook_node_insert().
  *
  * Persist Work report ID (= nid), same pattern as Project ID on projects.
+ * Record pending proof-photo redaction metadata when present.
  */
 function rovas_report_form_node_insert($node) {
   if (empty($node->type) || $node->type !== 'work_report' || empty($node->nid)) {
     return;
   }
-  if (!field_info_field('field_work_report_id')) {
+  if (field_info_field('field_work_report_id')) {
+    $lang = field_language('node', $node, 'field_work_report_id');
+    if ($lang === FALSE || $lang === NULL) {
+      $lang = LANGUAGE_NONE;
+    }
+    $node->field_work_report_id[$lang][0]['value'] = (int) $node->nid;
+    field_attach_update('node', $node);
+  }
+  rovas_report_form_record_pending_photo_edits($node);
+}
+
+/**
+ * Implements hook_node_update().
+ */
+function rovas_report_form_node_update($node) {
+  if (empty($node->type) || $node->type !== 'work_report' || empty($node->nid)) {
     return;
   }
-  $lang = field_language('node', $node, 'field_work_report_id');
-  if ($lang === FALSE || $lang === NULL) {
-    $lang = LANGUAGE_NONE;
+  rovas_report_form_record_pending_photo_edits($node);
+}
+
+/**
+ * Persist photo-edit rows stashed on the node during form validate.
+ *
+ * @param object $node
+ */
+function rovas_report_form_record_pending_photo_edits($node) {
+  if (empty($node->rovas_photo_edits_pending) || !is_array($node->rovas_photo_edits_pending)) {
+    return;
   }
-  $node->field_work_report_id[$lang][0]['value'] = (int) $node->nid;
-  field_attach_update('node', $node);
+  if (!module_exists('rovas_ai')) {
+    return;
+  }
+  module_load_include('inc', 'rovas_ai', 'rovas_ai.redact');
+  if (!function_exists('rovas_ai_photo_edit_record')) {
+    return;
+  }
+  foreach ($node->rovas_photo_edits_pending as $row) {
+    if (empty($row['fid']) || empty($row['regions'])) {
+      continue;
+    }
+    rovas_ai_photo_edit_record(
+      (int) $row['fid'],
+      (int) $node->nid,
+      isset($row['mode']) ? $row['mode'] : 'text',
+      (int) $row['regions']
+    );
+  }
 }
 
 /**

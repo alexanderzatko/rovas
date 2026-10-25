@@ -2603,6 +2603,11 @@ function rovas_civic_work_report_item($node, $lang = NULL, $include_proof = TRUE
   if ($include_proof) {
     $item['summary'] = rovas_civic_plain_teaser(rovas_civic_node_body_value($node, $lang));
     $item['photo_urls'] = rovas_civic_work_report_photo_urls($node);
+    $photo_edits = rovas_civic_work_report_photo_edits($node);
+    if (!empty($photo_edits)) {
+      $item['photos_edited'] = TRUE;
+      $item['photo_edits'] = $photo_edits;
+    }
   }
 
   if ($verifier_uid !== NULL && (int) $verifier_uid > 0) {
@@ -2664,6 +2669,31 @@ function rovas_civic_work_report_photo_urls($node) {
     }
   }
   return $urls;
+}
+
+/**
+ * Photo redaction notices for a work report (Civic API).
+ *
+ * @param object $node
+ *
+ * @return array
+ *   List of {filename, url, mode, regions_redacted, message}.
+ */
+function rovas_civic_work_report_photo_edits($node) {
+  if (empty($node->nid) || !module_exists('rovas_ai')) {
+    return array();
+  }
+  module_load_include('inc', 'rovas_ai', 'rovas_ai.redact');
+  if (!function_exists('rovas_ai_photo_edits_for_nid')) {
+    return array();
+  }
+  $edits = rovas_ai_photo_edits_for_nid((int) $node->nid);
+  $out = array();
+  foreach ($edits as $edit) {
+    unset($edit['fid']);
+    $out[] = $edit;
+  }
+  return $out;
 }
 
 /**

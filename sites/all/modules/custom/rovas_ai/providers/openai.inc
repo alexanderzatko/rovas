@@ -90,11 +90,15 @@ function rovas_ai_openai_chat_request(array $messages, array $options = array())
     );
   }
 
+  $timeout = isset($options['timeout']) ? (int) $options['timeout'] : ROVAS_AI_HTTP_TIMEOUT;
+  if ($timeout < 10) {
+    $timeout = 10;
+  }
   $response = drupal_http_request($url, array(
     'method' => 'POST',
     'headers' => $headers,
     'data' => drupal_json_encode($body),
-    'timeout' => ROVAS_AI_HTTP_TIMEOUT,
+    'timeout' => $timeout,
   ));
 
   $code = isset($response->code) ? (int) $response->code : 0;

@@ -141,7 +141,7 @@ Optional: `lang=sk|en` on lookup for localized fields.
 | `GET` | `/rovas/civic_projects_search?query=` | Bearer | Search publishable projects (`query` ≥ 3 chars) |
 | `GET` | `/rovas/civic_nace_tree` | Public | NACE activity tree |
 | `POST` | `/rovas/civic_create_project` | Bearer | Create project |
-| `POST` | `/rovas/civic_create_work_report` | Bearer | Create work report (proof: URL, photos, and/or map) |
+| `POST` | `/rovas/civic_create_work_report` | Bearer | Create work report (proof: URL, photos, and/or map). Optional `photo_redact_mode`: `none`\|`text`\|`text_faces`; response may include `photos_edited` + `photo_edits[]` |
 | `GET` | `/rovas/civic_work_report_map_config` | Bearer | Map widget config for location proof |
 | `POST` | `/rovas/civic_ai_nace` | Bearer | AI NACE + title suggestion (optional module) |
 
