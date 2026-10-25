@@ -246,14 +246,23 @@ function rovas_ai_detect_proof_pii($bytes, $mime, $mode, array $options = array(
     }
   }
 
+  // Only merge strong overlaps — loose “near” merging produced huge L-shaped blobs.
   $regions = rovas_ai_merge_proof_regions($regions);
-  watchdog('rovas_ai', 'Proof PII detect: @n region(s) on @w x @h vision canvas (orig @ow x @oh, finish=@f)', array(
+  $sample = array();
+  foreach (array_slice($regions, 0, 5) as $r) {
+    if (!empty($r['BoundingBox'])) {
+      $b = $r['BoundingBox'];
+      $sample[] = (isset($r['type']) ? $r['type'] : '?') . ':' . round($b['Left'], 3) . ',' . round($b['Top'], 3) . ',' . round($b['Width'], 3) . ',' . round($b['Height'], 3);
+    }
+  }
+  watchdog('rovas_ai', 'Proof PII detect: @n region(s) on @w x @h vision canvas (orig @ow x @oh, finish=@f) sample=@s', array(
     '@n' => count($regions),
     '@w' => $vw,
     '@h' => $vh,
     '@ow' => (int) $prepared['orig_width'],
     '@oh' => (int) $prepared['orig_height'],
     '@f' => $finish,
+    '@s' => implode('; ', $sample),
   ), WATCHDOG_NOTICE);
 
   return array(
@@ -288,31 +297,36 @@ function rovas_ai_proof_pii_vision_pass($data_url, $vw, $vh, $mode, $compact = F
     ? 'email, phone, name, person'
     : 'email, phone, name';
 
+  // Pixel boxes in the exact image we upload — avoids 0–999 / xywh ambiguity.
+  $coord = 'bbox_px MUST be [x_min,y_min,x_max,y_max] in PIXEL coordinates of THIS image '
+    . '(' . (int) $vw . ' wide × ' . (int) $vh . ' tall). '
+    . 'Integers; 0,0 = top-left; x_max > x_min; y_max > y_min; '
+    . 'x_max < ' . (int) $vw . '; y_max < ' . (int) $vh . '. '
+    . 'NOT normalized, NOT 0–999, NOT [x,y,width,height].';
+
   if ($compact) {
     $system = 'You locate PII in a screenshot for black-box redaction. '
       . 'Return ONLY JSON: {"regions":[{"type":"email|phone|name'
       . ($include_faces ? '|person' : '')
-      . '","bbox":[x_min,y_min,x_max,y_max],"confidence":0.9}]}. '
-      . 'Image is ' . (int) $vw . 'x' . (int) $vh . ' px. '
-      . 'bbox integers 0–999 (top-left origin). '
-      . 'CRITICAL: at most 25 regions. MERGE nearby sensitive spans into LARGER boxes '
-      . '(e.g. whole header name+email line, whole To: recipient row, whole signature block). '
-      . 'Cover emails, phones, and personal names. Skip prices and org-only names. '
-      . 'Complete the JSON — do not truncate.';
-    $user_text = 'Mode ' . $mode . '. Return ≤25 merged ' . $types . ' boxes in 0–999. Complete JSON only.';
+      . '","bbox_px":[x_min,y_min,x_max,y_max],"confidence":0.9}]}. '
+      . $coord
+      . ' CRITICAL: at most 25 regions. MERGE nearby sensitive spans into LARGER pixel boxes '
+      . '(header name+email line, To: row, signature block). '
+      . 'Cover emails, phones, personal names. Skip prices and org-only names. Complete JSON.';
+    $user_text = 'Mode ' . $mode . '. ≤25 merged ' . $types . ' regions with bbox_px in pixels. JSON only.';
     $max_tokens = min(ROVAS_AI_PROOF_REDACT_MAX_TOKENS, 1800);
   }
   else {
     $system = 'You locate PII in a screenshot for black-box redaction. '
       . 'Return ONLY JSON: {"regions":[{"type":"email|phone|name'
       . ($include_faces ? '|person' : '')
-      . '","bbox":[x_min,y_min,x_max,y_max],"confidence":0.9}]}. '
-      . 'Image is ' . (int) $vw . 'x' . (int) $vh . ' px. '
-      . 'bbox integers 0–999 (top-left origin). Map pixel→999 via round(x*999/(W-1)). '
-      . 'At most 35 regions; merge adjacent PII into larger boxes when possible. '
+      . '","bbox_px":[x_min,y_min,x_max,y_max],"confidence":0.9}]}. '
+      . $coord
+      . ' At most 35 regions; merge adjacent PII into larger boxes when helpful. '
       . 'Cover every email, phone, and personal name (headers, To/Cc, body, signatures). '
       . 'Skip prices and org-only names. Finish the full JSON object.';
-    $user_text = 'Mode ' . $mode . '. List ≤35 ' . $types . ' boxes [x_min,y_min,x_max,y_max] in 0–999. Complete JSON only.';
+    $user_text = 'Mode ' . $mode . '. ≤35 ' . $types . ' regions; bbox_px=[x_min,y_min,x_max,y_max] pixels on '
+      . (int) $vw . 'x' . (int) $vh . '. JSON only.';
     $max_tokens = ROVAS_AI_PROOF_REDACT_MAX_TOKENS;
   }
 
@@ -378,7 +392,7 @@ function rovas_ai_proof_pii_vision_pass($data_url, $vw, $vh, $mode, $compact = F
 
   return array(
     'ok' => TRUE,
-    'regions' => rovas_ai_normalize_proof_regions($raw, $mode),
+    'regions' => rovas_ai_normalize_proof_regions($raw, $mode, $vw, $vh),
     'finish_reason' => $finish,
     'error' => '',
   );
@@ -426,11 +440,8 @@ function rovas_ai_merge_proof_regions(array $regions) {
           ? ($inter_r - $inter_l) * ($inter_b - $inter_t) : 0.0;
         $area_a = max(1e-9, ($a['R'] - $a['L']) * ($a['B'] - $a['T']));
         $area_b = max(1e-9, ($b['R'] - $b['L']) * ($b['B'] - $b['T']));
-        // Merge if overlap is large vs either box, or boxes nearly touch.
-        $gap = 0.01;
-        $near = ($a['L'] <= $b['R'] + $gap && $b['L'] <= $a['R'] + $gap
-          && $a['T'] <= $b['B'] + $gap && $b['T'] <= $a['B'] + $gap);
-        if ($inter / min($area_a, $area_b) >= 0.35 || ($near && $inter / min($area_a, $area_b) >= 0.05)) {
+        // Strict IoU-style merge only (loose “near” merge created giant blobs).
+        if ($inter / min($area_a, $area_b) >= 0.55) {
           $boxes[$i] = array(
             'type' => $a['type'],
             'Confidence' => max($a['Confidence'], $b['Confidence']),
@@ -599,11 +610,14 @@ function rovas_ai_proof_vision_prepare($bytes, $mime) {
  *
  * @param array $raw
  * @param string $mode
+ * @param int $img_w
+ *   Vision canvas width (for pixel bbox_px).
+ * @param int $img_h
  *
  * @return array
  *   List of {type, BoundingBox{Left,Top,Width,Height}, Confidence}
  */
-function rovas_ai_normalize_proof_regions(array $raw, $mode) {
+function rovas_ai_normalize_proof_regions(array $raw, $mode, $img_w = 0, $img_h = 0) {
   $mode = rovas_ai_normalize_photo_redact_mode($mode);
   $allowed = array('email' => TRUE, 'phone' => TRUE, 'name' => TRUE);
   if ($mode === 'text_faces') {
@@ -638,7 +652,7 @@ function rovas_ai_normalize_proof_regions(array $raw, $mode) {
       continue;
     }
 
-    $box = rovas_ai_normalize_bounding_box($item);
+    $box = rovas_ai_normalize_bounding_box($item, $img_w, $img_h);
     if ($box === NULL) {
       continue;
     }
@@ -656,29 +670,44 @@ function rovas_ai_normalize_proof_regions(array $raw, $mode) {
 /**
  * Extract normalized Left/Top/Width/Height from a region item.
  *
- * Accepts Rekognition-style maps, x_min/x_max maps, or bbox [x0,y0,x1,y1]
- * in 0–1 or 0–999 space.
+ * Prefers bbox_px in vision-canvas pixels. Also accepts 0–1, 0–999, or
+ * Rekognition-style maps. Rejects absurdly huge boxes (model noise).
  *
  * @param array $item
+ * @param int $img_w
+ * @param int $img_h
  *
  * @return array|null
  */
-function rovas_ai_normalize_bounding_box(array $item) {
+function rovas_ai_normalize_bounding_box(array $item, $img_w = 0, $img_h = 0) {
   $x0 = $y0 = $x1 = $y1 = NULL;
+  $from_pixels = FALSE;
 
-  // Preferred: bbox [x_min, y_min, x_max, y_max]
-  foreach (array('bbox', 'box', 'BoundingBox') as $key) {
-    if (!isset($item[$key]) || !is_array($item[$key])) {
-      continue;
-    }
-    $arr = $item[$key];
-    if (isset($arr[0]) && isset($arr[1]) && isset($arr[2]) && isset($arr[3])
-      && !isset($arr['Left']) && !isset($arr['left']) && !isset($arr['Width'])) {
-      $x0 = (float) $arr[0];
-      $y0 = (float) $arr[1];
-      $x1 = (float) $arr[2];
-      $y1 = (float) $arr[3];
-      break;
+  // Preferred: bbox_px [x_min, y_min, x_max, y_max] in image pixels.
+  if (!empty($item['bbox_px']) && is_array($item['bbox_px'])
+    && isset($item['bbox_px'][0], $item['bbox_px'][1], $item['bbox_px'][2], $item['bbox_px'][3])) {
+    $x0 = (float) $item['bbox_px'][0];
+    $y0 = (float) $item['bbox_px'][1];
+    $x1 = (float) $item['bbox_px'][2];
+    $y1 = (float) $item['bbox_px'][3];
+    $from_pixels = TRUE;
+  }
+
+  // bbox / box as 4-tuple.
+  if ($x0 === NULL) {
+    foreach (array('bbox', 'box', 'BoundingBox') as $key) {
+      if (!isset($item[$key]) || !is_array($item[$key])) {
+        continue;
+      }
+      $arr = $item[$key];
+      if (isset($arr[0], $arr[1], $arr[2], $arr[3])
+        && !isset($arr['Left']) && !isset($arr['left']) && !isset($arr['Width'])) {
+        $x0 = (float) $arr[0];
+        $y0 = (float) $arr[1];
+        $x1 = (float) $arr[2];
+        $y1 = (float) $arr[3];
+        break;
+      }
     }
   }
 
@@ -714,19 +743,62 @@ function rovas_ai_normalize_bounding_box(array $item) {
       if ($left === NULL || $top === NULL || $width === NULL || $height === NULL) {
         return NULL;
       }
+      // Rekognition normalized 0–1 size, or pixel width/height.
       $x0 = $left;
       $y0 = $top;
       $x1 = $left + $width;
       $y1 = $top + $height;
+      if ($img_w > 0 && $width > 1.5) {
+        $from_pixels = TRUE;
+      }
     }
   }
 
-  // 0–999 (or 0–1000) grid → 0–1.
+  // If [a,b,c,d] looks like xywh in pixels (c,d are sizes not corners):
+  if ($from_pixels && $img_w > 0 && $img_h > 0 && $x1 > 0 && $y1 > 0
+    && $x1 <= $img_w && $y1 <= $img_h
+    && ($x0 + $x1) <= $img_w * 1.02 && ($y0 + $y1) <= $img_h * 1.02
+    && $x1 < $x0) {
+    // x_max < x_min with positive sizes → treat as xywh.
+    $x1 = $x0 + $x1;
+    $y1 = $y0 + $y1;
+  }
+  elseif (!$from_pixels && $img_w > 0 && $img_h > 0
+    && $x0 >= 0 && $y0 >= 0 && $x1 > 0 && $y1 > 0
+    && $x1 <= $img_w && $y1 <= $img_h
+    && $x0 <= $img_w && $y0 <= $img_h
+    && ($x1 <= $x0 || $y1 <= $y0)
+    && ($x0 + max($x1, 0)) <= $img_w && ($y0 + max($y1, 0)) <= $img_h) {
+    // Likely xywh pixel tuple where 3rd/4th are width/height.
+    if ($x1 <= $x0 || $y1 <= $y0) {
+      $x1 = $x0 + abs($x1);
+      $y1 = $y0 + abs($y1);
+      $from_pixels = TRUE;
+    }
+  }
+
+  // Scale absolute coords → 0–1.
   if ($x1 > 1.5 || $y1 > 1.5 || $x0 > 1.5 || $y0 > 1.5) {
-    $x0 /= 999.0;
-    $y0 /= 999.0;
-    $x1 /= 999.0;
-    $y1 /= 999.0;
+    if ($from_pixels && $img_w > 1 && $img_h > 1) {
+      $x0 /= $img_w;
+      $x1 /= $img_w;
+      $y0 /= $img_h;
+      $y1 /= $img_h;
+    }
+    elseif ($img_w > 1 && $img_h > 1 && max($x0, $x1) <= $img_w * 1.05 && max($y0, $y1) <= $img_h * 1.05) {
+      // Pixel coords without bbox_px key.
+      $x0 /= $img_w;
+      $x1 /= $img_w;
+      $y0 /= $img_h;
+      $y1 /= $img_h;
+    }
+    else {
+      // Legacy 0–999 grid.
+      $x0 /= 999.0;
+      $y0 /= 999.0;
+      $x1 /= 999.0;
+      $y1 /= 999.0;
+    }
   }
 
   if ($x1 < $x0) {
@@ -744,7 +816,14 @@ function rovas_ai_normalize_bounding_box(array $item) {
   $top = max(0.0, min(1.0, $y0));
   $width = max(0.0, min(1.0 - $left, $x1 - $x0));
   $height = max(0.0, min(1.0 - $top, $y1 - $y0));
-  if ($width < 0.001 || $height < 0.001) {
+  if ($width < 0.002 || $height < 0.002) {
+    return NULL;
+  }
+  // Drop nonsense full-canvas / huge blobs from bad model output.
+  if ($width * $height > 0.35) {
+    return NULL;
+  }
+  if ($width > 0.85 && $height > 0.25) {
     return NULL;
   }
 
