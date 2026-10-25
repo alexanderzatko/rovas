@@ -17,45 +17,84 @@
 function rovas_ai_openai_chat(array $messages, array $options = array()) {
   $result = rovas_ai_openai_chat_request($messages, $options);
 
+  // Model refusal (content empty, refusal set) — do not burn credits retrying.
+  if (empty($result['ok']) && !empty($result['error']) && $result['error'] === 'refused') {
+    return $result;
+  }
+
   // OpenRouter 402: "can only afford N" when max_tokens exceeds credit headroom.
   if (empty($result['ok'])
     && !empty($result['error'])
     && $result['error'] === 'http_402'
     && !empty($result['affordable_tokens'])
     && empty($options['rovas_ai_no_retry'])) {
-    $afford = (int) $result['affordable_tokens'];
-    $current = isset($options['max_tokens']) ? (int) $options['max_tokens'] : ROVAS_AI_MAX_TOKENS;
-    if ($afford >= 64 && $afford < $current) {
-      $opts = $options;
-      $opts['max_tokens'] = $afford;
-      $opts['rovas_ai_no_retry'] = TRUE;
-      watchdog('rovas_ai', 'Retrying chat with max_tokens=@n after http_402 (affordable)', array(
-        '@n' => $afford,
-      ), WATCHDOG_NOTICE);
-      $result = rovas_ai_openai_chat_request($messages, $opts);
-    }
+    $result = rovas_ai_openai_retry_with_affordable($messages, $options, $result);
   }
 
-  // Empty content + finish=length often means a reasoning model spent the whole
-  // budget on thinking. Retry once with more tokens (reasoning already disabled
-  // on OpenRouter in the request body).
+  // finish=length: model hit the output cap — retry once with a modest bump,
+  // then fall back to affordable if that 402s. Never jump to 3000 (OpenRouter
+  // rejects when max_tokens > credit headroom even if usage would be lower).
   if (empty($result['ok'])
     && !empty($result['error'])
-    && ($result['error'] === 'truncated' || $result['error'] === 'empty_content')
+    && $result['error'] === 'truncated'
     && empty($options['rovas_ai_no_retry'])) {
     $opts = $options;
     $current = isset($opts['max_tokens']) ? (int) $opts['max_tokens'] : ROVAS_AI_MAX_TOKENS;
-    // Cap growth — OpenRouter rejects requests when max_tokens > credit budget.
-    $opts['max_tokens'] = min(max($current * 2, 512), 3000);
+    $opts['max_tokens'] = min(max((int) round($current * 1.5), $current + 256), 2000);
     $opts['rovas_ai_no_retry'] = TRUE;
-    watchdog('rovas_ai', 'Retrying chat with max_tokens=@n after @e', array(
+    watchdog('rovas_ai', 'Retrying chat with max_tokens=@n after truncated', array(
       '@n' => $opts['max_tokens'],
-      '@e' => $result['error'],
     ), WATCHDOG_NOTICE);
     $result = rovas_ai_openai_chat_request($messages, $opts);
+    if (empty($result['ok']) && !empty($result['error']) && $result['error'] === 'http_402'
+      && !empty($result['affordable_tokens'])) {
+      $result = rovas_ai_openai_retry_with_affordable($messages, $options, $result);
+    }
+  }
+
+  // empty_content with finish=stop is usually transient or a soft refusal —
+  // retry once at the SAME budget (bumping tokens caused 402s and dropped tiles).
+  if (empty($result['ok'])
+    && !empty($result['error'])
+    && $result['error'] === 'empty_content'
+    && empty($options['rovas_ai_no_retry'])) {
+    $opts = $options;
+    $opts['rovas_ai_no_retry'] = TRUE;
+    watchdog('rovas_ai', 'Retrying chat once after empty_content (same max_tokens)', array(), WATCHDOG_NOTICE);
+    $result = rovas_ai_openai_chat_request($messages, $opts);
+    if (empty($result['ok']) && !empty($result['error']) && $result['error'] === 'http_402'
+      && !empty($result['affordable_tokens'])) {
+      $result = rovas_ai_openai_retry_with_affordable($messages, $options, $result);
+    }
   }
 
   return $result;
+}
+
+/**
+ * Retry a chat request using OpenRouter's reported affordable max_tokens.
+ *
+ * @param array $messages
+ * @param array $options
+ * @param array $failed
+ *
+ * @return array
+ */
+function rovas_ai_openai_retry_with_affordable(array $messages, array $options, array $failed) {
+  $afford = isset($failed['affordable_tokens']) ? (int) $failed['affordable_tokens'] : 0;
+  if ($afford < 64) {
+    return $failed;
+  }
+  // Stay under the stated afford ceiling (OpenRouter counts the max_tokens cap).
+  $use = max(64, $afford - 16);
+  $opts = $options;
+  $opts['max_tokens'] = $use;
+  $opts['rovas_ai_no_retry'] = TRUE;
+  watchdog('rovas_ai', 'Retrying chat with max_tokens=@n after http_402 (affordable=@a)', array(
+    '@n' => $use,
+    '@a' => $afford,
+  ), WATCHDOG_NOTICE);
+  return rovas_ai_openai_chat_request($messages, $opts);
 }
 
 /**
@@ -173,18 +212,31 @@ function rovas_ai_openai_chat_request(array $messages, array $options = array())
 
   if ($content === '') {
     $msg_keys = $message ? implode(',', array_keys($message)) : '(no message)';
-    watchdog('rovas_ai', 'OpenAI response missing content (finish=@f keys=@k max_tokens=@m)', array(
+    $refusal = '';
+    if (!empty($message['refusal']) && is_string($message['refusal'])) {
+      $refusal = trim($message['refusal']);
+    }
+    watchdog('rovas_ai', 'OpenAI response missing content (finish=@f keys=@k max_tokens=@m refusal=@r)', array(
       '@f' => $finish,
       '@k' => $msg_keys,
       '@m' => $max_tokens,
+      '@r' => $refusal !== '' ? drupal_substr($refusal, 0, 180) : '-',
     ), WATCHDOG_WARNING);
+    $error = 'empty_content';
+    if ($finish === 'length') {
+      $error = 'truncated';
+    }
+    elseif ($refusal !== '') {
+      $error = 'refused';
+    }
     return array(
       'ok' => FALSE,
       'content' => '',
       'usage' => $usage,
-      'error' => $finish === 'length' ? 'truncated' : 'empty_content',
+      'error' => $error,
       'finish_reason' => $finish,
       'max_tokens' => $max_tokens,
+      'refusal' => $refusal,
     );
   }
 

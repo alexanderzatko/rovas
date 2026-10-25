@@ -7,7 +7,8 @@
 
 define('ROVAS_AI_PROOF_REDACT_CONFIDENCE', 0.3);
 /** Output budget for region JSON; keep modest — OpenRouter 402s if max_tokens > credits. */
-define('ROVAS_AI_PROOF_REDACT_MAX_TOKENS', 2000);
+/** Keep ≤~1800 so OpenRouter credit headroom (~2k) does not 402 the request. */
+define('ROVAS_AI_PROOF_REDACT_MAX_TOKENS', 1800);
 define('ROVAS_AI_PROOF_EDIT_MESSAGE', 'Your image was edited by Rovas');
 /** Expand each painted box by this fraction of image width/height (edge pad). */
 define('ROVAS_AI_PROOF_BOX_PAD', 0.018);
@@ -237,15 +238,27 @@ function rovas_ai_detect_proof_pii($bytes, $mime, $mode, array $options = array(
     $pass = rovas_ai_proof_pii_vision_pass($data_url, $tw, $th, $mode, FALSE);
     if (empty($pass['ok'])) {
       $last_error = !empty($pass['error']) ? $pass['error'] : 'chat_failed';
-      // One failed tile should not discard others on multi-tile runs.
-      if (count($tiles) === 1) {
-        return array(
-          'ok' => FALSE,
-          'regions' => array(),
-          'error' => $last_error,
-        );
+      // Soft failures: try compact once before aborting the tile.
+      if (in_array($last_error, array('empty_content', 'refused', 'http_402', 'chat_failed'), TRUE)) {
+        watchdog('rovas_ai', 'Proof PII tile @i compact fallback after @e', array(
+          '@i' => $ti,
+          '@e' => $last_error,
+        ), WATCHDOG_NOTICE);
+        $pass = rovas_ai_proof_pii_vision_pass($data_url, $tw, $th, $mode, TRUE);
       }
-      continue;
+    }
+    if (empty($pass['ok'])) {
+      $last_error = !empty($pass['error']) ? $pass['error'] : $last_error;
+      // Fail closed: partial left-only redact would leave the other pane public.
+      watchdog('rovas_ai', 'Proof PII tile @i failed (@e); aborting detect', array(
+        '@i' => $ti,
+        '@e' => $last_error,
+      ), WATCHDOG_WARNING);
+      return array(
+        'ok' => FALSE,
+        'regions' => array(),
+        'error' => 'tile_failed:' . $last_error,
+      );
     }
 
     $any_ok = TRUE;
@@ -266,15 +279,11 @@ function rovas_ai_detect_proof_pii($bytes, $mime, $mode, array $options = array(
         $finish = isset($pass2['finish_reason']) ? $pass2['finish_reason'] : 'stop';
       }
       else {
-        $last_error = 'truncated_regions';
-        if (count($tiles) === 1) {
-          return array(
-            'ok' => FALSE,
-            'regions' => array(),
-            'error' => 'truncated_regions',
-          );
-        }
-        continue;
+        return array(
+          'ok' => FALSE,
+          'regions' => array(),
+          'error' => 'truncated_regions',
+        );
       }
     }
 
