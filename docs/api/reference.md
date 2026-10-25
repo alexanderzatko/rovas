@@ -60,6 +60,7 @@ Schema details for classic Rules bodies: [`rovasApi.yml`](../../sites/all/module
 | `POST` | `/rovas/rules/rules_proxy_reward_work_report` | API-KEY | Reward a work report |
 | `GET` | `/rovas/rovas_verifications.json` | API-KEY | List work-report verifications |
 | `GET` | `/rovas/rovas_comment_notices.json` | API-KEY | Pending watched-comment notices (Comment Notify audience; same store as Civic Bearer twin) |
+| `GET` | `/rovas/node/{id}` | API-KEY | Sanitized node summary; types `project`, `work_report`, `charity_organization`, `dispute` only (else 404) |
 | `PUT` | `/rovas/node/{id}` | API-KEY | Update node owned by key owner |
 | `DELETE` | `/rovas/node/{id}` | API-KEY | Delete node owned by key owner |
 
@@ -166,6 +167,25 @@ Optional: `lang=sk|en` on lookup for localized fields.
 ---
 
 ## Example responses
+
+### `GET /rovas/node/{id}` (project)
+
+```json
+{
+  "nid": 2410,
+  "type": "project",
+  "title": "Trail maintenance",
+  "status": 1,
+  "uid": 42,
+  "created": "2019-03-12T14:22:01+00:00",
+  "changed": "2024-01-08T09:15:00+00:00",
+  "language": "sk",
+  "url": "https://rovas.app/node/2410",
+  "is_public": true
+}
+```
+
+Allowlisted types only. Extra keys: `is_public` on `project`; `project_nid` on `work_report`. Not a substitute for Civic `GET /rovas/civic_project/{nid}` (no charity/donate/WR pages).
 
 ### `GET /rovas/me`
 

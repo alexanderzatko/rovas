@@ -1,0 +1,16 @@
+<?php
+
+/**
+ * @file
+ * Install / update hooks for Rovas API Endpoints.
+ */
+
+/**
+ * Enable GET /rovas/node/{nid} (sanitized retrieve) on rovas_endpoint.
+ */
+function rovas_api_endpoints_update_7001() {
+  if (function_exists('rovas_api_endpoints_ensure_node_retrieve')) {
+    rovas_api_endpoints_ensure_node_retrieve();
+  }
+  return t('Enabled node retrieve on rovas_endpoint (allowlisted types only).');
+}

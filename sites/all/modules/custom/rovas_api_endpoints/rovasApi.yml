@@ -17,6 +17,47 @@ servers:
 - url: https://rovas.app/
 paths:
   /rovas/node/{id}:
+    get:
+      tags:
+      - base
+      summary: Retrieve basic fields for an allowlisted node type
+      description: |
+        Returns a sanitized payload for types `project`, `work_report`,
+        `charity_organization`, or `dispute` only. Other types (and missing
+        nids) return 404. Does not dump the full Drupal node object.
+        Project responses include `is_public`; work_report responses include
+        `project_nid` when set.
+      parameters:
+      - in: header
+        name: API-KEY
+        schema:
+          type: string
+        required: true
+      - in: header
+        name: TOKEN
+        schema:
+          type: string
+        required: true
+      - in: path
+        name: id
+        required: true
+        description: the node ID
+        schema:
+          type: integer
+          example: 2410
+      responses:
+        '200':
+          description: Sanitized node summary
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RetrieveNodeResponse'
+        '401':
+          description: Missing or invalid API-KEY / TOKEN
+        '403':
+          description: Authenticated but not allowed to view the node
+        '404':
+          description: Missing nid or type not in the allowlist
     put:
       tags:
       - base
@@ -1692,6 +1733,66 @@ components:
           - 2
           - 3
           example: 0
+    RetrieveNodeResponse:
+      type: object
+      required:
+      - nid
+      - type
+      - title
+      - status
+      - uid
+      - url
+      properties:
+        nid:
+          type: integer
+          example: 2410
+        type:
+          type: string
+          enum:
+          - project
+          - work_report
+          - charity_organization
+          - dispute
+          example: project
+        title:
+          type: string
+          example: Trail maintenance
+        status:
+          type: integer
+          description: '1 = published, 0 = unpublished'
+          example: 1
+        uid:
+          type: integer
+          description: Author Drupal uid
+          example: 42
+        created:
+          type: string
+          format: date-time
+          nullable: true
+          example: '2019-03-12T14:22:01+00:00'
+        changed:
+          type: string
+          format: date-time
+          nullable: true
+          example: '2024-01-08T09:15:00+00:00'
+        language:
+          type: string
+          nullable: true
+          description: Drupal langcode; null when empty or und
+          example: sk
+        url:
+          type: string
+          format: uri
+          example: https://rovas.app/node/2410
+        is_public:
+          type: boolean
+          description: Present for type=project (participation Public or Public-dependent)
+          example: true
+        project_nid:
+          type: integer
+          nullable: true
+          description: Present for type=work_report; linked project nid when set
+          example: 2410
     UpdateNode:
       type: object
       required:

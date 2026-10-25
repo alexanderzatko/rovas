@@ -12,6 +12,13 @@
  */
 
 /**
+ * Node types allowed on GET /rovas/node/{nid} (sanitized payload).
+ *
+ * Other types return 404 even when Drupal node_access would allow view.
+ */
+define('ROVAS_API_ENDPOINTS_NODE_RETRIEVE_TYPES', 'project,work_report,charity_organization,dispute');
+
+/**
  * Implements hook_services_resources().
  */
 function rovas_api_endpoints_services_resources() {
@@ -71,6 +78,183 @@ function rovas_api_endpoints_services_resources() {
       ),
     ),
   );
+}
+
+/**
+ * Implements hook_services_resources_alter().
+ *
+ * Replaces Services' full-node retrieve with a type-gated, sanitized payload
+ * on GET /rovas/node/{nid}. Update/delete keep the stock callbacks.
+ */
+function rovas_api_endpoints_services_resources_alter(&$resources) {
+  if (empty($resources['node']['operations']['retrieve'])) {
+    return;
+  }
+  $resources['node']['operations']['retrieve']['help'] = 'Retrieve basic fields for an allowlisted node type (project, work_report, charity_organization, dispute). Requires API-KEY + TOKEN.';
+  $resources['node']['operations']['retrieve']['callback'] = 'rovas_api_endpoints_node_retrieve';
+  $resources['node']['operations']['retrieve']['access callback'] = 'rovas_api_endpoints_node_retrieve_access';
+  $resources['node']['operations']['retrieve']['access arguments'] = array('view');
+  $resources['node']['operations']['retrieve']['access arguments append'] = TRUE;
+  // Callback lives in this .module; do not load services node_resource.inc.
+  unset($resources['node']['operations']['retrieve']['file']);
+}
+
+/**
+ * Access for GET /rovas/node/{nid}: API session + Drupal view + type allowlist.
+ *
+ * Disallowed types return 404 (same as missing) so the API does not confirm
+ * that other content types exist at a nid.
+ */
+function rovas_api_endpoints_node_retrieve_access($op = 'view', $args = array()) {
+  global $user;
+  if (empty($user->uid)) {
+    return services_error(t('User not authenticated'), 401);
+  }
+
+  if (!function_exists('_node_resource_access')) {
+    module_load_include('inc', 'services', 'resources/node_resource');
+  }
+  $allowed = _node_resource_access($op, $args);
+  if ($allowed !== TRUE) {
+    return $allowed;
+  }
+
+  $nid = 0;
+  if (isset($args[0])) {
+    if (is_object($args[0]) && isset($args[0]->nid)) {
+      $nid = (int) $args[0]->nid;
+    }
+    elseif (is_array($args[0]) && isset($args[0]['nid'])) {
+      $nid = (int) $args[0]['nid'];
+    }
+    elseif (is_numeric($args[0])) {
+      $nid = (int) $args[0];
+    }
+  }
+  $node = $nid ? node_load($nid) : FALSE;
+  if (!$node || empty($node->nid)) {
+    return services_error(t('Node @nid could not be found', array('@nid' => $nid)), 404);
+  }
+  if (!in_array($node->type, rovas_api_endpoints_node_retrieve_allowed_types(), TRUE)) {
+    return services_error(t('Node @nid could not be found', array('@nid' => $nid)), 404);
+  }
+  return TRUE;
+}
+
+/**
+ * Allowed machine names for GET /rovas/node/{nid}.
+ *
+ * @return string[]
+ */
+function rovas_api_endpoints_node_retrieve_allowed_types() {
+  return explode(',', ROVAS_API_ENDPOINTS_NODE_RETRIEVE_TYPES);
+}
+
+/**
+ * Services callback: GET /rovas/node/{nid} — sanitized allowlisted node.
+ *
+ * @param int $nid
+ *
+ * @return array|mixed
+ */
+function rovas_api_endpoints_node_retrieve($nid) {
+  $nid = (int) $nid;
+  $node = node_load($nid);
+  if (!$node || empty($node->nid)) {
+    return services_error(t('Node @nid could not be found', array('@nid' => $nid)), 404);
+  }
+  if (!in_array($node->type, rovas_api_endpoints_node_retrieve_allowed_types(), TRUE)) {
+    return services_error(t('Node @nid could not be found', array('@nid' => $nid)), 404);
+  }
+
+  $created = !empty($node->created) ? gmdate('c', (int) $node->created) : NULL;
+  $changed = !empty($node->changed) ? gmdate('c', (int) $node->changed) : NULL;
+  $language = isset($node->language) ? $node->language : NULL;
+  if ($language === '' || $language === LANGUAGE_NONE) {
+    $language = NULL;
+  }
+
+  $out = array(
+    'nid' => (int) $node->nid,
+    'type' => $node->type,
+    'title' => isset($node->title) ? (string) $node->title : '',
+    'status' => isset($node->status) ? (int) $node->status : 0,
+    'uid' => isset($node->uid) ? (int) $node->uid : 0,
+    'created' => $created,
+    'changed' => $changed,
+    'language' => $language,
+    'url' => url('node/' . $node->nid, array('absolute' => TRUE)),
+  );
+
+  if ($node->type === 'project') {
+    $out['is_public'] = FALSE;
+    $items = field_get_items('node', $node, 'field_participation');
+    if ($items !== FALSE && isset($items[0]['value'])) {
+      $value = (int) $items[0]['value'];
+      // 0 = Private, 1 = Public, 2 = Public-dependent (same as Civic).
+      $out['is_public'] = ($value === 1 || $value === 2);
+    }
+  }
+  elseif ($node->type === 'work_report') {
+    $out['project_nid'] = NULL;
+    $items = field_get_items('node', $node, 'field_project');
+    if ($items !== FALSE && !empty($items[0]['target_id'])) {
+      $out['project_nid'] = (int) $items[0]['target_id'];
+    }
+  }
+
+  return $out;
+}
+
+/**
+ * Enable node retrieve on rovas_endpoint (API-KEY auth stays on).
+ *
+ * Idempotent. Preserves existing update/delete (and any other) node ops.
+ *
+ * @return bool
+ *   TRUE if endpoint exists (saved or already correct).
+ */
+function rovas_api_endpoints_ensure_node_retrieve() {
+  if (!function_exists('services_endpoint_load') || !function_exists('services_endpoint_save')) {
+    return FALSE;
+  }
+
+  $endpoint = services_endpoint_load('rovas_endpoint');
+  if (!$endpoint) {
+    watchdog('rovas_api_endpoints', 'Services endpoint rovas_endpoint not found; cannot enable node retrieve.', array(), WATCHDOG_WARNING);
+    return FALSE;
+  }
+
+  $retrieve_op = array(
+    'enabled' => 1,
+  );
+
+  $changed = FALSE;
+  if (!isset($endpoint->resources['node']) || !is_array($endpoint->resources['node'])) {
+    $endpoint->resources['node'] = array();
+    $changed = TRUE;
+  }
+  if (!isset($endpoint->resources['node']['operations']) || !is_array($endpoint->resources['node']['operations'])) {
+    $endpoint->resources['node']['operations'] = array();
+    $changed = TRUE;
+  }
+
+  $current = isset($endpoint->resources['node']['operations']['retrieve'])
+    ? $endpoint->resources['node']['operations']['retrieve']
+    : NULL;
+  if (empty($current['enabled'])) {
+    // Merge so per-op auth settings are not wiped if already present.
+    $endpoint->resources['node']['operations']['retrieve'] = is_array($current)
+      ? array_replace($current, $retrieve_op)
+      : $retrieve_op;
+    $changed = TRUE;
+  }
+
+  if ($changed) {
+    services_endpoint_save($endpoint);
+  }
+
+  return TRUE;
 }
 
 /**
