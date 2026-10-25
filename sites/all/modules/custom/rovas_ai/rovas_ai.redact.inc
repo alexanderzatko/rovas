@@ -6,7 +6,8 @@
  */
 
 define('ROVAS_AI_PROOF_REDACT_CONFIDENCE', 0.3);
-define('ROVAS_AI_PROOF_REDACT_MAX_TOKENS', 4000);
+/** Output budget for region JSON; keep modest — OpenRouter 402s if max_tokens > credits. */
+define('ROVAS_AI_PROOF_REDACT_MAX_TOKENS', 2000);
 define('ROVAS_AI_PROOF_EDIT_MESSAGE', 'Your image was edited by Rovas');
 /** Expand each painted box by this fraction of image width/height (recall pad). */
 define('ROVAS_AI_PROOF_BOX_PAD', 0.012);
@@ -258,10 +259,11 @@ function rovas_ai_detect_proof_pii($bytes, $mime, $mode, array $options = array(
   $content = isset($chat['content']) ? $chat['content'] : '';
   $parsed = rovas_ai_parse_json_object($content);
 
-  // Truncated JSON is common when many regions fill max_tokens — retry once.
+  // Truncated JSON is common when many regions fill max_tokens — retry once
+  // (capped so OpenRouter credit headroom is less likely to 402).
   $finish = isset($chat['finish_reason']) ? $chat['finish_reason'] : '';
   if (!is_array($parsed) || ($finish === 'length' && empty($parsed['regions']))) {
-    $chat_opts['max_tokens'] = ROVAS_AI_PROOF_REDACT_MAX_TOKENS * 2;
+    $chat_opts['max_tokens'] = min(ROVAS_AI_PROOF_REDACT_MAX_TOKENS + 1000, 3000);
     $chat_opts['rovas_ai_no_retry'] = TRUE;
     watchdog('rovas_ai', 'Proof PII JSON retry (finish=@f parse=@p); content head: @c', array(
       '@f' => $finish,

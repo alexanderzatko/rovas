@@ -17,6 +17,25 @@
 function rovas_ai_openai_chat(array $messages, array $options = array()) {
   $result = rovas_ai_openai_chat_request($messages, $options);
 
+  // OpenRouter 402: "can only afford N" when max_tokens exceeds credit headroom.
+  if (empty($result['ok'])
+    && !empty($result['error'])
+    && $result['error'] === 'http_402'
+    && !empty($result['affordable_tokens'])
+    && empty($options['rovas_ai_no_retry'])) {
+    $afford = (int) $result['affordable_tokens'];
+    $current = isset($options['max_tokens']) ? (int) $options['max_tokens'] : ROVAS_AI_MAX_TOKENS;
+    if ($afford >= 64 && $afford < $current) {
+      $opts = $options;
+      $opts['max_tokens'] = $afford;
+      $opts['rovas_ai_no_retry'] = TRUE;
+      watchdog('rovas_ai', 'Retrying chat with max_tokens=@n after http_402 (affordable)', array(
+        '@n' => $afford,
+      ), WATCHDOG_NOTICE);
+      $result = rovas_ai_openai_chat_request($messages, $opts);
+    }
+  }
+
   // Empty content + finish=length often means a reasoning model spent the whole
   // budget on thinking. Retry once with more tokens (reasoning already disabled
   // on OpenRouter in the request body).
@@ -26,7 +45,8 @@ function rovas_ai_openai_chat(array $messages, array $options = array()) {
     && empty($options['rovas_ai_no_retry'])) {
     $opts = $options;
     $current = isset($opts['max_tokens']) ? (int) $opts['max_tokens'] : ROVAS_AI_MAX_TOKENS;
-    $opts['max_tokens'] = max($current * 2, 512);
+    // Cap growth — OpenRouter rejects requests when max_tokens > credit budget.
+    $opts['max_tokens'] = min(max($current * 2, 512), 3000);
     $opts['rovas_ai_no_retry'] = TRUE;
     watchdog('rovas_ai', 'Retrying chat with max_tokens=@n after @e', array(
       '@n' => $opts['max_tokens'],
@@ -104,24 +124,38 @@ function rovas_ai_openai_chat_request(array $messages, array $options = array())
   $code = isset($response->code) ? (int) $response->code : 0;
   if ($code < 200 || $code >= 300) {
     $err = 'http_' . $code;
+    $affordable = 0;
+    $err_msg = '';
     if (!empty($response->data)) {
       $decoded = json_decode($response->data, TRUE);
       if (is_array($decoded) && !empty($decoded['error']['message'])) {
+        $err_msg = (string) $decoded['error']['message'];
         watchdog('rovas_ai', 'OpenAI HTTP @c: @m', array(
           '@c' => $code,
-          '@m' => drupal_substr($decoded['error']['message'], 0, 200),
+          '@m' => drupal_substr($err_msg, 0, 200),
         ), WATCHDOG_WARNING);
+        // OpenRouter: "can only afford 3101"
+        if (preg_match('/can only afford\s+(\d+)/i', $err_msg, $am)) {
+          $affordable = (int) $am[1];
+        }
       }
       else {
         watchdog('rovas_ai', 'OpenAI HTTP @c (no JSON error body)', array('@c' => $code), WATCHDOG_WARNING);
       }
     }
-    return array(
+    $out = array(
       'ok' => FALSE,
       'content' => '',
       'usage' => array(),
       'error' => $err,
     );
+    if ($affordable > 0) {
+      $out['affordable_tokens'] = $affordable;
+    }
+    if ($err_msg !== '') {
+      $out['error_message'] = $err_msg;
+    }
+    return $out;
   }
 
   $data = json_decode($response->data, TRUE);
