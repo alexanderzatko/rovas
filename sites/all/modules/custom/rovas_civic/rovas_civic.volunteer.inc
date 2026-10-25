@@ -392,17 +392,8 @@ function rovas_civic_services_create_work_report($data) {
   $web_url = isset($data['web_url']) ? trim((string) $data['web_url']) : '';
   $reward_kind = isset($data['reward_kind']) ? drupal_strtolower(trim((string) $data['reward_kind'])) : 'chrons';
   $photos = isset($data['photos']) && is_array($data['photos']) ? $data['photos'] : array();
-  $photo_redact_mode = 'none';
-  if (module_exists('rovas_ai')) {
-    module_load_include('inc', 'rovas_ai', 'rovas_ai.redact');
-    if (function_exists('rovas_ai_normalize_photo_redact_mode')) {
-      $photo_redact_mode = rovas_ai_normalize_photo_redact_mode(isset($data['photo_redact_mode']) ? $data['photo_redact_mode'] : 'none');
-    }
-  }
-  elseif (!empty($data['photo_redact_mode'])) {
-    $m = drupal_strtolower(trim((string) $data['photo_redact_mode']));
-    $photo_redact_mode = in_array($m, array('text', 'text_faces'), TRUE) ? $m : 'none';
-  }
+  // photo_redact_mode is ignored (AI auto-redact retired). Clients should paint
+  // before upload; parameter kept for backward-compatible request bodies.
   $field_location_raw = array_key_exists('field_location', $data) ? $data['field_location'] : NULL;
   $has_fee_project = array_key_exists('usage_fee_project_id', $data) && $data['usage_fee_project_id'] !== NULL && $data['usage_fee_project_id'] !== '';
   $has_fee_rate = array_key_exists('usage_fee_rate', $data) && $data['usage_fee_rate'] !== NULL && $data['usage_fee_rate'] !== '';
@@ -455,24 +446,11 @@ function rovas_civic_services_create_work_report($data) {
     $title = drupal_substr(preg_replace('/\s+/u', ' ', $description), 0, 80);
   }
 
-  // Fail-closed: redact in memory before creating the WR so unredacted bytes
-  // never hit public:// when the user requested redaction.
   $prepared_photos = array();
   if (!empty($photos)) {
-    $prepared = rovas_civic_prepare_wr_photos($photos, $photo_redact_mode, $uid);
+    $prepared = rovas_civic_prepare_wr_photos($photos);
     if (empty($prepared['ok'])) {
-      $err = !empty($prepared['error']) ? $prepared['error'] : 'photo_redact_failed';
-      $msg = 'Proof photo redaction failed.';
-      if ($err === 'not_configured') {
-        $msg = 'Photo redaction is not configured; omit photo_redact_mode or set it to none.';
-      }
-      elseif ($err === 'budget_exceeded') {
-        $msg = 'Daily AI budget exceeded for photo redaction; try again later or set photo_redact_mode to none.';
-      }
-      elseif ($err === 'rovas_ai_missing') {
-        $msg = 'Photo redaction requires the rovas_ai module; set photo_redact_mode to none.';
-      }
-      return rovas_civic_volunteer_error(502, 'photo_redact_failed', $msg . ' (' . $err . ')');
+      return rovas_civic_volunteer_error(400, 'invalid_input', 'Could not decode proof photos.');
     }
     $prepared_photos = $prepared['items'];
   }
@@ -551,12 +529,8 @@ function rovas_civic_services_create_work_report($data) {
   }
 
   $wr = node_load($wr_nid);
-  $photo_edits = array();
   if ($wr && !empty($prepared_photos)) {
-    $attach = rovas_civic_attach_wr_photos($wr, $prepared_photos, $photo_redact_mode);
-    if (is_array($attach) && !empty($attach['photo_edits'])) {
-      $photo_edits = $attach['photo_edits'];
-    }
+    rovas_civic_attach_wr_photos($wr, $prepared_photos);
   }
   if ($wr && $has_location) {
     rovas_civic_attach_wr_field_location($wr, $field_location);
@@ -577,19 +551,10 @@ function rovas_civic_services_create_work_report($data) {
     ->fields($reward_fields)
     ->execute();
 
-  $response = array(
+  return array(
     'work_report_nid' => (string) $wr_nid,
     'reward_kind' => $reward_kind,
   );
-  if (!empty($photo_edits)) {
-    $response['photos_edited'] = TRUE;
-    $response['photo_edits'] = $photo_edits;
-  }
-  elseif ($photo_redact_mode !== 'none' && !empty($prepared_photos)) {
-    $response['photos_edited'] = FALSE;
-    $response['photo_edits'] = array();
-  }
-  return $response;
 }
 
 /**
@@ -673,40 +638,16 @@ function rovas_civic_volunteer_wr_nid_from_rules($result) {
 }
 
 /**
- * Decode (and optionally redact) Civic photos before WR create / public save.
+ * Decode Civic photo payloads before public write.
+ *
+ * Redaction is client-side (paint before upload). Server stores bytes as sent.
  *
  * @param array $photos
- *   Raw API photos: {filename, mime, data base64}.
- * @param string $mode
- *   none|text|text_faces
- * @param int $uid
  *
  * @return array
- *   ok, items[{filename, mime, binary, regions_redacted, edited}], error
+ *   ok, items[{filename, mime, binary}], error
  */
-function rovas_civic_prepare_wr_photos(array $photos, $mode, $uid) {
-  $mode = drupal_strtolower(trim((string) $mode));
-  if (!in_array($mode, array('none', 'text', 'text_faces'), TRUE)) {
-    $mode = 'none';
-  }
-  if ($mode !== 'none' && !module_exists('rovas_ai')) {
-    return array(
-      'ok' => FALSE,
-      'items' => array(),
-      'error' => 'rovas_ai_missing',
-    );
-  }
-  if ($mode !== 'none') {
-    module_load_include('inc', 'rovas_ai', 'rovas_ai.redact');
-    if (!function_exists('rovas_ai_redact_proof_image')) {
-      return array(
-        'ok' => FALSE,
-        'items' => array(),
-        'error' => 'rovas_ai_missing',
-      );
-    }
-  }
-
+function rovas_civic_prepare_wr_photos(array $photos) {
   $items = array();
   foreach ($photos as $photo) {
     if (count($items) >= 5) {
@@ -728,34 +669,10 @@ function rovas_civic_prepare_wr_photos(array $photos, $mode, $uid) {
       $filename = 'photo.jpg';
     }
     $mime = !empty($photo['mime']) ? (string) $photo['mime'] : 'image/jpeg';
-    $regions = 0;
-    $edited = FALSE;
-
-    if ($mode !== 'none') {
-      $redact = rovas_ai_redact_proof_image($bin, $mime, $mode, array('uid' => (int) $uid));
-      if (empty($redact['ok'])) {
-        return array(
-          'ok' => FALSE,
-          'items' => array(),
-          'error' => !empty($redact['error']) ? $redact['error'] : 'photo_redact_failed',
-        );
-      }
-      $bin = $redact['bytes'];
-      $mime = $redact['mime'];
-      $regions = (int) $redact['regions_redacted'];
-      $edited = !empty($redact['edited']) && $regions > 0;
-      if ($edited && function_exists('rovas_ai_proof_edited_filename')) {
-        $filename = rovas_ai_proof_edited_filename($filename);
-      }
-    }
-
     $items[] = array(
       'filename' => $filename,
       'mime' => $mime,
       'binary' => $bin,
-      'regions_redacted' => $regions,
-      'edited' => $edited,
-      'mode' => $mode,
     );
   }
 
@@ -769,21 +686,17 @@ function rovas_civic_prepare_wr_photos(array $photos, $mode, $uid) {
 /**
  * Attach Civic-uploaded photos to field_photos.
  *
- * Accepts either prepared items ({binary, filename, mime, …}) or legacy
- * base64 {data, filename, mime} (mode none only for legacy path).
+ * Accepts prepared items ({binary, filename, mime}) or legacy base64 {data,…}.
  *
  * @param object $node
  * @param array $photos
- * @param string $mode
- *   Used when recording edits; prepared items already carry mode.
  *
  * @return array
- *   added, photo_edits
+ *   added
  */
-function rovas_civic_attach_wr_photos($node, array $photos, $mode = 'none') {
+function rovas_civic_attach_wr_photos($node, array $photos) {
   $result = array(
     'added' => 0,
-    'photo_edits' => array(),
   );
   if (!field_info_field('field_photos')) {
     return $result;
@@ -793,9 +706,6 @@ function rovas_civic_attach_wr_photos($node, array $photos, $mode = 'none') {
   $dir = 'public://civic_wr';
   file_prepare_directory($dir, FILE_CREATE_DIRECTORY);
   $added = 0;
-  $message = function_exists('rovas_ai_proof_edit_message')
-    ? rovas_ai_proof_edit_message()
-    : t('Your image was edited by Rovas');
 
   foreach ($photos as $photo) {
     if ($added >= 5) {
@@ -808,22 +718,13 @@ function rovas_civic_attach_wr_photos($node, array $photos, $mode = 'none') {
     $bin = NULL;
     $filename = 'photo.jpg';
     $mime = 'image/jpeg';
-    $regions = 0;
-    $edited = FALSE;
-    $item_mode = $mode;
 
     if (!empty($photo['binary']) && is_string($photo['binary'])) {
       $bin = $photo['binary'];
       $filename = isset($photo['filename']) ? (string) $photo['filename'] : 'photo.jpg';
       $mime = !empty($photo['mime']) ? (string) $photo['mime'] : 'image/jpeg';
-      $regions = isset($photo['regions_redacted']) ? (int) $photo['regions_redacted'] : 0;
-      $edited = !empty($photo['edited']) && $regions > 0;
-      if (!empty($photo['mode'])) {
-        $item_mode = (string) $photo['mode'];
-      }
     }
     elseif (!empty($photo['data'])) {
-      // Legacy path: no redact (caller should prepare when mode ≠ none).
       $bin = base64_decode((string) $photo['data'], TRUE);
       if ($bin === FALSE || strlen($bin) < 32 || strlen($bin) > 4 * 1024 * 1024) {
         continue;
@@ -864,21 +765,6 @@ function rovas_civic_attach_wr_photos($node, array $photos, $mode = 'none') {
     );
     file_usage_add($file, 'rovas_civic', 'node', $node->nid);
     $added++;
-
-    if ($edited && $regions > 0) {
-      if (function_exists('rovas_ai_photo_edit_record')) {
-        module_load_include('inc', 'rovas_ai', 'rovas_ai.redact');
-        rovas_ai_photo_edit_record((int) $file->fid, (int) $node->nid, $item_mode, $regions);
-      }
-      $url = file_create_url($file->uri);
-      $result['photo_edits'][] = array(
-        'filename' => $file->filename,
-        'url' => $url ? $url : NULL,
-        'mode' => $item_mode,
-        'regions_redacted' => $regions,
-        'message' => $message,
-      );
-    }
   }
 
   if ($added > 0) {

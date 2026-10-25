@@ -1,6 +1,96 @@
 <?php
 
 /**
+ * Implements hook_menu().
+ */
+function rovas_report_form_menu() {
+  $items['rovas/report-photo-paint'] = array(
+    'title' => 'Save painted proof photo',
+    'page callback' => 'rovas_report_form_photo_paint_save',
+    'access callback' => 'user_is_logged_in',
+    'type' => MENU_CALLBACK,
+  );
+  return $items;
+}
+
+/**
+ * AJAX: overwrite a managed proof photo with a client-painted JPEG.
+ */
+function rovas_report_form_photo_paint_save() {
+  drupal_add_http_header('Content-Type', 'application/json; charset=utf-8');
+
+  $token = isset($_POST['token']) ? (string) $_POST['token'] : '';
+  if (!drupal_valid_token($token, 'rovas_report_photo_paint')) {
+    drupal_json_output(array('ok' => FALSE, 'error' => 'invalid_token'));
+    drupal_exit();
+  }
+
+  $fid = isset($_POST['fid']) ? (int) $_POST['fid'] : 0;
+  if ($fid < 1 || empty($_FILES['image']['tmp_name'])) {
+    drupal_json_output(array('ok' => FALSE, 'error' => 'invalid_input'));
+    drupal_exit();
+  }
+
+  global $user;
+  $file = file_load($fid);
+  if (!$file || empty($file->uri)) {
+    drupal_json_output(array('ok' => FALSE, 'error' => 'not_found'));
+    drupal_exit();
+  }
+  // Owner, or users who can administer files / edit any work report.
+  $allowed = ((int) $file->uid === (int) $user->uid)
+    || user_access('administer files')
+    || user_access('edit any work_report content');
+  if (!$allowed) {
+    drupal_json_output(array('ok' => FALSE, 'error' => 'access_denied'));
+    drupal_exit();
+  }
+
+  $tmp = $_FILES['image']['tmp_name'];
+  $size = isset($_FILES['image']['size']) ? (int) $_FILES['image']['size'] : 0;
+  if ($size < 32 || $size > 8 * 1024 * 1024 || !is_uploaded_file($tmp)) {
+    drupal_json_output(array('ok' => FALSE, 'error' => 'invalid_image'));
+    drupal_exit();
+  }
+
+  $bytes = file_get_contents($tmp);
+  if ($bytes === FALSE || strlen($bytes) < 32) {
+    drupal_json_output(array('ok' => FALSE, 'error' => 'read_failed'));
+    drupal_exit();
+  }
+  // Accept JPEG (paint export) and common originals if browser sends PNG.
+  $mime = 'image/jpeg';
+  if (substr($bytes, 0, 8) === "\x89PNG\r\n\x1a\n") {
+    $mime = 'image/png';
+  }
+  elseif (substr($bytes, 0, 3) !== "\xFF\xD8\xFF") {
+    drupal_json_output(array('ok' => FALSE, 'error' => 'unsupported_type'));
+    drupal_exit();
+  }
+
+  if (file_unmanaged_save_data($bytes, $file->uri, FILE_EXISTS_REPLACE) === FALSE) {
+    drupal_json_output(array('ok' => FALSE, 'error' => 'save_failed'));
+    drupal_exit();
+  }
+
+  $file->filemime = $mime;
+  $file->filesize = strlen($bytes);
+  file_save($file);
+
+  if (function_exists('image_path_flush')) {
+    image_path_flush($file->uri);
+  }
+
+  $url = file_create_url($file->uri);
+  drupal_json_output(array(
+    'ok' => TRUE,
+    'fid' => (int) $file->fid,
+    'url' => $url ? $url : NULL,
+  ));
+  drupal_exit();
+}
+
+/**
  * Implements hook_form_FORM_ID_alter() for work_report_node_form.
  */
 function rovas_report_form_form_work_report_node_form_alter(&$form, &$form_state, $form_id) {
@@ -120,34 +210,29 @@ function rovas_report_form_form_work_report_node_form_alter(&$form, &$form_state
 		);
 
 	$form['field_photos']['#weight'] = 13;
-
-	if (module_exists('rovas_ai')) {
-		$form['photo_redact'] = array(
-			'#type' => 'fieldset',
-			'#title' => t('Automatically remove'),
-			'#description' => t('Optional. Rovas can black out sensitive details in uploaded photos before they are stored. Leave unchecked to keep photos unchanged.'),
-			'#weight' => 13.5,
-			'#collapsible' => FALSE,
-			'#states' => array(
-				'visible' => array(
-					':input[name="' . $fhsname4 . '"]' => array('checked' => TRUE),
-				),
+	// Client-side blackout paint (shown after the first proof photo is attached).
+	$path = drupal_get_path('module', 'rovas_report_form');
+	$form['field_photos']['#attached']['css'][] = $path . '/css/rovas-photo-paint.css';
+	$form['field_photos']['#attached']['js'][] = $path . '/js/rovas-photo-paint.js';
+	$form['field_photos']['#attached']['js'][] = array(
+		'type' => 'setting',
+		'data' => array(
+			'rovasPhotoPaint' => array(
+				'saveUrl' => url('rovas/report-photo-paint'),
+				'token' => drupal_get_token('rovas_report_photo_paint'),
+				'note' => t('Proofs of work are visible to the public, so we encourage you to review and redact sensitive information from the images using the paint tools provided here.'),
+				'btnLabel' => t('Black out areas'),
+				'brushLabel' => t('Marker size'),
+				'undoLabel' => t('Undo'),
+				'clearLabel' => t('Clear marks'),
+				'applyLabel' => t('Apply'),
+				'cancelLabel' => t('Cancel'),
+				'savingLabel' => t('Saving…'),
+				'errorLabel' => t('Could not save. Try again.'),
+				'defaultBrush' => 24,
 			),
-		);
-		$form['photo_redact']['photo_redact_text'] = array(
-			'#type' => 'checkbox',
-			'#title' => t('Sensitive text'),
-			'#default_value' => 0,
-			'#description' => t('Emails, phone numbers, and personal names.'),
-		);
-		$form['photo_redact']['photo_redact_text_faces'] = array(
-			'#type' => 'checkbox',
-			'#title' => t('Sensitive text and faces'),
-			'#default_value' => 0,
-			'#description' => t('Sensitive text plus faces / people in the photo.'),
-		);
-		$form['#validate'][] = 'rovas_report_form_photo_redact_validate';
-	}
+		),
+	);
 
 	$form['field_rovas_report']['#weight'] = 14;
 	$form['field_classification']['#weight'] = 15;
@@ -324,96 +409,6 @@ function _rrf_validate_pic($element, &$form_state, $form) {
 	}
 }
 
-/**
- * Resolve photo_redact_mode from form checkboxes (mutually exclusive).
- *
- * @param array $form_state
- *
- * @return string
- *   none|text|text_faces
- */
-function rovas_report_form_photo_redact_mode_from_values(array $form_state) {
-	$text = !empty($form_state['values']['photo_redact_text']);
-	$faces = !empty($form_state['values']['photo_redact_text_faces']);
-	if ($faces) {
-		return 'text_faces';
-	}
-	if ($text) {
-		return 'text';
-	}
-	return 'none';
-}
-
-/**
- * Opt-in proof-photo redaction before the work report (and files) are saved.
- */
-function rovas_report_form_photo_redact_validate($form, &$form_state) {
-	if (!module_exists('rovas_ai')) {
-		return;
-	}
-	$text = !empty($form_state['values']['photo_redact_text']);
-	$faces = !empty($form_state['values']['photo_redact_text_faces']);
-	if ($text && $faces) {
-		form_set_error('photo_redact', t('Choose either sensitive text, or sensitive text and faces — not both.'));
-		return;
-	}
-	$mode = rovas_report_form_photo_redact_mode_from_values($form_state);
-	if ($mode === 'none') {
-		return;
-	}
-
-	$lang = LANGUAGE_NONE;
-	if (!empty($form['field_photos']['#language'])) {
-		$lang = $form['field_photos']['#language'];
-	}
-	$items = isset($form_state['values']['field_photos'][$lang]) ? $form_state['values']['field_photos'][$lang] : array();
-	if (!is_array($items)) {
-		return;
-	}
-
-	global $user;
-	module_load_include('inc', 'rovas_ai', 'rovas_ai.redact');
-	$pending = array();
-	$any_edited = FALSE;
-
-	foreach ($items as $delta => $item) {
-		if (!is_array($item) || empty($item['fid'])) {
-			continue;
-		}
-		$file = file_load((int) $item['fid']);
-		if (!$file) {
-			continue;
-		}
-		$result = rovas_ai_redact_managed_file($file, $mode, array(
-			'uid' => !empty($user->uid) ? (int) $user->uid : 0,
-		));
-		if (empty($result['ok'])) {
-			$err = !empty($result['error']) ? $result['error'] : 'photo_redact_failed';
-			form_set_error('field_photos', t('Could not redact proof photo (@err). Uncheck automatic removal or try again later.', array(
-				'@err' => $err,
-			)));
-			return;
-		}
-		if (!empty($result['edited']) && (int) $result['regions_redacted'] > 0 && !empty($result['file']->fid)) {
-			$any_edited = TRUE;
-			$pending[] = array(
-				'fid' => (int) $result['file']->fid,
-				'mode' => $mode,
-				'regions' => (int) $result['regions_redacted'],
-			);
-			// Keep form values pointing at the (possibly renamed) file.
-			$form_state['values']['field_photos'][$lang][$delta]['fid'] = (int) $result['file']->fid;
-		}
-	}
-
-	if (!empty($pending) && isset($form_state['node']) && is_object($form_state['node'])) {
-		$form_state['node']->rovas_photo_edits_pending = $pending;
-	}
-	if ($any_edited) {
-		drupal_set_message(rovas_ai_proof_edit_message());
-	}
-}
-
 function _rrf_validate_rovrep($element, &$form_state, $form) {
 	$lang = $form['field_work_evidence']['#language'];
 //	watchdog('module','rrf e ' . print_r($form_state['values'],1));
@@ -427,7 +422,6 @@ function _rrf_validate_rovrep($element, &$form_state, $form) {
  * Implements hook_node_insert().
  *
  * Persist Work report ID (= nid), same pattern as Project ID on projects.
- * Record pending proof-photo redaction metadata when present.
  */
 function rovas_report_form_node_insert($node) {
   if (empty($node->type) || $node->type !== 'work_report' || empty($node->nid)) {
@@ -440,46 +434,6 @@ function rovas_report_form_node_insert($node) {
     }
     $node->field_work_report_id[$lang][0]['value'] = (int) $node->nid;
     field_attach_update('node', $node);
-  }
-  rovas_report_form_record_pending_photo_edits($node);
-}
-
-/**
- * Implements hook_node_update().
- */
-function rovas_report_form_node_update($node) {
-  if (empty($node->type) || $node->type !== 'work_report' || empty($node->nid)) {
-    return;
-  }
-  rovas_report_form_record_pending_photo_edits($node);
-}
-
-/**
- * Persist photo-edit rows stashed on the node during form validate.
- *
- * @param object $node
- */
-function rovas_report_form_record_pending_photo_edits($node) {
-  if (empty($node->rovas_photo_edits_pending) || !is_array($node->rovas_photo_edits_pending)) {
-    return;
-  }
-  if (!module_exists('rovas_ai')) {
-    return;
-  }
-  module_load_include('inc', 'rovas_ai', 'rovas_ai.redact');
-  if (!function_exists('rovas_ai_photo_edit_record')) {
-    return;
-  }
-  foreach ($node->rovas_photo_edits_pending as $row) {
-    if (empty($row['fid']) || empty($row['regions'])) {
-      continue;
-    }
-    rovas_ai_photo_edit_record(
-      (int) $row['fid'],
-      (int) $node->nid,
-      isset($row['mode']) ? $row['mode'] : 'text',
-      (int) $row['regions']
-    );
   }
 }
 

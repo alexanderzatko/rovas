@@ -1,0 +1,73 @@
+.rovas-photo-paint-note {
+  margin: 0 0 1em;
+  padding: 0.75em 1em;
+}
+
+.rovas-photo-paint-btn {
+  margin-top: 0.5em;
+  display: inline-block;
+}
+
+.rovas-photo-paint-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  background: rgba(0, 0, 0, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+
+.rovas-photo-paint-panel {
+  background: #fff;
+  border-radius: 6px;
+  max-width: 96vw;
+  max-height: 94vh;
+  overflow: auto;
+  padding: 0.75rem;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.35);
+}
+
+.rovas-photo-paint-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 0.75rem;
+  align-items: center;
+  margin-bottom: 0.75rem;
+}
+
+.rovas-photo-paint-toolbar label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 0;
+  font-weight: normal;
+}
+
+.rovas-photo-paint-size {
+  width: 8rem;
+  vertical-align: middle;
+}
+
+.rovas-photo-paint-canvas-wrap {
+  overflow: auto;
+  max-height: calc(94vh - 5rem);
+  text-align: center;
+  background: #f3f3f3;
+  border: 1px solid #ccc;
+}
+
+.rovas-photo-paint-canvas-wrap canvas {
+  display: inline-block;
+  cursor: crosshair;
+  touch-action: none;
+  max-width: 100%;
+  height: auto;
+  background: #fff;
+}
+
+.rovas-photo-paint-status {
+  color: #555;
+  font-size: 0.9em;
+}

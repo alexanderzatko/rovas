@@ -16,7 +16,7 @@ function rovas_ai_admin_form($form, &$form_state) {
   }
 
   $form['intro'] = array(
-    '#markup' => '<p>' . t('Prefer cheaper chat models (default gpt-4o-mini). NACE classification uses a two-pass prompt so the full taxonomy is never sent in one request. Proof-photo redaction needs a vision-capable model (override below).') . '</p>',
+    '#markup' => '<p>' . t('Prefer cheaper chat models (default gpt-4o-mini). NACE classification uses a two-pass prompt so the full taxonomy is never sent in one request.') . '</p>',
   );
 
   $form['rovas_ai_provider'] = array(
@@ -82,14 +82,6 @@ function rovas_ai_admin_form($form, &$form_state) {
     '#maxlength' => 128,
   );
 
-  $form['rovas_ai_task_model_proof_pii'] = array(
-    '#type' => 'textfield',
-    '#title' => t('Model override: proof photo redaction'),
-    '#default_value' => isset($task_models['proof_pii_redact']) ? $task_models['proof_pii_redact'] : '',
-    '#description' => t('Optional vision-capable model for detecting emails, phones, names, and faces in proof photos. Empty = use default model. For denser screenshots prefer gpt-4o over gpt-4o-mini. Task id: proof_pii_redact. Each redact attempt counts toward the daily budget.'),
-    '#maxlength' => 128,
-  );
-
   $form['rovas_ai_confidence_threshold'] = array(
     '#type' => 'textfield',
     '#title' => t('Confidence threshold'),
@@ -116,7 +108,7 @@ function rovas_ai_admin_form($form, &$form_state) {
     '#type' => 'textfield',
     '#title' => t('Daily call budget per user'),
     '#default_value' => variable_get('rovas_ai_daily_budget', ROVAS_AI_DEFAULT_DAILY_BUDGET),
-    '#description' => t('Each classify or proof-photo redact request counts as one call (NACE’s two LLM passes share one slot). Over budget → classify returns unavailable; photo redact fails closed (no unredacted upload when redact was requested). 0 disables the limit.'),
+    '#description' => t('Each classify request counts as one call (NACE’s two LLM passes share one slot). Over budget → classify returns unavailable. 0 disables the limit.'),
     '#size' => 6,
     '#element_validate' => array('element_validate_integer'),
   );
@@ -183,13 +175,7 @@ function rovas_ai_admin_form_submit($form, &$form_state) {
   else {
     $task_models['nace_classify'] = $override;
   }
-  $override_pii = trim((string) $v['rovas_ai_task_model_proof_pii']);
-  if ($override_pii === '') {
-    unset($task_models['proof_pii_redact']);
-  }
-  else {
-    $task_models['proof_pii_redact'] = $override_pii;
-  }
+  unset($task_models['proof_pii_redact']);
   variable_set('rovas_ai_task_models', $task_models);
 
   $threshold = (float) $v['rovas_ai_confidence_threshold'];

@@ -346,24 +346,6 @@ function rovas_ai_classify_work($description, $lang = 'en', array $options = arr
 }
 
 /**
- * Redact PII / faces on proof-image bytes (opt-in mode).
- *
- * @param string $bytes
- * @param string $mime
- * @param string $mode
- *   none|text|text_faces
- * @param array $options
- *   Optional: uid.
- *
- * @return array
- *   ok, bytes, mime, regions_redacted, edited, error, regions.
- */
-function rovas_ai_redact_proof_image($bytes, $mime, $mode, array $options = array()) {
-  module_load_include('inc', 'rovas_ai', 'rovas_ai.redact');
-  return rovas_ai_redact_proof_image_run($bytes, $mime, $mode, $options);
-}
-
-/**
  * Daily budget check for a uid.
  *
  * @param int $uid
