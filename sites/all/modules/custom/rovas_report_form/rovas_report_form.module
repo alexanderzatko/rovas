@@ -10,7 +10,55 @@ function rovas_report_form_menu() {
     'access callback' => 'user_is_logged_in',
     'type' => MENU_CALLBACK,
   );
+  $items['rovas/report-photo-source'] = array(
+    'title' => 'Proof photo original URL',
+    'page callback' => 'rovas_report_form_photo_paint_source',
+    'access callback' => 'user_is_logged_in',
+    'type' => MENU_CALLBACK,
+  );
   return $items;
+}
+
+/**
+ * AJAX: return the original (full-size) public URL for a managed proof photo.
+ */
+function rovas_report_form_photo_paint_source() {
+  drupal_add_http_header('Content-Type', 'application/json; charset=utf-8');
+
+  $token = isset($_GET['token']) ? (string) $_GET['token'] : '';
+  if (!drupal_valid_token($token, 'rovas_report_photo_paint')) {
+    drupal_json_output(array('ok' => FALSE, 'error' => 'invalid_token'));
+    drupal_exit();
+  }
+
+  $fid = isset($_GET['fid']) ? (int) $_GET['fid'] : 0;
+  $file = $fid > 0 ? file_load($fid) : FALSE;
+  if (!$file || empty($file->uri)) {
+    drupal_json_output(array('ok' => FALSE, 'error' => 'not_found'));
+    drupal_exit();
+  }
+
+  global $user;
+  $allowed = ((int) $file->uid === (int) $user->uid)
+    || user_access('administer files')
+    || user_access('edit any work_report content');
+  if (!$allowed) {
+    drupal_json_output(array('ok' => FALSE, 'error' => 'access_denied'));
+    drupal_exit();
+  }
+
+  $url = file_create_url($file->uri);
+  if (!$url) {
+    drupal_json_output(array('ok' => FALSE, 'error' => 'no_url'));
+    drupal_exit();
+  }
+
+  drupal_json_output(array(
+    'ok' => TRUE,
+    'fid' => (int) $file->fid,
+    'url' => $url,
+  ));
+  drupal_exit();
 }
 
 /**
@@ -219,16 +267,23 @@ function rovas_report_form_form_work_report_node_form_alter(&$form, &$form_state
 		'data' => array(
 			'rovasPhotoPaint' => array(
 				'saveUrl' => url('rovas/report-photo-paint'),
+				'sourceUrl' => url('rovas/report-photo-source'),
 				'token' => drupal_get_token('rovas_report_photo_paint'),
+				'noteTitle' => t('Public proof photos'),
 				'note' => t('Proofs of work are visible to the public, so we encourage you to review and redact sensitive information from the images using the paint tools provided here.'),
+				'noteHint' => t('Use "Black out areas" under each photo to cover names, emails, or phones with a black marker.'),
+				'noteOk' => t('Got it'),
 				'btnLabel' => t('Black out areas'),
+				'btnHint' => t('Opens a marker tool to black out sensitive parts of this image.'),
 				'brushLabel' => t('Marker size'),
 				'undoLabel' => t('Undo'),
 				'clearLabel' => t('Clear marks'),
 				'applyLabel' => t('Apply'),
 				'cancelLabel' => t('Cancel'),
 				'savingLabel' => t('Saving…'),
+				'loadingLabel' => t('Loading full image…'),
 				'errorLabel' => t('Could not save. Try again.'),
+				'loadErrorLabel' => t('Could not load the full image.'),
 				'defaultBrush' => 24,
 			),
 		),

@@ -6,6 +6,7 @@
 
   var NOTE_ID = 'rovas-photo-paint-note';
   var BTN_CLASS = 'rovas-photo-paint-btn';
+  var WARN_SHOWN_KEY = 'rovasPhotoPaintWarnShown';
 
   function settings() {
     return (Drupal.settings && Drupal.settings.rovasPhotoPaint) || {};
@@ -30,22 +31,96 @@
     });
   }
 
+  function showPrivacyModal() {
+    if ($('.rovas-photo-paint-warn-overlay').length) {
+      return;
+    }
+    var $overlay = $('<div/>', {
+      'class': 'rovas-photo-paint-warn-overlay',
+      role: 'alertdialog',
+      'aria-modal': 'true',
+      'aria-labelledby': 'rovas-photo-paint-warn-title'
+    });
+    var $panel = $('<div/>', { 'class': 'rovas-photo-paint-warn-panel' });
+    var $title = $('<h2/>', {
+      id: 'rovas-photo-paint-warn-title',
+      text: t('noteTitle', 'Public proof photos')
+    });
+    var $body = $('<p/>').text(t('note', ''));
+    var $hint = $('<p/>', { 'class': 'rovas-photo-paint-warn-hint' })
+      .text(t('noteHint', 'Use “Black out areas” under each photo to cover names, emails, or phones with a black marker.'));
+    var $ok = $('<button/>', {
+      type: 'button',
+      'class': 'button button-primary',
+      text: t('noteOk', 'Got it')
+    });
+    function close() {
+      $overlay.remove();
+    }
+    $ok.on('click', function (e) {
+      e.preventDefault();
+      close();
+    });
+    $overlay.on('click', function (e) {
+      if (e.target === $overlay[0]) {
+        close();
+      }
+    });
+    $(document).on('keydown.rovasPhotoWarn', function (e) {
+      if (e.keyCode === 27) {
+        $(document).off('keydown.rovasPhotoWarn');
+        close();
+      }
+    });
+    $panel.append($title, $body, $hint, $ok);
+    $overlay.append($panel);
+    $('body').append($overlay);
+    $ok.focus();
+  }
+
   function updateNote($root) {
     var $widgets = widgetsWithFid($root);
     var $note = $('#' + NOTE_ID);
     if (!$widgets.length) {
       $note.hide();
+      try {
+        sessionStorage.removeItem(WARN_SHOWN_KEY);
+      }
+      catch (err) {
+        // Ignore.
+      }
       return;
     }
     if (!$note.length) {
       $note = $('<div/>', {
         id: NOTE_ID,
-        'class': 'rovas-photo-paint-note messages status',
+        'class': 'rovas-photo-paint-note messages warning',
         role: 'status'
-      }).text(t('note', ''));
+      }).html(
+        '<strong>' + $('<div/>').text(t('noteTitle', 'Public proof photos')).html() + '</strong> '
+        + $('<div/>').text(t('note', '')).html()
+        + ' <em>' + $('<div/>').text(t('noteHint', '')).html() + '</em>'
+      );
       $root.prepend($note);
     }
     $note.show();
+
+    var shown = false;
+    try {
+      shown = sessionStorage.getItem(WARN_SHOWN_KEY) === '1';
+    }
+    catch (err2) {
+      shown = false;
+    }
+    if (!shown) {
+      try {
+        sessionStorage.setItem(WARN_SHOWN_KEY, '1');
+      }
+      catch (err3) {
+        // Ignore.
+      }
+      showPrivacyModal();
+    }
   }
 
   function ensureButtons($root) {
@@ -67,28 +142,31 @@
       }
       var $btn = $('<button/>', {
         type: 'button',
-        'class': 'button ' + BTN_CLASS,
+        'class': 'button button-primary ' + BTN_CLASS,
         text: t('btnLabel', 'Black out areas')
       });
       $btn.on('click', function (e) {
         e.preventDefault();
         openEditor(fid, $img, $w);
       });
+      var $wrap = $('<div/>', { 'class': 'rovas-photo-paint-actions' });
+      $wrap.append($btn);
+      $wrap.append($('<div/>', {
+        'class': 'rovas-photo-paint-btn-hint description',
+        text: t('btnHint', 'Opens a marker tool to black out sensitive parts of this image.')
+      }));
       var $slot = $w.find('.image-widget-data').first();
       if ($slot.length) {
-        $slot.append($btn);
+        $slot.append($wrap);
       }
       else {
-        $w.append($btn);
+        $w.append($wrap);
       }
     });
   }
 
   function openEditor(fid, $img, $widget) {
-    var src = $img.attr('src');
-    if (!src) {
-      return;
-    }
+    var thumbSrc = $img.attr('src') || '';
 
     var overlay = $('<div/>', { 'class': 'rovas-photo-paint-overlay', role: 'dialog', 'aria-modal': 'true' });
     var panel = $('<div/>', { 'class': 'rovas-photo-paint-panel' });
@@ -127,6 +205,11 @@
     panel.append(toolbar, canvasWrap);
     overlay.append(panel);
     $('body').append(overlay);
+
+    $status.text(t('loadingLabel', 'Loading full image…'));
+    $apply.prop('disabled', true);
+    $undo.prop('disabled', true);
+    $clear.prop('disabled', true);
 
     function pushUndo() {
       try {
@@ -261,10 +344,13 @@
             $apply.prop('disabled', false);
             return;
           }
-          var url = res.url || src;
-          var bust = url + (url.indexOf('?') >= 0 ? '&' : '?') + 'paint=' + Date.now();
-          $img.attr('src', bust);
-          $widget.find('.image-preview img').attr('src', bust);
+          // Refresh the form thumbnail (image style), not the full original URL.
+          var base = (thumbSrc || '').split('?')[0];
+          if (base) {
+            var bust = base + '?paint=' + Date.now();
+            $img.attr('src', bust);
+            $widget.find('.image-preview img').attr('src', bust);
+          }
           close();
         }).fail(function () {
           $status.text(t('errorLabel', 'Could not save.'));
@@ -284,27 +370,57 @@
       }
     });
 
-    var image = new Image();
-    image.crossOrigin = 'anonymous';
-    image.onload = function () {
-      var maxW = Math.min(1200, window.innerWidth - 48);
-      var maxH = Math.min(700, window.innerHeight - 140);
-      var w = image.naturalWidth || image.width;
-      var h = image.naturalHeight || image.height;
-      var scale = Math.min(1, maxW / w, maxH / h);
-      // Paint at native resolution; CSS scales the display.
-      canvas.width = w;
-      canvas.height = h;
-      canvas.style.width = Math.round(w * scale) + 'px';
-      canvas.style.height = Math.round(h * scale) + 'px';
-      ctx.drawImage(image, 0, 0);
-      pushUndo();
-    };
-    image.onerror = function () {
-      $status.text(t('errorLabel', 'Could not load image.'));
-    };
-    // Same-origin file URL; cache-bust for freshly painted files.
-    image.src = src + (src.indexOf('?') >= 0 ? '&' : '?') + 'paintload=' + Date.now();
+    function loadCanvasFromUrl(fullUrl) {
+      var image = new Image();
+      image.crossOrigin = 'anonymous';
+      image.onload = function () {
+        var maxW = Math.min(1200, window.innerWidth - 48);
+        var maxH = Math.min(700, window.innerHeight - 140);
+        var w = image.naturalWidth || image.width;
+        var h = image.naturalHeight || image.height;
+        var scale = Math.min(1, maxW / w, maxH / h);
+        // Paint at native (original file) resolution; CSS scales the display.
+        canvas.width = w;
+        canvas.height = h;
+        canvas.style.width = Math.round(w * scale) + 'px';
+        canvas.style.height = Math.round(h * scale) + 'px';
+        ctx.drawImage(image, 0, 0);
+        undoStack = [];
+        pushUndo();
+        $status.text('');
+        $apply.prop('disabled', false);
+        $undo.prop('disabled', false);
+        $clear.prop('disabled', false);
+      };
+      image.onerror = function () {
+        $status.text(t('loadErrorLabel', 'Could not load the full image.'));
+      };
+      image.src = fullUrl + (fullUrl.indexOf('?') >= 0 ? '&' : '?') + 'paintload=' + Date.now();
+    }
+
+    // Resolve original managed-file URL (not the image-style thumbnail).
+    var sourceEndpoint = settings().sourceUrl;
+    if (!sourceEndpoint) {
+      $status.text(t('loadErrorLabel', 'Could not load the full image.'));
+      return;
+    }
+    $.ajax({
+      url: sourceEndpoint,
+      type: 'GET',
+      dataType: 'json',
+      data: {
+        fid: fid,
+        token: settings().token || ''
+      }
+    }).done(function (res) {
+      if (!res || !res.ok || !res.url) {
+        $status.text(t('loadErrorLabel', 'Could not load the full image.'));
+        return;
+      }
+      loadCanvasFromUrl(res.url);
+    }).fail(function () {
+      $status.text(t('loadErrorLabel', 'Could not load the full image.'));
+    });
   }
 
   function refresh() {

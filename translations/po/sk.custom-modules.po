@@ -391,3 +391,63 @@ msgstr "Na !title, ktorý sledujete, je nový komentár."
 #: sites/all/modules/custom/rovas_comment_watch/rovas_comment_watch.module
 msgid "There are new comments on !title you are watching."
 msgstr "Na !title, ktorý sledujete, sú nové komentáre."
+
+#: sites/all/modules/custom/rovas_report_form/rovas_report_form.module
+msgid "Public proof photos"
+msgstr "Verejné dôkazové fotografie"
+
+#: sites/all/modules/custom/rovas_report_form/rovas_report_form.module
+msgid "Proofs of work are visible to the public, so we encourage you to review and redact sensitive information from the images using the paint tools provided here."
+msgstr "Dôkazy práce sú verejne viditeľné, preto vás žiadame, aby ste skontrolovali obrázky a zakryli citlivé údaje pomocou nástrojov na maľovanie dostupných tu."
+
+#: sites/all/modules/custom/rovas_report_form/rovas_report_form.module
+msgid "Use \"Black out areas\" under each photo to cover names, emails, or phones with a black marker."
+msgstr "Pod každou fotografiou použite „Zakryť oblasti“ a čiernym popisovačom zakryte mená, e-maily alebo telefóny."
+
+#: sites/all/modules/custom/rovas_report_form/rovas_report_form.module
+msgid "Got it"
+msgstr "Rozumiem"
+
+#: sites/all/modules/custom/rovas_report_form/rovas_report_form.module
+msgid "Black out areas"
+msgstr "Zakryť oblasti"
+
+#: sites/all/modules/custom/rovas_report_form/rovas_report_form.module
+msgid "Opens a marker tool to black out sensitive parts of this image."
+msgstr "Otvorí nástroj s popisovačom na zakrytie citlivých častí tohto obrázka."
+
+#: sites/all/modules/custom/rovas_report_form/rovas_report_form.module
+msgid "Marker size"
+msgstr "Hrúbka popisovača"
+
+#: sites/all/modules/custom/rovas_report_form/rovas_report_form.module
+msgid "Undo"
+msgstr "Späť"
+
+#: sites/all/modules/custom/rovas_report_form/rovas_report_form.module
+msgid "Clear marks"
+msgstr "Vymazať značky"
+
+#: sites/all/modules/custom/rovas_report_form/rovas_report_form.module
+msgid "Apply"
+msgstr "Použiť"
+
+#: sites/all/modules/custom/rovas_report_form/rovas_report_form.module
+msgid "Cancel"
+msgstr "Zrušiť"
+
+#: sites/all/modules/custom/rovas_report_form/rovas_report_form.module
+msgid "Saving…"
+msgstr "Ukladá sa…"
+
+#: sites/all/modules/custom/rovas_report_form/rovas_report_form.module
+msgid "Loading full image…"
+msgstr "Načítava sa celý obrázok…"
+
+#: sites/all/modules/custom/rovas_report_form/rovas_report_form.module
+msgid "Could not save. Try again."
+msgstr "Nepodarilo sa uložiť. Skúste znova."
+
+#: sites/all/modules/custom/rovas_report_form/rovas_report_form.module
+msgid "Could not load the full image."
+msgstr "Nepodarilo sa načítať celý obrázok."

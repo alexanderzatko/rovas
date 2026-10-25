@@ -345,3 +345,63 @@ msgstr "C’è un nuovo commento su !title che stai seguendo."
 #: sites/all/modules/custom/rovas_comment_watch/rovas_comment_watch.module
 msgid "There are new comments on !title you are watching."
 msgstr "Ci sono nuovi commenti su !title che stai seguendo."
+
+#: sites/all/modules/custom/rovas_report_form/rovas_report_form.module
+msgid "Public proof photos"
+msgstr "Foto di prova pubbliche"
+
+#: sites/all/modules/custom/rovas_report_form/rovas_report_form.module
+msgid "Proofs of work are visible to the public, so we encourage you to review and redact sensitive information from the images using the paint tools provided here."
+msgstr "Le prove di lavoro sono visibili al pubblico: ti invitiamo a controllare le immagini e a oscurare le informazioni sensibili con gli strumenti di disegno forniti qui."
+
+#: sites/all/modules/custom/rovas_report_form/rovas_report_form.module
+msgid "Use \"Black out areas\" under each photo to cover names, emails, or phones with a black marker."
+msgstr "Usa «Oscura aree» sotto ogni foto per coprire nomi, e-mail o telefoni con un pennarello nero."
+
+#: sites/all/modules/custom/rovas_report_form/rovas_report_form.module
+msgid "Got it"
+msgstr "Ho capito"
+
+#: sites/all/modules/custom/rovas_report_form/rovas_report_form.module
+msgid "Black out areas"
+msgstr "Oscura aree"
+
+#: sites/all/modules/custom/rovas_report_form/rovas_report_form.module
+msgid "Opens a marker tool to black out sensitive parts of this image."
+msgstr "Apre uno strumento a pennarello per oscurare le parti sensibili di questa immagine."
+
+#: sites/all/modules/custom/rovas_report_form/rovas_report_form.module
+msgid "Marker size"
+msgstr "Spessore pennarello"
+
+#: sites/all/modules/custom/rovas_report_form/rovas_report_form.module
+msgid "Undo"
+msgstr "Annulla"
+
+#: sites/all/modules/custom/rovas_report_form/rovas_report_form.module
+msgid "Clear marks"
+msgstr "Cancella segni"
+
+#: sites/all/modules/custom/rovas_report_form/rovas_report_form.module
+msgid "Apply"
+msgstr "Applica"
+
+#: sites/all/modules/custom/rovas_report_form/rovas_report_form.module
+msgid "Cancel"
+msgstr "Annulla"
+
+#: sites/all/modules/custom/rovas_report_form/rovas_report_form.module
+msgid "Saving…"
+msgstr "Salvataggio…"
+
+#: sites/all/modules/custom/rovas_report_form/rovas_report_form.module
+msgid "Loading full image…"
+msgstr "Caricamento immagine completa…"
+
+#: sites/all/modules/custom/rovas_report_form/rovas_report_form.module
+msgid "Could not save. Try again."
+msgstr "Impossibile salvare. Riprova."
+
+#: sites/all/modules/custom/rovas_report_form/rovas_report_form.module
+msgid "Could not load the full image."
+msgstr "Impossibile caricare l’immagine completa."

@@ -1,11 +1,62 @@
 .rovas-photo-paint-note {
   margin: 0 0 1em;
   padding: 0.75em 1em;
+  border-left: 4px solid #e0a800;
+  background: #fff8e1;
+  color: #333;
+}
+
+.rovas-photo-paint-actions {
+  margin-top: 0.65em;
 }
 
 .rovas-photo-paint-btn {
-  margin-top: 0.5em;
   display: inline-block;
+}
+
+.rovas-photo-paint-btn-hint {
+  margin: 0.35em 0 0;
+  font-size: 0.9em;
+}
+
+.rovas-photo-paint-warn-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 10020;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+
+.rovas-photo-paint-warn-panel {
+  background: #fff;
+  border-radius: 8px;
+  max-width: 32rem;
+  width: 100%;
+  padding: 1.25rem 1.5rem;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
+  border-top: 5px solid #e0a800;
+}
+
+.rovas-photo-paint-warn-panel h2 {
+  margin: 0 0 0.75rem;
+  font-size: 1.25rem;
+}
+
+.rovas-photo-paint-warn-panel p {
+  margin: 0 0 0.85rem;
+  line-height: 1.45;
+}
+
+.rovas-photo-paint-warn-hint {
+  color: #444;
+  font-size: 0.95em;
+}
+
+.rovas-photo-paint-warn-panel .button {
+  margin-top: 0.25rem;
 }
 
 .rovas-photo-paint-overlay {

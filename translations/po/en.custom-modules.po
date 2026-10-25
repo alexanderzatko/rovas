@@ -240,3 +240,63 @@ msgstr ""
 #: sites/all/modules/custom/rovas_comment_watch/rovas_comment_watch.module
 msgid "There are new comments on !title you are watching."
 msgstr ""
+
+#: sites/all/modules/custom/rovas_report_form/rovas_report_form.module
+msgid "Public proof photos"
+msgstr "Public proof photos"
+
+#: sites/all/modules/custom/rovas_report_form/rovas_report_form.module
+msgid "Proofs of work are visible to the public, so we encourage you to review and redact sensitive information from the images using the paint tools provided here."
+msgstr "Proofs of work are visible to the public, so we encourage you to review and redact sensitive information from the images using the paint tools provided here."
+
+#: sites/all/modules/custom/rovas_report_form/rovas_report_form.module
+msgid "Use \"Black out areas\" under each photo to cover names, emails, or phones with a black marker."
+msgstr "Use "Black out areas" under each photo to cover names, emails, or phones with a black marker."
+
+#: sites/all/modules/custom/rovas_report_form/rovas_report_form.module
+msgid "Got it"
+msgstr "Got it"
+
+#: sites/all/modules/custom/rovas_report_form/rovas_report_form.module
+msgid "Black out areas"
+msgstr "Black out areas"
+
+#: sites/all/modules/custom/rovas_report_form/rovas_report_form.module
+msgid "Opens a marker tool to black out sensitive parts of this image."
+msgstr "Opens a marker tool to black out sensitive parts of this image."
+
+#: sites/all/modules/custom/rovas_report_form/rovas_report_form.module
+msgid "Marker size"
+msgstr "Marker size"
+
+#: sites/all/modules/custom/rovas_report_form/rovas_report_form.module
+msgid "Undo"
+msgstr "Undo"
+
+#: sites/all/modules/custom/rovas_report_form/rovas_report_form.module
+msgid "Clear marks"
+msgstr "Clear marks"
+
+#: sites/all/modules/custom/rovas_report_form/rovas_report_form.module
+msgid "Apply"
+msgstr "Apply"
+
+#: sites/all/modules/custom/rovas_report_form/rovas_report_form.module
+msgid "Cancel"
+msgstr "Cancel"
+
+#: sites/all/modules/custom/rovas_report_form/rovas_report_form.module
+msgid "Saving…"
+msgstr "Saving…"
+
+#: sites/all/modules/custom/rovas_report_form/rovas_report_form.module
+msgid "Loading full image…"
+msgstr "Loading full image…"
+
+#: sites/all/modules/custom/rovas_report_form/rovas_report_form.module
+msgid "Could not save. Try again."
+msgstr "Could not save. Try again."
+
+#: sites/all/modules/custom/rovas_report_form/rovas_report_form.module
+msgid "Could not load the full image."
+msgstr "Could not load the full image."
