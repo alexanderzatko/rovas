@@ -1,12 +1,19 @@
 /**
  * Client-side blackout paint for work-report proof photos.
+ *
+ * Apply stages the painted JPEG through the field's normal Upload button
+ * (Remove → assign File → Upload) so form submit and thumbnails stay in sync.
  */
 (function ($) {
   'use strict';
 
   var NOTE_ID = 'rovas-photo-paint-note';
   var BTN_CLASS = 'rovas-photo-paint-btn';
+  var THUMB_CLASS = 'rovas-photo-paint-thumb';
   var WARN_SHOWN_KEY = 'rovasPhotoPaintWarnShown';
+  // fid input name → File waiting to be assigned after Remove rebuilds the widget.
+  var pendingPaintFiles = {};
+  var pendingPaintUploading = {};
 
   function settings() {
     return (Drupal.settings && Drupal.settings.rovasPhotoPaint) || {};
@@ -31,6 +38,97 @@
     });
   }
 
+  function findFidInput($root, fidName) {
+    return $root.find('input').filter(function () {
+      return this.name === fidName;
+    }).first();
+  }
+
+  function blobToPaintFile(blob) {
+    var name = 'proof_painted.jpg';
+    var type = 'image/jpeg';
+    try {
+      return new File([blob], name, { type: type });
+    }
+    catch (err) {
+      try {
+        blob.name = name;
+        blob.lastModifiedDate = new Date();
+      }
+      catch (err2) {
+        // Ignore.
+      }
+      return blob;
+    }
+  }
+
+  /**
+   * After Remove AJAX, put the painted file into the file input and click Upload.
+   */
+  function flushPendingPaint($root) {
+    $.each(pendingPaintFiles, function (fidName, file) {
+      if (pendingPaintUploading[fidName]) {
+        return;
+      }
+      var $fid = findFidInput($root, fidName);
+      if (!$fid.length) {
+        return;
+      }
+      var fid = parseInt($fid.val(), 10) || 0;
+      if (fid > 0) {
+        // Upload already finished (or another path restored a file).
+        delete pendingPaintFiles[fidName];
+        delete pendingPaintUploading[fidName];
+        return;
+      }
+      var $w = $fid.closest('.image-widget, .form-managed-file');
+      var $input = $w.find('input[type="file"]').first();
+      var $upload = $w.find('input[name*="_upload_button"]').first();
+      if (!$input.length || !$upload.length || typeof DataTransfer === 'undefined') {
+        delete pendingPaintFiles[fidName];
+        return;
+      }
+      try {
+        var dt = new DataTransfer();
+        dt.items.add(file);
+        $input[0].files = dt.files;
+      }
+      catch (err) {
+        delete pendingPaintFiles[fidName];
+        return;
+      }
+      pendingPaintUploading[fidName] = true;
+      delete pendingPaintFiles[fidName];
+      // Drupal 7 file AJAX listens on mousedown.
+      $upload.trigger('mousedown');
+    });
+  }
+
+  /**
+   * Stage painted blob via managed-file Remove → Upload. Falls back to false.
+   */
+  function stagePaintViaUpload(blob, $widget) {
+    if (typeof DataTransfer === 'undefined') {
+      return false;
+    }
+    var $fid = $widget.find('input[name*="[fid]"]').filter(function () {
+      return parseInt(this.value, 10) > 0;
+    }).first();
+    if (!$fid.length) {
+      return false;
+    }
+    var fidName = $fid.attr('name');
+    var $remove = $widget.find('input[name*="_remove_button"]').first();
+    if (!fidName || !$remove.length) {
+      return false;
+    }
+    var file = blobToPaintFile(blob);
+    pendingPaintFiles[fidName] = file;
+    delete pendingPaintUploading[fidName];
+    $remove.trigger('mousedown');
+    return true;
+  }
+
   function showPrivacyModal() {
     if ($('.rovas-photo-paint-warn-overlay').length) {
       return;
@@ -48,7 +146,7 @@
     });
     var $body = $('<p/>').text(t('note', ''));
     var $hint = $('<p/>', { 'class': 'rovas-photo-paint-warn-hint' })
-      .text(t('noteHint', 'Use “Black out areas” under each photo to cover names, emails, or phones with a black marker.'));
+      .text(t('noteHint', 'Use “Black out areas” under each photo (or click the thumbnail) to cover names, emails, or phones with a black marker.'));
     var $ok = $('<button/>', {
       type: 'button',
       'class': 'button button-primary',
@@ -82,6 +180,10 @@
     var $widgets = widgetsWithFid($root);
     var $note = $('#' + NOTE_ID);
     if (!$widgets.length) {
+      // Keep note while a painted re-upload is in flight (fid briefly cleared).
+      if (!$.isEmptyObject(pendingPaintFiles) || !$.isEmptyObject(pendingPaintUploading)) {
+        return;
+      }
       $note.hide();
       try {
         sessionStorage.removeItem(WARN_SHOWN_KEY);
@@ -126,9 +228,6 @@
   function ensureButtons($root) {
     widgetsWithFid($root).each(function () {
       var $w = $(this);
-      if ($w.find('.' + BTN_CLASS).length) {
-        return;
-      }
       var $fid = $w.find('input[name*="[fid]"]').filter(function () {
         return parseInt(this.value, 10) > 0;
       }).first();
@@ -138,6 +237,20 @@
       var fid = parseInt($fid.val(), 10);
       var $img = $w.find('.image-preview img, img').first();
       if (!$img.length) {
+        return;
+      }
+
+      // Thumbnail opens the editor.
+      if (!$img.hasClass(THUMB_CLASS)) {
+        $img.addClass(THUMB_CLASS);
+        $img.attr('title', t('thumbTitle', 'Click to black out sensitive areas'));
+        $img.off('click.rovasPhotoPaint').on('click.rovasPhotoPaint', function (e) {
+          e.preventDefault();
+          openEditor(fid, $img, $w);
+        });
+      }
+
+      if ($w.find('.' + BTN_CLASS).length) {
         return;
       }
       var $btn = $('<button/>', {
@@ -153,7 +266,7 @@
       $wrap.append($btn);
       $wrap.append($('<div/>', {
         'class': 'rovas-photo-paint-btn-hint description',
-        text: t('btnHint', 'Opens a marker tool to black out sensitive parts of this image.')
+        text: t('btnHint', 'Opens a marker tool to black out sensitive parts of this image. You can also click the thumbnail.')
       }));
       var $slot = $w.find('.image-widget-data').first();
       if ($slot.length) {
@@ -356,6 +469,40 @@
       close();
     });
 
+    function applyViaAjaxFallback(blob) {
+      var fd = new FormData();
+      fd.append('fid', String(fid));
+      fd.append('token', settings().token || '');
+      fd.append('image', blob, 'proof_painted.jpg');
+      $.ajax({
+        url: settings().saveUrl,
+        type: 'POST',
+        data: fd,
+        processData: false,
+        contentType: false,
+        dataType: 'json'
+      }).done(function (res) {
+        if (!res || !res.ok) {
+          $status.text((res && res.error) ? res.error : t('errorLabel', 'Could not save.'));
+          $apply.prop('disabled', false);
+          return;
+        }
+        var nextSrc = res.thumbUrl || '';
+        if (!nextSrc && thumbSrc) {
+          // Keep itok / existing query; only add a cache buster.
+          nextSrc = thumbSrc + (thumbSrc.indexOf('?') >= 0 ? '&' : '?') + 'paint=' + Date.now();
+        }
+        if (nextSrc) {
+          $img.attr('src', nextSrc);
+          $widget.find('.image-preview img').attr('src', nextSrc);
+        }
+        close();
+      }).fail(function () {
+        $status.text(t('errorLabel', 'Could not save.'));
+        $apply.prop('disabled', false);
+      });
+    }
+
     $apply.on('click', function (e) {
       e.preventDefault();
       $status.text(t('savingLabel', 'Saving…'));
@@ -371,35 +518,12 @@
           $apply.prop('disabled', false);
           return;
         }
-        var fd = new FormData();
-        fd.append('fid', String(fid));
-        fd.append('token', settings().token || '');
-        fd.append('image', blob, 'proof_painted.jpg');
-        $.ajax({
-          url: settings().saveUrl,
-          type: 'POST',
-          data: fd,
-          processData: false,
-          contentType: false,
-          dataType: 'json'
-        }).done(function (res) {
-          if (!res || !res.ok) {
-            $status.text((res && res.error) ? res.error : t('errorLabel', 'Could not save.'));
-            $apply.prop('disabled', false);
-            return;
-          }
-          // Refresh the form thumbnail (image style), not the full original URL.
-          var base = (thumbSrc || '').split('?')[0];
-          if (base) {
-            var bust = base + '?paint=' + Date.now();
-            $img.attr('src', bust);
-            $widget.find('.image-preview img').attr('src', bust);
-          }
+        // Prefer the field Upload path so the painted file is what the form submits.
+        if (stagePaintViaUpload(blob, $widget)) {
           close();
-        }).fail(function () {
-          $status.text(t('errorLabel', 'Could not save.'));
-          $apply.prop('disabled', false);
-        });
+          return;
+        }
+        applyViaAjaxFallback(blob);
       }, 'image/jpeg', 0.92);
     });
 
@@ -471,6 +595,7 @@
     if (!$root.length) {
       return;
     }
+    flushPendingPaint($root);
     updateNote($root);
     ensureButtons($root);
   }
@@ -479,6 +604,16 @@
     attach: function () {
       refresh();
       $(document).off('ajaxComplete.rovasPhotoPaint').on('ajaxComplete.rovasPhotoPaint', function () {
+        // Clear uploading flags once the widget has a new fid again.
+        var $root = fieldRoot();
+        if ($root.length) {
+          $.each(pendingPaintUploading, function (fidName) {
+            var $fid = findFidInput($root, fidName);
+            if ($fid.length && parseInt($fid.val(), 10) > 0) {
+              delete pendingPaintUploading[fidName];
+            }
+          });
+        }
         refresh();
       });
     }

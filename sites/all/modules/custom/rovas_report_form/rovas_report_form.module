@@ -123,10 +123,45 @@ function rovas_report_form_photo_paint_save() {
 
   $file->filemime = $mime;
   $file->filesize = strlen($bytes);
+
+  // Keep URI extension aligned with JPEG bytes so image styles can rebuild.
+  if ($mime === 'image/jpeg') {
+    $ext = strtolower(pathinfo($file->uri, PATHINFO_EXTENSION));
+    if (!in_array($ext, array('jpg', 'jpeg'), TRUE)) {
+      $dirname = drupal_dirname($file->uri);
+      $base = pathinfo($file->filename, PATHINFO_FILENAME);
+      if ($base === '' || $base === NULL) {
+        $base = pathinfo($file->uri, PATHINFO_FILENAME);
+      }
+      $new_uri = file_unmanaged_move($file->uri, $dirname . '/' . $base . '.jpg', FILE_EXISTS_RENAME);
+      if ($new_uri) {
+        $file->uri = $new_uri;
+        $file->filename = drupal_basename($new_uri);
+      }
+    }
+  }
+
   file_save($file);
 
   if (function_exists('image_path_flush')) {
     image_path_flush($file->uri);
+  }
+
+  $thumb_url = NULL;
+  if (function_exists('image_style_url')) {
+    $style = 'thumbnail';
+    $instance = field_info_instance('node', 'field_photos', 'work_report');
+    if (!empty($instance['widget']['settings']['preview_image_style'])) {
+      $style = $instance['widget']['settings']['preview_image_style'];
+    }
+    if ($style && function_exists('image_style_load') && image_style_load($style)) {
+      $dest = image_style_path($style, $file->uri);
+      image_style_create_derivative(image_style_load($style), $file->uri, $dest);
+      $thumb_url = image_style_url($style, $file->uri);
+      if ($thumb_url) {
+        $thumb_url .= (strpos($thumb_url, '?') !== FALSE ? '&' : '?') . 'paint=' . REQUEST_TIME;
+      }
+    }
   }
 
   $url = file_create_url($file->uri);
@@ -134,6 +169,7 @@ function rovas_report_form_photo_paint_save() {
     'ok' => TRUE,
     'fid' => (int) $file->fid,
     'url' => $url ? $url : NULL,
+    'thumbUrl' => $thumb_url,
   ));
   drupal_exit();
 }
@@ -271,10 +307,11 @@ function rovas_report_form_form_work_report_node_form_alter(&$form, &$form_state
 				'token' => drupal_get_token('rovas_report_photo_paint'),
 				'noteTitle' => t('Public proof photos'),
 				'note' => t('Proofs of work are visible to the public, so we encourage you to review and redact sensitive information from the images using the paint tools provided here.'),
-				'noteHint' => t('Use "Black out areas" under each photo to cover names, emails, or phones with a black marker.'),
+				'noteHint' => t('Use "Black out areas" under each photo (or click the thumbnail) to cover names, emails, or phones with a black marker.'),
 				'noteOk' => t('Got it'),
 				'btnLabel' => t('Black out areas'),
-				'btnHint' => t('Opens a marker tool to black out sensitive parts of this image.'),
+				'btnHint' => t('Opens a marker tool to black out sensitive parts of this image. You can also click the thumbnail.'),
+				'thumbTitle' => t('Click to black out sensitive areas'),
 				'brushLabel' => t('Marker size'),
 				'straightLabel' => t('Make lines straight'),
 				'undoLabel' => t('Back'),
