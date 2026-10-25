@@ -758,21 +758,91 @@ function rovas_ai_parse_json_object($content) {
   if ($content === '') {
     return NULL;
   }
-  if (preg_match('/^```(?:json)?\s*(.*?)\s*```$/s', $content, $m)) {
+  // Fenced block anywhere in the reply.
+  if (preg_match('/```(?:json)?\s*(\{.*?\}|\[.*?\])\s*```/s', $content, $m)) {
     $content = trim($m[1]);
   }
+  elseif (preg_match('/^```(?:json)?\s*(.*?)\s*```$/s', $content, $m)) {
+    $content = trim($m[1]);
+  }
+
   $decoded = json_decode($content, TRUE);
   if (is_array($decoded)) {
     return $decoded;
   }
-  // Last resort: first {...} blob.
+
+  // Largest {...} or [...] blob (non-greedy nested-ish: first brace to last).
   if (preg_match('/\{.*\}/s', $content, $m)) {
     $decoded = json_decode($m[0], TRUE);
     if (is_array($decoded)) {
       return $decoded;
     }
   }
+  if (preg_match('/\[.*\]/s', $content, $m)) {
+    $decoded = json_decode($m[0], TRUE);
+    if (is_array($decoded)) {
+      return array('regions' => $decoded);
+    }
+  }
+
+  // Truncated {"regions":[ ... — keep complete objects only.
+  $salvaged = rovas_ai_salvage_truncated_regions_json($content);
+  if (is_array($salvaged)) {
+    return $salvaged;
+  }
+
   return NULL;
+}
+
+/**
+ * Best-effort recover of truncated {"regions":[...]} JSON.
+ *
+ * @param string $content
+ *
+ * @return array|null
+ */
+function rovas_ai_salvage_truncated_regions_json($content) {
+  $content = trim((string) $content);
+  if ($content === '' || stripos($content, '"regions"') === FALSE) {
+    return NULL;
+  }
+  if (!preg_match('/"regions"\s*:\s*\[/s', $content, $m, PREG_OFFSET_CAPTURE)) {
+    return NULL;
+  }
+  $start = $m[0][1] + strlen($m[0][0]);
+  $slice = substr($content, $start);
+  // Walk objects; keep those that decode.
+  $regions = array();
+  $depth = 0;
+  $obj_start = NULL;
+  $len = strlen($slice);
+  for ($i = 0; $i < $len; $i++) {
+    $ch = $slice[$i];
+    if ($ch === '{') {
+      if ($depth === 0) {
+        $obj_start = $i;
+      }
+      $depth++;
+    }
+    elseif ($ch === '}') {
+      $depth--;
+      if ($depth === 0 && $obj_start !== NULL) {
+        $blob = substr($slice, $obj_start, $i - $obj_start + 1);
+        $decoded = json_decode($blob, TRUE);
+        if (is_array($decoded)) {
+          $regions[] = $decoded;
+        }
+        $obj_start = NULL;
+      }
+      elseif ($depth < 0) {
+        break;
+      }
+    }
+  }
+  if (empty($regions)) {
+    return NULL;
+  }
+  return array('regions' => $regions);
 }
 
 /**

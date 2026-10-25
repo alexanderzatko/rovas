@@ -6,7 +6,7 @@
  */
 
 define('ROVAS_AI_PROOF_REDACT_CONFIDENCE', 0.3);
-define('ROVAS_AI_PROOF_REDACT_MAX_TOKENS', 2500);
+define('ROVAS_AI_PROOF_REDACT_MAX_TOKENS', 4000);
 define('ROVAS_AI_PROOF_EDIT_MESSAGE', 'Your image was edited by Rovas');
 /** Expand each painted box by this fraction of image width/height (recall pad). */
 define('ROVAS_AI_PROOF_BOX_PAD', 0.012);
@@ -238,12 +238,13 @@ function rovas_ai_detect_proof_pii($bytes, $mime, $mode, array $options = array(
     ),
   );
 
-  $chat = rovas_ai_chat($messages, array(
+  $chat_opts = array(
     'task_id' => 'proof_pii_redact',
     'temperature' => 0,
     'max_tokens' => ROVAS_AI_PROOF_REDACT_MAX_TOKENS,
     'timeout' => 120,
-  ));
+  );
+  $chat = rovas_ai_chat($messages, $chat_opts);
 
   if (empty($chat['ok'])) {
     return array(
@@ -254,8 +255,36 @@ function rovas_ai_detect_proof_pii($bytes, $mime, $mode, array $options = array(
   }
 
   module_load_include('inc', 'rovas_ai', 'rovas_ai.classify');
-  $parsed = rovas_ai_parse_json_object(isset($chat['content']) ? $chat['content'] : '');
+  $content = isset($chat['content']) ? $chat['content'] : '';
+  $parsed = rovas_ai_parse_json_object($content);
+
+  // Truncated JSON is common when many regions fill max_tokens — retry once.
+  $finish = isset($chat['finish_reason']) ? $chat['finish_reason'] : '';
+  if (!is_array($parsed) || ($finish === 'length' && empty($parsed['regions']))) {
+    $chat_opts['max_tokens'] = ROVAS_AI_PROOF_REDACT_MAX_TOKENS * 2;
+    $chat_opts['rovas_ai_no_retry'] = TRUE;
+    watchdog('rovas_ai', 'Proof PII JSON retry (finish=@f parse=@p); content head: @c', array(
+      '@f' => $finish,
+      '@p' => is_array($parsed) ? 'partial' : 'fail',
+      '@c' => drupal_substr(preg_replace('/\s+/', ' ', $content), 0, 400),
+    ), WATCHDOG_WARNING);
+    $chat2 = rovas_ai_chat($messages, $chat_opts);
+    if (!empty($chat2['ok'])) {
+      $content = isset($chat2['content']) ? $chat2['content'] : '';
+      $parsed2 = rovas_ai_parse_json_object($content);
+      if (is_array($parsed2)) {
+        $parsed = $parsed2;
+        $finish = isset($chat2['finish_reason']) ? $chat2['finish_reason'] : $finish;
+      }
+    }
+  }
+
   if (!is_array($parsed)) {
+    watchdog('rovas_ai', 'Proof PII invalid_json (finish=@f json_err=@e); content head: @c', array(
+      '@f' => $finish,
+      '@e' => function_exists('json_last_error_msg') ? json_last_error_msg() : (string) json_last_error(),
+      '@c' => drupal_substr(preg_replace('/\s+/', ' ', $content), 0, 500),
+    ), WATCHDOG_WARNING);
     return array(
       'ok' => FALSE,
       'regions' => array(),
@@ -267,14 +296,19 @@ function rovas_ai_detect_proof_pii($bytes, $mime, $mode, array $options = array(
   if (!empty($parsed['regions']) && is_array($parsed['regions'])) {
     $raw = $parsed['regions'];
   }
+  elseif (isset($parsed[0]) && is_array($parsed[0])) {
+    // Bare list of regions.
+    $raw = $parsed;
+  }
 
   $regions = rovas_ai_normalize_proof_regions($raw, $mode);
-  watchdog('rovas_ai', 'Proof PII detect: @n region(s) on @w x @h vision canvas (orig @ow x @oh)', array(
+  watchdog('rovas_ai', 'Proof PII detect: @n region(s) on @w x @h vision canvas (orig @ow x @oh, finish=@f)', array(
     '@n' => count($regions),
     '@w' => $vw,
     '@h' => $vh,
     '@ow' => (int) $prepared['orig_width'],
     '@oh' => (int) $prepared['orig_height'],
+    '@f' => $finish,
   ), WATCHDOG_NOTICE);
 
   return array(
