@@ -7,7 +7,7 @@
 
 $view = new view();
 $view->name = 'report_exists_check';
-$view->description = '';
+$view->description = 'Same-day WR lookup for daily merge; only unpublished-verification (status 0) reports are mergeable.';
 $view->tag = 'default';
 $view->base_table = 'node';
 $view->human_name = 'report exists check';
@@ -89,6 +89,16 @@ $handler->display->display_options['filters']['type']['value'] = array(
   'work_report' => 'work_report',
 );
 $handler->display->display_options['filters']['type']['group'] = 1;
+/* Filter criterion: Content: Verification status (field_verification_status)
+ * Only "not verified" (0) reports are merge targets. Valid (1) or invalid (2)
+ * reports are locked; a later same-day session creates a new WR instead. */
+$handler->display->display_options['filters']['field_verification_status_value']['id'] = 'field_verification_status_value';
+$handler->display->display_options['filters']['field_verification_status_value']['table'] = 'field_data_field_verification_status';
+$handler->display->display_options['filters']['field_verification_status_value']['field'] = 'field_verification_status_value';
+$handler->display->display_options['filters']['field_verification_status_value']['value'] = array(
+  0 => '0',
+);
+$handler->display->display_options['filters']['field_verification_status_value']['group'] = 1;
 $translatables['report_exists_check'] = array(
   t('Master'),
   t('more'),

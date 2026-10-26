@@ -289,12 +289,36 @@ function rovas_repmerger_rules_action_info() {
 }
 
 /**
+ * Whether a work report may receive a same-day merge.
+ *
+ * Only "not verified" (0) reports are mergeable. Valid (1) and invalid (2)
+ * are locked; callers should create a new WR instead.
+ */
+function rovas_repmerger_wr_is_mergeable($node) {
+  if (empty($node) || empty($node->nid)) {
+    return FALSE;
+  }
+  $wrapper = entity_metadata_wrapper('node', $node);
+  try {
+    $status = $wrapper->field_verification_status->value();
+  }
+  catch (EntityMetadataWrapperException $e) {
+    return FALSE;
+  }
+  // Treat empty/NULL as not verified (mergeable).
+  return ($status === NULL || $status === '' || (int) $status === 0);
+}
+
+/**
  * $node      – fully-loaded work-report node object (Drupal 7)
  * $newUrl    – freshly submitted URL string
  * $mergeFunc – callable(string $fieldName, string $old, string $new):string
  *
  * Returns: flat array of unique URLs that should be written back into
  * the node’s field_web_address field.
+ *
+ * Verified/invalid reports are not modified; existing URLs are returned as-is.
+ * (rules_proxy_create_work_report also skips the merge branch for those.)
  */
 function _rovas_repmerger_manipulateUrlWorkReport(stdClass $node, $newUrl, $mergeFunc) {
     if (empty($newUrl) && empty($node->field_web_address)) {
@@ -304,6 +328,10 @@ function _rovas_repmerger_manipulateUrlWorkReport(stdClass $node, $newUrl, $merg
     $wrapper = entity_metadata_wrapper('node', $node);
 
     $list = $wrapper->field_web_address->value() ?: [];
+
+    if (!rovas_repmerger_wr_is_mergeable($node)) {
+      return array('url_list' => array_values(array_unique($list)));
+    }
 
     $recent = end($list) ?: '';
 

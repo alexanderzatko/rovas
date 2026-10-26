@@ -167,6 +167,54 @@
                       }
                     ]
                   },
+                  {
+                    "ELSE IF" : { "OR" : [
+                        { "data_is" : { "data" : [ "work-reports:0:field-verification-status" ], "value" : "1" } },
+                        { "data_is" : { "data" : [ "work-reports:0:field-verification-status" ], "value" : "2" } }
+                      ]
+                    },
+                    "DO" : [
+                      { "component_rules_create_work_report" : {
+                          "USING" : {
+                            "wr_activity_name" : [ "wr_activity_name" ],
+                            "wr_web_address" : [ "wr_web_address" ],
+                            "wr_hours" : [ "wr_hours" ],
+                            "parent_project" : [ "parent-project" ],
+                            "wr_description" : [ "wr_description" ],
+                            "verif_sources" : { "value" : [ "1" ] },
+                            "systemreport" : "0",
+                            "verificationstatus" : "0",
+                            "access_token" : [ "access_token" ],
+                            "language" : [ "user:language" ],
+                            "date_started" : [ "calc-date" ],
+                            "publish_status" : [ "publish_status" ],
+                            "author" : [ "user" ],
+                            "wr_classification" : [ "term-fetched" ]
+                          },
+                          "PROVIDE" : {
+                            "result" : { "result" : "result" },
+                            "created_wr" : { "created_wr" : "Created WR" }
+                          }
+                        }
+                      },
+                      { "data_set" : { "data" : [ "created-wr-nid" ], "value" : [ "created-wr:nid" ] } },
+                      { "CONDITIONAL" : [
+                          {
+                            "IF" : { "data_is" : { "data" : [ "result" ], "value" : "-2" } },
+                            "DO" : [ { "data_set" : { "data" : [ "created-wr-nid" ], "value" : "-3" } } ]
+                          },
+                          {
+                            "ELSE IF" : { "data_is" : { "data" : [ "result" ], "value" : "-3" } },
+                            "DO" : [ { "data_set" : { "data" : [ "created-wr-nid" ], "value" : "-2" } } ]
+                          },
+                          {
+                            "ELSE IF" : { "data_is" : { "data" : [ "result" ], "value" : "-4" } },
+                            "DO" : [ { "data_set" : { "data" : [ "created-wr-nid" ], "value" : "-4" } } ]
+                          }
+                        ]
+                      }
+                    ]
+                  },
                   { "ELSE" : [
                       { "CONDITIONAL" : [
                           {
