@@ -1,5 +1,49 @@
 <?php
 
+/**
+ * Registry of known work-report merge functions for the Project form.
+ *
+ * @return array
+ *   Machine name => human label. Empty key means no special merger.
+ */
+function rovas_repmerger_merge_function_options() {
+  return array(
+    '' => t('None (default session append)'),
+    '_rovas_repmerger_osm' => t('OpenStreetMap changesets (OSMCha)'),
+    '_rovas_repmerger_code' => t('Code commits (GitHub/GitLab compare)'),
+  );
+}
+
+/**
+ * Implements hook_form_FORM_ID_alter() for project_node_form.
+ *
+ * Replaces the free-text merge-function field with a select of known mergers.
+ */
+function rovas_repmerger_form_project_node_form_alter(&$form, &$form_state, $form_id) {
+  if (empty($form['field_merge_reports_function'][LANGUAGE_NONE][0]['value'])) {
+    return;
+  }
+
+  $element = &$form['field_merge_reports_function'][LANGUAGE_NONE][0]['value'];
+  $options = rovas_repmerger_merge_function_options();
+
+  $current = '';
+  if (isset($element['#default_value'])) {
+    $current = $element['#default_value'];
+  }
+  elseif (isset($element['#value'])) {
+    $current = $element['#value'];
+  }
+  if ($current !== '' && $current !== NULL && !isset($options[$current])) {
+    $options[$current] = t('Custom (current value): @name', array('@name' => $current));
+  }
+
+  $element['#type'] = 'select';
+  $element['#options'] = $options;
+  unset($element['#maxlength'], $element['#size'], $element['#empty_option']);
+  $element['#description'] = t('Choose how same-day work reports for this project merge their proof-of-work URLs and descriptions. Leave as “None” to append each session separately.');
+}
+
 /* 
 * Report merger for the Openstreetmap project - ID 1998
 */
@@ -74,6 +118,122 @@ function _rovas_repmerger_osm ($field_name,$existing,$newdata,$params=NULL) {
 	}
 }
 
+/**
+ * Report merger for code / GitHub (and GitLab) commit proof-of-work URLs.
+ *
+ * Expands same-repo session URLs into a compare range:
+ *   /commit/A + /commit/B → /compare/A~1...B
+ */
+function _rovas_repmerger_code($field_name, $existing, $newdata, $params = NULL) {
+  if ($field_name == 'field-web-address') {
+    if (empty($existing)) {
+      return $newdata;
+    }
+    if (empty($newdata)) {
+      return $existing;
+    }
+
+    $old = rovas_repmerger_parse_git_pow_url($existing);
+    $new = rovas_repmerger_parse_git_pow_url($newdata);
+    if (!$old || !$new) {
+      return $existing . '<br>' . $newdata;
+    }
+    if ($old['host'] !== $new['host'] || $old['path'] !== $new['path'] || $old['provider'] !== $new['provider']) {
+      return $existing . '<br>' . $newdata;
+    }
+
+    $base = $old['base'];
+    $head = $new['head'];
+    if ($head === $old['head'] || $head === $base) {
+      return $existing;
+    }
+
+    return rovas_repmerger_build_git_compare_url($old['provider'], $old['host'], $old['path'], $base, $head);
+  }
+
+  if ($field_name == 'field-name-body') {
+    $restring = '<div>';
+    $restring .= t('This work report is the result of multiple working sessions merged together.');
+    $restring .= '<br>';
+    $restring .= t('To learn how to verify the report, read the instructions shown on the project page');
+    $restring .= '<div>';
+    $restring .= t('The individual work sessions this report consists of were created by the Rovas Connector for Code (Cursor/VS Code extension).');
+    $restring .= '</div>';
+    return $restring;
+  }
+
+  return $existing;
+}
+
+/**
+ * Parse a GitHub or GitLab commit/compare proof-of-work URL.
+ *
+ * @return array|false
+ *   Keys: provider (github|gitlab), host, path (owner/repo), base, head.
+ */
+function rovas_repmerger_parse_git_pow_url($url) {
+  $url = trim($url);
+  if ($url === '') {
+    return FALSE;
+  }
+
+  // GitHub commit.
+  if (preg_match('#^https?://(github\.com)/([^/]+)/([^/]+)/commit/([a-f0-9]{7,40})/?$#i', $url, $m)) {
+    return array(
+      'provider' => 'github',
+      'host' => strtolower($m[1]),
+      'path' => $m[2] . '/' . $m[3],
+      'base' => $m[4],
+      'head' => $m[4],
+    );
+  }
+
+  // GitHub compare (A~1...B or A^...B or A...B).
+  if (preg_match('#^https?://(github\.com)/([^/]+)/([^/]+)/compare/([a-f0-9]{7,40})(?:~1|\^)?\.\.\.([a-f0-9]{7,40})/?$#i', $url, $m)) {
+    return array(
+      'provider' => 'github',
+      'host' => strtolower($m[1]),
+      'path' => $m[2] . '/' . $m[3],
+      'base' => $m[4],
+      'head' => $m[5],
+    );
+  }
+
+  // GitLab commit (path may include groups).
+  if (preg_match('#^https?://([^/]+)/(.+)/-/commit/([a-f0-9]{7,40})/?$#i', $url, $m)) {
+    return array(
+      'provider' => 'gitlab',
+      'host' => strtolower($m[1]),
+      'path' => $m[2],
+      'base' => $m[3],
+      'head' => $m[3],
+    );
+  }
+
+  // GitLab compare.
+  if (preg_match('#^https?://([^/]+)/(.+)/-/compare/([a-f0-9]{7,40})(?:~1|\^)?\.\.\.([a-f0-9]{7,40})/?$#i', $url, $m)) {
+    return array(
+      'provider' => 'gitlab',
+      'host' => strtolower($m[1]),
+      'path' => $m[2],
+      'base' => $m[3],
+      'head' => $m[4],
+    );
+  }
+
+  return FALSE;
+}
+
+/**
+ * Build a compare URL that includes the first commit through the latest.
+ */
+function rovas_repmerger_build_git_compare_url($provider, $host, $path, $base, $head) {
+  if ($provider === 'gitlab') {
+    return 'https://' . $host . '/' . $path . '/-/compare/' . $base . '~1...' . $head;
+  }
+  return 'https://' . $host . '/' . $path . '/compare/' . $base . '~1...' . $head;
+}
+
 // function that builds the OSMcha URL
 function rovas_repmerge_omcha_url ($chset_id,$filter_object) {
 	$id = new stdClass();
@@ -101,7 +261,7 @@ function rovas_repmerge_omcha_url ($chset_id,$filter_object) {
 function rovas_repmerger_rules_action_info() {
   return array(
     '_rovas_repmerger_manipulateUrlWorkReport' => array(
-      'label' => t('Merge a new OSM URL into the existing list'),
+      'label' => t('Merge a new proof-of-work URL into the existing list'),
       'group' => t('Rovas'),
       'parameter' => array(
         'node' => array(

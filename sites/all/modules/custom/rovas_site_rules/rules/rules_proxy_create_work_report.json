@@ -235,7 +235,7 @@
                                       { "variable_add" : {
                                           "USING" : {
                                             "type" : "text",
-                                            "value" : "\u003C?php \r\n$lang = $work_reports[0]-\u003Elanguage;\r\n$body = $work_reports[0]-\u003Ebody[$lang][0][\u0027value\u0027];\r\n$params = [\u0027title\u0027 =\u003E $wr_activity_name];\r\necho _rovas_repmerger_osm (\u0027field-name-body\u0027,$body,$wr_description,$params);\r\n?\u003E"
+                                            "value" : "\u003C?php \r\n$lang = $work_reports[0]-\u003Elanguage;\r\n$body = $work_reports[0]-\u003Ebody[$lang][0][\u0027value\u0027];\r\n$params = [\u0027title\u0027 =\u003E $wr_activity_name];\r\necho call_user_func($merge_function, \u0027field-name-body\u0027, $body, $wr_description, $params);\r\n?\u003E"
                                           },
                                           "PROVIDE" : { "variable_added" : { "new_body" : "new body" } }
                                         }

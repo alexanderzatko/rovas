@@ -2,7 +2,7 @@
 slug: proof-photo-redact
 status: active
 owner: sano
-updated: 2026-10-25
+updated: 2026-10-26
 ---
 
 # Proof photo client-side redaction
@@ -33,15 +33,15 @@ proofs).
 
 ## Civic app (Expo — outside this repo)
 
-- [ ] Same public-proofs note after first photo attach
-- [ ] Paint / blackout tool (variable thickness) before upload
-- [ ] Upload already-painted bytes in `photos[]`
+- [x] Same public-proofs note after first photo attach
+- [x] Paint / blackout tool (variable thickness) before upload
+- [x] Upload already-painted bytes in `photos[]`
 
 ## Checklist
 
 1. [x] Remove AI vision auto-redact from Rovas web + Civic create path
 2. [x] Web form: note + blackout paint editor
-3. [ ] Civic Expo: note + paint before upload
+3. [x] Civic Expo: note + paint before upload
 4. [x] Docs / API reference updated
 
 ## Deploy / test (web)
