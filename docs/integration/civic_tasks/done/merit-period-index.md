@@ -102,7 +102,7 @@ Merit Index table UI:
 2. [x] Reuse spotlight period window + aggregate; rank / paginate / filter as above
 3. [x] Enrich page slice with usernames, display names, member_since_year, country labels
 4. [x] Enable via `rovas_civic_ensure_services_resources` + `drush74 updb` hook
-5. [ ] Deploy rovdev (and prod when asked)
+5. [x] Deploy rovdev (and prod when asked)
 
 ### Smoke test
 

@@ -1,9 +1,9 @@
 ---
-status: active
+status: done
 slug: gifts-top-charities-attribution
 owner_repo: both
 created: 2026-10-13
-updated: 2026-10-13
+updated: 2026-10-26
 ---
 
 # Gifts `top_charities`: EUR buy-ME project + timeshare attribution
@@ -85,7 +85,7 @@ Do **not** put CHR→ME (`volunteer`) or co_worker labor ME into
        `purchase_merits` → `charitable_donation` leaves with no attribution.
 5. [x] **Timeshare:** same-project Path-1 + timeshare ME summed once per
        `project_nid` (PHP merge in `top_charities`).
-6. [ ] Deploy rovdev + smoke (human unless asked)
+6. [x] Deploy rovdev + smoke (human unless asked)
 
 ### Smoke test
 

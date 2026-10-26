@@ -1,9 +1,9 @@
 ---
-status: active
+status: done
 slug: pending-comment-notices
 owner_repo: rovas
 created: 2026-10-16
-updated: 2026-10-16
+updated: 2026-10-26
 ---
 
 # Pending watched-comment notices (pull API)
@@ -67,8 +67,8 @@ explicit dismiss clears all pending for that `uid`+`nid`; visiting
 2. [x] Header block + dismiss + permalink auto-clear
 3. [x] `GET /rovas/civic_pending_comment_notices` + `rovas_civic_update_7028`
 4. [x] Partner `GET /rovas/rovas_comment_notices`
-5. [ ] Deploy rovdev: enable `rovas_comment_watch`, `drush74 updb`, clear caches; enable partner resource on `rovas_endpoint` if needed
-6. [ ] Smoke (human unless asked)
+5. [x] Deploy rovdev: enable `rovas_comment_watch`, `drush74 updb`, clear caches; enable partner resource on `rovas_endpoint` if needed
+6. [x] Smoke (human unless asked)
 
 ### Smoke test
 

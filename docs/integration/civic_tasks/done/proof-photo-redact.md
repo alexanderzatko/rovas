@@ -1,6 +1,6 @@
 ---
 slug: proof-photo-redact
-status: active
+status: done
 owner: sano
 updated: 2026-10-26
 ---

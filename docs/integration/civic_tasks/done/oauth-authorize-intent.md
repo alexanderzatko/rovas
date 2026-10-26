@@ -66,7 +66,7 @@ when session intent is `register` (via existing `hook_drupal_goto_alter` in
 3. [x] Missing / invalid `intent` keeps today’s `/user/login` landing
 4. [x] Session clears outside Civic authorize context
 5. [x] Invalid `intent` does not 400 the authorize endpoint
-6. [ ] Deploy `rovas_oauth` to rovdev + smoke (human unless asked)
+6. [x] Deploy `rovas_oauth` to rovdev + smoke (human unless asked)
 
 ### Smoke test
 
