@@ -38,6 +38,7 @@ env): [`civic-deploy.md`](civic-deploy.md).
 
 | Status | Slug | File | Notes |
 |--------|------|------|-------|
+| active | give-chrons-to-merits | [`active/give-chrons-to-merits.md`](civic_tasks/active/give-chrons-to-merits.md) | Bearer `POST /rovas/civic_give_chrons` — voluntary CHR→ME 1:1 (A6); Civic Get Merits “Give Chrons” |
 | done | proof-photo-redact | [`done/proof-photo-redact.md`](civic_tasks/done/proof-photo-redact.md) | Client-side paint blackout for proof photos (web + Civic Expo); AI auto-redact retired; smoked on rovdev |
 | done | pending-comment-notices | [`done/pending-comment-notices.md`](civic_tasks/done/pending-comment-notices.md) | Pull API + web block for Comment Notify watchers; poll-based (not push webhook); smoked on rovdev |
 | done | gifts-top-charities-attribution | [`done/gifts-top-charities-attribution.md`](civic_tasks/done/gifts-top-charities-attribution.md) | EUR buy-ME → project 1992 (configurable); `top_charities` += buy-ME + timeshare; smoked on rovdev |
@@ -97,6 +98,7 @@ Open tasks: see `civic_tasks/active/`. Naming and archival rules:
 | Civic-branded OAuth login/register | `/user/login`, `/user/register` when authorizing `client_id=civic`                                                                        | **Live on rovdev** — Civic chrome + copy; HybridAuth destination fix + automatic authorize (`7002`).                                      |
 | Civic locale on OAuth authorize      | `GET /oauth2/authorize?lang=sk\|en`                                                                                                        | **Live on rovdev** — session stash + force `$GLOBALS['language']` for Civic login/register.                                                                  |
 | OAuth authorize intent               | `GET /oauth2/authorize?intent=login\|register`                                                                                             | **Live on rovdev** — session stash + goto rewrite to `/user/register` when `intent=register`. See [oauth-authorize-intent](civic_tasks/done/oauth-authorize-intent.md).   |
+| Give Chrons → Merits                 | `POST /rovas/civic_give_chrons`                                                                                                            | **Implemented** (`7029`) — Bearer; body `{amount}`; 1:1 A6 via `_convert_chr_2_merits` + `_rovas_forex_grant_merits` (source `volunteer`). See [give-chrons-to-merits](civic_tasks/active/give-chrons-to-merits.md). |
 
 
 ## Deferred (not scheduled)

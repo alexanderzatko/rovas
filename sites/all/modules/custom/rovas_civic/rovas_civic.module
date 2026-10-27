@@ -301,6 +301,7 @@ function rovas_civic_node_insert($node) {
  * - GET  /rovas/civic_charity_projects (public approved-charity catalog)
  * - POST /rovas/civic_create_charity_org (donor add public-benefit org)
  * - POST /rovas/civic_receipt_history_preference (keep vs 90-day scrub)
+ * - POST /rovas/civic_give_chrons (voluntary CHR→ME 1:1, A6)
  *
  * Note: Services aliases must be slash-free. Do not use aliases like
  * civic/claims — Services treats the first segment as the resource name.
@@ -356,6 +357,11 @@ function rovas_civic_services_resources() {
     'type' => 'inc',
     'module' => 'rovas_civic',
     'name' => 'rovas_civic.receipt_history',
+  );
+  $give_chrons_file = array(
+    'type' => 'inc',
+    'module' => 'rovas_civic',
+    'name' => 'rovas_civic.give_chrons',
   );
 
   return array(
@@ -1224,6 +1230,27 @@ function rovas_civic_services_resources() {
               'name' => 'data',
               'type' => 'struct',
               'description' => 'Fields: retention (keep|policy).',
+              'source' => 'data',
+              'optional' => FALSE,
+            ),
+          ),
+        ),
+      ),
+    ),
+    'civic_give_chrons' => array(
+      'operations' => array(
+        'create' => array(
+          'help' => 'Convert Chrons to Merits 1:1 (A6 forex). Body: amount (positive Chrons). Bearer; API-key off. Merits credited as volunteer / CHR purchase.',
+          'callback' => 'rovas_civic_services_give_chrons',
+          'file' => $give_chrons_file,
+          'access callback' => $bearer_auth['access callback'],
+          'access arguments' => $bearer_auth['access arguments'],
+          'access arguments append' => $bearer_auth['access arguments append'],
+          'args' => array(
+            array(
+              'name' => 'data',
+              'type' => 'struct',
+              'description' => 'Fields: amount (positive number of Chrons, ≤ 2 decimal places).',
               'source' => 'data',
               'optional' => FALSE,
             ),
@@ -3740,6 +3767,7 @@ function rovas_civic_ensure_services_resources() {
     'civic_create_work_report',
     'civic_create_charity_org',
     'civic_receipt_history_preference',
+    'civic_give_chrons',
   ) as $res_name) {
     if (empty($endpoint->resources[$res_name])
       || $endpoint->resources[$res_name] != $civic_create_resource) {

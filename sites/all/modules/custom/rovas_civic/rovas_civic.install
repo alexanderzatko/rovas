@@ -772,3 +772,13 @@ function rovas_civic_update_7028() {
   }
   return t('Civic pending comment notices API (GET /rovas/civic_pending_comment_notices) enabled on rovas_endpoint.');
 }
+
+/**
+ * Enable Civic voluntary Give Chrons → Merits API.
+ */
+function rovas_civic_update_7029() {
+  if (function_exists('rovas_civic_ensure_services_resources')) {
+    rovas_civic_ensure_services_resources();
+  }
+  return t('Civic give Chrons API (POST /rovas/civic_give_chrons) enabled on rovas_endpoint.');
+}

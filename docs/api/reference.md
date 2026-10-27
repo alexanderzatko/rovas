@@ -101,6 +101,7 @@ required. Implemented mainly in `rovas_oauth`, `rovas_civic`, `rovas_merit_distr
 | `GET` | `/rovas/contributions/aggregate` | Public | Community Merit total (+ category placeholders) |
 | `GET` | `/rovas/merit_distribution` | Optional Bearer | JSON Merit histogram; `user_*` when Bearer present |
 | `POST` | `/rovas/civic_receipt_history_preference` | Bearer | Set receipt history retention (`keep` \| `policy`) |
+| `POST` | `/rovas/civic_give_chrons` | Bearer | Convert Chrons → Merits 1:1 (A6); body `{amount}` |
 | `GET` | `/rovas/civic_merit_history` | Bearer | Caller’s Merit ledger rows |
 
 ### Users
