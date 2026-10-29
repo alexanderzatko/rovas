@@ -7,7 +7,7 @@
 
 $view = new view();
 $view->name = 'report_exists_check';
-$view->description = 'Same-day WR lookup for daily merge; only unpublished-verification (status 0) reports are mergeable.';
+$view->description = 'Same-day WR lookup for daily merge. Includes not-verified (0) and valid (1) reports; rules_proxy_create_work_report uses rovas_repmerger_wr_is_mergeable (auto-approved valid WRs are mergeable; peer-verified are not).';
 $view->tag = 'default';
 $view->base_table = 'node';
 $view->human_name = 'report exists check';
@@ -89,14 +89,20 @@ $handler->display->display_options['filters']['type']['value'] = array(
   'work_report' => 'work_report',
 );
 $handler->display->display_options['filters']['type']['group'] = 1;
+/* Sort: oldest same-day WR first (merge target). */
+$handler->display->display_options['sorts']['nid']['id'] = 'nid';
+$handler->display->display_options['sorts']['nid']['table'] = 'node';
+$handler->display->display_options['sorts']['nid']['field'] = 'nid';
+$handler->display->display_options['sorts']['nid']['order'] = 'ASC';
 /* Filter criterion: Content: Verification status (field_verification_status)
- * Only "not verified" (0) reports are merge targets. Valid (1) or invalid (2)
- * reports are locked; a later same-day session creates a new WR instead. */
+ * Not verified (0) and valid (1). Invalid (2) excluded. Among valid WRs,
+ * the proxy rule only merges Trusted auto-approved ones. */
 $handler->display->display_options['filters']['field_verification_status_value']['id'] = 'field_verification_status_value';
 $handler->display->display_options['filters']['field_verification_status_value']['table'] = 'field_data_field_verification_status';
 $handler->display->display_options['filters']['field_verification_status_value']['field'] = 'field_verification_status_value';
 $handler->display->display_options['filters']['field_verification_status_value']['value'] = array(
   0 => '0',
+  1 => '1',
 );
 $handler->display->display_options['filters']['field_verification_status_value']['group'] = 1;
 $translatables['report_exists_check'] = array(

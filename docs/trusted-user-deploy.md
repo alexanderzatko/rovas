@@ -33,4 +33,4 @@ Local code is ready. On each environment (typically **dev** first, then **prod**
    - Accused losing a dispute → compliance 0; trusted revoked only if eligibility fails.
    - Same-day proxy filings on a project with daily merge: second+ sessions merge into the auto-approved WR (hours/PoW updated); Chron tops up to `hours × 10` (`wr_grant:{nid}:auto:sync:{cents}`). Concurrent submits are serialized with a same-day lock; lock failure returns `created_wr_nid = -5`.
 
-Also re-import / rebuild **`rules_proxy_create_work_report`** when deploying the auto-approved same-day merge change (lock + mergeability + Chron sync).
+Also re-import / rebuild **`rules_proxy_create_work_report`** and revert/rebuild the **`report_exists_check`** view when deploying the auto-approved same-day merge change. The view must include verification status `0` and `1` (not only `0`); otherwise auto-approved WRs are invisible to merge and a new WR is created every time.
