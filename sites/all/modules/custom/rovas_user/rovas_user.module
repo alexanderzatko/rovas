@@ -376,6 +376,20 @@ function rovas_user_auto_approve_work_report($node) {
   if (empty($node) || empty($node->type) || $node->type !== 'work_report') {
     return FALSE;
   }
+  // Prefer fresh DB hours/flags when nid exists (avoids stale in-memory race
+  // with same-day merge). Keep the caller's object in sync after reload.
+  if (!empty($node->nid)) {
+    $fresh = node_load($node->nid, TRUE);
+    if ($fresh && $fresh->type === 'work_report') {
+      foreach (get_object_vars($fresh) as $key => $value) {
+        $node->$key = $value;
+      }
+    }
+  }
+  if (!empty($node->field_auto_approved[LANGUAGE_NONE][0]['value'])
+    && (int) $node->field_auto_approved[LANGUAGE_NONE][0]['value'] === 1) {
+    return TRUE;
+  }
   $author = user_load($node->uid);
   if (!$author || !rovas_user_should_auto_approve_reports($author)) {
     return FALSE;

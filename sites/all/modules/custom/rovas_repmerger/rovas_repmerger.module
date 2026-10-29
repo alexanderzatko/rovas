@@ -289,10 +289,66 @@ function rovas_repmerger_rules_action_info() {
 }
 
 /**
+ * Proxy create_work_report return code when the same-day lock cannot be acquired.
+ */
+define('ROVAS_REPMERGER_ERR_LOCK', -5);
+
+/**
+ * Lock lease / wait window for same-day WR create-or-merge (seconds).
+ */
+define('ROVAS_REPMERGER_SAME_DAY_LOCK_TIMEOUT', 30.0);
+define('ROVAS_REPMERGER_SAME_DAY_LOCK_WAIT', 30);
+
+/**
+ * Drupal lock name for serializing same-day create/merge for one author/project.
+ *
+ * @param int $uid
+ * @param int $project_nid
+ * @param string $ymd
+ *   Local calendar day as Ymd (same as report_exists_check arg).
+ * @param int $classification_tid
+ *
+ * @return string
+ */
+function rovas_repmerger_same_day_lock_name($uid, $project_nid, $ymd, $classification_tid) {
+  return 'rovas_wr_day:' . (int) $uid . ':' . (int) $project_nid . ':' . $ymd . ':' . (int) $classification_tid;
+}
+
+/**
+ * Acquire the same-day WR lock, waiting briefly for contending requests.
+ *
+ * @return bool
+ *   TRUE if held by this request; FALSE if wait timed out (fail closed).
+ */
+function rovas_repmerger_same_day_lock_acquire($uid, $project_nid, $ymd, $classification_tid) {
+  $name = rovas_repmerger_same_day_lock_name($uid, $project_nid, $ymd, $classification_tid);
+  $held = lock_acquire($name, ROVAS_REPMERGER_SAME_DAY_LOCK_TIMEOUT);
+  $wait_until = time() + (int) ROVAS_REPMERGER_SAME_DAY_LOCK_WAIT;
+  while (!$held) {
+    if (time() >= $wait_until) {
+      watchdog('rovas_repmerger', 'Same-day WR lock wait timed out for @lock.', array(
+        '@lock' => $name,
+      ), WATCHDOG_WARNING);
+      return FALSE;
+    }
+    lock_wait($name, 2);
+    $held = lock_acquire($name, ROVAS_REPMERGER_SAME_DAY_LOCK_TIMEOUT);
+  }
+  return TRUE;
+}
+
+/**
+ * Release the same-day WR lock.
+ */
+function rovas_repmerger_same_day_lock_release($uid, $project_nid, $ymd, $classification_tid) {
+  lock_release(rovas_repmerger_same_day_lock_name($uid, $project_nid, $ymd, $classification_tid));
+}
+
+/**
  * Whether a work report may receive a same-day merge.
  *
- * Only "not verified" (0) reports are mergeable. Valid (1) and invalid (2)
- * are locked; callers should create a new WR instead.
+ * Mergeable: not verified (0 / empty), or valid (1) with Trusted auto-approve.
+ * Invalid (2) and peer-verified valid reports stay locked.
  */
 function rovas_repmerger_wr_is_mergeable($node) {
   if (empty($node) || empty($node->nid)) {
@@ -306,7 +362,88 @@ function rovas_repmerger_wr_is_mergeable($node) {
     return FALSE;
   }
   // Treat empty/NULL as not verified (mergeable).
-  return ($status === NULL || $status === '' || (int) $status === 0);
+  if ($status === NULL || $status === '' || (int) $status === 0) {
+    return TRUE;
+  }
+  if ((int) $status !== 1) {
+    return FALSE;
+  }
+  try {
+    $auto = $wrapper->field_auto_approved->value();
+  }
+  catch (EntityMetadataWrapperException $e) {
+    $auto = !empty($node->field_auto_approved[LANGUAGE_NONE][0]['value'])
+      ? $node->field_auto_approved[LANGUAGE_NONE][0]['value']
+      : 0;
+  }
+  return (int) $auto === 1;
+}
+
+/**
+ * After a same-day merge into an auto-approved WR, reconcile Chrons to hours×10.
+ *
+ * Uses hours / auto-approved flags already on $node (Rules may not have saved
+ * yet). Updates field_chrons_to_grant and applies a ledger delta when needed.
+ *
+ * @param object $node
+ *   work_report node (post-merge hours in memory).
+ *
+ * @return bool
+ *   TRUE if a ledger delta was applied (or desired already matched).
+ */
+function rovas_repmerger_sync_auto_approved_chrons($node) {
+  if (empty($node) || empty($node->nid) || empty($node->type) || $node->type !== 'work_report') {
+    return FALSE;
+  }
+  if (empty($node->status)) {
+    return FALSE;
+  }
+  $auto = 0;
+  if (!empty($node->field_auto_approved[LANGUAGE_NONE][0]['value'])) {
+    $auto = (int) $node->field_auto_approved[LANGUAGE_NONE][0]['value'];
+  }
+  if ($auto !== 1) {
+    return FALSE;
+  }
+
+  $hours = 0.0;
+  if (!empty($node->field_hours_worked[LANGUAGE_NONE][0]['value'])) {
+    $hours = (float) $node->field_hours_worked[LANGUAGE_NONE][0]['value'];
+  }
+  $desired = $hours * 10.0;
+  $current = 0.0;
+  if (!empty($node->field_chrons_to_grant[LANGUAGE_NONE][0]['value'])) {
+    $current = (float) $node->field_chrons_to_grant[LANGUAGE_NONE][0]['value'];
+  }
+  $delta = $desired - $current;
+  if (abs($delta) < 0.00001) {
+    return TRUE;
+  }
+
+  $node->field_chrons_to_grant[LANGUAGE_NONE][0]['value'] = $desired;
+  if (!empty($node->nid)) {
+    unset($node->is_new);
+  }
+  node_save($node);
+
+  if ($delta != 0.0 && module_exists('rovas_chron')) {
+    module_load_include('inc', 'rovas_chron', 'rovas_chron.ledger');
+    // Idempotent for the same target total (cents of desired Chrons).
+    $cents = (int) round($desired * 100);
+    $ikey = 'wr_grant:' . (int) $node->nid . ':auto:sync:' . $cents;
+    rovas_chron_apply_wr_delta(
+      (int) $node->uid,
+      (float) $delta,
+      'wr_grant',
+      (int) $node->nid,
+      $ikey,
+      array('note' => 'WR grant sync after same-day merge (trusted auto-approve)')
+    );
+  }
+  elseif ($delta != 0.0 && function_exists('rules_invoke_component')) {
+    rules_invoke_component('rules_update_user_chron_account', user_load($node->uid), $delta, NULL);
+  }
+  return TRUE;
 }
 
 /**
@@ -317,7 +454,7 @@ function rovas_repmerger_wr_is_mergeable($node) {
  * Returns: flat array of unique URLs that should be written back into
  * the node’s field_web_address field.
  *
- * Verified/invalid reports are not modified; existing URLs are returned as-is.
+ * Non-mergeable reports are not modified; existing URLs are returned as-is.
  * (rules_proxy_create_work_report also skips the merge branch for those.)
  */
 function _rovas_repmerger_manipulateUrlWorkReport(stdClass $node, $newUrl, $mergeFunc) {

@@ -102,264 +102,308 @@
                   {
                     "IF" : { "data_is" : { "data" : [ "merge-reports" ], "value" : "1" } },
                     "DO" : [
-                      { "views_bulk_operations_action_load_list" : {
-                          "USING" : {
-                            "view" : "report_exists_check|default",
-                            "args" : "[tstamp:value]\r\n[user:uid]\r\n[wr-classification:value]\r\n[parent-project-nid:value]"
-                          },
-                          "PROVIDE" : { "entity_list" : { "work_reports" : "work reports" } }
-                        }
-                      }
-                    ]
-                  },
-                  { "ELSE" : [
-                      { "variable_add" : {
-                          "USING" : { "type" : "list\u003Cnode\u003E" },
-                          "PROVIDE" : { "variable_added" : { "work_reports" : "work reports" } }
-                        }
-                      }
-                    ]
-                  }
-                ]
-              },
-              { "CONDITIONAL" : [
-                  {
-                    "IF" : { "data_is_empty" : { "data" : [ "work-reports" ] } },
-                    "DO" : [
-                      { "component_rules_create_work_report" : {
-                          "USING" : {
-                            "wr_activity_name" : [ "wr_activity_name" ],
-                            "wr_web_address" : [ "wr_web_address" ],
-                            "wr_hours" : [ "wr_hours" ],
-                            "parent_project" : [ "parent-project" ],
-                            "wr_description" : [ "wr_description" ],
-                            "verif_sources" : { "value" : [ "1" ] },
-                            "systemreport" : "0",
-                            "verificationstatus" : "0",
-                            "access_token" : [ "access_token" ],
-                            "language" : [ "user:language" ],
-                            "date_started" : [ "calc-date" ],
-                            "publish_status" : [ "publish_status" ],
-                            "author" : [ "user" ],
-                            "wr_classification" : [ "term-fetched" ]
-                          },
-                          "PROVIDE" : {
-                            "result" : { "result" : "result" },
-                            "created_wr" : { "created_wr" : "Created WR" }
-                          }
-                        }
-                      },
-                      { "data_set" : { "data" : [ "created-wr-nid" ], "value" : [ "created-wr:nid" ] } },
                       { "CONDITIONAL" : [
                           {
-                            "IF" : { "data_is" : { "data" : [ "result" ], "value" : "-2" } },
-                            "DO" : [ { "data_set" : { "data" : [ "created-wr-nid" ], "value" : "-3" } } ]
-                          },
-                          {
-                            "ELSE IF" : { "data_is" : { "data" : [ "result" ], "value" : "-3" } },
-                            "DO" : [ { "data_set" : { "data" : [ "created-wr-nid" ], "value" : "-2" } } ]
-                          },
-                          {
-                            "ELSE IF" : { "data_is" : { "data" : [ "result" ], "value" : "-4" } },
-                            "DO" : [ { "data_set" : { "data" : [ "created-wr-nid" ], "value" : "-4" } } ]
-                          }
-                        ]
-                      }
-                    ]
-                  },
-                  {
-                    "ELSE IF" : { "OR" : [
-                        { "data_is" : { "data" : [ "work-reports:0:field-verification-status" ], "value" : "1" } },
-                        { "data_is" : { "data" : [ "work-reports:0:field-verification-status" ], "value" : "2" } }
-                      ]
-                    },
-                    "DO" : [
-                      { "component_rules_create_work_report" : {
-                          "USING" : {
-                            "wr_activity_name" : [ "wr_activity_name" ],
-                            "wr_web_address" : [ "wr_web_address" ],
-                            "wr_hours" : [ "wr_hours" ],
-                            "parent_project" : [ "parent-project" ],
-                            "wr_description" : [ "wr_description" ],
-                            "verif_sources" : { "value" : [ "1" ] },
-                            "systemreport" : "0",
-                            "verificationstatus" : "0",
-                            "access_token" : [ "access_token" ],
-                            "language" : [ "user:language" ],
-                            "date_started" : [ "calc-date" ],
-                            "publish_status" : [ "publish_status" ],
-                            "author" : [ "user" ],
-                            "wr_classification" : [ "term-fetched" ]
-                          },
-                          "PROVIDE" : {
-                            "result" : { "result" : "result" },
-                            "created_wr" : { "created_wr" : "Created WR" }
-                          }
-                        }
-                      },
-                      { "data_set" : { "data" : [ "created-wr-nid" ], "value" : [ "created-wr:nid" ] } },
-                      { "CONDITIONAL" : [
-                          {
-                            "IF" : { "data_is" : { "data" : [ "result" ], "value" : "-2" } },
-                            "DO" : [ { "data_set" : { "data" : [ "created-wr-nid" ], "value" : "-3" } } ]
-                          },
-                          {
-                            "ELSE IF" : { "data_is" : { "data" : [ "result" ], "value" : "-3" } },
-                            "DO" : [ { "data_set" : { "data" : [ "created-wr-nid" ], "value" : "-2" } } ]
-                          },
-                          {
-                            "ELSE IF" : { "data_is" : { "data" : [ "result" ], "value" : "-4" } },
-                            "DO" : [ { "data_set" : { "data" : [ "created-wr-nid" ], "value" : "-4" } } ]
-                          }
-                        ]
-                      }
-                    ]
-                  },
-                  { "ELSE" : [
-                      { "CONDITIONAL" : [
-                          {
-                            "IF" : { "entity_is_of_bundle" : {
-                                "entity" : [ "work-reports:0" ],
-                                "type" : "node",
-                                "bundle" : { "value" : { "work_report" : "work_report" } }
-                              }
-                            },
+                            "IF" : { "php_eval" : { "code" : "return function_exists(\u0027rovas_repmerger_same_day_lock_acquire\u0027) \u0026\u0026 rovas_repmerger_same_day_lock_acquire((int) $user-\u003Euid, (int) $parent_project_nid, $tstamp, (int) $wr_classification);" } },
                             "DO" : [
+                              { "views_bulk_operations_action_load_list" : {
+                                  "USING" : {
+                                    "view" : "report_exists_check|default",
+                                    "args" : "[tstamp:value]\r\n[user:uid]\r\n[wr-classification:value]\r\n[parent-project-nid:value]"
+                                  },
+                                  "PROVIDE" : { "entity_list" : { "work_reports" : "work reports" } }
+                                }
+                              },
                               { "CONDITIONAL" : [
                                   {
-                                    "IF" : { "entity_is_of_bundle" : {
-                                        "entity" : [ "parent-project" ],
-                                        "type" : "node",
-                                        "bundle" : { "value" : { "project" : "project" } }
-                                      }
-                                    },
+                                    "IF" : { "data_is_empty" : { "data" : [ "work-reports" ] } },
                                     "DO" : [
-                                      { "variable_add" : {
+                                      { "component_rules_create_work_report" : {
                                           "USING" : {
-                                            "type" : "text",
-                                            "value" : "\u003C?php \r\nif (isset ($parent_project-\u003Efield_merge_reports_function[LANGUAGE_NONE][0][\u0027value\u0027]) \u0026\u0026 !empty($parent_project-\u003Efield_merge_reports_function[LANGUAGE_NONE][0][\u0027value\u0027])) {\r\n\techo $parent_project-\u003Efield_merge_reports_function[LANGUAGE_NONE][0][\u0027value\u0027];\r\n}\r\nelse {\r\n\techo \u0027\u0027;\r\n}\r\n?\u003E"
+                                            "wr_activity_name" : [ "wr_activity_name" ],
+                                            "wr_web_address" : [ "wr_web_address" ],
+                                            "wr_hours" : [ "wr_hours" ],
+                                            "parent_project" : [ "parent-project" ],
+                                            "wr_description" : [ "wr_description" ],
+                                            "verif_sources" : { "value" : [ "1" ] },
+                                            "systemreport" : "0",
+                                            "verificationstatus" : "0",
+                                            "access_token" : [ "access_token" ],
+                                            "language" : [ "user:language" ],
+                                            "date_started" : [ "calc-date" ],
+                                            "publish_status" : [ "publish_status" ],
+                                            "author" : [ "user" ],
+                                            "wr_classification" : [ "term-fetched" ]
                                           },
-                                          "PROVIDE" : { "variable_added" : { "merge_function" : "merge function" } }
+                                          "PROVIDE" : {
+                                            "result" : { "result" : "result" },
+                                            "created_wr" : { "created_wr" : "Created WR" }
+                                          }
                                         }
+                                      },
+                                      { "data_set" : { "data" : [ "created-wr-nid" ], "value" : [ "created-wr:nid" ] } },
+                                      { "CONDITIONAL" : [
+                                          {
+                                            "IF" : { "data_is" : { "data" : [ "result" ], "value" : "-2" } },
+                                            "DO" : [ { "data_set" : { "data" : [ "created-wr-nid" ], "value" : "-3" } } ]
+                                          },
+                                          {
+                                            "ELSE IF" : { "data_is" : { "data" : [ "result" ], "value" : "-3" } },
+                                            "DO" : [ { "data_set" : { "data" : [ "created-wr-nid" ], "value" : "-2" } } ]
+                                          },
+                                          {
+                                            "ELSE IF" : { "data_is" : { "data" : [ "result" ], "value" : "-4" } },
+                                            "DO" : [ { "data_set" : { "data" : [ "created-wr-nid" ], "value" : "-4" } } ]
+                                          }
+                                        ]
+                                      }
+                                    ]
+                                  },
+                                  {
+                                    "ELSE IF" : { "php_eval" : { "code" : "return empty($work_reports[0]) || !function_exists(\u0027rovas_repmerger_wr_is_mergeable\u0027) || !rovas_repmerger_wr_is_mergeable($work_reports[0]);" } },
+                                    "DO" : [
+                                      { "component_rules_create_work_report" : {
+                                          "USING" : {
+                                            "wr_activity_name" : [ "wr_activity_name" ],
+                                            "wr_web_address" : [ "wr_web_address" ],
+                                            "wr_hours" : [ "wr_hours" ],
+                                            "parent_project" : [ "parent-project" ],
+                                            "wr_description" : [ "wr_description" ],
+                                            "verif_sources" : { "value" : [ "1" ] },
+                                            "systemreport" : "0",
+                                            "verificationstatus" : "0",
+                                            "access_token" : [ "access_token" ],
+                                            "language" : [ "user:language" ],
+                                            "date_started" : [ "calc-date" ],
+                                            "publish_status" : [ "publish_status" ],
+                                            "author" : [ "user" ],
+                                            "wr_classification" : [ "term-fetched" ]
+                                          },
+                                          "PROVIDE" : {
+                                            "result" : { "result" : "result" },
+                                            "created_wr" : { "created_wr" : "Created WR" }
+                                          }
+                                        }
+                                      },
+                                      { "data_set" : { "data" : [ "created-wr-nid" ], "value" : [ "created-wr:nid" ] } },
+                                      { "CONDITIONAL" : [
+                                          {
+                                            "IF" : { "data_is" : { "data" : [ "result" ], "value" : "-2" } },
+                                            "DO" : [ { "data_set" : { "data" : [ "created-wr-nid" ], "value" : "-3" } } ]
+                                          },
+                                          {
+                                            "ELSE IF" : { "data_is" : { "data" : [ "result" ], "value" : "-3" } },
+                                            "DO" : [ { "data_set" : { "data" : [ "created-wr-nid" ], "value" : "-2" } } ]
+                                          },
+                                          {
+                                            "ELSE IF" : { "data_is" : { "data" : [ "result" ], "value" : "-4" } },
+                                            "DO" : [ { "data_set" : { "data" : [ "created-wr-nid" ], "value" : "-4" } } ]
+                                          }
+                                        ]
                                       }
                                     ]
                                   },
                                   { "ELSE" : [
-                                      { "variable_add" : {
-                                          "USING" : { "type" : "text" },
-                                          "PROVIDE" : { "variable_added" : { "merge_function" : "merge function" } }
-                                        }
+                                      { "CONDITIONAL" : [
+                                          {
+                                            "IF" : { "entity_is_of_bundle" : {
+                                                "entity" : [ "work-reports:0" ],
+                                                "type" : "node",
+                                                "bundle" : { "value" : { "work_report" : "work_report" } }
+                                              }
+                                            },
+                                            "DO" : [
+                                              { "CONDITIONAL" : [
+                                                  {
+                                                    "IF" : { "entity_is_of_bundle" : {
+                                                        "entity" : [ "parent-project" ],
+                                                        "type" : "node",
+                                                        "bundle" : { "value" : { "project" : "project" } }
+                                                      }
+                                                    },
+                                                    "DO" : [
+                                                      { "variable_add" : {
+                                                          "USING" : {
+                                                            "type" : "text",
+                                                            "value" : "\u003C?php \r\nif (isset ($parent_project-\u003Efield_merge_reports_function[LANGUAGE_NONE][0][\u0027value\u0027]) \u0026\u0026 !empty($parent_project-\u003Efield_merge_reports_function[LANGUAGE_NONE][0][\u0027value\u0027])) {\r\n\techo $parent_project-\u003Efield_merge_reports_function[LANGUAGE_NONE][0][\u0027value\u0027];\r\n}\r\nelse {\r\n\techo \u0027\u0027;\r\n}\r\n?\u003E"
+                                                          },
+                                                          "PROVIDE" : { "variable_added" : { "merge_function" : "merge function" } }
+                                                        }
+                                                      }
+                                                    ]
+                                                  },
+                                                  { "ELSE" : [
+                                                      { "variable_add" : {
+                                                          "USING" : { "type" : "text" },
+                                                          "PROVIDE" : { "variable_added" : { "merge_function" : "merge function" } }
+                                                        }
+                                                      }
+                                                    ]
+                                                  }
+                                                ]
+                                              },
+                                              { "variable_add" : {
+                                                  "USING" : {
+                                                    "type" : "text",
+                                                    "value" : "\u003C?php\r\nif (strpos($merge_function,\u0027http\u0027) === 0) {\r\n\techo \u0027http\u0027;\r\n}\r\nelse if (function_exists($merge_function)) {\r\n\techo \u0027function\u0027;\r\n}\r\nelse {\r\n\techo NULL;\r\n}\r\n?\u003E"
+                                                  },
+                                                  "PROVIDE" : { "variable_added" : { "merge_function_type" : "merge function type" } }
+                                                }
+                                              },
+                                              { "CONDITIONAL" : [
+                                                  {
+                                                    "IF" : { "data_is" : { "data" : [ "merge-function-type" ], "value" : "function" } },
+                                                    "DO" : [
+                                                      { "_rovas_repmerger_manipulateUrlWorkReport" : {
+                                                          "USING" : {
+                                                            "node" : [ "work-reports:0" ],
+                                                            "newUrl" : [ "wr-web-address" ],
+                                                            "mergeFunc" : [ "merge-function" ]
+                                                          },
+                                                          "PROVIDE" : { "url_list" : { "url_list" : "Updated URL list" } }
+                                                        }
+                                                      },
+                                                      { "data_set" : {
+                                                          "data" : [ "work-reports:0:field-web-address" ],
+                                                          "value" : [ "url-list" ]
+                                                        }
+                                                      },
+                                                      { "variable_add" : {
+                                                          "USING" : {
+                                                            "type" : "text",
+                                                            "value" : "\u003C?php \r\n$lang = $work_reports[0]-\u003Elanguage;\r\n$body = $work_reports[0]-\u003Ebody[$lang][0][\u0027value\u0027];\r\n$params = [\u0027title\u0027 =\u003E $wr_activity_name];\r\necho call_user_func($merge_function, \u0027field-name-body\u0027, $body, $wr_description, $params);\r\n?\u003E"
+                                                          },
+                                                          "PROVIDE" : { "variable_added" : { "new_body" : "new body" } }
+                                                        }
+                                                      },
+                                                      { "data_set" : { "data" : [ "work-reports:0:body:value" ], "value" : [ "new-body" ] } }
+                                                    ]
+                                                  },
+                                                  {
+                                                    "ELSE IF" : { "data_is" : { "data" : [ "merge-function-type" ], "value" : "http" } },
+                                                    "DO" : [
+                                                      { "variable_add" : {
+                                                          "USING" : {
+                                                            "type" : "text",
+                                                            "value" : "\u003C?php\r\n\/\/an actual implementation will be here usingon the drupal_http_request function\r\n?\u003E"
+                                                          },
+                                                          "PROVIDE" : { "variable_added" : { "variable_added" : "Added variable" } }
+                                                        }
+                                                      }
+                                                    ]
+                                                  },
+                                                  { "ELSE" : [
+                                                      { "variable_add" : {
+                                                          "USING" : {
+                                                            "type" : "list\u003Ctext\u003E",
+                                                            "value" : [ "work-reports:0:field-web-address" ]
+                                                          },
+                                                          "PROVIDE" : { "variable_added" : { "web_sites" : "web sites" } }
+                                                        }
+                                                      },
+                                                      { "list_add" : {
+                                                          "list" : [ "web-sites" ],
+                                                          "item" : [ "wr-web-address" ],
+                                                          "unique" : "1"
+                                                        }
+                                                      },
+                                                      { "data_set" : {
+                                                          "data" : [ "work-reports:0:field-web-address" ],
+                                                          "value" : [ "web-sites" ]
+                                                        }
+                                                      },
+                                                      { "variable_add" : {
+                                                          "USING" : {
+                                                            "type" : "text",
+                                                            "value" : "\u003C?php \r\n$lang = $work_reports[0]-\u003Elanguage;\r\n$counter = count($web_sites);\r\n$old_body = $work_reports[0]-\u003Ebody[$lang][0][\u0027value\u0027];\r\n\r\n$time = $wr_hours;\r\n\r\n$hours = floor($time);\r\n$hours_formated = $hours ? $hours . \u0027 \u0027 . t(\u0027hrs\u0027) : \u0027\u0027;\r\n$minutes = ($time - $hours) * 60;\r\n$minutes_formated = $minutes ? round($minutes,0) . \u0027 \u0027 . t(\u0027min\u0027) : \u0027\u0027;\r\n$comma = !empty($hours_formated) \u0026\u0026 !empty($minutes_formated) ? \u0027 \u0027 : \u0027\u0027;\r\n\r\nif ($counter == 2) {\r\n\techo t(\u0027This is a work report for multiple sessions. The descriptions and times reported in them are shown below.\u0027);\r\n\techo \u0027\r\n\r\n\t\u0027;\r\n\techo t(\u0027Session No.\u0027) . \u0027 1\u0027;\r\n\techo \u0027\r\n\t\u0027;\r\n}\r\necho $old_body;\r\necho \u0027\r\n\r\n\u0027;\r\necho t(\u0027Session No.\u0027) . \u0027 \u0027 . $counter . \u0027 (\u0027 . $hours_formated . $comma . $minutes_formated . \u0027)\u0027 ;\r\necho \u0027\r\n\u0027;\r\necho $wr_description;\r\n?\u003E"
+                                                          },
+                                                          "PROVIDE" : { "variable_added" : { "new_body" : "new body" } }
+                                                        }
+                                                      },
+                                                      { "data_set" : { "data" : [ "work-reports:0:body:value" ], "value" : [ "new-body" ] } }
+                                                    ]
+                                                  }
+                                                ]
+                                              },
+                                              { "data_calc" : {
+                                                  "USING" : {
+                                                    "input_1" : [ "work-reports:0:field-hours-worked" ],
+                                                    "op" : "+",
+                                                    "input_2" : [ "wr-hours" ]
+                                                  },
+                                                  "PROVIDE" : { "result" : { "updated_time" : "updated time" } }
+                                                }
+                                              },
+                                              { "data_set" : {
+                                                  "data" : [ "work-reports:0:field-hours-worked" ],
+                                                  "value" : [ "updated-time" ]
+                                                }
+                                              },
+                                              { "php_eval" : { "code" : "if (!empty($work_reports[0]) \u0026\u0026 function_exists(\u0027rovas_repmerger_sync_auto_approved_chrons\u0027)) {\r\n  rovas_repmerger_sync_auto_approved_chrons($work_reports[0]);\r\n}" } },
+                                              { "data_set" : { "data" : [ "created-wr-nid" ], "value" : [ "work-reports:0:nid" ] } },
+                                              { "data_set" : {
+                                                  "data" : [ "work-reports:0:field-content-access-token" ],
+                                                  "value" : [ "access-token" ]
+                                                }
+                                              }
+                                            ]
+                                          },
+                                          { "ELSE" : [ { "data_set" : { "data" : [ "created-wr-nid" ], "value" : "-4" } } ] }
+                                        ]
                                       }
                                     ]
                                   }
                                 ]
                               },
-                              { "variable_add" : {
-                                  "USING" : {
-                                    "type" : "text",
-                                    "value" : "\u003C?php\r\nif (strpos($merge_function,\u0027http\u0027) === 0) {\r\n\techo \u0027http\u0027;\r\n}\r\nelse if (function_exists($merge_function)) {\r\n\techo \u0027function\u0027;\r\n}\r\nelse {\r\n\techo NULL;\r\n}\r\n?\u003E"
-                                  },
-                                  "PROVIDE" : { "variable_added" : { "merge_function_type" : "merge function type" } }
-                                }
-                              },
-                              { "CONDITIONAL" : [
-                                  {
-                                    "IF" : { "data_is" : { "data" : [ "merge-function-type" ], "value" : "function" } },
-                                    "DO" : [
-                                      { "_rovas_repmerger_manipulateUrlWorkReport" : {
-                                          "USING" : {
-                                            "node" : [ "work-reports:0" ],
-                                            "newUrl" : [ "wr-web-address" ],
-                                            "mergeFunc" : [ "merge-function" ]
-                                          },
-                                          "PROVIDE" : { "url_list" : { "url_list" : "Updated URL list" } }
-                                        }
-                                      },
-                                      { "data_set" : {
-                                          "data" : [ "work-reports:0:field-web-address" ],
-                                          "value" : [ "url-list" ]
-                                        }
-                                      },
-                                      { "variable_add" : {
-                                          "USING" : {
-                                            "type" : "text",
-                                            "value" : "\u003C?php \r\n$lang = $work_reports[0]-\u003Elanguage;\r\n$body = $work_reports[0]-\u003Ebody[$lang][0][\u0027value\u0027];\r\n$params = [\u0027title\u0027 =\u003E $wr_activity_name];\r\necho call_user_func($merge_function, \u0027field-name-body\u0027, $body, $wr_description, $params);\r\n?\u003E"
-                                          },
-                                          "PROVIDE" : { "variable_added" : { "new_body" : "new body" } }
-                                        }
-                                      },
-                                      { "data_set" : { "data" : [ "work-reports:0:body:value" ], "value" : [ "new-body" ] } }
-                                    ]
-                                  },
-                                  {
-                                    "ELSE IF" : { "data_is" : { "data" : [ "merge-function-type" ], "value" : "http" } },
-                                    "DO" : [
-                                      { "variable_add" : {
-                                          "USING" : {
-                                            "type" : "text",
-                                            "value" : "\u003C?php\r\n\/\/an actual implementation will be here usingon the drupal_http_request function\r\n?\u003E"
-                                          },
-                                          "PROVIDE" : { "variable_added" : { "variable_added" : "Added variable" } }
-                                        }
-                                      }
-                                    ]
-                                  },
-                                  { "ELSE" : [
-                                      { "variable_add" : {
-                                          "USING" : {
-                                            "type" : "list\u003Ctext\u003E",
-                                            "value" : [ "work-reports:0:field-web-address" ]
-                                          },
-                                          "PROVIDE" : { "variable_added" : { "web_sites" : "web sites" } }
-                                        }
-                                      },
-                                      { "list_add" : {
-                                          "list" : [ "web-sites" ],
-                                          "item" : [ "wr-web-address" ],
-                                          "unique" : "1"
-                                        }
-                                      },
-                                      { "data_set" : {
-                                          "data" : [ "work-reports:0:field-web-address" ],
-                                          "value" : [ "web-sites" ]
-                                        }
-                                      },
-                                      { "variable_add" : {
-                                          "USING" : {
-                                            "type" : "text",
-                                            "value" : "\u003C?php \r\n$lang = $work_reports[0]-\u003Elanguage;\r\n$counter = count($web_sites);\r\n$old_body = $work_reports[0]-\u003Ebody[$lang][0][\u0027value\u0027];\r\n\r\n$time = $wr_hours;\r\n\r\n$hours = floor($time);\r\n$hours_formated = $hours ? $hours . \u0027 \u0027 . t(\u0027hrs\u0027) : \u0027\u0027;\r\n$minutes = ($time - $hours) * 60;\r\n$minutes_formated = $minutes ? round($minutes,0) . \u0027 \u0027 . t(\u0027min\u0027) : \u0027\u0027;\r\n$comma = !empty($hours_formated) \u0026\u0026 !empty($minutes_formated) ? \u0027 \u0027 : \u0027\u0027;\r\n\r\nif ($counter == 2) {\r\n\techo t(\u0027This is a work report for multiple sessions. The descriptions and times reported in them are shown below.\u0027);\r\n\techo \u0027\r\n\r\n\t\u0027;\r\n\techo t(\u0027Session No.\u0027) . \u0027 1\u0027;\r\n\techo \u0027\r\n\t\u0027;\r\n}\r\necho $old_body;\r\necho \u0027\r\n\r\n\u0027;\r\necho t(\u0027Session No.\u0027) . \u0027 \u0027 . $counter . \u0027 (\u0027 . $hours_formated . $comma . $minutes_formated . \u0027)\u0027 ;\r\necho \u0027\r\n\u0027;\r\necho $wr_description;\r\n?\u003E"
-                                          },
-                                          "PROVIDE" : { "variable_added" : { "new_body" : "new body" } }
-                                        }
-                                      },
-                                      { "data_set" : { "data" : [ "work-reports:0:body:value" ], "value" : [ "new-body" ] } }
-                                    ]
-                                  }
-                                ]
-                              },
-                              { "data_calc" : {
-                                  "USING" : {
-                                    "input_1" : [ "work-reports:0:field-hours-worked" ],
-                                    "op" : "+",
-                                    "input_2" : [ "wr-hours" ]
-                                  },
-                                  "PROVIDE" : { "result" : { "updated_time" : "updated time" } }
-                                }
-                              },
-                              { "data_set" : {
-                                  "data" : [ "work-reports:0:field-hours-worked" ],
-                                  "value" : [ "updated-time" ]
-                                }
-                              },
-                              { "data_set" : { "data" : [ "created-wr-nid" ], "value" : [ "work-reports:0:nid" ] } },
-                              { "data_set" : {
-                                  "data" : [ "work-reports:0:field-content-access-token" ],
-                                  "value" : [ "access-token" ]
-                                }
-                              }
+                              { "php_eval" : { "code" : "if (function_exists(\u0027rovas_repmerger_same_day_lock_release\u0027)) {\r\n  rovas_repmerger_same_day_lock_release((int) $user-\u003Euid, (int) $parent_project_nid, $tstamp, (int) $wr_classification);\r\n}" } }
                             ]
                           },
-                          { "ELSE" : [ { "data_set" : { "data" : [ "created-wr-nid" ], "value" : "-4" } } ] }
+                          { "ELSE" : [
+                              { "data_set" : { "data" : [ "created-wr-nid" ], "value" : "-5" } }
+                            ]
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  { "ELSE" : [
+                      { "component_rules_create_work_report" : {
+                          "USING" : {
+                            "wr_activity_name" : [ "wr_activity_name" ],
+                            "wr_web_address" : [ "wr_web_address" ],
+                            "wr_hours" : [ "wr_hours" ],
+                            "parent_project" : [ "parent-project" ],
+                            "wr_description" : [ "wr_description" ],
+                            "verif_sources" : { "value" : [ "1" ] },
+                            "systemreport" : "0",
+                            "verificationstatus" : "0",
+                            "access_token" : [ "access_token" ],
+                            "language" : [ "user:language" ],
+                            "date_started" : [ "calc-date" ],
+                            "publish_status" : [ "publish_status" ],
+                            "author" : [ "user" ],
+                            "wr_classification" : [ "term-fetched" ]
+                          },
+                          "PROVIDE" : {
+                            "result" : { "result" : "result" },
+                            "created_wr" : { "created_wr" : "Created WR" }
+                          }
+                        }
+                      },
+                      { "data_set" : { "data" : [ "created-wr-nid" ], "value" : [ "created-wr:nid" ] } },
+                      { "CONDITIONAL" : [
+                          {
+                            "IF" : { "data_is" : { "data" : [ "result" ], "value" : "-2" } },
+                            "DO" : [ { "data_set" : { "data" : [ "created-wr-nid" ], "value" : "-3" } } ]
+                          },
+                          {
+                            "ELSE IF" : { "data_is" : { "data" : [ "result" ], "value" : "-3" } },
+                            "DO" : [ { "data_set" : { "data" : [ "created-wr-nid" ], "value" : "-2" } } ]
+                          },
+                          {
+                            "ELSE IF" : { "data_is" : { "data" : [ "result" ], "value" : "-4" } },
+                            "DO" : [ { "data_set" : { "data" : [ "created-wr-nid" ], "value" : "-4" } } ]
+                          }
                         ]
                       }
                     ]
