@@ -1,5 +1,5 @@
 ---
-status: active
+status: done
 slug: merit-spotlight-today
 owner_repo: both
 created: 2026-10-30
@@ -7,9 +7,6 @@ updated: 2026-10-30
 ---
 
 # Merit spotlight `period=today`
-
-> Rovas implementation is in tree (`rovas_civic.merit_spotlight.inc`); awaiting
-> rovdev deploy + smoke.
 
 **Product:** Civic Home shows a live “today” ticker (ME registered + active
 earners on the current Europe/Bratislava calendar day, filtered by country).
@@ -44,7 +41,7 @@ contract (`community_earned_me`, `active_earners`, `leads`, optional `you`).
 
 1. [x] Allow `today` in `rovas_civic_services_merit_spotlight_index`
 2. [x] Window math in `rovas_civic_merit_spotlight_period_window` for `today`
-3. [ ] Deploy rovdev + smoke (human unless asked)
+3. [x] Deploy rovdev + smoke (human unless asked)
 
 ### Smoke test
 
