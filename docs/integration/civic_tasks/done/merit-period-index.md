@@ -18,7 +18,9 @@ Reuse the ledger aggregation already used by
 `civic_merit_spotlight` (`rovas_civic_merit_spotlight_aggregate` + period
 windows). Do **not** change the lifetime Merit Index snapshot path.
 
-**Timezone / windows:** identical to spotlight (`Europe/Bratislava`):
+**Timezone / windows:** same helper as spotlight for `day`/`week`/`month`
+(`Europe/Bratislava`). Spotlight also accepts `period=today` (Home ticker);
+this endpoint does **not**.
 
 | `period` | Window |
 |----------|--------|

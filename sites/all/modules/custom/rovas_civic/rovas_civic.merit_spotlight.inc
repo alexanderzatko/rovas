@@ -17,9 +17,9 @@ function rovas_civic_services_merit_spotlight_index($period = '', $country_iso2 
   unset($lang);
 
   $period = drupal_strtolower(trim((string) $period));
-  $allowed = array('day', 'week', 'month');
+  $allowed = array('today', 'day', 'week', 'month');
   if (!in_array($period, $allowed, TRUE)) {
-    return services_error(t('Invalid period; use day, week, or month.'), 400);
+    return services_error(t('Invalid period; use today, day, week, or month.'), 400);
   }
 
   $country = strtoupper(trim((string) $country_iso2));
@@ -71,12 +71,13 @@ function rovas_civic_services_merit_spotlight_index($period = '', $country_iso2 
  *
  * Timezone: Europe/Bratislava.
  *
+ * - today: current calendar day so far
  * - day: previous calendar day (yesterday)
  * - week: last 7 calendar days ending yesterday (inclusive)
  * - month: previous calendar month
  *
  * @param string $period
- *   day|week|month.
+ *   today|day|week|month.
  *
  * @return array|false
  *   keys: period_start, period_end (Y-m-d), start_ts, end_excl_ts, today_start_ts,
@@ -97,7 +98,11 @@ function rovas_civic_merit_spotlight_period_window($period) {
   $yesterday_start = clone $today_start;
   $yesterday_start->modify('-1 day');
 
-  if ($period === 'day') {
+  if ($period === 'today') {
+    $start = clone $today_start;
+    $end_day = clone $today_start;
+  }
+  elseif ($period === 'day') {
     $start = clone $yesterday_start;
     $end_day = clone $yesterday_start;
   }

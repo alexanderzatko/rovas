@@ -162,7 +162,7 @@ Optional: `lang=sk|en` on lookup for localized fields.
 | ------ | ---- | ---- | ------- |
 | `GET` | `/rovas/civic_merit_index` | Public | Snapshot leaderboard (`by_category`, `by_source`, …) |
 | `GET` | `/rovas/civic_merit_index_countries` | Public | Country filter options |
-| `GET` | `/rovas/civic_merit_spotlight` | Public | Period leads by Civic area |
+| `GET` | `/rovas/civic_merit_spotlight` | Public | Period leads by Civic area (`period=today\|day\|week\|month`) |
 | `GET` | `/rovas/civic_merit_period_index` | Public | ME•ter period leaderboard |
 
 ---
