@@ -242,7 +242,7 @@ function rovas_civic_schema() {
   );
 
   $schema['civic_user_prefs'] = array(
-    'description' => 'Per-user Civic preferences (receipt history retention, …).',
+    'description' => 'Per-user Civic preferences (receipt history retention, ME sources share, …).',
     'fields' => array(
       'uid' => array(
         'type' => 'int',
@@ -256,6 +256,12 @@ function rovas_civic_schema() {
         'length' => 16,
         'not null' => FALSE,
       ),
+      'me_sources_share' => array(
+        'description' => 'everyone | reciprocal | aggregate | NULL (treat as everyone).',
+        'type' => 'varchar',
+        'length' => 16,
+        'not null' => FALSE,
+      ),
       'updated' => array(
         'type' => 'int',
         'not null' => TRUE,
@@ -265,6 +271,7 @@ function rovas_civic_schema() {
     'primary key' => array('uid'),
     'indexes' => array(
       'receipt_history_retention' => array('receipt_history_retention'),
+      'me_sources_share' => array('me_sources_share'),
     ),
   );
 
@@ -781,4 +788,23 @@ function rovas_civic_update_7029() {
     rovas_civic_ensure_services_resources();
   }
   return t('Civic give Chrons API (POST /rovas/civic_give_chrons) enabled on rovas_endpoint.');
+}
+
+/**
+ * ME sources share preference + preference API + public ME-mix obfuscation.
+ */
+function rovas_civic_update_7030() {
+  if (db_table_exists('civic_user_prefs') && !db_field_exists('civic_user_prefs', 'me_sources_share')) {
+    db_add_field('civic_user_prefs', 'me_sources_share', array(
+      'description' => 'everyone | reciprocal | aggregate | NULL (treat as everyone).',
+      'type' => 'varchar',
+      'length' => 16,
+      'not null' => FALSE,
+    ));
+    db_add_index('civic_user_prefs', 'me_sources_share', array('me_sources_share'));
+  }
+  if (function_exists('rovas_civic_ensure_services_resources')) {
+    rovas_civic_ensure_services_resources();
+  }
+  return t('ME sources share ({civic_user_prefs}.me_sources_share, POST /rovas/civic_me_sources_preference); public ME-mix obfuscation.');
 }

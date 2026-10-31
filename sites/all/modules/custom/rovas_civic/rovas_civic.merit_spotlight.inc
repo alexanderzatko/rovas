@@ -47,7 +47,8 @@ function rovas_civic_services_merit_spotlight_index($period = '', $country_iso2 
     return services_error(t('Merit spotlight temporarily unavailable.'), 503);
   }
 
-  $leads = rovas_civic_merit_spotlight_leads($agg['by_uid']);
+  $caller_uid = rovas_civic_request_uid();
+  $leads = rovas_civic_merit_spotlight_leads($agg['by_uid'], $caller_uid);
   $response = array(
     'period' => $period,
     'period_start' => $window['period_start'],
@@ -58,7 +59,6 @@ function rovas_civic_services_merit_spotlight_index($period = '', $country_iso2 
     'leads' => $leads,
   );
 
-  $caller_uid = rovas_civic_request_uid();
   if ($caller_uid > 0) {
     $response['you'] = rovas_civic_merit_spotlight_you($caller_uid, $window, $leads);
   }
@@ -332,12 +332,17 @@ function rovas_civic_merit_spotlight_source_category($source, $node_type = '') {
  * Order: taxes, charity, volunteer.
  *
  * @param array $by_uid
+ * @param int $viewer_uid
+ *   Bearer viewer (0 = anonymous). Tax/charity leads that resolve aggregate
+ *   for this viewer are skipped; volunteer leads are unchanged.
  *
  * @return array
  */
-function rovas_civic_merit_spotlight_leads(array $by_uid) {
+function rovas_civic_merit_spotlight_leads(array $by_uid, $viewer_uid = 0) {
   $categories = array('taxes', 'charity', 'volunteer');
   $winners = array();
+  $viewer_uid = (int) $viewer_uid;
+  module_load_include('inc', 'rovas_civic', 'rovas_civic.me_sources');
 
   foreach ($categories as $cat) {
     $best_uid = NULL;
@@ -348,6 +353,11 @@ function rovas_civic_merit_spotlight_leads(array $by_uid) {
         continue;
       }
       $uid = (int) $uid;
+      if (($cat === 'taxes' || $cat === 'charity')
+        && function_exists('rovas_civic_me_sources_omit_from_tax_gift_filter')
+        && rovas_civic_me_sources_omit_from_tax_gift_filter($uid, $viewer_uid)) {
+        continue;
+      }
       if ($best_uid === NULL
         || $me > $best_me
         || ($me == $best_me && $uid < $best_uid)) {

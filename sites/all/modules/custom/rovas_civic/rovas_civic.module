@@ -51,6 +51,17 @@ define('ROVAS_CIVIC_RECEIPT_HISTORY_RETENTION_DAYS', 90);
 /** Max claim rows scrubbed per cron run across all policy users. */
 define('ROVAS_CIVIC_RECEIPT_HISTORY_CRON_BUDGET', 500);
 
+/** ME sources share: others always see detailed. */
+define('ROVAS_CIVIC_ME_SOURCES_SHARE_EVERYONE', 'everyone');
+/** ME sources share: others see detailed only if viewer share ≠ aggregate. */
+define('ROVAS_CIVIC_ME_SOURCES_SHARE_RECIPROCAL', 'reciprocal');
+/** ME sources share: others always see aggregate. */
+define('ROVAS_CIVIC_ME_SOURCES_SHARE_AGGREGATE', 'aggregate');
+
+/** Resolved ME sources detail level. */
+define('ROVAS_CIVIC_ME_SOURCES_DETAIL_DETAILED', 'detailed');
+define('ROVAS_CIVIC_ME_SOURCES_DETAIL_AGGREGATE', 'aggregate');
+
 /**
  * Implements hook_permission().
  */
@@ -61,6 +72,43 @@ function rovas_civic_permission() {
       'restrict access' => TRUE,
     ),
   );
+}
+
+/**
+ * Implements hook_field_access().
+ *
+ * Hide field_merit_source on ledger nodes when the viewer may only see
+ * aggregate ME sources for the reward recipient (ME sources privacy).
+ */
+function rovas_civic_field_access($op, $field, $entity_type, $entity, $account) {
+  if ($op !== 'view' || $entity_type !== 'node' || empty($field['field_name'])) {
+    return;
+  }
+  if ($field['field_name'] !== 'field_merit_source') {
+    return;
+  }
+  if (empty($entity) || empty($entity->type)) {
+    return;
+  }
+  if ($entity->type !== 'merits_disbursement' && $entity->type !== 'merit_penalty') {
+    return;
+  }
+
+  $items = field_get_items('node', $entity, 'field_reward_recipient');
+  if (empty($items[0]['target_id'])) {
+    return;
+  }
+  $subject_uid = (int) $items[0]['target_id'];
+  $viewer_uid = (!empty($account->uid)) ? (int) $account->uid : 0;
+
+  module_load_include('inc', 'rovas_civic', 'rovas_civic.me_sources');
+  if (!function_exists('rovas_civic_me_sources_detail_resolve')) {
+    return;
+  }
+  $detail = rovas_civic_me_sources_detail_resolve($subject_uid, $viewer_uid);
+  if ($detail === ROVAS_CIVIC_ME_SOURCES_DETAIL_AGGREGATE) {
+    return FALSE;
+  }
 }
 
 /**
@@ -301,6 +349,7 @@ function rovas_civic_node_insert($node) {
  * - GET  /rovas/civic_charity_projects (public approved-charity catalog)
  * - POST /rovas/civic_create_charity_org (donor add public-benefit org)
  * - POST /rovas/civic_receipt_history_preference (keep vs 90-day scrub)
+ * - POST /rovas/civic_me_sources_preference (everyone|reciprocal|aggregate)
  * - POST /rovas/civic_give_chrons (voluntary CHR→ME 1:1, A6)
  *
  * Note: Services aliases must be slash-free. Do not use aliases like
@@ -357,6 +406,11 @@ function rovas_civic_services_resources() {
     'type' => 'inc',
     'module' => 'rovas_civic',
     'name' => 'rovas_civic.receipt_history',
+  );
+  $me_sources_file = array(
+    'type' => 'inc',
+    'module' => 'rovas_civic',
+    'name' => 'rovas_civic.me_sources',
   );
   $give_chrons_file = array(
     'type' => 'inc',
@@ -1237,6 +1291,27 @@ function rovas_civic_services_resources() {
         ),
       ),
     ),
+    'civic_me_sources_preference' => array(
+      'operations' => array(
+        'create' => array(
+          'help' => 'Set ME sources share for other viewers. Body: share everyone|reciprocal|aggregate. Bearer; API-key off.',
+          'callback' => 'rovas_civic_services_me_sources_preference',
+          'file' => $me_sources_file,
+          'access callback' => $bearer_auth['access callback'],
+          'access arguments' => $bearer_auth['access arguments'],
+          'access arguments append' => $bearer_auth['access arguments append'],
+          'args' => array(
+            array(
+              'name' => 'data',
+              'type' => 'struct',
+              'description' => 'Fields: share (everyone|reciprocal|aggregate).',
+              'source' => 'data',
+              'optional' => FALSE,
+            ),
+          ),
+        ),
+      ),
+    ),
     'civic_give_chrons' => array(
       'operations' => array(
         'create' => array(
@@ -1652,6 +1727,11 @@ function rovas_civic_services_users_lookup_index($username = '', $lang = '') {
   $profile = rovas_civic_users_lookup($username, rovas_civic_request_lang($lang));
   if ($profile === FALSE) {
     return services_error(t('User not found'), 404);
+  }
+  module_load_include('inc', 'rovas_civic', 'rovas_civic.me_sources');
+  if (function_exists('rovas_civic_me_sources_apply_payload')) {
+    $subject_uid = isset($profile['rovas_uid']) ? (int) $profile['rovas_uid'] : 0;
+    rovas_civic_me_sources_apply_payload($profile, $caller_uid, $subject_uid);
   }
   return $profile;
 }
@@ -3767,6 +3847,7 @@ function rovas_civic_ensure_services_resources() {
     'civic_create_work_report',
     'civic_create_charity_org',
     'civic_receipt_history_preference',
+    'civic_me_sources_preference',
     'civic_give_chrons',
   ) as $res_name) {
     if (empty($endpoint->resources[$res_name])

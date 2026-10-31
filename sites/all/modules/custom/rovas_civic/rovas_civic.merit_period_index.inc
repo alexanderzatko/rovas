@@ -118,6 +118,11 @@ function rovas_civic_services_merit_period_index_index(
  * @return array
  */
 function rovas_civic_merit_period_index_page(array $opts) {
+  module_load_include('inc', 'rovas_civic', 'rovas_civic.me_sources');
+  $viewer_uid = function_exists('rovas_civic_request_uid') ? (int) rovas_civic_request_uid() : 0;
+  $privacy_filter = (!empty($opts['source_category'])
+    && ($opts['source_category'] === 'taxes' || $opts['source_category'] === 'charity'));
+
   $rows = array();
   foreach ($opts['by_uid'] as $uid => $data) {
     if (!is_array($data)) {
@@ -138,6 +143,11 @@ function rovas_civic_merit_period_index_page(array $opts) {
       $cat = $opts['source_category'];
       $cat_me = isset($by_category[$cat]) ? (float) $by_category[$cat] : 0.0;
       if (round($cat_me) <= 0) {
+        continue;
+      }
+      if ($privacy_filter
+        && function_exists('rovas_civic_me_sources_omit_from_tax_gift_filter')
+        && rovas_civic_me_sources_omit_from_tax_gift_filter($uid, $viewer_uid)) {
         continue;
       }
     }
@@ -162,15 +172,16 @@ function rovas_civic_merit_period_index_page(array $opts) {
 
   $sort = ($opts['sort'] === 'position') ? 'total_me' : $opts['sort'];
   $order = $opts['order'];
-  usort($rows, function ($a, $b) use ($sort, $order) {
-    return rovas_civic_merit_period_index_compare_rows($a, $b, $sort, $order);
+  usort($rows, function ($a, $b) use ($sort, $order, $viewer_uid) {
+    return rovas_civic_merit_period_index_compare_rows($a, $b, $sort, $order, $viewer_uid);
   });
 
   $total = count($rows);
   $slice = array_slice($rows, (int) $opts['offset'], (int) $opts['limit']);
+  $opts['viewer_uid'] = $viewer_uid;
   $items = rovas_civic_merit_period_index_enrich_slice($slice, $opts);
 
-  return array(
+  $out = array(
     'total' => (int) $total,
     'limit' => (int) $opts['limit'],
     'offset' => (int) $opts['offset'],
@@ -181,6 +192,10 @@ function rovas_civic_merit_period_index_page(array $opts) {
     'period_end' => $opts['period_end'],
     'items' => $items,
   );
+  if ($privacy_filter) {
+    $out['privacy_filter_active'] = TRUE;
+  }
+  return $out;
 }
 
 /**
@@ -193,18 +208,27 @@ function rovas_civic_merit_period_index_page(array $opts) {
  *
  * @return int
  */
-function rovas_civic_merit_period_index_compare_rows(array $a, array $b, $sort, $order) {
+function rovas_civic_merit_period_index_compare_rows(array $a, array $b, $sort, $order, $viewer_uid = 0) {
   $dir = ($order === 'asc') ? 1 : -1;
+  $viewer_uid = (int) $viewer_uid;
 
   switch ($sort) {
     case 'taxes_me':
-      $va = (float) $a['by_category']['taxes'];
-      $vb = (float) $b['by_category']['taxes'];
+      $va = function_exists('rovas_civic_merit_index_sort_category_me')
+        ? rovas_civic_merit_index_sort_category_me($a, 'taxes', $viewer_uid)
+        : (float) $a['by_category']['taxes'];
+      $vb = function_exists('rovas_civic_merit_index_sort_category_me')
+        ? rovas_civic_merit_index_sort_category_me($b, 'taxes', $viewer_uid)
+        : (float) $b['by_category']['taxes'];
       break;
 
     case 'charity_me':
-      $va = (float) $a['by_category']['charity'];
-      $vb = (float) $b['by_category']['charity'];
+      $va = function_exists('rovas_civic_merit_index_sort_category_me')
+        ? rovas_civic_merit_index_sort_category_me($a, 'charity', $viewer_uid)
+        : (float) $a['by_category']['charity'];
+      $vb = function_exists('rovas_civic_merit_index_sort_category_me')
+        ? rovas_civic_merit_index_sort_category_me($b, 'charity', $viewer_uid)
+        : (float) $b['by_category']['charity'];
       break;
 
     case 'volunteer_me':
@@ -251,6 +275,10 @@ function rovas_civic_merit_period_index_enrich_slice(array $slice, array $opts) 
   $accounts = user_load_multiple(array_values(array_unique($uids)));
   $lang = isset($opts['lang']) ? $opts['lang'] : NULL;
   $offset = (int) $opts['offset'];
+  $viewer_uid = isset($opts['viewer_uid']) ? (int) $opts['viewer_uid'] : 0;
+  if (!function_exists('rovas_civic_me_sources_apply_payload')) {
+    module_load_include('inc', 'rovas_civic', 'rovas_civic.me_sources');
+  }
 
   $out = array();
   foreach ($slice as $i => $row) {
@@ -261,7 +289,7 @@ function rovas_civic_merit_period_index_enrich_slice(array $slice, array $opts) 
     $member_since_year = $created > 0 ? (int) format_date($created, 'custom', 'Y', 'UTC') : 0;
     $country_iso2 = isset($row['country_iso2']) ? (string) $row['country_iso2'] : '';
 
-    $out[] = array(
+    $item = array(
       'position' => $offset + $i + 1,
       'rovas_uid' => (string) $uid,
       'username' => $labels['username'],
@@ -275,6 +303,10 @@ function rovas_civic_merit_period_index_enrich_slice(array $slice, array $opts) 
       'by_source' => array(),
       'nace_expertise' => array(),
     );
+    if (function_exists('rovas_civic_me_sources_apply_payload')) {
+      rovas_civic_me_sources_apply_payload($item, $viewer_uid, $uid);
+    }
+    $out[] = $item;
   }
 
   return $out;
