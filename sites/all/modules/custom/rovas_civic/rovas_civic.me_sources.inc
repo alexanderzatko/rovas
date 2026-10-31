@@ -212,7 +212,7 @@ function rovas_civic_attach_me_sources_share_fieldset(&$form, &$form_state, $acc
   $form['me_sources_share_settings'] = array(
     '#type' => 'fieldset',
     '#title' => t('Merit sources — privacy'),
-    '#description' => t('Choose how much detail other users can see about where your Merits came from (taxes versus gifts). Your total Merits and volunteer contribution stay visible. You always see your own full detail.'),
+    '#description' => t('Choose how much detail other users can see about the origin of your Merits. Your total Merits and Merits for volunteer work stay visible. You always see complete information about your Merits.'),
     '#collapsible' => FALSE,
     '#tree' => TRUE,
     '#weight' => 36,

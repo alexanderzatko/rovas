@@ -439,8 +439,8 @@ msgid "Merit sources — privacy"
 msgstr "Zdroje meritů — soukromí"
 
 #: sites/all/modules/custom/rovas_civic/rovas_civic.me_sources.inc
-msgid "Choose how much detail other users can see about where your Merits came from (taxes versus gifts). Your total Merits and volunteer contribution stay visible. You always see your own full detail."
-msgstr "Zvolte, kolik podrobností o původu vašich meritů (daně oproti darům) mohou vidět ostatní uživatelé. Celkové merity a dobrovolnický příspěvek zůstávají viditelné. Vlastní údaje vždy vidíte v plném detailu."
+msgid "Choose how much detail other users can see about the origin of your Merits. Your total Merits and Merits for volunteer work stay visible. You always see complete information about your Merits."
+msgstr "Zvolte, kolik podrobností o původu vašich meritů mohou vidět ostatní uživatelé. Celkové merity a merity za dobrovolnickou práci zůstávají viditelné. Vy vždy vidíte kompletní informaci o vašich meritech."
 
 #: sites/all/modules/custom/rovas_civic/rovas_civic.me_sources.inc
 msgid "What others may see"
