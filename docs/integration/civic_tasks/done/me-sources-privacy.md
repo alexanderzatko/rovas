@@ -1,5 +1,5 @@
 ---
-status: active
+status: done
 slug: me-sources-privacy
 owner_repo: both
 created: 2026-10-31
@@ -128,7 +128,7 @@ Self-lookup (Bearer username matches subject) → always detailed.
 6. [x] Spotlight: skip aggregate tax/charity leads
 7. [x] Web: hide `field_merit_source` on ledger nodes when viewer resolves aggregate (Merits tab unchanged)
 8. [x] Web: account edit (`/user/%/edit`) radios for `me_sources_share` (same store as Civic API)
-9. [ ] Deploy rovdev + smoke (human unless asked)
+9. [x] Deploy rovdev + smoke (Civic API smoke OK on rovdev)
 
 ### Smoke test
 
