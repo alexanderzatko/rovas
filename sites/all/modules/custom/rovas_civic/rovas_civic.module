@@ -498,7 +498,7 @@ function rovas_civic_services_resources() {
     'civic_claims' => array(
       'operations' => array(
         'index' => array(
-          'help' => 'List Civic VAT claims (?view=submitted|received) or claim-status lookup (?receipt_uid=). Bearer required.',
+          'help' => 'List Civic VAT claims (?view=submitted|received; optional merchant/date/VAT filters) or claim-status lookup (?receipt_uid=). Bearer required.',
           'callback' => 'rovas_civic_services_claims_index',
           'access callback' => $bearer_auth['access callback'],
           'access arguments' => $bearer_auth['access arguments'],
@@ -533,6 +533,46 @@ function rovas_civic_services_resources() {
               'type' => 'string',
               'description' => 'When set, return {claimed, receipt_uid} for global UID dedup preview (Civic verify). Do not use param name "q".',
               'source' => array('param' => 'receipt_uid'),
+              'optional' => TRUE,
+              'default value' => '',
+            ),
+            array(
+              'name' => 'merchant',
+              'type' => 'string',
+              'description' => 'Optional case-insensitive substring match on merchant_name. Ignored when receipt_uid is set.',
+              'source' => array('param' => 'merchant'),
+              'optional' => TRUE,
+              'default value' => '',
+            ),
+            array(
+              'name' => 'date_from',
+              'type' => 'string',
+              'description' => 'Optional inclusive purchase_at lower bound (YYYY-MM-DD). Ignored when receipt_uid is set.',
+              'source' => array('param' => 'date_from'),
+              'optional' => TRUE,
+              'default value' => '',
+            ),
+            array(
+              'name' => 'date_to',
+              'type' => 'string',
+              'description' => 'Optional inclusive purchase_at upper bound (YYYY-MM-DD). Ignored when receipt_uid is set.',
+              'source' => array('param' => 'date_to'),
+              'optional' => TRUE,
+              'default value' => '',
+            ),
+            array(
+              'name' => 'min_vat_eur',
+              'type' => 'string',
+              'description' => 'Optional vat_eur lower bound. Applied only when view=submitted; ignored for received / receipt_uid.',
+              'source' => array('param' => 'min_vat_eur'),
+              'optional' => TRUE,
+              'default value' => '',
+            ),
+            array(
+              'name' => 'max_vat_eur',
+              'type' => 'string',
+              'description' => 'Optional vat_eur upper bound. Applied only when view=submitted; ignored for received / receipt_uid.',
+              'source' => array('param' => 'max_vat_eur'),
               'optional' => TRUE,
               'default value' => '',
             ),
@@ -3907,11 +3947,13 @@ function rovas_civic_ensure_services_resources() {
 
 /**
  * Services callback: GET /rovas/civic_claims?view=&limit=&offset=&receipt_uid=
+ * (+ optional merchant / date_from / date_to / min_vat_eur / max_vat_eur).
  *
  * When receipt_uid is non-empty, returns global claim-status for Civic verify
- * preview: { claimed: bool, receipt_uid } — no scanner identity.
+ * preview: { claimed: bool, receipt_uid } — no scanner identity. Filter params
+ * have no effect in that mode.
  */
-function rovas_civic_services_claims_index($view = 'submitted', $limit = ROVAS_CIVIC_CLAIMS_DEFAULT_LIMIT, $offset = 0, $receipt_uid = '') {
+function rovas_civic_services_claims_index($view = 'submitted', $limit = ROVAS_CIVIC_CLAIMS_DEFAULT_LIMIT, $offset = 0, $receipt_uid = '', $merchant = '', $date_from = '', $date_to = '', $min_vat_eur = '', $max_vat_eur = '') {
   $uid = rovas_civic_request_uid();
   if ($uid < 1) {
     return services_error(t('Authentication required'), 401);
@@ -3930,11 +3972,178 @@ function rovas_civic_services_claims_index($view = 'submitted', $limit = ROVAS_C
     return services_error(t('Invalid view; use submitted or received'), 400);
   }
 
+  $filters = rovas_civic_claims_parse_list_filters($merchant, $date_from, $date_to, $min_vat_eur, $max_vat_eur, $view);
+  if (is_string($filters)) {
+    return services_error($filters, 400);
+  }
+
   $pager = rovas_civic_normalize_pager($limit, $offset);
   if ($view === 'submitted') {
-    return rovas_civic_claims_list_submitted($uid, $pager['limit'], $pager['offset']);
+    return rovas_civic_claims_list_submitted($uid, $pager['limit'], $pager['offset'], $filters);
   }
-  return rovas_civic_claims_list_received($uid, $pager['limit'], $pager['offset']);
+  return rovas_civic_claims_list_received($uid, $pager['limit'], $pager['offset'], $filters);
+}
+
+/**
+ * Parse optional civic_claims list filters.
+ *
+ * Dates are calendar YYYY-MM-DD compared against the varchar ISO purchase_at
+ * string (no TZ reinterpretation): date_from => purchase_at >= YYYY-MM-DD;
+ * date_to inclusive => purchase_at < day-after. VAT bounds apply only when
+ * view=submitted; for received they are ignored (not an error).
+ *
+ * @param string $merchant
+ * @param string $date_from
+ * @param string $date_to
+ * @param string|int|float $min_vat_eur
+ * @param string|int|float $max_vat_eur
+ * @param string $view
+ *   submitted|received
+ *
+ * @return array|string
+ *   Filter bag (keys may be absent) or error message string for 400.
+ */
+function rovas_civic_claims_parse_list_filters($merchant, $date_from, $date_to, $min_vat_eur, $max_vat_eur, $view) {
+  $filters = array();
+
+  $merchant = trim((string) $merchant);
+  if ($merchant !== '') {
+    $filters['merchant'] = $merchant;
+  }
+
+  $date_from = trim((string) $date_from);
+  if ($date_from !== '') {
+    if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $date_from) || !rovas_civic_claims_valid_ymd($date_from)) {
+      return t('Invalid date_from; use YYYY-MM-DD');
+    }
+    $filters['date_from'] = $date_from;
+  }
+
+  $date_to = trim((string) $date_to);
+  if ($date_to !== '') {
+    if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $date_to) || !rovas_civic_claims_valid_ymd($date_to)) {
+      return t('Invalid date_to; use YYYY-MM-DD');
+    }
+    $next = rovas_civic_claims_ymd_next_day($date_to);
+    if ($next === FALSE) {
+      return t('Invalid date_to; use YYYY-MM-DD');
+    }
+    $filters['date_to_exclusive'] = $next;
+  }
+
+  // VAT filters: submitted only. Received ignores without 400.
+  if ($view === 'submitted') {
+    $min = rovas_civic_claims_parse_optional_number($min_vat_eur, 'min_vat_eur');
+    if (is_string($min)) {
+      return $min;
+    }
+    if ($min !== NULL) {
+      $filters['min_vat_eur'] = $min;
+    }
+
+    $max = rovas_civic_claims_parse_optional_number($max_vat_eur, 'max_vat_eur');
+    if (is_string($max)) {
+      return $max;
+    }
+    if ($max !== NULL) {
+      $filters['max_vat_eur'] = $max;
+    }
+  }
+
+  return $filters;
+}
+
+/**
+ * @param string $ymd
+ *   YYYY-MM-DD
+ *
+ * @return bool
+ */
+function rovas_civic_claims_valid_ymd($ymd) {
+  $parts = explode('-', $ymd);
+  if (count($parts) !== 3) {
+    return FALSE;
+  }
+  return checkdate((int) $parts[1], (int) $parts[2], (int) $parts[0]);
+}
+
+/**
+ * Calendar day after YYYY-MM-DD (for inclusive date_to via exclusive upper bound).
+ *
+ * @param string $ymd
+ *
+ * @return string|false
+ *   Next day as YYYY-MM-DD, or FALSE on failure.
+ */
+function rovas_civic_claims_ymd_next_day($ymd) {
+  $dt = DateTime::createFromFormat('Y-m-d', $ymd);
+  if (!$dt || $dt->format('Y-m-d') !== $ymd) {
+    return FALSE;
+  }
+  $dt->modify('+1 day');
+  return $dt->format('Y-m-d');
+}
+
+/**
+ * Parse optional numeric query param; empty → NULL; malformed → error string.
+ *
+ * @param mixed $raw
+ * @param string $label
+ *   Param name for error message.
+ *
+ * @return float|null|string
+ */
+function rovas_civic_claims_parse_optional_number($raw, $label) {
+  if ($raw === NULL || $raw === '') {
+    return NULL;
+  }
+  if (is_string($raw)) {
+    $raw = trim($raw);
+    if ($raw === '') {
+      return NULL;
+    }
+  }
+  if (!is_numeric($raw)) {
+    return t('Invalid @label; expected a number', array('@label' => $label));
+  }
+  $value = (float) $raw;
+  if (!is_finite($value)) {
+    return t('Invalid @label; expected a number', array('@label' => $label));
+  }
+  return $value;
+}
+
+/**
+ * AND list filters onto a SelectQuery with {civic_claims} aliased as c.
+ *
+ * @param SelectQuery $query
+ * @param array $filters
+ * @param string $view
+ *   submitted|received — VAT only when submitted.
+ */
+function rovas_civic_claims_apply_list_filters($query, array $filters, $view) {
+  if (!empty($filters['merchant'])) {
+    $like = '%' . db_like(drupal_strtolower($filters['merchant'])) . '%';
+    $query->where('LOWER(c.merchant_name) LIKE :merchant_like', array(
+      ':merchant_like' => $like,
+    ));
+  }
+
+  if (!empty($filters['date_from'])) {
+    $query->condition('c.purchase_at', $filters['date_from'], '>=');
+  }
+  if (!empty($filters['date_to_exclusive'])) {
+    $query->condition('c.purchase_at', $filters['date_to_exclusive'], '<');
+  }
+
+  if ($view === 'submitted') {
+    if (isset($filters['min_vat_eur'])) {
+      $query->condition('c.vat_eur', $filters['min_vat_eur'], '>=');
+    }
+    if (isset($filters['max_vat_eur'])) {
+      $query->condition('c.vat_eur', $filters['max_vat_eur'], '<=');
+    }
+  }
 }
 
 /**
@@ -3975,23 +4184,32 @@ function rovas_civic_services_claims_retrieve($id) {
 /**
  * Claims the caller scanned (submitted), with nested shares.
  *
+ * @param int $uid
+ * @param int $limit
+ * @param int $offset
+ * @param array $filters
+ *   From rovas_civic_claims_parse_list_filters().
+ *
  * @return array
  *   keys: items, total, limit, offset, view
  */
-function rovas_civic_claims_list_submitted($uid, $limit, $offset) {
+function rovas_civic_claims_list_submitted($uid, $limit, $offset, array $filters = array()) {
   $uid = (int) $uid;
-  $total = (int) db_query("SELECT COUNT(*) FROM {civic_claims} WHERE scanner_uid = :u", array(
-    ':u' => $uid,
-  ))->fetchField();
 
-  $claim_rows = db_select('civic_claims', 'c')
-    ->fields('c')
-    ->condition('scanner_uid', $uid)
-    ->orderBy('created', 'DESC')
-    ->orderBy('id', 'DESC')
-    ->range($offset, $limit)
-    ->execute()
-    ->fetchAll();
+  $count_query = db_select('civic_claims', 'c');
+  $count_query->condition('c.scanner_uid', $uid);
+  rovas_civic_claims_apply_list_filters($count_query, $filters, 'submitted');
+  $count_query->addExpression('COUNT(*)', 'cnt');
+  $total = (int) $count_query->execute()->fetchField();
+
+  $claim_query = db_select('civic_claims', 'c');
+  $claim_query->fields('c');
+  $claim_query->condition('c.scanner_uid', $uid);
+  rovas_civic_claims_apply_list_filters($claim_query, $filters, 'submitted');
+  $claim_query->orderBy('c.created', 'DESC');
+  $claim_query->orderBy('c.id', 'DESC');
+  $claim_query->range($offset, $limit);
+  $claim_rows = $claim_query->execute()->fetchAll();
 
   $claim_ids = array();
   foreach ($claim_rows as $row) {
@@ -4044,20 +4262,31 @@ function rovas_civic_claims_list_submitted($uid, $limit, $offset) {
 /**
  * Share rows credited to the caller (received), incl. others' scans.
  *
+ * @param int $uid
+ * @param int $limit
+ * @param int $offset
+ * @param array $filters
+ *   Merchant / date only (VAT ignored for this view).
+ *
  * @return array
  *   keys: items, total, limit, offset, view
  */
-function rovas_civic_claims_list_received($uid, $limit, $offset) {
+function rovas_civic_claims_list_received($uid, $limit, $offset, array $filters = array()) {
   $uid = (int) $uid;
-  $total = (int) db_query("SELECT COUNT(*) FROM {civic_claim_shares} WHERE beneficiary_uid = :u", array(
-    ':u' => $uid,
-  ))->fetchField();
+
+  $count_query = db_select('civic_claim_shares', 's');
+  $count_query->join('civic_claims', 'c', 'c.id = s.claim_id');
+  $count_query->condition('s.beneficiary_uid', $uid);
+  rovas_civic_claims_apply_list_filters($count_query, $filters, 'received');
+  $count_query->addExpression('COUNT(*)', 'cnt');
+  $total = (int) $count_query->execute()->fetchField();
 
   $query = db_select('civic_claim_shares', 's');
   $query->join('civic_claims', 'c', 'c.id = s.claim_id');
   $query->fields('s', array('share_pct', 'merits_awarded', 'created', 'id'));
   $query->fields('c', array('receipt_uid', 'merchant_name', 'purchase_at', 'scanner_uid'));
   $query->condition('s.beneficiary_uid', $uid);
+  rovas_civic_claims_apply_list_filters($query, $filters, 'received');
   $query->orderBy('s.created', 'DESC');
   $query->orderBy('s.id', 'DESC');
   $query->range($offset, $limit);
