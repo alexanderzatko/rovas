@@ -1,5 +1,5 @@
 ---
-status: active
+status: done
 slug: civic-claims-filters
 owner_repo: both
 created: 2026-10-31
@@ -7,8 +7,6 @@ updated: 2026-10-31
 ---
 
 # Civic claims list filters (receipt history search)
-
-> Rovas implementation is in tree; awaiting rovdev deploy + smoke.
 
 **Product:** Civic’s receipt history screen needs server-side search over saved
 claims by **merchant name**, **purchase date range**, and (submitted view only)
@@ -68,7 +66,7 @@ have no effect in that mode.
 1. [x] Parse optional filter query params on `GET /rovas/civic_claims` list mode
 2. [x] Apply merchant / date / VAT (`submitted` only) filters before count + page
 3. [x] Ensure scrubbed (`NULL`) merchant/purchase_at rows do not match those filters
-4. [ ] Deploy rovdev + smoke (human unless asked)
+4. [x] Deploy rovdev + smoke (human unless asked)
 
 ### Smoke test
 
