@@ -200,6 +200,13 @@ function rovas_civic_form_alter(&$form, &$form_state, $form_id) {
   elseif ($form_id === 'rovas_project_reward_form') {
     rovas_civic_form_rovas_project_reward_form_alter($form, $form_state);
   }
+  elseif (!empty($form['#id']) && $form['#id'] === 'user-profile-form') {
+    module_load_include('inc', 'rovas_civic', 'rovas_civic.me_sources');
+    if (function_exists('rovas_civic_attach_me_sources_share_fieldset')) {
+      $account = isset($form['#user']) ? $form['#user'] : NULL;
+      rovas_civic_attach_me_sources_share_fieldset($form, $form_state, $account);
+    }
+  }
 }
 
 /**

@@ -308,3 +308,35 @@ msgstr "Could not save. Try again."
 #: sites/all/modules/custom/rovas_report_form/rovas_report_form.module
 msgid "Could not load the full image."
 msgstr "Could not load the full image."
+
+#: sites/all/modules/custom/rovas_civic/rovas_civic.me_sources.inc
+msgid "Merit sources — privacy"
+msgstr "Merit sources — privacy"
+
+#: sites/all/modules/custom/rovas_civic/rovas_civic.me_sources.inc
+msgid "Choose how much detail other users can see about where your Merits came from (taxes versus gifts). Your total Merits and volunteer contribution stay visible. You always see your own full detail."
+msgstr "Choose how much detail other users can see about where your Merits came from (taxes versus gifts). Your total Merits and volunteer contribution stay visible. You always see your own full detail."
+
+#: sites/all/modules/custom/rovas_civic/rovas_civic.me_sources.inc
+msgid "What others may see"
+msgstr "What others may see"
+
+#: sites/all/modules/custom/rovas_civic/rovas_civic.me_sources.inc
+msgid "Full detail (taxes, gifts, and volunteer separately)"
+msgstr "Full detail (taxes, gifts, and volunteer separately)"
+
+#: sites/all/modules/custom/rovas_civic/rovas_civic.me_sources.inc
+msgid "Full detail only for users who also share detail with others"
+msgstr "Full detail only for users who also share detail with others"
+
+#: sites/all/modules/custom/rovas_civic/rovas_civic.me_sources.inc
+msgid "Combined taxes and gifts only (hide the split)"
+msgstr "Combined taxes and gifts only (hide the split)"
+
+#: sites/all/modules/custom/rovas_civic/rovas_civic.me_sources.inc
+msgid "Please choose a Merit sources privacy option."
+msgstr "Please choose a Merit sources privacy option."
+
+#: sites/all/modules/custom/rovas_civic/rovas_civic.me_sources.inc
+msgid "Invalid Merit sources privacy option."
+msgstr "Invalid Merit sources privacy option."

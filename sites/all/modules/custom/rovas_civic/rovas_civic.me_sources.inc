@@ -195,6 +195,77 @@ function rovas_civic_me_sources_apply_payload(array &$row, $viewer_uid, $subject
 }
 
 /**
+ * Add ME sources share fieldset to the user account edit form.
+ *
+ * @param array $form
+ * @param array $form_state
+ * @param object|null $account
+ *   Account being edited.
+ */
+function rovas_civic_attach_me_sources_share_fieldset(&$form, &$form_state, $account) {
+  if (!$account || empty($account->uid) || !db_table_exists('civic_user_prefs')) {
+    return;
+  }
+
+  $current = rovas_civic_me_sources_share_get((int) $account->uid);
+
+  $form['me_sources_share_settings'] = array(
+    '#type' => 'fieldset',
+    '#title' => t('Merit sources — privacy'),
+    '#description' => t('Choose how much detail other users can see about where your Merits came from (taxes versus gifts). Your total Merits and volunteer contribution stay visible. You always see your own full detail.'),
+    '#collapsible' => FALSE,
+    '#tree' => TRUE,
+    '#weight' => 36,
+    '#id' => 'edit-me-sources-share-settings',
+  );
+
+  $form['me_sources_share_settings']['share'] = array(
+    '#type' => 'radios',
+    '#title' => t('What others may see'),
+    '#default_value' => $current,
+    '#required' => TRUE,
+    '#options' => array(
+      ROVAS_CIVIC_ME_SOURCES_SHARE_EVERYONE => t('Full detail (taxes, gifts, and volunteer separately)'),
+      ROVAS_CIVIC_ME_SOURCES_SHARE_RECIPROCAL => t('Full detail only for users who also share detail with others'),
+      ROVAS_CIVIC_ME_SOURCES_SHARE_AGGREGATE => t('Combined taxes and gifts only (hide the split)'),
+    ),
+  );
+
+  $form['#validate'][] = 'rovas_civic_me_sources_share_settings_validate';
+  $form['#submit'][] = 'rovas_civic_me_sources_share_settings_submit';
+}
+
+/**
+ * Validate ME sources share on account edit.
+ */
+function rovas_civic_me_sources_share_settings_validate($form, &$form_state) {
+  if (empty($form_state['values']['me_sources_share_settings']['share'])) {
+    form_set_error('me_sources_share_settings][share', t('Please choose a Merit sources privacy option.'));
+    return;
+  }
+  $share = $form_state['values']['me_sources_share_settings']['share'];
+  if ($share !== ROVAS_CIVIC_ME_SOURCES_SHARE_EVERYONE
+    && $share !== ROVAS_CIVIC_ME_SOURCES_SHARE_RECIPROCAL
+    && $share !== ROVAS_CIVIC_ME_SOURCES_SHARE_AGGREGATE) {
+    form_set_error('me_sources_share_settings][share', t('Invalid Merit sources privacy option.'));
+  }
+}
+
+/**
+ * Save ME sources share from account edit.
+ */
+function rovas_civic_me_sources_share_settings_submit($form, &$form_state) {
+  if (empty($form['#user']->uid) || empty($form_state['values']['me_sources_share_settings']['share'])) {
+    return;
+  }
+  module_load_include('inc', 'rovas_civic', 'rovas_civic.me_sources');
+  rovas_civic_me_sources_share_store(
+    (int) $form['#user']->uid,
+    $form_state['values']['me_sources_share_settings']['share']
+  );
+}
+
+/**
  * Services: POST /rovas/civic_me_sources_preference
  *
  * @param array|object $data

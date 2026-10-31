@@ -811,6 +811,7 @@ function rovas_user_alter_weight($elements) {
     'field_merit_decimal_part',
     'field_dispute_notify',
     'trusted_user_settings',
+    'me_sources_share_settings',
   );
 
   foreach ($order as $key => $value) {

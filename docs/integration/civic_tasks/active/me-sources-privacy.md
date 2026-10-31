@@ -35,10 +35,11 @@ obfuscation is response-time only.
 viewer may only see as aggregate; Civic shows an explainer under the filter.
 Filters **all** / **volunteer** include everyone (bars obfuscated when needed).
 
-**Owner:** `both` — Rovas stores the preference, resolves + obfuscates public
-ME-mix APIs, and hides `field_merit_source` on ledger node pages when the
-viewer may only see aggregate; Civic proxies and builds Profile UI + Community
-/ ME•tre display. Rovas `/user/%/merits` is unchanged (no tax/gift column).
+**Owner:** `both` — Rovas stores the preference (Civic API **and** account edit
+`/user/%/edit`), resolves + obfuscates public ME-mix APIs, and hides
+`field_merit_source` on ledger node pages when the viewer may only see
+aggregate; Civic proxies and builds Profile UI + Community / ME•tre display.
+Rovas `/user/%/merits` is unchanged (no tax/gift column).
 
 ### Contract
 
@@ -126,7 +127,8 @@ Self-lookup (Bearer username matches subject) → always detailed.
 5. [x] Merit index + period index: obfuscate rows; exclude on taxes/charity filter
 6. [x] Spotlight: skip aggregate tax/charity leads
 7. [x] Web: hide `field_merit_source` on ledger nodes when viewer resolves aggregate (Merits tab unchanged)
-8. [ ] Deploy rovdev + smoke (human unless asked)
+8. [x] Web: account edit (`/user/%/edit`) radios for `me_sources_share` (same store as Civic API)
+9. [ ] Deploy rovdev + smoke (human unless asked)
 
 ### Smoke test
 

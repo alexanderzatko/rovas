@@ -459,3 +459,35 @@ msgstr "Nepodarilo sa uložiť. Skúste znova."
 #: sites/all/modules/custom/rovas_report_form/rovas_report_form.module
 msgid "Could not load the full image."
 msgstr "Nepodarilo sa načítať celý obrázok."
+
+#: sites/all/modules/custom/rovas_civic/rovas_civic.me_sources.inc
+msgid "Merit sources — privacy"
+msgstr "Zdroje meritov — súkromie"
+
+#: sites/all/modules/custom/rovas_civic/rovas_civic.me_sources.inc
+msgid "Choose how much detail other users can see about where your Merits came from (taxes versus gifts). Your total Merits and volunteer contribution stay visible. You always see your own full detail."
+msgstr "Zvoľte, koľko podrobností o pôvode vašich meritov (dane oproti darom) môžu vidieť ostatní používatelia. Celkové merity a dobrovoľnícky príspevok ostávajú viditeľné. Vlastné údaje vždy vidíte v plnom detaile."
+
+#: sites/all/modules/custom/rovas_civic/rovas_civic.me_sources.inc
+msgid "What others may see"
+msgstr "Čo môžu vidieť ostatní"
+
+#: sites/all/modules/custom/rovas_civic/rovas_civic.me_sources.inc
+msgid "Full detail (taxes, gifts, and volunteer separately)"
+msgstr "Plný detail (dane, dary a dobrovoľníctvo osobitne)"
+
+#: sites/all/modules/custom/rovas_civic/rovas_civic.me_sources.inc
+msgid "Full detail only for users who also share detail with others"
+msgstr "Plný detail len pre používateľov, ktorí tiež zdieľajú detail s ostatnými"
+
+#: sites/all/modules/custom/rovas_civic/rovas_civic.me_sources.inc
+msgid "Combined taxes and gifts only (hide the split)"
+msgstr "Len zlúčené dane a dary (bez rozdelenia)"
+
+#: sites/all/modules/custom/rovas_civic/rovas_civic.me_sources.inc
+msgid "Please choose a Merit sources privacy option."
+msgstr "Vyberte možnosť súkromia zdrojov meritov."
+
+#: sites/all/modules/custom/rovas_civic/rovas_civic.me_sources.inc
+msgid "Invalid Merit sources privacy option."
+msgstr "Neplatná možnosť súkromia zdrojov meritov."
