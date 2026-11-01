@@ -629,11 +629,22 @@ function rovas_civic_wr_field_location_geojson($node) {
   if (!is_array($decoded)) {
     return NULL;
   }
-  if (isset($decoded['type'], $decoded['coordinates'])) {
+  // Feature wrapper → peel to geometry.
+  if (isset($decoded['geometry']) && is_array($decoded['geometry'])) {
+    $decoded = $decoded['geometry'];
+  }
+  if (!isset($decoded['type']) || !is_string($decoded['type'])) {
+    return NULL;
+  }
+  // Simple geometries use coordinates; GeometryCollection uses geometries[].
+  if ($decoded['type'] === 'GeometryCollection') {
+    if (!isset($decoded['geometries']) || !is_array($decoded['geometries'])) {
+      return NULL;
+    }
     return $decoded;
   }
-  if (isset($decoded['geometry']) && is_array($decoded['geometry'])) {
-    return $decoded['geometry'];
+  if (isset($decoded['coordinates'])) {
+    return $decoded;
   }
   return NULL;
 }

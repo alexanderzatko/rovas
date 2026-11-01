@@ -4,8 +4,12 @@
  * @file
  * Civic work-report map proof: map config export + field_location GeoJSON.
  *
- * See docs/integration/civic.md → Next work: geofield on Civic work reports.
+ * See docs/integration/civic.md → work-report map proof /
+ * work-report-geometry-collection.
  */
+
+/** Soft max members for Civic GeometryCollection (multi / mixed map features). */
+define('ROVAS_CIVIC_FIELD_LOCATION_COLLECTION_MAX', 100);
 
 /**
  * Services callback: GET /rovas/civic_work_report_map_config
@@ -258,8 +262,11 @@ function rovas_civic_parse_field_location_geojson($raw) {
   if ($type === 'Polygon') {
     return rovas_civic_parse_field_location_polygon($raw);
   }
+  if ($type === 'GeometryCollection') {
+    return rovas_civic_parse_field_location_geometry_collection($raw);
+  }
 
-  return array('error' => 'field_location type must be Point, LineString, or Polygon.');
+  return array('error' => 'field_location type must be Point, LineString, Polygon, or GeometryCollection.');
 }
 
 /**
@@ -349,6 +356,55 @@ function rovas_civic_parse_field_location_polygon(array $raw) {
 }
 
 /**
+ * Parse GeometryCollection of Point / LineString / Polygon only.
+ *
+ * @param array $raw
+ *
+ * @return array
+ */
+function rovas_civic_parse_field_location_geometry_collection(array $raw) {
+  if (!isset($raw['geometries']) || !is_array($raw['geometries'])) {
+    return array('error' => 'field_location GeometryCollection needs a non-empty geometries array.');
+  }
+  if (empty($raw['geometries'])) {
+    return array('error' => 'field_location GeometryCollection needs a non-empty geometries array.');
+  }
+  if (count($raw['geometries']) > ROVAS_CIVIC_FIELD_LOCATION_COLLECTION_MAX) {
+    return array(
+      'error' => 'field_location GeometryCollection may have at most '
+        . ROVAS_CIVIC_FIELD_LOCATION_COLLECTION_MAX . ' geometries.',
+    );
+  }
+
+  $geometries = array();
+  foreach ($raw['geometries'] as $member) {
+    if (!is_array($member)) {
+      return array('error' => 'field_location GeometryCollection members must be geometry objects.');
+    }
+    $member_type = isset($member['type']) ? (string) $member['type'] : '';
+    if ($member_type === 'GeometryCollection') {
+      return array('error' => 'field_location GeometryCollection must not nest GeometryCollection.');
+    }
+    if ($member_type !== 'Point' && $member_type !== 'LineString' && $member_type !== 'Polygon') {
+      return array('error' => 'field_location GeometryCollection members must be Point, LineString, or Polygon.');
+    }
+    $parsed = rovas_civic_parse_field_location_geojson($member);
+    if (!is_array($parsed) || isset($parsed['error'])) {
+      $msg = (is_array($parsed) && !empty($parsed['error']))
+        ? $parsed['error']
+        : 'field_location GeometryCollection member is invalid.';
+      return array('error' => $msg);
+    }
+    $geometries[] = $parsed;
+  }
+
+  return array(
+    'type' => 'GeometryCollection',
+    'geometries' => $geometries,
+  );
+}
+
+/**
  * @param mixed $pos
  *
  * @return array
@@ -392,8 +448,29 @@ function rovas_civic_validate_field_location_geometry(array $geometry) {
     return 'field_location geometry is invalid.';
   }
 
-  if ($geometry['type'] === 'Polygon' && method_exists($geom, 'checkValidity')) {
-    $validity = $geom->checkValidity();
+  $polygons = array();
+  if ($geometry['type'] === 'Polygon') {
+    $polygons[] = $geom;
+  }
+  elseif ($geometry['type'] === 'GeometryCollection' && !empty($geometry['geometries']) && is_array($geometry['geometries'])) {
+    // Validate each Polygon member with geoPHP (collection itself may not expose rings).
+    foreach ($geometry['geometries'] as $member) {
+      if (!is_array($member) || empty($member['type']) || $member['type'] !== 'Polygon') {
+        continue;
+      }
+      $member_geom = geoPHP::load(drupal_json_encode($member), 'geojson');
+      if (!$member_geom || (method_exists($member_geom, 'isEmpty') && $member_geom->isEmpty())) {
+        return 'field_location Polygon is invalid or self-intersecting.';
+      }
+      $polygons[] = $member_geom;
+    }
+  }
+
+  foreach ($polygons as $poly) {
+    if (!method_exists($poly, 'checkValidity')) {
+      continue;
+    }
+    $validity = $poly->checkValidity();
     if (is_array($validity) && empty($validity['valid'])) {
       return 'field_location Polygon is invalid or self-intersecting.';
     }
