@@ -38,6 +38,7 @@ env): [`civic-deploy.md`](civic-deploy.md).
 
 | Status | Slug | File | Notes |
 |--------|------|------|-------|
+| active | trusted-user-notify | [`active/trusted-user-notify.md`](civic_tasks/active/trusted-user-notify.md) | **Implemented** (`7031`) — `/rovas/me` `trusted_user` + `trusted_notify`; Bearer dismiss; awaiting rovdev deploy + smoke |
 | active | give-chrons-to-merits | [`active/give-chrons-to-merits.md`](civic_tasks/active/give-chrons-to-merits.md) | Bearer `POST /rovas/civic_give_chrons` — voluntary CHR→ME 1:1 (A6); Civic Get Merits “Give Chrons” |
 | done | civic-claims-filters | [`done/civic-claims-filters.md`](civic_tasks/done/civic-claims-filters.md) | `GET /rovas/civic_claims` merchant / date / VAT filters (before count+page) |
 | done | me-sources-privacy | [`done/me-sources-privacy.md`](civic_tasks/done/me-sources-privacy.md) | ME sources share A/B/C; obfuscate taxes vs gifts; ME•tre filter omit; account edit; smoked on rovdev |
@@ -70,7 +71,7 @@ Open tasks: see `civic_tasks/active/`. Naming and archival rules:
 | Expo login (PKCE)                    | Civic mobile                                                                                                                               | **Done** against `dev.rovas.app`                                                                                                                                                       |
 | Civic API Bearer introspect          | Civic `GET /oauth2/tokens/{token}`                                                                                                         | **Done** — resolves Drupal `user_id` (uid)                                                                                                                                             |
 | Services OAuth2 on `rovas_endpoint`  | Admin / `rovas_oauth_ensure_civic_resources()`                                                                                             | Server machine name `**civic**`; API-key auth disabled on Civic resources                                                                                                              |
-| Home Merits reads                    | `/rovas/me`, `/rovas/contributions/aggregate`, `/rovas/merit_distribution`                                                                 | Implemented; `/rovas/me` includes `total_chr` + `receipt_history_retention` (`null`\|`keep`\|`policy`) + `me_sources_share` (`everyone`\|`reciprocal`\|`aggregate`); setter `POST /rovas/civic_me_sources_preference` **and** account edit fieldset — see [receipt-history-retention](civic_tasks/done/receipt-history-retention.md), [me-sources-privacy](civic_tasks/done/me-sources-privacy.md) |
+| Home Merits reads                    | `/rovas/me`, `/rovas/contributions/aggregate`, `/rovas/merit_distribution`                                                                 | Implemented; `/rovas/me` includes `total_chr` + `receipt_history_retention` (`null`\|`keep`\|`policy`) + `me_sources_share` (`everyone`\|`reciprocal`\|`aggregate`) + `trusted_user` / `trusted_notify` (dismiss `POST /rovas/civic_dismiss_trusted_notify`); setter `POST /rovas/civic_me_sources_preference` **and** account edit fieldset — see [receipt-history-retention](civic_tasks/done/receipt-history-retention.md), [me-sources-privacy](civic_tasks/done/me-sources-privacy.md), [trusted-user-notify](civic_tasks/active/trusted-user-notify.md) |
 | `rovas_civic`                        | `sites/all/modules/custom/rovas_civic`                                                                                                     | National rates, donor Merit issuance, State Treasury, VAT claim                                                                                                                        |
 | Claim rule + split claims            | `POST /rovas/rules/rules_proxy_claim_vat_receipt`                                                                                          | Implemented in `rovas_civic` (enable via updb / admin)                                                                                                                                 |
 | Claim reads + summary                | `GET /rovas/civic_claims`, `…/summary`                                                                                                     | Implemented in `rovas_civic` (`rovas_civic_update_7002`); **Civic proxies live** (`GET /receipts`, `/me/contributions/summary`). List filters (merchant/date/VAT) — see [civic-claims-filters](civic_tasks/done/civic-claims-filters.md) |
@@ -104,6 +105,7 @@ Open tasks: see `civic_tasks/active/`. Naming and archival rules:
 | Civic locale on OAuth authorize      | `GET /oauth2/authorize?lang=sk\|en`                                                                                                        | **Live on rovdev** — session stash + force `$GLOBALS['language']` for Civic login/register.                                                                  |
 | OAuth authorize intent               | `GET /oauth2/authorize?intent=login\|register`                                                                                             | **Live on rovdev** — session stash + goto rewrite to `/user/register` when `intent=register`. See [oauth-authorize-intent](civic_tasks/done/oauth-authorize-intent.md).   |
 | Give Chrons → Merits                 | `POST /rovas/civic_give_chrons`                                                                                                            | **Implemented** (`7029`) — Bearer; body `{amount}`; 1:1 A6 via `_convert_chr_2_merits` + `_rovas_forex_grant_merits` (source `volunteer`). See [give-chrons-to-merits](civic_tasks/active/give-chrons-to-merits.md). |
+| Trusted user notify                  | `/rovas/me` + `POST /rovas/civic_dismiss_trusted_notify`                                                                                   | **Implemented** (`7031`) — `trusted_user` + `trusted_notify` on `/me`; Bearer dismiss shares helper with web `/dismiss_trusted_notify`. See [trusted-user-notify](civic_tasks/active/trusted-user-notify.md). |
 
 
 ## Deferred (not scheduled)
@@ -289,7 +291,9 @@ In `rovas_oauth` (`rovas_oauth_me_index()`).
   "total_chr": 320.0,
   "created": "2019-03-12T14:22:01+00:00",
   "language": "sk",
-  "receipt_history_retention": null
+  "receipt_history_retention": null,
+  "trusted_user": true,
+  "trusted_notify": 1
 }
 ```
 
@@ -304,6 +308,8 @@ In `rovas_oauth` (`rovas_oauth_me_index()`).
 | `created`      | ISO-8601 from Drupal `$account->created` (`gmdate('c')`); `null` if missing/invalid                                                           |
 | `language`     | `$account->language` (raw Drupal langcode); `null` if empty/`und` — see [preferred language](civic_tasks/done/_historical-pre-split.md#next-work-expose-preferred-language-on-rovasme) |
 | `receipt_history_retention` | `null` \| `keep` \| `policy` from `{civic_user_prefs}` — see [receipt-history-retention](civic_tasks/done/receipt-history-retention.md) |
+| `trusted_user` | `true` when `field_trusted_user == 1` — see [trusted-user-notify](civic_tasks/active/trusted-user-notify.md) |
+| `trusted_notify` | `0` \| `1` \| `2` from `field_trusted_notify`; banner when Trusted and `1`; dismiss via `POST /rovas/civic_dismiss_trusted_notify` |
 
 
 #### 3. `GET /rovas/contributions/aggregate` (public) — **implemented**

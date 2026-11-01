@@ -1326,7 +1326,8 @@ function rovas_oauth_me_access() {
  * @return array
  *   uid, username, display_name, total_me, total_chr, created (ISO-8601 or null),
  *   language (Drupal langcode or null), receipt_history_retention (keep|policy|null),
- *   me_sources_share (everyone|reciprocal|aggregate).
+ *   me_sources_share (everyone|reciprocal|aggregate), trusted_user (bool),
+ *   trusted_notify (0|1|2).
  */
 function rovas_oauth_me_index() {
   global $user;
@@ -1398,6 +1399,8 @@ function rovas_oauth_me_index() {
     }
   }
 
+  $trusted = rovas_oauth_me_trusted_fields($account);
+
   return array(
     'uid' => $uid,
     'username' => $account->name,
@@ -1408,6 +1411,49 @@ function rovas_oauth_me_index() {
     'language' => $language,
     'receipt_history_retention' => $receipt_history_retention,
     'me_sources_share' => $me_sources_share,
+    'trusted_user' => $trusted['trusted_user'],
+    'trusted_notify' => $trusted['trusted_notify'],
+  );
+}
+
+/**
+ * Trusted sticky flag + notify state for /rovas/me.
+ *
+ * @param object $account
+ *   Loaded user.
+ *
+ * @return array
+ *   keys: trusted_user (bool), trusted_notify (int 0|1|2).
+ */
+function rovas_oauth_me_trusted_fields($account) {
+  $trusted_user = FALSE;
+  if (function_exists('rovas_user_is_trusted')) {
+    $trusted_user = (bool) rovas_user_is_trusted($account);
+  }
+  else {
+    $items = field_get_items('user', $account, 'field_trusted_user');
+    if (!empty($items[0]['value']) && (int) $items[0]['value'] == 1) {
+      $trusted_user = TRUE;
+    }
+  }
+
+  $notify = 0;
+  if (function_exists('rovas_user_field_int')) {
+    $notify = (int) rovas_user_field_int($account, 'field_trusted_notify');
+  }
+  else {
+    $items = field_get_items('user', $account, 'field_trusted_notify');
+    if (isset($items[0]['value']) && is_numeric($items[0]['value'])) {
+      $notify = (int) $items[0]['value'];
+    }
+  }
+  if ($notify !== 0 && $notify !== 1 && $notify !== 2) {
+    $notify = 0;
+  }
+
+  return array(
+    'trusted_user' => $trusted_user,
+    'trusted_notify' => $notify,
   );
 }
 

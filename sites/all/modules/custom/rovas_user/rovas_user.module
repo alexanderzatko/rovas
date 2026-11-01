@@ -47,18 +47,43 @@ function rovas_user_menu() {
 }
 
 /**
- * Permanently dismiss the trusted-status site-wide message.
+ * Permanently dismiss the trusted-status site-wide message (web session).
  */
 function rovas_user_dismiss_trusted_notify() {
   global $user;
-  if ($user->uid) {
+  if (!empty($user->uid)) {
     $account = user_load($user->uid);
     if ($account) {
-      rovas_user_set_field_value($account, 'field_trusted_notify', 2);
-      user_save($account);
+      rovas_user_dismiss_trusted_notify_for_account($account);
     }
   }
   drupal_goto('<front>');
+}
+
+/**
+ * Permanently dismiss trusted-status notify for an account (web + Civic).
+ *
+ * When field_trusted_notify is 1, sets it to 2 and saves. Otherwise leaves the
+ * stored value unchanged (idempotent for 0 / 2). Does not clear field_trusted_user
+ * or Trusted prefs.
+ *
+ * @param object $account
+ *   Loaded user account (may be mutated and saved).
+ *
+ * @return array
+ *   keys: trusted_user (bool), trusted_notify (int 0|1|2).
+ */
+function rovas_user_dismiss_trusted_notify_for_account($account) {
+  $notify = rovas_user_field_int($account, 'field_trusted_notify');
+  if ($notify == 1) {
+    rovas_user_set_field_value($account, 'field_trusted_notify', 2);
+    user_save($account);
+    $notify = 2;
+  }
+  return array(
+    'trusted_user' => rovas_user_is_trusted($account),
+    'trusted_notify' => (int) $notify,
+  );
 }
 
 /**

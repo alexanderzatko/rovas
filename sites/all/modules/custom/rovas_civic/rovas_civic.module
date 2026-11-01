@@ -358,6 +358,7 @@ function rovas_civic_node_insert($node) {
  * - POST /rovas/civic_receipt_history_preference (keep vs 90-day scrub)
  * - POST /rovas/civic_me_sources_preference (everyone|reciprocal|aggregate)
  * - POST /rovas/civic_give_chrons (voluntary CHR→ME 1:1, A6)
+ * - POST /rovas/civic_dismiss_trusted_notify (Trusted user banner dismiss)
  *
  * Note: Services aliases must be slash-free. Do not use aliases like
  * civic/claims — Services treats the first segment as the resource name.
@@ -423,6 +424,11 @@ function rovas_civic_services_resources() {
     'type' => 'inc',
     'module' => 'rovas_civic',
     'name' => 'rovas_civic.give_chrons',
+  );
+  $trusted_notify_file = array(
+    'type' => 'inc',
+    'module' => 'rovas_civic',
+    'name' => 'rovas_civic.trusted_notify',
   );
 
   return array(
@@ -1375,6 +1381,28 @@ function rovas_civic_services_resources() {
               'description' => 'Fields: amount (positive number of Chrons, ≤ 2 decimal places).',
               'source' => 'data',
               'optional' => FALSE,
+            ),
+          ),
+        ),
+      ),
+    ),
+    'civic_dismiss_trusted_notify' => array(
+      'operations' => array(
+        'create' => array(
+          'help' => 'Permanently dismiss Trusted user congratulations notify (field_trusted_notify 1→2). Empty body OK. Bearer; API-key off.',
+          'callback' => 'rovas_civic_services_dismiss_trusted_notify',
+          'file' => $trusted_notify_file,
+          'access callback' => $bearer_auth['access callback'],
+          'access arguments' => $bearer_auth['access arguments'],
+          'access arguments append' => $bearer_auth['access arguments append'],
+          'args' => array(
+            array(
+              'name' => 'data',
+              'type' => 'struct',
+              'description' => 'Unused; empty body OK.',
+              'source' => 'data',
+              'optional' => TRUE,
+              'default value' => array(),
             ),
           ),
         ),
@@ -3896,6 +3924,7 @@ function rovas_civic_ensure_services_resources() {
     'civic_receipt_history_preference',
     'civic_me_sources_preference',
     'civic_give_chrons',
+    'civic_dismiss_trusted_notify',
   ) as $res_name) {
     if (empty($endpoint->resources[$res_name])
       || $endpoint->resources[$res_name] != $civic_create_resource) {

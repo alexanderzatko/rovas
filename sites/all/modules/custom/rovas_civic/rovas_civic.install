@@ -808,3 +808,13 @@ function rovas_civic_update_7030() {
   }
   return t('ME sources share ({civic_user_prefs}.me_sources_share, POST /rovas/civic_me_sources_preference); public ME-mix obfuscation.');
 }
+
+/**
+ * Enable Civic Trusted notify dismiss API.
+ */
+function rovas_civic_update_7031() {
+  if (function_exists('rovas_civic_ensure_services_resources')) {
+    rovas_civic_ensure_services_resources();
+  }
+  return t('Civic Trusted notify dismiss API (POST /rovas/civic_dismiss_trusted_notify) enabled on rovas_endpoint.');
+}
