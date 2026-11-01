@@ -1,5 +1,5 @@
 ---
-status: active
+status: done
 slug: trusted-user-notify
 owner_repo: both
 created: 2026-11-01
@@ -7,8 +7,6 @@ updated: 2026-11-01
 ---
 
 # Trusted user dismissable notification (Civic)
-
-> Rovas implementation is in tree (`rovas_civic_update_7031`); awaiting rovdev deploy + smoke.
 
 **Product:** When a Rovas account becomes a **Trusted user**, the Rovas web UI
 shows a site-wide dismissable congratulations message (`field_trusted_notify =
@@ -104,7 +102,7 @@ session dismiss and Civic Bearer dismiss cannot drift.
 1. [x] Extend `rovas_oauth_me_index()` (or equivalent) with `trusted_user` + `trusted_notify`
 2. [x] Services resource `POST /rovas/civic_dismiss_trusted_notify` (Bearer only; enable in Civic resources helper / update hook)
 3. [x] Shared dismiss helper used by web menu callback + Civic resource
-4. [ ] Deploy rovdev + smoke (human unless asked)
+4. [x] Deploy rovdev + smoke (human unless asked)
 
 ### Smoke test
 
@@ -136,9 +134,11 @@ returns current values without error.)
 
 ### Civic will consume
 
+Civic side **implemented** (awaits rovdev deploy of `7031` for E2E):
+
 - Map `trusted_user` / `trusted_notify` on Civic `GET /me` (`MeProfile`).
 - Proxy `POST /me/dismiss-trusted-notify` → Rovas dismiss.
-- Header banner (same slot as verification / comment notices) when
+- Header banner (above verification / comment notices) when
   `trusted_user && trusted_notify === 1`.
 - Copy aligned with Rovas EN/SK site banner (Trusted user / dôveryhodný
   používateľ terminology). Dismiss calls the API (not session-only SecureStore).
