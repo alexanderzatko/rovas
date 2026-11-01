@@ -1,5 +1,5 @@
 ---
-status: active
+status: done
 slug: work-report-geometry-collection
 owner_repo: rovas
 created: 2026-11-01
@@ -8,8 +8,8 @@ updated: 2026-11-01
 
 # Work-report map: GeometryCollection (multi / mixed features)
 
-> Rovas implementation is in tree (`rovas_civic.geofield.inc` +
-> `rovas_civic_wr_field_location_geojson`); awaiting rovdev deploy + smoke.
+> Done — parse/validate/export `GeometryCollection` on WR `field_location`
+> (`rovas_civic.geofield.inc` + `rovas_civic_wr_field_location_geojson`).
 
 **Product:** Civic’s volunteer map proof now lets users draw **unlimited**
 features and **mix** Point / LineString / Polygon on one work report. When more
@@ -51,7 +51,7 @@ is returned as-is (after geoPHP `out('json')`).
 1. [x] Parse + validate `GeometryCollection` in `rovas_civic.geofield.inc`
 2. [x] Persist via existing geofield attach (confirm WKT `GEOMETRYCOLLECTION` stores)
 3. [x] Fix GeoJSON export for collections (no `coordinates` requirement)
-4. [ ] Deploy rovdev + smoke (human unless asked)
+4. [x] Deploy rovdev + smoke (human unless asked)
 
 ### Smoke test
 

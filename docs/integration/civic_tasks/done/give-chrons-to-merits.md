@@ -1,14 +1,15 @@
 ---
-status: active
+status: done
 slug: give-chrons-to-merits
 owner_repo: both
 created: 2026-10-27
-updated: 2026-10-27
+updated: 2026-11-01
 ---
 
 # Give Chrons → Merits (voluntary conversion)
 
-> Rovas implementation is in tree (`rovas_civic_update_7029`); awaiting rovdev deploy + smoke.
+> Done — Bearer `POST /rovas/civic_give_chrons` (`rovas_civic_update_7029`);
+> 1:1 CHR→ME via A6 forex path.
 
 **Product:** Civic users who hold Chrons (from volunteer work reports that paid
 out as CHR) can convert some or all of that balance into Merits from the Get
@@ -86,7 +87,7 @@ proxies and builds the modal UI.
       `_rovas_forex_grant_merits`
 3. [x] Return updated `total_chr` / `total_me`
 4. [x] Update hook / `ensure_services_resources` (`rovas_civic_update_7029`)
-5. [ ] Deploy rovdev + smoke (human unless asked)
+5. [x] Deploy rovdev + smoke (human unless asked)
 
 ### Smoke test
 
