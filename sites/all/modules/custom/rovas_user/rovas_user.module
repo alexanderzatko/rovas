@@ -552,7 +552,7 @@ function rovas_user_trusted_email_notice($account, $language = NULL) {
     ), $options);
   }
   $text .= '<br>';
-  $text .= t('Trusted users can have their reports approved immediately and may reduce verification requests. Keep filing your own work reports and verifying others to raise your compliance score.', array(), $options);
+  $text .= t('Trusted users can have their work reports approved immediately and do not even have to verify reports.', array(), $options);
   return '<br><br>' . $text;
 }
 

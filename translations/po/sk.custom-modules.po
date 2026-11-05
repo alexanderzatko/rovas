@@ -348,8 +348,8 @@ msgid "Verify @count more work reports to become a <strong>Trusted user</strong>
 msgstr "Overte ešte @count pracovných výkazov a stanete sa <strong>dôveryhodným používateľom</strong>."
 
 #: sites/all/modules/custom/rovas_user/rovas_user.module
-msgid "Trusted users can have their reports approved immediately and may reduce verification requests. Keep filing your own work reports and verifying others to raise your compliance score."
-msgstr "Dôveryhodní používatelia môžu mať svoje výkazy okamžite schválené a môžu obmedziť žiadosti o overenie. Pokračujte vo vykazovaní vlastnej práce a overovaní výkazov iných, aby ste zvýšili svoje skóre súladu."
+msgid "Trusted users can have their work reports approved immediately and do not even have to verify reports."
+msgstr "Dôveryhodní používatelia môžu mať svoje výkazy okamžite schválené a nemusia ani overovať výkazy."
 
 #: sites/all/modules/custom/rovas_user/rovas_user.module
 #: sites/all/modules/custom/rovas_comment_watch/rovas_comment_watch.module

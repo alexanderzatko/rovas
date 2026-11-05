@@ -302,8 +302,8 @@ msgid "Verify @count more work reports to become a <strong>Trusted user</strong>
 msgstr "Verifica ancora @count rapporti di lavoro per diventare un <strong>utente affidabile</strong>."
 
 #: sites/all/modules/custom/rovas_user/rovas_user.module
-msgid "Trusted users can have their reports approved immediately and may reduce verification requests. Keep filing your own work reports and verifying others to raise your compliance score."
-msgstr "Gli utenti affidabili possono far approvare immediatamente i propri rapporti e possono ridurre le richieste di verifica. Continua a presentare i tuoi rapporti di lavoro e a verificarne altri per aumentare il punteggio di conformità."
+msgid "Trusted users can have their work reports approved immediately and do not even have to verify reports."
+msgstr "Gli utenti affidabili possono far approvare immediatamente i propri rapporti di lavoro e non devono nemmeno verificare i rapporti."
 
 #: sites/all/modules/custom/rovas_user/rovas_user.module
 #: sites/all/modules/custom/rovas_comment_watch/rovas_comment_watch.module
