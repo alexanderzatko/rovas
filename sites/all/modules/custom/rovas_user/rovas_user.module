@@ -492,7 +492,7 @@ function rovas_user_handle_work_report_publish($node, $author = NULL, $clear_sus
 }
 
 /**
- * HTML snippet at top of verification emails (trusted congrats or progress).
+ * HTML snippet for the bottom of verification emails (trusted congrats or progress).
  *
  * Trusted + field_trusted_notify == 1: same copy as the site-wide banner
  * (minus dismiss). After dismiss (notify == 2), returns empty.
@@ -507,7 +507,7 @@ function rovas_user_handle_work_report_publish($node, $author = NULL, $clear_sus
  *   Langcode.
  *
  * @return string
- *   Empty, or HTML ending with double &lt;br&gt;.
+ *   Empty, or HTML starting with double &lt;br&gt; (safe to append).
  */
 function rovas_user_trusted_email_notice($account, $language = NULL) {
   $account = rovas_user_load_account($account);
@@ -531,7 +531,7 @@ function rovas_user_trusted_email_notice($account, $language = NULL) {
     $text .= t('You can have your work reports immediately approved and can also stop verifying other users\' reports. You can set these benefits in your <a href="@profile">account settings</a>.', array(
       '@profile' => $profile,
     ), $options);
-    return $text . '<br><br>';
+    return '<br><br>' . $text;
   }
 
   // Not trusted: motivate via remaining verifications toward compliance min.
@@ -553,7 +553,7 @@ function rovas_user_trusted_email_notice($account, $language = NULL) {
   }
   $text .= '<br>';
   $text .= t('Trusted users can have their reports approved immediately and may reduce verification requests. Keep filing your own work reports and verifying others to raise your compliance score.', array(), $options);
-  return $text . '<br><br>';
+  return '<br><br>' . $text;
 }
 
 /**
