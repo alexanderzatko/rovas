@@ -514,6 +514,12 @@ function rovas_user_trusted_email_notice($account, $language = NULL) {
   if (!$account) {
     return '';
   }
+  // Sticky Trusted is normally granted on the user's own page views. Apply it
+  // here too so eligible verifiers (high compliance / project Merits) get the
+  // congrats line in this email instead of a silent skip.
+  if (rovas_user_maybe_grant_trusted($account)) {
+    $account = user_load($account->uid, TRUE);
+  }
   $options = array();
   if ($language) {
     $options['langcode'] = $language;
