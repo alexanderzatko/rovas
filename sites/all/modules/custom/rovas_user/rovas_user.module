@@ -492,7 +492,14 @@ function rovas_user_handle_work_report_publish($node, $author = NULL, $clear_sus
 }
 
 /**
- * HTML snippet for trusted notice at top of verification emails.
+ * HTML snippet at top of verification emails (trusted congrats or progress).
+ *
+ * Trusted + field_trusted_notify == 1: same copy as the site-wide banner
+ * (minus dismiss). After dismiss (notify == 2), returns empty.
+ *
+ * Not trusted: remaining verifications to reach the compliance threshold
+ * (one point per completed verification). Empty if already eligible via
+ * another path, or if remaining &lt; 1.
  *
  * @param object $account
  *   Recipient.
@@ -500,29 +507,52 @@ function rovas_user_handle_work_report_publish($node, $author = NULL, $clear_sus
  *   Langcode.
  *
  * @return string
- *   Empty if not trusted, or if field_trusted_notify is 1 (banner active);
- *   otherwise HTML ending with double &lt;br&gt;.
+ *   Empty, or HTML ending with double &lt;br&gt;.
  */
 function rovas_user_trusted_email_notice($account, $language = NULL) {
   $account = rovas_user_load_account($account);
-  if (!$account || !rovas_user_is_trusted($account)) {
-    return '';
-  }
-  // Skip while the site-wide trusted banner is active (notify == 1).
-  if (rovas_user_field_int($account, 'field_trusted_notify') == 1) {
+  if (!$account) {
     return '';
   }
   $options = array();
   if ($language) {
     $options['langcode'] = $language;
   }
-  $profile = '/user/' . (int) $account->uid . '/edit#edit-trusted-user-settings';
-  // Same copy as the site-wide trusted banner (minus dismiss link).
-  $text = t('Congratulations, you are now a <strong>Trusted user</strong>!', array(), $options);
-  $text .= '<br><br>';
-  $text .= t('You can have your work reports immediately approved and can also stop verifying other users\' reports. You can set these benefits in your <a href="@profile">account settings</a>.', array(
-    '@profile' => $profile,
-  ), $options);
+
+  if (rovas_user_is_trusted($account)) {
+    // Only while congrats not yet dismissed (matches site-wide banner).
+    if (rovas_user_field_int($account, 'field_trusted_notify') != 1) {
+      return '';
+    }
+    $profile = '/user/' . (int) $account->uid . '/edit#edit-trusted-user-settings';
+    // Same copy as the site-wide trusted banner (minus dismiss link).
+    $text = t('Congratulations, you are now a <strong>Trusted user</strong>!', array(), $options);
+    $text .= '<br><br>';
+    $text .= t('You can have your work reports immediately approved and can also stop verifying other users\' reports. You can set these benefits in your <a href="@profile">account settings</a>.', array(
+      '@profile' => $profile,
+    ), $options);
+    return $text . '<br><br>';
+  }
+
+  // Not trusted: motivate via remaining verifications toward compliance min.
+  if (rovas_user_trusted_conditions_met($account)) {
+    return '';
+  }
+  $score = rovas_user_field_int($account, 'field_verification_score');
+  $remaining = ROVAS_USER_TRUSTED_COMPLIANCE_MIN - $score;
+  if ($remaining < 1) {
+    return '';
+  }
+  if ($remaining == 1) {
+    $text = t('Verify one more work report to become a <strong>Trusted user</strong>.', array(), $options);
+  }
+  else {
+    $text = t('Verify @count more work reports to become a <strong>Trusted user</strong>.', array(
+      '@count' => $remaining,
+    ), $options);
+  }
+  $text .= '<br>';
+  $text .= t('Trusted users can have their reports approved immediately and may reduce verification requests. Keep filing your own work reports and verifying others to raise your compliance score.', array(), $options);
   return $text . '<br><br>';
 }
 

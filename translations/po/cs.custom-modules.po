@@ -314,6 +314,18 @@ msgid "You can have your work reports immediately approved and can also stop ver
 msgstr "Vaše pracovní výkazy můžete mít okamžitě schválené a můžete také přestat ověřovat zprávy jiných uživatelů. Tyto výhody si můžete nastavit v <a href=\"@profile\">nastavení účtu</a>."
 
 #: sites/all/modules/custom/rovas_user/rovas_user.module
+msgid "Verify one more work report to become a <strong>Trusted user</strong>."
+msgstr "Ověřte ještě jeden pracovní výkaz a stanete se <strong>důvěryhodným uživatelem</strong>."
+
+#: sites/all/modules/custom/rovas_user/rovas_user.module
+msgid "Verify @count more work reports to become a <strong>Trusted user</strong>."
+msgstr "Ověřte ještě @count pracovních výkazů a stanete se <strong>důvěryhodným uživatelem</strong>."
+
+#: sites/all/modules/custom/rovas_user/rovas_user.module
+msgid "Trusted users can have their reports approved immediately and may reduce verification requests. Keep filing your own work reports and verifying others to raise your compliance score."
+msgstr "Důvěryhodní uživatelé mohou mít své výkazy okamžitě schválené a mohou omezit žádosti o ověření. Pokračujte ve vykazování vlastní práce a ověřování výkazů jiných, abyste zvýšili své skóre souladu."
+
+#: sites/all/modules/custom/rovas_user/rovas_user.module
 #: sites/all/modules/custom/rovas_comment_watch/rovas_comment_watch.module
 msgid "Do not show this message again"
 msgstr "Tuto zprávu již nezobrazovat"
