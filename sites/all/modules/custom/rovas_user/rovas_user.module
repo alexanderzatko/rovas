@@ -559,18 +559,28 @@ function rovas_user_trusted_email_notice($account, $language = NULL) {
 /**
  * Normalize account argument to a loaded user object.
  *
+ * Always reloads by uid so field_* values are present (Rules may pass a
+ * wrapper or a thinly populated entity). Unwraps EntityMetadataWrapper.
+ *
  * @param object|int $account
  *
  * @return object|null
  */
 function rovas_user_load_account($account) {
+  if (is_object($account) && class_exists('EntityMetadataWrapper', FALSE) && $account instanceof EntityMetadataWrapper) {
+    $account = $account->value();
+  }
+  $uid = 0;
   if (is_object($account) && isset($account->uid)) {
-    return $account;
+    $uid = (int) $account->uid;
   }
-  if (is_numeric($account) && (int) $account > 0) {
-    return user_load((int) $account);
+  elseif (is_numeric($account)) {
+    $uid = (int) $account;
   }
-  return NULL;
+  if ($uid < 1) {
+    return NULL;
+  }
+  return user_load($uid);
 }
 
 /**
