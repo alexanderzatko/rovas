@@ -24,5 +24,8 @@ rsync -az --delete \
   --exclude 'sites/*/settings.local.php' \
   ./ "$TARGET:$DEST/"
 
-ssh "$TARGET" "cd '$DEST' && drush74 updb -y && drush74 cc all -y"
+# sites/*/files/ is excluded, so Composer Manager's lockfile survives rsync.
+# Reinstall vendor packages afterward — rsync --delete would otherwise wipe
+# Apple Sign-In deps (firebase/php-jwt, phpseclib) not present in the local tree.
+ssh "$TARGET" "cd '$DEST/sites/default/files/composer' && composer install --no-interaction --prefer-dist && chown -R www-data:www-data '$DEST/sites/all/vendor' && cd '$DEST' && drush74 updb -y && drush74 cc all -y"
 echo "Deployed to $TARGET:$DEST (dev.rovas.app)"
