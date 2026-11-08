@@ -27,6 +27,10 @@
   background: transparent url(icons/google.svg) 0px 0px no-repeat;
   background-size: 100%;
 }
+.hybridauth-apple-hybridauth-16 {
+  background: transparent url(icons/apple.svg) 0px 0px no-repeat;
+  background-size: 100%;
+}
 .hybridauth-linkedin-hybridauth-16 {
   background: transparent url(icons/linkedin.png) 0px 0px no-repeat;
 }

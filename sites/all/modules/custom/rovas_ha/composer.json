@@ -1,0 +1,10 @@
+{
+  "name": "drupal/rovas_ha",
+  "description": "Rovas HybridAuth enhancements, including Sign in with Apple credentials.",
+  "type": "drupal-module",
+  "license": "GPL-2.0+",
+  "require": {
+    "firebase/php-jwt": "^6.0",
+    "phpseclib/phpseclib": "^3.0"
+  }
+}

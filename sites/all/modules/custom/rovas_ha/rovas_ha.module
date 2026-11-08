@@ -31,10 +31,10 @@ function rovas_ha_hybridauth_provider_config_alter(&$config, $provider_id) {
 
 /**
  * Implements hook_ctools_plugin_directory().
-*/
+ */
 function rovas_ha_ctools_plugin_directory($module, $type) {
-  if ($module == 'hybridauth' && $type == 'icon_pack') {
-    return 'plugins/icon_pack';
+  if ($module == 'hybridauth' && ($type == 'icon_pack' || $type == 'provider')) {
+    return 'plugins/' . $type;
   }
 }
 

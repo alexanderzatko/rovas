@@ -1,4 +1,6 @@
 name = Hybridauth - Drupal OAuth server connector
-description = Implements enhancements making authentication to Drupal OAuth server possible
+description = HybridAuth enhancements (Drupal OAuth / Nabezky, Sign in with Apple settings, icon packs)
 core = 7.x
 package = Rovas
+dependencies[] = hybridauth
+dependencies[] = ctools
