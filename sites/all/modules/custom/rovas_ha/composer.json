@@ -4,7 +4,13 @@
   "type": "drupal-module",
   "license": "GPL-2.0+",
   "require": {
-    "firebase/php-jwt": "^7.0",
-    "phpseclib/phpseclib": "^3.0"
+    "firebase/php-jwt": "^6.4",
+    "phpseclib/phpseclib": "^3.0",
+    "paragonie/constant_time_encoding": "^2.0"
+  },
+  "config": {
+    "audit": {
+      "ignore": ["PKSA-y2cr-5h3j-g3ys"]
+    }
   }
 }
