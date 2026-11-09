@@ -1,32 +1,17 @@
 <?php
 
 /**
- * Alter HybridAuth provider configuration.
- * @param $config
- * @param $provider_id
+ * @file
+ * HybridAuth enhancements for Rovas (Nabezky, Apple Sign-In, icons).
  */
- 
-/* default config
-config Array (
-	[enabled] => 1
-	[keys] => Array (
-		[id] => hydra
-		[key] =>
-		[secret] => riecna
-	)
-	[scope] =>
-	[display] =>
-	[hauth_return_to] => https://dev.merit.world/hybridauth/endpoint
-	[oauth2_server] => https://dev.nabezky.sk
-	[skip_ssl] =>
-	[http_proxy] =>
-)
-*/
 
+/**
+ * Alter HybridAuth provider configuration.
+ */
 function rovas_ha_hybridauth_provider_config_alter(&$config, $provider_id) {
-	if($provider_id == 'DrupalOAuth2' || $provider_id == 'Nabezky') {
-		$config['scope'] = 'openid email profile address';
-	}
+  if ($provider_id == 'DrupalOAuth2' || $provider_id == 'Nabezky') {
+    $config['scope'] = 'openid email profile address';
+  }
 }
 
 /**
@@ -38,36 +23,152 @@ function rovas_ha_ctools_plugin_directory($module, $type) {
   }
 }
 
+/**
+ * Implements hook_libraries_info().
+ *
+ * Apple Sign-In needs firebase/php-jwt + phpseclib. Shipping them under
+ * sites/all/libraries means they survive rsync --delete (unlike Composer
+ * Manager packages that only live in sites/all/vendor after a remote install).
+ */
+function rovas_ha_libraries_info() {
+  $libraries = array();
+
+  $libraries['php-jwt'] = array(
+    'name' => 'firebase/php-jwt',
+    'vendor url' => 'https://github.com/firebase/php-jwt',
+    'download url' => 'https://github.com/firebase/php-jwt/releases',
+    'version' => '6.10.0',
+    'xautoload' => function ($api) {
+      $api->namespaceRoot('Firebase\\JWT', 'src');
+    },
+  );
+
+  $libraries['phpseclib'] = array(
+    'name' => 'phpseclib',
+    'vendor url' => 'https://github.com/phpseclib/phpseclib',
+    'download url' => 'https://github.com/phpseclib/phpseclib/releases',
+    'version' => '3.0.58',
+    'xautoload' => function ($api) {
+      $api->namespaceRoot('phpseclib3', 'phpseclib');
+    },
+  );
+
+  $libraries['constant_time_encoding'] = array(
+    'name' => 'paragonie/constant_time_encoding',
+    'vendor url' => 'https://github.com/paragonie/constant_time_encoding',
+    'download url' => 'https://github.com/paragonie/constant_time_encoding/releases',
+    'version' => '2.8.2',
+    'xautoload' => function ($api) {
+      $api->namespaceRoot('ParagonIE\\ConstantTime', 'src');
+    },
+  );
+
+  return $libraries;
+}
+
+/**
+ * Implements hook_xautoload().
+ *
+ * Fallback when Libraries API is unavailable (same pattern as oauth2_server).
+ */
+function rovas_ha_xautoload($api) {
+  if (module_exists('libraries')) {
+    return;
+  }
+  foreach (array(
+    'php-jwt' => array('Firebase\\JWT', 'src'),
+    'phpseclib' => array('phpseclib3', 'phpseclib'),
+    'constant_time_encoding' => array('ParagonIE\\ConstantTime', 'src'),
+  ) as $name => $map) {
+    $path = 'sites/all/libraries/' . $name;
+    if (is_dir(DRUPAL_ROOT . '/' . $path)) {
+      $api->setExtensionDir($path);
+      $api->namespaceRoot($map[0], $map[1]);
+    }
+  }
+}
+
+/**
+ * Ensures Apple Sign-In PHP dependencies are registered/loaded.
+ */
+function rovas_ha_load_apple_dependencies() {
+  static $done = FALSE;
+  if ($done) {
+    return class_exists('Firebase\\JWT\\JWT', TRUE);
+  }
+  $done = TRUE;
+
+  if (module_exists('libraries')) {
+    libraries_load('constant_time_encoding');
+    libraries_load('phpseclib');
+    libraries_load('php-jwt');
+  }
+
+  // Last-resort PSR-4 registration if xautoload/Libraries did not run yet.
+  if (!class_exists('Firebase\\JWT\\JWT', FALSE)) {
+    rovas_ha_register_apple_psr4();
+  }
+
+  return class_exists('Firebase\\JWT\\JWT', TRUE);
+}
+
+/**
+ * Registers PSR-4 prefixes for Apple Sign-In libraries via spl_autoload.
+ */
+function rovas_ha_register_apple_psr4() {
+  static $registered = FALSE;
+  if ($registered) {
+    return;
+  }
+  $registered = TRUE;
+
+  $map = array(
+    'Firebase\\JWT\\' => DRUPAL_ROOT . '/sites/all/libraries/php-jwt/src/',
+    'phpseclib3\\' => DRUPAL_ROOT . '/sites/all/libraries/phpseclib/phpseclib/',
+    'ParagonIE\\ConstantTime\\' => DRUPAL_ROOT . '/sites/all/libraries/constant_time_encoding/src/',
+  );
+
+  spl_autoload_register(function ($class) use ($map) {
+    foreach ($map as $prefix => $base_dir) {
+      $len = strlen($prefix);
+      if (strncmp($prefix, $class, $len) !== 0) {
+        continue;
+      }
+      $relative = str_replace('\\', '/', substr($class, $len)) . '.php';
+      $file = $base_dir . $relative;
+      if (is_readable($file)) {
+        require $file;
+        return;
+      }
+    }
+  });
+}
+
+/**
+ * Implements hook_init().
+ *
+ * Load Apple deps on HybridAuth routes before the Apple adapter runs.
+ */
+function rovas_ha_init() {
+  if (arg(0) === 'hybridauth') {
+    rovas_ha_load_apple_dependencies();
+  }
+}
 
 /**
  * Alter the values returned by HybridAuth library.
- * @param array $profile
  */
 function rovas_ha_hybridauth_profile_alter(&$profile) {
-//	watchdog('module','profile ' . print_r($profile,TRUE));
 }
 
 /**
  * Alter the user info for the user being created by HybridAuth.
- * @param array $userinfo
- *   Information to create a new user.
- * @param array $data
- *   HybridAuth identity data.
  */
 function rovas_ha_hybridauth_userinfo_alter(&$userinfo, $data) {
-//	watchdog('module','userinfo ' . print_r($userinfo,TRUE));
-//	watchdog('module','data ' . print_r($data,TRUE));
 }
 
 /**
  * Invoked when a new user account is about to be created through HybridAuth.
- * @param object $account
- *   User account object.
- * @param array $data
- *   HybridAuth identity data.
  */
 function rovas_ha_hybridauth_user_preinsert($account, $data) {
-//	$data['profileURL'] = 'https://nabezky.sk/user/' . $data['identifier'];
-//	watchdog('module','preinsert/accnt ' . print_r($account,TRUE) . ' preinsert/data ' . print_r($data,TRUE));
 }
-
