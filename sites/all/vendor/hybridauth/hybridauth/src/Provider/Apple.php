@@ -211,9 +211,12 @@ class Apple extends OAuth2
 
                     $pem = (string)$key;
 
-                    $payload = (version_compare($this->getJwtVersion(), '6.2') < 0) ?
-                        JWT::decode($id_token, $pem, ['RS256']) :
-                        JWT::decode($id_token, new Key($pem, 'RS256'));
+                    // Rovas ships firebase/php-jwt 6.10 via libraries. Do not call the
+                    // pre-6.2 decode($jwt, $pem, ['RS256']) form: in 6.x the third
+                    // argument is stdClass &$headers, so an array literal fatals on
+                    // PHP 7.4 ("Only variables can be passed by reference").
+                    $jwtKey = new Key($pem, 'RS256');
+                    $payload = JWT::decode($id_token, $jwtKey);
                     break;
                 } catch (Exception $e) {
                     $error = $e->getMessage();
