@@ -1,0 +1,112 @@
+#!/bin/bash
+# deploy-rovas: Deploy rovas from git staging to target environment
+# Usage: deploy-rovas [dev|prod]
+#   dev  -> syncs rovas-staging to rovdev (default)
+#   prod -> syncs rovas-staging to rovas
+#
+# Installed on the VPS as /usr/local/bin/deploy-rovas. Keep that copy in sync
+# with this file (ops/deploy_magura.sh / deploy_rovdev.sh are for laptop→VPS
+# rsync; this is the on-box git staging path).
+
+set -euo pipefail
+
+STAGING_DIR="/var/www/rovas-staging"
+DEV_DIR="/var/www/rovdev"
+PROD_DIR="/var/www/rovas"
+GIT_BRANCH="master"
+
+SSH_KEY="/root/.ssh/rovas_github"
+GIT_SSH_COMMAND_BASE=(
+  ssh -i "$SSH_KEY" -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new
+)
+
+RSYNC_OPTS=(
+  -a --delete
+  --exclude='sites/*/files/'
+  --exclude='sites/*/private/'
+  --exclude='sites/*/tmp/'
+  --exclude='sites/*/settings.php'
+  --exclude='sites/*/settings.local.php'
+  --exclude='.git'
+)
+
+GREEN='\033[0;32m'; YELLOW='\033[1;33m'; RED='\033[0;31m'; NC='\033[0m'
+info() { echo -e "${GREEN}[deploy]${NC} $*"; }
+warn() { echo -e "${YELLOW}[deploy]${NC} $*"; }
+fail() { echo -e "${RED}[deploy] ERROR:${NC} $*" >&2; exit 1; }
+step() { echo -e "\n${YELLOW}>> $*${NC}"; }
+
+# Apple Sign-In PHP deps under sites/all/libraries/. Not in git; rsync --delete
+# would remove them every deploy unless we re-fetch after sync.
+ensure_apple_signin_libs() {
+  local dest="$1"
+  local lib="$dest/sites/all/libraries"
+  local tmp
+  mkdir -p "$lib"
+  tmp="$(mktemp -d)"
+  fetch() {
+    local name="$1" url="$2" marker="$3"
+    if [[ -f "$lib/$name/$marker" ]]; then
+      info "OK  $name"
+      return 0
+    fi
+    info "GET $name"
+    curl -fsSL "$url" -o "$tmp/$name.tgz"
+    rm -rf "$lib/$name"
+    mkdir -p "$lib/$name"
+    tar xzf "$tmp/$name.tgz" -C "$lib/$name" --strip-components=1
+    test -f "$lib/$name/$marker"
+    chown -R www-data:www-data "$lib/$name"
+    info "OK  $name"
+  }
+  fetch php-jwt \
+    'https://github.com/firebase/php-jwt/archive/refs/tags/v6.10.0.tar.gz' \
+    'src/JWT.php'
+  fetch phpseclib \
+    'https://github.com/phpseclib/phpseclib/archive/refs/tags/3.0.58.tar.gz' \
+    'phpseclib/Crypt/PublicKeyLoader.php'
+  fetch constant_time_encoding \
+    'https://github.com/paragonie/constant_time_encoding/archive/refs/tags/v2.8.2.tar.gz' \
+    'src/Encoding.php'
+  rm -rf "$tmp"
+}
+
+ENV="${1:-dev}"
+case "$ENV" in
+  dev)
+    TARGET_DIR="$DEV_DIR"
+    DRUSH_CMD="drush74"
+    ;;
+  prod)
+    TARGET_DIR="$PROD_DIR"
+    DRUSH_CMD="drush74"
+    warn "Deploying to PRODUCTION. Press Ctrl+C within 5 seconds to abort..."
+    sleep 5
+    ;;
+  *)
+    fail "Unknown environment '$ENV'. Use: deploy-rovas [dev|prod]"
+    ;;
+esac
+
+[[ -d "$STAGING_DIR" ]] || fail "Staging dir not found: $STAGING_DIR"
+[[ -d "$TARGET_DIR"  ]] || fail "Target dir not found: $TARGET_DIR"
+command -v "$DRUSH_CMD" &>/dev/null || fail "Drush not found: $DRUSH_CMD"
+
+info "Deploying rovas -> ${ENV} (${TARGET_DIR})"
+
+step "1/4  Pulling latest code from origin/${GIT_BRANCH}"
+cd "$STAGING_DIR"
+GIT_SSH_COMMAND="${GIT_SSH_COMMAND_BASE[*]}" git pull origin "$GIT_BRANCH"
+
+step "2/4  Syncing files to ${TARGET_DIR}"
+rsync "${RSYNC_OPTS[@]}" . "$TARGET_DIR"
+
+step "3/4  Ensuring Apple Sign-In libraries"
+ensure_apple_signin_libs "$TARGET_DIR"
+
+step "4/4  Clearing Drupal caches"
+cd "$TARGET_DIR"
+"$DRUSH_CMD" cc all
+
+echo ""
+info "Deploy to ${ENV} complete."

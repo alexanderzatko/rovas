@@ -11,5 +11,7 @@ Fetch/update locally:
 
   ops/fetch_apple_signin_libs.sh
 
-Production/dev deploy scripts also download these on the server if missing,
-so Apple login does not depend on Composer Manager vendor packages.
+On-box deploys (`/usr/local/bin/deploy-rovas`, see ops/deploy-rovas) re-fetch
+these into the target docroot after rsync --delete. Laptop→VPS scripts
+(ops/deploy_magura.sh, ops/deploy_rovdev.sh) do the same. Apple login does
+not depend on Composer Manager vendor packages.

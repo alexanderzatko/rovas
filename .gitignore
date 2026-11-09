@@ -18,3 +18,8 @@ sites/all/vendor/bin/
 
 # Translation helper progress artifacts
 translations/po/*.progress.json
+
+# Apple Sign-In PHP deps (fetched by ops/fetch_apple_signin_libs.sh / deploy-rovas)
+sites/all/libraries/php-jwt/
+sites/all/libraries/phpseclib/
+sites/all/libraries/constant_time_encoding/

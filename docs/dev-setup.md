@@ -7,11 +7,16 @@ unless explicitly requested.
 |---|-----|------|
 | URL | `https://dev.rovas.app` | `https://rovas.app` |
 | Docroot | `/var/www/rovdev` | `/var/www/rovas` |
-| Deploy | `ops/deploy_rovdev.sh <ssh_target>` | `ops/deploy_magura.sh` |
+| Deploy (on VPS) | `deploy-rovas` / `deploy-rovas dev` | `deploy-rovas prod` |
+| Deploy (laptop→VPS) | `ops/deploy_rovdev.sh <ssh_target>` | `ops/deploy_magura.sh` |
 
-`deploy_rovdev.sh` rsyncs the repo to `/var/www/rovdev`, runs `drush74 updb`,
-and clears caches. It does **not** overwrite `sites/*/settings.php` or
-`sites/*/files/`.
+Normal deploys use **`/usr/local/bin/deploy-rovas`** on the VPS (source of
+truth in repo: `ops/deploy-rovas`): git pull in `/var/www/rovas-staging`,
+rsync to the target docroot, ensure Apple Sign-In libraries, `drush74 cc all`.
+
+Laptop scripts rsync the local tree, ensure the same Apple libraries, run
+`drush74 updb` + `cc all`. They do **not** overwrite `sites/*/settings.php`
+or `sites/*/files/`.
 
 To refresh rovdev as a full production clone (code/modules/libraries + DB +
 files) before a deploy rehearsal, see
