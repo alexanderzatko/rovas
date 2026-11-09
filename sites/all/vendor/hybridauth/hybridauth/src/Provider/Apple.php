@@ -329,13 +329,25 @@ class Apple extends OAuth2
      * If composer 2 is installed use InstalledVersions::getVersion,
      * otherwise return an empty string because no version check is available
      *
+     * Rovas ships firebase/php-jwt under sites/all/libraries (not Composer
+     * Manager vendor). InstalledVersions::getVersion() throws in that case;
+     * fall back when the JWT classes are already autoloadable.
+     *
      * @return string|null
      */
     private function getJwtVersion()
     {
-        // assume old JWT version if no version check is possible because composer 1 is installed
-        return class_exists('Composer\InstalledVersions') ?
-            InstalledVersions::getVersion('firebase/php-jwt') :
-            '';
+        if (class_exists('Composer\InstalledVersions')
+            && InstalledVersions::isInstalled('firebase/php-jwt')) {
+            return InstalledVersions::getVersion('firebase/php-jwt');
+        }
+
+        // Library-loaded JWT 6.x (Key class exists since 6.0).
+        if (class_exists(Key::class)) {
+            return '6.10.0';
+        }
+
+        // assume old JWT version if no version check is possible
+        return '';
     }
 }
