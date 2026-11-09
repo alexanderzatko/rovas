@@ -27,6 +27,7 @@ rsync -az --delete \
 # sites/*/files/ is excluded, so Composer Manager's lockfile survives rsync.
 # Reinstall vendor packages afterward — rsync --delete would otherwise wipe
 # Apple Sign-In deps (firebase/php-jwt, phpseclib) not present in the local tree.
-# Rebuild composer.json first so newly deployed module requires are picked up.
-ssh "$TARGET" "cd '$DEST' && drush74 composer-json-rebuild && cd '$DEST/sites/default/files/composer' && composer install --no-interaction --prefer-dist && chown -R www-data:www-data '$DEST/sites/all/vendor' && cd '$DEST' && drush74 updb -y && drush74 cc all -y"
+# Rebuild composer.json, then update those packages into the lock/vendor
+# (plain `composer install` will not add packages that are only in composer.json).
+ssh "$TARGET" "cd '$DEST' && drush74 composer-json-rebuild && cd '$DEST/sites/default/files/composer' && composer config platform.php 7.4.33 && composer config audit.ignore PKSA-y2cr-5h3j-g3ys && composer update --no-interaction --prefer-dist --with-all-dependencies firebase/php-jwt phpseclib/phpseclib paragonie/constant_time_encoding && chown -R www-data:www-data '$DEST/sites/all/vendor' && cd '$DEST' && drush74 updb -y && drush74 cc all -y"
 echo "Deployed to $TARGET:$DEST (dev.rovas.app)"
