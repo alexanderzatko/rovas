@@ -9,6 +9,56 @@
  */
 
 /**
+ * Persist WR reward preference (chrons vs merits) for post-verification conversion.
+ *
+ * Used by Civic OAuth create and classic rules_proxy_create_work_report.
+ * Conversion runs in rovas_civic_maybe_convert_wr_chron_to_merits() after approve.
+ *
+ * @param int $wr_nid
+ *   Work report node id.
+ * @param int $uid
+ *   Author uid.
+ * @param string $reward_kind
+ *   'merits' or 'chrons' (invalid/empty → 'chrons').
+ * @param int $usage_fee_project_id
+ *   Optional app AUR project nid (Civic only; classic leaves 0).
+ * @param float $usage_fee_rate
+ *   Optional AUR rate in (0, 1] (Civic only).
+ *
+ * @return bool
+ *   TRUE when row written; FALSE if skipped.
+ */
+function rovas_civic_persist_wr_reward_preference($wr_nid, $uid, $reward_kind, $usage_fee_project_id = 0, $usage_fee_rate = 0.0) {
+  $wr_nid = (int) $wr_nid;
+  $uid = (int) $uid;
+  if ($wr_nid < 1 || $uid < 1 || !db_table_exists('civic_work_report_reward')) {
+    return FALSE;
+  }
+
+  $kind = drupal_strtolower(trim((string) $reward_kind));
+  if ($kind !== 'merits' && $kind !== 'chrons') {
+    $kind = 'chrons';
+  }
+
+  $fields = array(
+    'reward_kind' => $kind,
+    'uid' => $uid,
+    'created' => REQUEST_TIME,
+  );
+  if (db_field_exists('civic_work_report_reward', 'usage_fee_project_id')) {
+    $fields['usage_fee_project_id'] = (int) $usage_fee_project_id;
+    $fields['usage_fee_rate'] = (float) $usage_fee_rate;
+  }
+
+  db_merge('civic_work_report_reward')
+    ->key(array('wr_nid' => $wr_nid))
+    ->fields($fields)
+    ->execute();
+
+  return TRUE;
+}
+
+/**
  * Charge a deferred app usage fee (AUR) for a Civic-filed work report.
  *
  * Uses project id + rate stored on {civic_work_report_reward} at create time

@@ -156,9 +156,9 @@ paths:
     post:
       tags:
       - classic-projects
-      summary: Create a work report in Rovas.
+      summary: Create a work report in Rovas. Optional reward_kind selects Merits vs Chrons after verification.
       requestBody:
-        description: Only the Web URL is supported as work evidence.
+        description: Only the Web URL is supported as work evidence. Optional reward_kind (merits|chrons) is persisted for post-verification payout.
         content:
           application/json:
             schema:
@@ -1975,6 +1975,15 @@ components:
           description: if greater than 0, the report will be published; unpublished otherwise. No verifiers
             are invited for unpublished reports
           example: 1
+        reward_kind:
+          type: string
+          enum:
+          - merits
+          - chrons
+          default: chrons
+          description: Payout preference after verification. merits converts the Chron grant to Merits (A6);
+            chrons keeps Chrons. Same semantics as Civic civic_create_work_report. Omitted or invalid → chrons.
+          example: merits
     NewWReportResponse:
       type: object
       properties:

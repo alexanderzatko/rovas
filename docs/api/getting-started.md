@@ -74,6 +74,8 @@ curl -sS "https://rovas.app/rovas/rules/rules_fetch_user_data" \
 
 (Exact body parameters vary by rule — see OpenAPI.)
 
+Classic create work report (`POST /rovas/rules/rules_proxy_create_work_report`) accepts optional `reward_kind` (`merits`|`chrons`, default `chrons`) so third-party apps can request Merits after verification — same preference store as Civic OAuth.
+
 ### 4. OpenAPI
 
 Complete machine-readable contract (classic **and** OAuth/Civic):

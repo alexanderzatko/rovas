@@ -22,7 +22,8 @@
       "wr_activity_name" : { "label" : "WR activity name", "type" : "text" },
       "wr_description" : { "label" : "WR description", "type" : "text" },
       "wr_hours" : { "label" : "WR hours", "type" : "decimal" },
-      "wr_classification" : { "label" : "WR classification", "type" : "integer" }
+      "wr_classification" : { "label" : "WR classification", "type" : "integer" },
+      "reward_kind" : { "label" : "Reward kind", "type" : "text", "allow null" : true }
     },
     "IF" : [
       { "data_is" : { "data" : [ "wr-hours" ], "op" : "\u003E", "value" : "0" } },
@@ -414,7 +415,8 @@
           },
           { "ELSE" : [ { "data_set" : { "data" : [ "created-wr-nid" ], "value" : "-1" } } ] }
         ]
-      }
+      },
+      { "php_eval" : { "code" : "if (!empty($created_wr_nid) && (int) $created_wr_nid > 0 && !empty($user->uid)) {\n  module_load_include('inc', 'rovas_civic', 'rovas_civic.reward');\n  if (function_exists('rovas_civic_persist_wr_reward_preference')) {\n    $kind = isset($reward_kind) ? $reward_kind : 'chrons';\n    rovas_civic_persist_wr_reward_preference((int) $created_wr_nid, (int) $user->uid, $kind);\n  }\n}" } }
     ],
     "PROVIDES VARIABLES" : [ "created_wr_nid" ]
   }

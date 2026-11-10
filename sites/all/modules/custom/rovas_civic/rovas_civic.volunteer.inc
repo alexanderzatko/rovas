@@ -536,20 +536,8 @@ function rovas_civic_services_create_work_report($data) {
     rovas_civic_attach_wr_field_location($wr, $field_location);
   }
 
-  $reward_fields = array(
-    'reward_kind' => $reward_kind,
-    'uid' => $uid,
-    'created' => REQUEST_TIME,
-  );
-  if (db_field_exists('civic_work_report_reward', 'usage_fee_project_id')) {
-    $reward_fields['usage_fee_project_id'] = $usage_fee_project_id;
-    $reward_fields['usage_fee_rate'] = $usage_fee_rate;
-  }
-
-  db_merge('civic_work_report_reward')
-    ->key(array('wr_nid' => $wr_nid))
-    ->fields($reward_fields)
-    ->execute();
+  module_load_include('inc', 'rovas_civic', 'rovas_civic.reward');
+  rovas_civic_persist_wr_reward_preference($wr_nid, $uid, $reward_kind, $usage_fee_project_id, $usage_fee_rate);
 
   return array(
     'work_report_nid' => (string) $wr_nid,
