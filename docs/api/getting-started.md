@@ -72,11 +72,11 @@ curl -sS "https://rovas.app/rovas/rules/rules_fetch_user_data" \
   -d '{}'
 ```
 
-(Exact body parameters vary by rule — see OpenAPI / [reference.md](reference.md).)
+(Exact body parameters vary by rule — see OpenAPI.)
 
 ### 4. OpenAPI
 
-Machine-readable classic contract:
+Complete machine-readable contract (classic **and** OAuth/Civic):
 
 [`rovasApi.yml`](../../sites/all/modules/custom/rovas_api_endpoints/rovasApi.yml)
 

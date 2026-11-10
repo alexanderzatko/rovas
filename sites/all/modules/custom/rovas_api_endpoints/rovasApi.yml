@@ -1,14 +1,45 @@
 openapi: 3.0.1
 info:
   title: Rovas API
-  description: ''
+  description: |
+    Rovas REST API for partners, plugins, and apps (including NeoFund Civic).
+
+    ## Environments
+
+    | Environment | Base URL |
+    | ----------- | -------- |
+    | Production | `https://rovas.app` |
+    | Development | `https://dev.rovas.app` |
+
+    Service paths use the prefix `/rovas` (Drupal Services endpoint `rovas_endpoint`).
+    OAuth protocol paths use `/oauth2`.
+
+    Send `Accept: application/json` and, for POST/PUT bodies, `Content-Type: application/json`
+    unless an operation notes otherwise (OAuth token exchange uses form body).
+
+    ## Authentication models
+
+    Do **not** mix models on one request.
+
+    | Model | How | Best for |
+    | ----- | --- | -------- |
+    | Classic | Headers `API-KEY` + `TOKEN` | Partner backends, website plugins, server-to-server |
+    | OAuth 2 (Bearer) | `Authorization: Bearer <access_token>` (scope `user_profile`) | Mobile / SPA with browser login (e.g. Civic) |
+    | Public | No credentials (API-key auth disabled on the resource) | Catalogs, some leaderboards, HybridAuth provider list |
+
+    Classic calls act as the owner of the API key pair. Bearer calls act as the
+    OAuth-authenticated Drupal user. Civic-oriented resources have API-key auth
+    disabled.
+
+    Contact: info@neofund.sk — partner access and new OAuth clients are provisioned
+    by NeoFund (do not reuse Civic's `client_id` from third-party apps).
   termsOfService: https://rovas.app/terms/
   contact:
     email: info@neofund.sk
   license:
     name: Apache 2.0
     url: http://www.apache.org/licenses/LICENSE-2.0.html
-  version: 1.0.0
+  version: 1.1.0
 externalDocs:
   description: Information about Rovas and NEO
   url: https://rovas.app/
@@ -19,7 +50,7 @@ paths:
   /rovas/node/{id}:
     get:
       tags:
-      - base
+      - classic-nodes
       summary: Retrieve basic fields for an allowlisted node type
       description: |
         Returns a sanitized payload for types `project`, `work_report`,
@@ -28,16 +59,6 @@ paths:
         Project responses include `is_public`; work_report responses include
         `project_nid` when set.
       parameters:
-      - in: header
-        name: API-KEY
-        schema:
-          type: string
-        required: true
-      - in: header
-        name: TOKEN
-        schema:
-          type: string
-        required: true
       - in: path
         name: id
         required: true
@@ -58,22 +79,14 @@ paths:
           description: Authenticated but not allowed to view the node
         '404':
           description: Missing nid or type not in the allowlist
+      security: &id001
+      - ApiKeyAuth: []
+        TokenAuth: []
     put:
       tags:
-      - base
-      summary: Updates a node owned by the user whose credentials are supplied in
-        the header
+      - classic-nodes
+      summary: Updates a node owned by the user whose credentials are supplied in the header
       parameters:
-      - in: header
-        name: API-KEY
-        schema:
-          type: string
-        required: true
-      - in: header
-        name: TOKEN
-        schema:
-          type: string
-        required: true
       - in: path
         name: id
         required: true
@@ -98,22 +111,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/UpdateNodeResponse'
+      security: *id001
     delete:
       tags:
-      - base
-      summary: Deletes a node owned by the user whose credentials are supplied in
-        the header
+      - classic-nodes
+      summary: Deletes a node owned by the user whose credentials are supplied in the header
       parameters:
-      - in: header
-        name: API-KEY
-        schema:
-          type: string
-        required: true
-      - in: header
-        name: TOKEN
-        schema:
-          type: string
-        required: true
       - in: path
         name: id
         required: true
@@ -124,27 +127,15 @@ paths:
       responses:
         '200':
           description: If succesfull returns the boolean TRUE.
+      security: *id001
   /rovas/rules/rules_proxy_create_new_project:
     post:
       tags:
-      - rule
+      - classic-projects
       summary: Create a project
-      parameters:
-      - in: header
-        name: API-KEY
-        description: From the user profile in Rovas.
-        schema:
-          type: string
-        required: true
-      - in: header
-        name: TOKEN
-        description: From the user profile in Rovas.
-        schema:
-          type: string
-        required: true
       requestBody:
-        description: Once a project is created, Rovas automatically creates also a
-          new merit allocation document for the project owner.
+        description: Once a project is created, Rovas automatically creates also a new merit allocation
+          document for the project owner.
         content:
           application/json:
             schema:
@@ -160,24 +151,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/NewProjectResponse'
+      security: *id001
   /rovas/rules/rules_proxy_create_work_report:
     post:
       tags:
-      - rule
+      - classic-projects
       summary: Create a work report in Rovas.
-      parameters:
-      - in: header
-        name: API-KEY
-        description: From the user profile in Rovas.
-        schema:
-          type: string
-        required: true
-      - in: header
-        name: TOKEN
-        description: From the user profile in Rovas.
-        schema:
-          type: string
-        required: true
       requestBody:
         description: Only the Web URL is supported as work evidence.
         content:
@@ -195,24 +174,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/NewWReportResponse'
+      security: *id001
   /rovas/rules/rules_proxy_delete_work_report:
     post:
       tags:
-      - rule
+      - classic-projects
       summary: Delete a work report
-      parameters:
-      - in: header
-        name: API-KEY
-        description: From the user profile in Rovas.
-        schema:
-          type: string
-        required: true
-      - in: header
-        name: TOKEN
-        description: From the user profile in Rovas.
-        schema:
-          type: string
-        required: true
       requestBody:
         description: If allowed, deletes a work report. Only own reports are deletable.
         content:
@@ -230,28 +197,15 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/DeleteWorkReportResponse'
+      security: *id001
   /rovas/rules/rules_proxy_work_report_verifiability:
     post:
       tags:
-      - rule
+      - classic-projects
       summary: Finds out if work report is verifiable by an user
-      parameters:
-      - in: header
-        name: API-KEY
-        description: From the user profile in Rovas.
-        schema:
-          type: string
-        required: true
-      - in: header
-        name: TOKEN
-        description: From the user profile in Rovas.
-        schema:
-          type: string
-        required: true
       requestBody:
-        description: The call finds out if report is verifiable and sets an environmental
-          variable in Rovas that locks one of two/three verifiacation slots for 10
-          minutes.
+        description: The call finds out if report is verifiable and sets an environmental variable in
+          Rovas that locks one of two/three verifiacation slots for 10 minutes.
         content:
           application/json:
             schema:
@@ -267,27 +221,15 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/VerifiabilityResponse'
+      security: *id001
   /rovas/rules/rules_proxy_report_editability:
     post:
       tags:
-      - rule
+      - classic-projects
       summary: Finds out if work report is editable by an user
-      parameters:
-      - in: header
-        name: API-KEY
-        description: From the user profile in Rovas.
-        schema:
-          type: string
-        required: true
-      - in: header
-        name: TOKEN
-        description: From the user profile in Rovas.
-        schema:
-          type: string
-        required: true
       requestBody:
-        description: The call determines if a report can be edited by the user identified
-          by the API key and the token.
+        description: The call determines if a report can be edited by the user identified by the API key
+          and the token.
         content:
           application/json:
             schema:
@@ -303,10 +245,11 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/EditabilityResponse'
+      security: *id001
   /rovas/rules/rules_create_user:
     post:
       tags:
-      - rule
+      - classic-accounts
       summary: Create or link a Rovas user (third-party integration)
       description: |
         For partner backends using an **api client** Rovas account: creates a new user or links
@@ -314,19 +257,6 @@ paths:
         `access services_rules rules_create_user` (api client / administrator roles).
         JSON keys match Rules variables; optional `hybridauth_provider` defaults to Nabezky if empty.
         Use GET `/rovas/rovas_hybridauth_providers.json` to list valid provider ids.
-      parameters:
-      - in: header
-        name: API-KEY
-        description: API key for `rovas_endpoint` (api client technical account).
-        schema:
-          type: string
-        required: true
-      - in: header
-        name: TOKEN
-        description: Token for `rovas_endpoint` (api client technical account).
-        schema:
-          type: string
-        required: true
       requestBody:
         description: Rule parameters (see rovas_site_rules README).
         content:
@@ -351,10 +281,11 @@ paths:
           description: Missing or invalid API credentials.
         '403':
           description: Caller lacks permission to invoke this rule.
+      security: *id001
   /rovas/rovas_partner_user:
     post:
       tags:
-      - rovas
+      - classic-accounts
       summary: Create or link a Rovas user (partner API, replaces rules_create_user)
       description: |
         Same purpose as `POST /rovas/rules/rules_create_user`, implemented as a native Services resource
@@ -363,19 +294,6 @@ paths:
         **user_country** must be two **uppercase** ASCII letters (ISO 3166-1 alpha-2) and must exist in the
         site country list. **user_language** is normalized to an **enabled** Drupal interface language
         (`rovas_base_map_partner_user_language`). Request body schema matches **RulesCreateUserRequest**.
-      parameters:
-      - in: header
-        name: API-KEY
-        description: API key for `rovas_endpoint` (api client technical account).
-        schema:
-          type: string
-        required: true
-      - in: header
-        name: TOKEN
-        description: Token for `rovas_endpoint` (api client technical account).
-        schema:
-          type: string
-        required: true
       requestBody:
         description: Same fields as rules_create_user (see RulesCreateUserRequest).
         content:
@@ -404,24 +322,12 @@ paths:
           description: Caller lacks permission.
         '500':
           description: Server or registration failure.
+      security: *id001
   /rovas/rules/rules_create_verification:
     post:
       tags:
-      - rule
+      - classic-projects
       summary: Create a verification record
-      parameters:
-      - in: header
-        name: API-KEY
-        description: From the user profile in Rovas.
-        schema:
-          type: string
-        required: true
-      - in: header
-        name: TOKEN
-        description: From the user profile in Rovas.
-        schema:
-          type: string
-        required: true
       requestBody:
         description: Creates a verification record for the work report.
         content:
@@ -439,25 +345,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/VerificationResponse'
+      security: *id001
   /rovas/rules/rules_proxy_create_aur:
     post:
       tags:
-      - rule
-      summary: Create an asset usage record, to charge a fee to an user for using
-        somebody else's product
-      parameters:
-      - in: header
-        name: API-KEY
-        description: From the user profile in Rovas.
-        schema:
-          type: string
-        required: true
-      - in: header
-        name: TOKEN
-        description: From the user profile in Rovas.
-        schema:
-          type: string
-        required: true
+      - classic-commerce
+      summary: Create an asset usage record, to charge a fee to an user for using somebody else's product
       requestBody:
         description: Creates an asset usage record.
         content:
@@ -475,14 +368,15 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/CreateAURResponse'
+      security: *id001
   /rovas/rules/rules_create_verification_with_acccess_token:
     post:
       tags:
-      - rule
+      - classic-projects
       summary: Create a verification record
       requestBody:
-        description: Creates a verification record for the work report using access
-          token and Rovas user ID. No API-KEY and TOKEN are needed in header.
+        description: Creates a verification record for the work report using access token and Rovas user
+          ID. No API-KEY and TOKEN are needed in header.
         content:
           application/json:
             schema:
@@ -498,27 +392,15 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/VerificationATResponse'
+      security: &id002 []
   /rovas/rules/rules_proxy_purchase_product:
     post:
       tags:
-      - rule
+      - classic-commerce
       summary: Process purchase of a product.
-      parameters:
-      - in: header
-        name: API-KEY
-        description: From the user profile in Rovas.
-        schema:
-          type: string
-        required: true
-      - in: header
-        name: TOKEN
-        description: From the user profile in Rovas.
-        schema:
-          type: string
-        required: true
       requestBody:
-        description: Creates purchase receipts, processes Chron transactions, distributes
-          Merits to shareholders and (optionally Chrons to the project owner).
+        description: Creates purchase receipts, processes Chron transactions, distributes Merits to shareholders
+          and (optionally Chrons to the project owner).
         content:
           application/json:
             schema:
@@ -534,27 +416,15 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/PurchaseResponse'
+      security: *id001
   /rovas/rules/rules_proxy_reward_work_report:
     post:
       tags:
-      - rule
+      - classic-projects
       summary: Reward a work report
-      parameters:
-      - in: header
-        name: API-KEY
-        description: From the user profile in Rovas.
-        schema:
-          type: string
-        required: true
-      - in: header
-        name: TOKEN
-        description: From the user profile in Rovas.
-        schema:
-          type: string
-        required: true
       requestBody:
-        description: Rewards a work repor with merits equal to the chrons sent by
-          the user identified by the API key and token sent in the header
+        description: Rewards a work repor with merits equal to the chrons sent by the user identified
+          by the API key and token sent in the header
         content:
           application/json:
             schema:
@@ -570,46 +440,25 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/WorkReportRewardResponse'
+      security: *id001
   /rovas/rules/rules_users_chrons:
     post:
       tags:
-      - rule
+      - classic-accounts
       summary: Retrieves user's Chron balances.
-      parameters:
-      - in: header
-        name: API-KEY
-        schema:
-          type: string
-        required: true
-      - in: header
-        name: TOKEN
-        schema:
-          type: string
-        required: true
       responses:
         '200':
-          description: If succesfull, returns the total and available user's chron
-            balances
+          description: If succesfull, returns the total and available user's chron balances
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/UsersChronsResponse'
+      security: *id001
   /rovas/rules/rules_fetch_user_data:
     post:
       tags:
-      - rule
+      - classic-accounts
       summary: Retrieves user's Rovas profile info.
-      parameters:
-      - in: header
-        name: API-KEY
-        schema:
-          type: string
-        required: true
-      - in: header
-        name: TOKEN
-        schema:
-          type: string
-        required: true
       responses:
         '200':
           description: If succesfull, returns information from the user profile
@@ -617,26 +466,15 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/FetchUserDataResponse'
+      security: *id001
   /rovas/rules/rules_user_s_merits:
     post:
       tags:
-      - rule
-      summary: Retrieves user's total and taxonomy category-specific Merit balances.
-        Set the nace_id param to 0 to return all Merits from the user's work reports.
-        Retrieval error is indicated by value -1000000000.0000001 for either of the
-        result parameters. Note that total_merits might differ from the term_merits
-        when nace_id = 0 is passed to the endpoint.
-      parameters:
-      - in: header
-        name: API-KEY
-        schema:
-          type: string
-        required: true
-      - in: header
-        name: TOKEN
-        schema:
-          type: string
-        required: true
+      - classic-accounts
+      summary: Retrieves user's total and taxonomy category-specific Merit balances. Set the nace_id param
+        to 0 to return all Merits from the user's work reports. Retrieval error is indicated by value
+        -1000000000.0000001 for either of the result parameters. Note that total_merits might differ from
+        the term_merits when nace_id = 0 is passed to the endpoint.
       requestBody:
         description: use Rovas NACE term ID as a parameter
         content:
@@ -654,25 +492,14 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/UsersMeritsResponse'
+      security: *id001
   /rovas/rules/rules_proxy_delete_project:
     post:
       tags:
-      - rule
+      - classic-projects
       summary: Delete a project
-      parameters:
-      - in: header
-        name: API-KEY
-        schema:
-          type: string
-        required: true
-      - in: header
-        name: TOKEN
-        schema:
-          type: string
-        required: true
       requestBody:
-        description: Deletes a project and all related work reports, merit allocation
-          shares and disputes.
+        description: Deletes a project and all related work reports, merit allocation shares and disputes.
         content:
           application/json:
             schema:
@@ -683,32 +510,22 @@ paths:
         required: true
       responses:
         '200':
-          description: the 'result' parameter indicates the status of the operation
-            - 0 for failure or 1 for success. The 'result_explain' parameter informs
-            about the reason for failure if the project was not deleted.
+          description: the 'result' parameter indicates the status of the operation - 0 for failure or
+            1 for success. The 'result_explain' parameter informs about the reason for failure if the
+            project was not deleted.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/DeleteProjectResponse'
+      security: *id001
   /rovas/rules/rules_proxy_report_verification_status:
     post:
       tags:
-      - rule
+      - classic-projects
       summary: Get a work report verification status
-      parameters:
-      - in: header
-        name: API-KEY
-        schema:
-          type: string
-        required: true
-      - in: header
-        name: TOKEN
-        schema:
-          type: string
-        required: true
       requestBody:
-        description: Returns a count of verifications made and an integer indicating
-          the number of approved verifications.
+        description: Returns a count of verifications made and an integer indicating the number of approved
+          verifications.
         content:
           application/json:
             schema:
@@ -719,29 +536,19 @@ paths:
         required: true
       responses:
         '200':
-          description: the count_total shows the number of verifications and the result
-            parameter encodes the number of approved ones
+          description: the count_total shows the number of verifications and the result parameter encodes
+            the number of approved ones
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/GetVerifStatusResponse'
+      security: *id001
   /rovas/rules/rules_get_merits_for_projects:
     post:
       tags:
-      - rule
-      summary: Takes a list of Rovas project IDs separated by pipe and returns current
-        merit value for each of the projects.
-      parameters:
-      - in: header
-        name: API-KEY
-        schema:
-          type: string
-        required: true
-      - in: header
-        name: TOKEN
-        schema:
-          type: string
-        required: true
+      - classic-commerce
+      summary: Takes a list of Rovas project IDs separated by pipe and returns current merit value for
+        each of the projects.
       requestBody:
         content:
           application/json:
@@ -758,22 +565,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ProjectMeritsResponse'
+      security: *id001
   /rovas/rules/rules_convert_euros_to_chrons:
     post:
       tags:
-      - rule
+      - classic-commerce
       summary: Returns the amount of Chrons one can buy with the given Euros.
-      parameters:
-      - in: header
-        name: API-KEY
-        schema:
-          type: string
-        required: true
-      - in: header
-        name: TOKEN
-        schema:
-          type: string
-        required: true
       requestBody:
         content:
           application/json:
@@ -790,22 +587,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ConvertChronsResponse'
+      security: *id001
   /rovas/rules/rules_convert_euros_to_chrons_reverse:
     post:
       tags:
-      - rule
+      - classic-commerce
       summary: Returns the amount of Chrons one has to pay to receive the given Euros.
-      parameters:
-      - in: header
-        name: API-KEY
-        schema:
-          type: string
-        required: true
-      - in: header
-        name: TOKEN
-        schema:
-          type: string
-        required: true
       requestBody:
         content:
           application/json:
@@ -817,19 +604,18 @@ paths:
         required: true
       responses:
         '200':
-          description: returns a decimal representing the Chron amount, or -1 if user
-            not found, or -2 if the euro amount exceeds the number of Euros available
-            for exchange in Rovas;
+          description: returns a decimal representing the Chron amount, or -1 if user not found, or -2
+            if the euro amount exceeds the number of Euros available for exchange in Rovas;
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ConvertChronsResponse'
+      security: *id001
   /rovas/rules/rules_proxy_check_verifier_by_access_tokens:
     post:
       tags:
-      - rule
-      summary: given access token and verifier ID, determines verifiability of a work
-        report
+      - classic-projects
+      summary: given access token and verifier ID, determines verifiability of a work report
       requestBody:
         description: Returns TRUE if a verification slip exists for the tokens supplied
         content:
@@ -847,25 +633,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/CheckVerifAccessTokensResponse'
+      security: *id001
   /rovas/rules/rules_proxy_check_or_add_shareholder:
     post:
       tags:
-      - rule
-      summary: Checks that user is shareholder in a project. If not and possible,
-        makes the user a shareholder.
-      parameters:
-      - in: header
-        name: API-KEY
-        description: From the user profile in Rovas.
-        schema:
-          type: string
-        required: true
-      - in: header
-        name: TOKEN
-        description: From the user profile in Rovas.
-        schema:
-          type: string
-        required: true
+      - classic-commerce
+      summary: Checks that user is shareholder in a project. If not and possible, makes the user a shareholder.
       requestBody:
         description: ''
         content:
@@ -878,31 +651,18 @@ paths:
         required: true
       responses:
         '200':
-          description: returns the Merit allocation node ID if successfull and 0 or
-            negative integer otherwise
+          description: returns the Merit allocation node ID if successfull and 0 or negative integer otherwise
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/CheckAddShareholResponse'
+      security: *id001
   /rovas/rules/rules_proxy_check_or_add_project_shareholder:
     post:
       tags:
-      - rule
-      summary: Checks that a project is a shareholder in a project. If not and possible,
-        creates time, or percentage-based share.
-      parameters:
-      - in: header
-        name: API-KEY
-        description: The project owner API key
-        schema:
-          type: string
-        required: true
-      - in: header
-        name: TOKEN
-        description: The project owner token
-        schema:
-          type: string
-        required: true
+      - classic-commerce
+      summary: Checks that a project is a shareholder in a project. If not and possible, creates time,
+        or percentage-based share.
       requestBody:
         description: ''
         content:
@@ -915,30 +675,17 @@ paths:
         required: true
       responses:
         '200':
-          description: returns the Merit allocation node ID if successfull and a negative
-            integer otherwise
+          description: returns the Merit allocation node ID if successfull and a negative integer otherwise
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/CheckAddProjectShareholResponse'
+      security: *id001
   /rovas/rules/rules_check_enabled_language:
     post:
       tags:
-      - rule
+      - classic-accounts
       summary: Checks that a language identified by its 2-letter code is enabled
-      parameters:
-      - in: header
-        name: API-KEY
-        description: From the user profile in Rovas.
-        schema:
-          type: string
-        required: true
-      - in: header
-        name: TOKEN
-        description: From the user profile in Rovas.
-        schema:
-          type: string
-        required: true
       requestBody:
         description: ''
         content:
@@ -956,11 +703,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/CheckEnabledLangResponse'
+      security: *id001
   /rovas/views/top_10_workers_in_a_category:
     get:
       summary: Get top x workers in a given category.
       tags:
-      - views
+      - classic-views
       responses:
         '200':
           description: json encoded array
@@ -969,6 +717,7 @@ paths:
               schema:
                 type: string
                 example: '[{"rank":"1","rovas_uid":"289","merits":"19.20"},{"rank":"2","rovas_uid":"347","merits":"15.35"},{"rank":"3","rovas_uid":"520","merits":"14.13"}]'
+      security: *id001
     parameters:
     - name: display_id
       in: query
@@ -995,8 +744,7 @@ paths:
       example: nabezky.sk
     - name: limit
       in: query
-      description: the number of records to be returned. If omitted, 10 records are
-        returned
+      description: the number of records to be returned. If omitted, 10 records are returned
       required: false
       schema:
         type: integer
@@ -1005,17 +753,17 @@ paths:
     get:
       summary: Get top x users, who rewarded a project
       tags:
-      - views
+      - classic-views
       responses:
         '200':
-          description: json encoded array of Rovas user ID, user name and the merits
-            earned
+          description: json encoded array of Rovas user ID, user name and the merits earned
           content:
             application/json:
               schema:
                 type: string
                 example: '[{"rovas_uid":"111","name":"machyeior","merits":"0.18"},{"rovas_uid":"1111","name":"K\u00edt\u011bzslav
                   Huenfky","merits":"0.14"},{"rovas_uid":"2222","name":"heiodnkaoecny","merits":"0.11"}]'
+      security: *id001
     parameters:
     - name: display_id
       in: query
@@ -1044,20 +792,19 @@ paths:
     get:
       summary: Get top x users, for projects from the same web site
       tags:
-      - views
+      - classic-views
       responses:
         '200':
-          description: 'json encoded array of: rank in the hierarchy, Rovas user ID,
-            merit score for the user and the number of projects that share the same
-            field_asset_web_address_value'
+          description: 'json encoded array of: rank in the hierarchy, Rovas user ID, merit score for the
+            user and the number of projects that share the same field_asset_web_address_value'
           content:
             application/json:
               schema:
                 type: string
-                example: '[{"rank": "1","rovas_uid": "289","merits": "131.65","count":
-                  "65"},{"rank": "2","rovas_uid": "896",  "merits": "115.48","count":
-                  "48"},{"rank": "3","rovas_uid": "520","merits": "91.94","count":
-                  "56"}]'
+                example: '[{"rank": "1","rovas_uid": "289","merits": "131.65","count": "65"},{"rank":
+                  "2","rovas_uid": "896",  "merits": "115.48","count": "48"},{"rank": "3","rovas_uid":
+                  "520","merits": "91.94","count": "56"}]'
+      security: *id001
     parameters:
     - name: display_id
       in: query
@@ -1086,7 +833,7 @@ paths:
     get:
       summary: Get list of work report verifications
       tags:
-      - custom
+      - classic-projects
       responses:
         '200':
           description: JSON encoded array of verifications
@@ -1110,20 +857,6 @@ paths:
                   report_url: https://dev.rovas.app/node/429454
       parameters:
       - in: header
-        name: API-KEY
-        schema:
-          type: string
-        required: true
-        example: vp5OvoSXloq64ksKmwvvtzc2zElJO0uM2MbsDFUYd4o
-        description: From the user profile in Rovas.
-      - in: header
-        name: TOKEN
-        schema:
-          type: string
-        required: true
-        example: 9Lk438dmJJgsmrnhMHBtOCYYO_5DhkesoRXgfjMQmMIXq0
-        description: From the user profile in Rovas.
-      - in: header
         name: Accept
         schema:
           type: string
@@ -1137,6 +870,7 @@ paths:
         required: false
         example: application/json
         description: Content type of the request.
+      security: *id001
   /rovas/rovas_comment_notices.json:
     get:
       summary: Get pending watched-comment notices
@@ -1147,7 +881,7 @@ paths:
         response envelope). Requires module `rovas_comment_watch`. Path is
         `/rovas/rovas_comment_notices` (not under `/rovas/rules/`).
       tags:
-      - custom
+      - classic-projects
       responses:
         '200':
           description: JSON list of pending comment notices for the authenticated user
@@ -1170,30 +904,17 @@ paths:
           description: Comment watch module unavailable or query failure
       parameters:
       - in: header
-        name: API-KEY
-        schema:
-          type: string
-        required: true
-        example: vp5OvoSXloq64ksKmwvvtzc2zElJO0uM2MbsDFUYd4o
-        description: From the user profile in Rovas.
-      - in: header
-        name: TOKEN
-        schema:
-          type: string
-        required: true
-        example: 9Lk438dmJJgsmrnhMHBtOCYYO_5DhkesoRXgfjMQmMIXq0
-        description: From the user profile in Rovas.
-      - in: header
         name: Accept
         schema:
           type: string
         required: false
         example: application/json
         description: Expected response format.
+      security: *id001
   /rovas/rovas_hybridauth_providers.json:
     get:
       tags:
-      - custom
+      - classic-accounts
       summary: List HybridAuth providers for account linking
       description: |
         Public endpoint: no `API-KEY` or `TOKEN` headers. Returns provider machine names
@@ -1220,6 +941,943 @@ paths:
                 providers:
                 - id: Nabezky
                   name: Nabezky
+      security: *id002
+  /oauth2/authorize:
+    get:
+      tags:
+      - oauth-protocol
+      summary: OAuth 2 authorization endpoint (browser)
+      security: *id002
+      description: |-
+        Browser authorization with PKCE. Civic supports query extras `lang=sk|en` and `intent=login|register`.
+
+        Civic client (reference): `client_id=civic`, public (no secret), grants `authorization_code` + `refresh_token`, PKCE `S256`, scope `user_profile`, redirect `civic://oauth/callback`.
+      parameters:
+      - in: query
+        name: response_type
+        required: true
+        schema:
+          type: string
+          enum:
+          - code
+      - in: query
+        name: client_id
+        required: true
+        schema:
+          type: string
+          example: civic
+      - in: query
+        name: redirect_uri
+        required: true
+        schema:
+          type: string
+          example: civic://oauth/callback
+      - in: query
+        name: scope
+        required: false
+        schema:
+          type: string
+          example: user_profile
+      - in: query
+        name: state
+        required: false
+        schema:
+          type: string
+      - in: query
+        name: code_challenge
+        required: true
+        schema:
+          type: string
+      - in: query
+        name: code_challenge_method
+        required: true
+        schema:
+          type: string
+          enum:
+          - S256
+      - in: query
+        name: lang
+        required: false
+        schema:
+          type: string
+          enum:
+          - sk
+          - en
+      - in: query
+        name: intent
+        required: false
+        description: Land on login vs register.
+        schema:
+          type: string
+          enum:
+          - login
+          - register
+      responses:
+        '302':
+          description: Redirect to login/consent or back to redirect_uri with code
+  /oauth2/token:
+    post:
+      tags:
+      - oauth-protocol
+      summary: Exchange authorization code or refresh token
+      security: *id002
+      description: Public client + PKCE. Use `application/x-www-form-urlencoded` body.
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/OAuthTokenRequest'
+      responses:
+        '200':
+          description: Token pair
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OAuthTokenResponse'
+        '400':
+          description: Invalid grant or request
+  /oauth2/revoke:
+    post:
+      tags:
+      - oauth-protocol
+      summary: Revoke access or refresh token
+      security: *id002
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              required:
+              - token
+              properties:
+                token:
+                  type: string
+                token_type_hint:
+                  type: string
+                  enum:
+                  - access_token
+                  - refresh_token
+                client_id:
+                  type: string
+                  example: civic
+      responses:
+        '200':
+          description: Revoked (or already invalid)
+  /oauth2/tokens/{access_token}:
+    get:
+      tags:
+      - oauth-protocol
+      summary: Introspect access token
+      security: *id002
+      description: Returns `user_id`, `client_id`, `expires`, `scope`. 404 if invalid.
+      parameters:
+      - in: path
+        name: access_token
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Token metadata
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OAuthTokenIntrospection'
+        '404':
+          description: Invalid or unknown token
+  /rovas/me:
+    get:
+      tags:
+      - oauth-profile
+      summary: Current user profile (Bearer)
+      security: &id003
+      - BearerAuth: []
+      description: Profile for the OAuth-authenticated user. Includes Merit/Chron totals, receipt history
+        retention, ME sources share preference, and Trusted user notify state.
+      parameters:
+      - in: header
+        name: Accept
+        schema:
+          type: string
+        required: false
+        example: application/json
+      responses:
+        '200':
+          description: Profile
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MeResponse'
+              example:
+                uid: 42
+                username: example_user
+                display_name: Example User
+                total_me: 1248.35
+                total_chr: 320.0
+                created: '2019-03-12T14:22:01+00:00'
+                language: sk
+                receipt_history_retention: null
+                me_sources_share: everyone
+                trusted_user: false
+                trusted_notify: 0
+        '401':
+          description: Missing or invalid Bearer
+  /rovas/contributions/aggregate:
+    get:
+      tags:
+      - oauth-profile
+      summary: Community Merit total
+      security: *id002
+      description: Public aggregate community Merit total (+ category placeholders).
+      parameters:
+      - in: header
+        name: Accept
+        schema:
+          type: string
+        required: false
+        example: application/json
+      responses:
+        '200':
+          description: Aggregate Merits JSON
+  /rovas/merit_distribution:
+    get:
+      tags:
+      - oauth-profile
+      summary: Merit histogram
+      security: *id002
+      description: Public Merit distribution histogram. Optional Bearer adds `user_*` fields for the authenticated
+        caller.
+      parameters:
+      - in: header
+        name: Accept
+        schema:
+          type: string
+        required: false
+        example: application/json
+      responses:
+        '200':
+          description: Histogram JSON; may include user_* when Bearer present
+  /rovas/civic_receipt_history_preference:
+    post:
+      tags:
+      - oauth-profile
+      summary: Set receipt history retention
+      security: *id003
+      description: 'Body: `{ "retention": "keep" | "policy" }` (90-day policy when `policy`).'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReceiptHistoryPreferenceRequest'
+      responses:
+        '200':
+          description: Updated preference
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReceiptHistoryPreferenceResponse'
+        '401':
+          description: Missing or invalid Bearer
+  /rovas/civic_me_sources_preference:
+    post:
+      tags:
+      - oauth-profile
+      summary: Set ME sources share preference
+      security: *id003
+      description: 'Who may see detailed tax/gift ME mix: `everyone` | `reciprocal` | `aggregate`.'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MeSourcesPreferenceRequest'
+      responses:
+        '200':
+          description: Updated preference
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MeSourcesPreferenceResponse'
+        '401':
+          description: Missing or invalid Bearer
+  /rovas/civic_give_chrons:
+    post:
+      tags:
+      - oauth-profile
+      summary: Convert Chrons to Merits 1:1 (A6)
+      security: *id003
+      description: 'Voluntary CHR→ME conversion. Body `{ "amount": <positive number> }`.'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GiveChronsRequest'
+      responses:
+        '200':
+          description: Conversion result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GiveChronsResponse'
+        '401':
+          description: Missing or invalid Bearer
+        '422':
+          description: Invalid amount or insufficient_chrons
+  /rovas/civic_dismiss_trusted_notify:
+    post:
+      tags:
+      - oauth-profile
+      summary: Dismiss Trusted user congratulations banner
+      security: *id003
+      description: Sets `trusted_notify` to `2`. Empty JSON body OK.
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: Notify state
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TrustedNotifyDismissResponse'
+        '401':
+          description: Missing or invalid Bearer
+  /rovas/civic_merit_history:
+    get:
+      tags:
+      - oauth-profile
+      summary: Caller Merit ledger rows
+      security: *id003
+      parameters:
+      - in: header
+        name: Accept
+        schema:
+          type: string
+        required: false
+        example: application/json
+      responses:
+        '200':
+          description: Merit history rows for the Bearer user
+        '401':
+          description: Missing or invalid Bearer
+  /rovas/users_search:
+    get:
+      tags:
+      - oauth-users
+      summary: User typeahead search
+      security: *id003
+      description: Param is **`query`**, not `q` (Drupal reserves `$_GET['q']` for the request path).
+        Users with `total_me < 0` are omitted.
+      parameters:
+      - in: header
+        name: Accept
+        schema:
+          type: string
+        required: false
+        example: application/json
+      - in: query
+        name: query
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Search hits (public fields)
+        '401':
+          description: Missing or invalid Bearer
+  /rovas/users_lookup:
+    get:
+      tags:
+      - oauth-users
+      summary: Community profile by username
+      security: *id003
+      description: Exact username. Includes `nace_expertise`, tab aggregates (`top_charities`, `top_volunteer_projects`,
+        …). ME-mix detail respects `me_sources_share`. Users with `total_me < 0` → 404. Optional `lang=sk|en`.
+      parameters:
+      - in: header
+        name: Accept
+        schema:
+          type: string
+        required: false
+        example: application/json
+      - in: query
+        name: username
+        required: true
+        schema:
+          type: string
+      - in: query
+        name: lang
+        required: false
+        schema:
+          type: string
+          enum:
+          - sk
+          - en
+      responses:
+        '200':
+          description: Public community profile
+        '401':
+          description: Missing or invalid Bearer
+        '404':
+          description: Unknown user or total_me < 0
+  /rovas/rules/rules_proxy_claim_vat_receipt:
+    post:
+      tags:
+      - oauth-claims
+      summary: Claim eKasa VAT as donor Merits
+      security: *id003
+      description: Bearer-only Rules proxy. Split Merits across projects via `shares[]`. API-key auth
+        is disabled on this resource.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ClaimVatReceiptRequest'
+      responses:
+        '200':
+          description: Claim result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClaimVatReceiptResponse'
+        '401':
+          description: Missing or invalid Bearer
+        '400':
+          description: Validation error
+  /rovas/civic_claims:
+    get:
+      tags:
+      - oauth-claims
+      summary: Claim lists or receipt status
+      security: *id003
+      description: 'With `view=submitted|received`: claim lists (optional merchant / date / VAT filters).
+        With `receipt_uid=`: returns `{ claimed, receipt_uid }` only.'
+      parameters:
+      - in: header
+        name: Accept
+        schema:
+          type: string
+        required: false
+        example: application/json
+      - in: query
+        name: view
+        required: false
+        schema:
+          type: string
+          enum:
+          - submitted
+          - received
+      - in: query
+        name: receipt_uid
+        required: false
+        schema:
+          type: string
+      - in: query
+        name: merchant
+        required: false
+        schema:
+          type: string
+      - in: query
+        name: date_from
+        required: false
+        schema:
+          type: string
+      - in: query
+        name: date_to
+        required: false
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Claim list or receipt status
+        '401':
+          description: Missing or invalid Bearer
+  /rovas/civic_claims/summary:
+    get:
+      tags:
+      - oauth-claims
+      summary: Claim totals for caller
+      security: *id003
+      parameters:
+      - in: header
+        name: Accept
+        schema:
+          type: string
+        required: false
+        example: application/json
+      responses:
+        '200':
+          description: Summary totals
+        '401':
+          description: Missing or invalid Bearer
+  /rovas/civic_national_hourly_rate:
+    get:
+      tags:
+      - oauth-claims
+      summary: National hourly rate for ME formula
+      security: *id002
+      parameters:
+      - in: header
+        name: Accept
+        schema:
+          type: string
+        required: false
+        example: application/json
+      - in: query
+        name: country
+        required: true
+        schema:
+          type: string
+          example: SK
+      responses:
+        '200':
+          description: Hourly rate for country
+  /rovas/civic_project/{nid}:
+    get:
+      tags:
+      - oauth-projects
+      summary: Project detail (Civic)
+      security: *id002
+      description: Includes `donate_iban`, org fields (`org_id`, `country`, `website_url`, `iban_verified`),
+        … Anonymous allowed for NeoFund-approved public-benefit projects; otherwise Bearer / access rules
+        apply. Optional `lang=`.
+      parameters:
+      - in: header
+        name: Accept
+        schema:
+          type: string
+        required: false
+        example: application/json
+      - in: path
+        name: nid
+        required: true
+        schema:
+          type: integer
+      - in: query
+        name: lang
+        required: false
+        schema:
+          type: string
+          enum:
+          - sk
+          - en
+      responses:
+        '200':
+          description: Project detail
+        '404':
+          description: Not found or not readable
+  /rovas/civic_project_work_reports:
+    get:
+      tags:
+      - oauth-projects
+      summary: Work reports for a project
+      security: *id002
+      description: Anonymous allowed for approved public-benefit projects; otherwise Bearer. Optional
+        `lang=`.
+      parameters:
+      - in: header
+        name: Accept
+        schema:
+          type: string
+        required: false
+        example: application/json
+      - in: query
+        name: project_nid
+        required: true
+        schema:
+          type: integer
+      - in: query
+        name: lang
+        required: false
+        schema:
+          type: string
+          enum:
+          - sk
+          - en
+      responses:
+        '200':
+          description: Work report list (may include photo_urls[])
+  /rovas/civic_project_shareholders:
+    get:
+      tags:
+      - oauth-projects
+      summary: Project shareholders
+      security: *id002
+      description: Anonymous allowed for approved public-benefit projects; otherwise Bearer.
+      parameters:
+      - in: header
+        name: Accept
+        schema:
+          type: string
+        required: false
+        example: application/json
+      - in: query
+        name: project_nid
+        required: true
+        schema:
+          type: integer
+      responses:
+        '200':
+          description: Shareholder list
+  /rovas/civic_charity_projects:
+    get:
+      tags:
+      - oauth-projects
+      summary: Approved public-benefit project catalog
+      security: *id002
+      parameters:
+      - in: header
+        name: Accept
+        schema:
+          type: string
+        required: false
+        example: application/json
+      responses:
+        '200':
+          description: Charity project catalog
+  /rovas/civic_create_charity_org:
+    post:
+      tags:
+      - oauth-projects
+      summary: Donor submits a public-benefit organization
+      security: *id003
+      description: Bearer required. SK orgs may auto-verify; claim email flow applies.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              description: Organization fields (name, country, identifiers, …)
+      responses:
+        '200':
+          description: Created org / project linkage
+        '401':
+          description: Missing or invalid Bearer
+  /rovas/civic_my_projects:
+    get:
+      tags:
+      - oauth-volunteer
+      summary: Recent projects the user reported on
+      security: *id003
+      parameters:
+      - in: header
+        name: Accept
+        schema:
+          type: string
+        required: false
+        example: application/json
+      responses:
+        '200':
+          description: Project list
+        '401':
+          description: Missing or invalid Bearer
+  /rovas/civic_projects_search:
+    get:
+      tags:
+      - oauth-volunteer
+      summary: Search publishable projects
+      security: *id003
+      description: '`query` must be at least 3 characters.'
+      parameters:
+      - in: header
+        name: Accept
+        schema:
+          type: string
+        required: false
+        example: application/json
+      - in: query
+        name: query
+        required: true
+        schema:
+          type: string
+          minLength: 3
+      responses:
+        '200':
+          description: Matching projects
+        '401':
+          description: Missing or invalid Bearer
+  /rovas/civic_nace_tree:
+    get:
+      tags:
+      - oauth-volunteer
+      summary: NACE activity tree
+      security: *id002
+      parameters:
+      - in: header
+        name: Accept
+        schema:
+          type: string
+        required: false
+        example: application/json
+      responses:
+        '200':
+          description: NACE tree JSON
+  /rovas/civic_create_project:
+    post:
+      tags:
+      - oauth-volunteer
+      summary: Create project (Bearer)
+      security: *id003
+      description: 'Body: `name`, `description`, optional `url`. Do not use classic API-KEY project rules
+        from Civic.'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CivicCreateProjectRequest'
+      responses:
+        '200':
+          description: Created project
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CivicCreateProjectResponse'
+        '401':
+          description: Missing or invalid Bearer
+  /rovas/civic_create_work_report:
+    post:
+      tags:
+      - oauth-volunteer
+      summary: Create work report (Bearer)
+      security: *id003
+      description: 'Proof required: URL and/or photos and/or map (`field_location` GeoJSON Point, LineString,
+        Polygon, or GeometryCollection). Clients should redact photos before upload; `photo_redact_mode`
+        is ignored if present.'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CivicCreateWorkReportRequest'
+      responses:
+        '200':
+          description: Created work report
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CivicCreateWorkReportResponse'
+        '401':
+          description: Missing or invalid Bearer
+        '400':
+          description: Validation error
+  /rovas/civic_work_report_map_config:
+    get:
+      tags:
+      - oauth-volunteer
+      summary: Map widget config for location proof
+      security: *id003
+      parameters:
+      - in: header
+        name: Accept
+        schema:
+          type: string
+        required: false
+        example: application/json
+      responses:
+        '200':
+          description: Basemap / centre / geometry types
+        '401':
+          description: Missing or invalid Bearer
+  /rovas/civic_ai_nace:
+    post:
+      tags:
+      - oauth-volunteer
+      summary: AI NACE + title suggestion
+      security: *id003
+      description: Optional `rovas_ai` module. Clients should fall back to NACE tree when unavailable.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              description: Work description / context for suggestion
+      responses:
+        '200':
+          description: Suggestion or unavailable
+        '401':
+          description: Missing or invalid Bearer
+  /rovas/civic_pending_verifications:
+    get:
+      tags:
+      - oauth-verify
+      summary: Work reports assigned to caller to verify
+      security: *id003
+      parameters:
+      - in: header
+        name: Accept
+        schema:
+          type: string
+        required: false
+        example: application/json
+      - in: query
+        name: lang
+        required: false
+        schema:
+          type: string
+          enum:
+          - sk
+          - en
+      responses:
+        '200':
+          description: Pending verification slots
+        '401':
+          description: Missing or invalid Bearer
+  /rovas/civic_work_report/{nid}:
+    get:
+      tags:
+      - oauth-verify
+      summary: Verifier-facing work-report detail
+      security: *id003
+      parameters:
+      - in: header
+        name: Accept
+        schema:
+          type: string
+        required: false
+        example: application/json
+      - in: path
+        name: nid
+        required: true
+        schema:
+          type: integer
+      - in: query
+        name: lang
+        required: false
+        schema:
+          type: string
+          enum:
+          - sk
+          - en
+      responses:
+        '200':
+          description: Work report detail for verifier
+        '401':
+          description: Missing or invalid Bearer
+        '403':
+          description: No assigned verification slot
+  /rovas/civic_submit_verification:
+    post:
+      tags:
+      - oauth-verify
+      summary: Approve / reject / decline verification
+      security: *id003
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CivicSubmitVerificationRequest'
+      responses:
+        '200':
+          description: Verification submitted
+        '401':
+          description: Missing or invalid Bearer
+  /rovas/civic_pending_comment_notices:
+    get:
+      tags:
+      - oauth-verify
+      summary: Polled watched-comment notices
+      security: *id003
+      description: 'Same Comment Notify audience as email; poll-based (`rovas_comment_watch`). Classic
+        twin: `GET /rovas/rovas_comment_notices.json`.'
+      parameters:
+      - in: header
+        name: Accept
+        schema:
+          type: string
+        required: false
+        example: application/json
+      responses:
+        '200':
+          description: Pending notices
+        '401':
+          description: Missing or invalid Bearer
+  /rovas/civic_merit_index:
+    get:
+      tags:
+      - oauth-merit-index
+      summary: Snapshot Merit leaderboard
+      security: *id002
+      description: Includes `by_category`, `by_source`, … Snapshot rebuilt periodically (cron).
+      parameters:
+      - in: header
+        name: Accept
+        schema:
+          type: string
+        required: false
+        example: application/json
+      responses:
+        '200':
+          description: Leaderboard snapshot
+  /rovas/civic_merit_index_countries:
+    get:
+      tags:
+      - oauth-merit-index
+      summary: Country filter options for Merit index
+      security: *id002
+      parameters:
+      - in: header
+        name: Accept
+        schema:
+          type: string
+        required: false
+        example: application/json
+      responses:
+        '200':
+          description: Country list
+  /rovas/civic_merit_spotlight:
+    get:
+      tags:
+      - oauth-merit-index
+      summary: Period leads by Civic area
+      security: *id002
+      parameters:
+      - in: header
+        name: Accept
+        schema:
+          type: string
+        required: false
+        example: application/json
+      - in: query
+        name: period
+        required: false
+        schema:
+          type: string
+          enum:
+          - today
+          - day
+          - week
+          - month
+      responses:
+        '200':
+          description: Spotlight leads
+  /rovas/civic_merit_period_index:
+    get:
+      tags:
+      - oauth-merit-index
+      summary: ME•ter period leaderboard
+      security: *id002
+      parameters:
+      - in: header
+        name: Accept
+        schema:
+          type: string
+        required: false
+        example: application/json
+      responses:
+        '200':
+          description: Period leaderboard
 components:
   schemas:
     NewProject:
@@ -1281,8 +1939,7 @@ components:
         wr_description:
           type: string
           description: accepts HTML tags
-          example: Moved a big rock up the hill, but it fell back. Will continue rolling
-            tomorrow.
+          example: Moved a big rock up the hill, but it fell back. Will continue rolling tomorrow.
         wr_activity_name:
           type: string
           description: title of work report - activity summary
@@ -1304,34 +1961,31 @@ components:
         date_started:
           type: integer
           format: int64
-          description: the date and time in UNIX timestamp format; must be within the
-            last 30 days
+          description: the date and time in UNIX timestamp format; must be within the last 30 days
           example: 1594538979
         access_token:
           type: string
-          description: A text string of sufficient length and complexity that - when
-            presented as URL argument 'cbt' attached to the address in the wr_web_address
-            field - will allow unauthenticated access to the proof of work in that
-            web page
+          description: A text string of sufficient length and complexity that - when presented as URL
+            argument 'cbt' attached to the address in the wr_web_address field - will allow unauthenticated
+            access to the proof of work in that web page
           example: 7JH_hdjd83%ks
         publish_status:
           type: integer
           format: int64
-          description: if greater than 0, the report will be published; unpublished
-            otherwise. No verifiers are invited for unpublished reports
+          description: if greater than 0, the report will be published; unpublished otherwise. No verifiers
+            are invited for unpublished reports
           example: 1
     NewWReportResponse:
       type: object
       properties:
         created_wr_nid:
           type: integer
-          description: 'A greater than 0 new work report ID, value 0 indicates the
-            report is unpublished and no verifiers were invited; Error values: -1:
-            author of the report is not a shareholder of the parent project; -2: the
-            date_started is earlier that the date when the author registered in Rovas;
-            -3: the report-filing author has more than one pending verification slot,
-            so no verifiers were invited to verify the report; -4: date_started is
-            more than 30 days before now;'
+          description: 'A greater than 0 new work report ID, value 0 indicates the report is unpublished
+            and no verifiers were invited; Error values: -1: author of the report is not a shareholder
+            of the parent project; -2: the date_started is earlier that the date when the author registered
+            in Rovas; -3: the report-filing author has more than one pending verification slot, so no
+            verifiers were invited to verify the report; -4: date_started is more than 30 days before
+            now;'
           example: 19008
     DeleteWorkReport:
       required:
@@ -1348,9 +2002,8 @@ components:
       properties:
         result:
           type: integer
-          description: 'returns: ''1'' if report deleted succesfully, ''-1'' not deleted
-            - author of the report is different from the one making the call, or can
-            not be deleted for other reason'
+          description: 'returns: ''1'' if report deleted succesfully, ''-1'' not deleted - author of the
+            report is different from the one making the call, or can not be deleted for other reason'
           enum:
           - 1
           - -1
@@ -1370,18 +2023,16 @@ components:
       properties:
         verifiable:
           type: boolean
-          description: "* `1` - \"if report is verifiable by the user\" * `0` - \"\
-            if report is NOT verifiable\" \n"
+          description: "* `1` - \"if report is verifiable by the user\" * `0` - \"if report is NOT verifiable\"\
+            \ \n"
           enum:
           - 1
           - 0
           example: 1
         reason:
           type: integer
-          description: '* `1` - "no problem found when checking" * `-1` - "the work
-            report can not be found"
-
-            '
+          description: |
+            * `1` - "no problem found when checking" * `-1` - "the work report can not be found"
           enum:
           - 1
           - -1
@@ -1401,10 +2052,8 @@ components:
       properties:
         result:
           type: integer
-          description: '* `1` - "if report is editable by the user 0 if not editable"
-            * `-1` - "if the work report can not be found"
-
-            '
+          description: |
+            * `1` - "if report is editable by the user 0 if not editable" * `-1` - "if the work report can not be found"
           enum:
           - 1
           - -1
@@ -1432,8 +2081,8 @@ components:
       properties:
         verification_id:
           type: integer
-          description: returns the new verification ID if succesfull, '-2' if the
-            report can not be found, '-3' if the report is not verifiable by the user.
+          description: returns the new verification ID if succesfull, '-2' if the report can not be found,
+            '-3' if the report is not verifiable by the user.
           example: 2930
     CreateVerificationAT:
       required:
@@ -1467,11 +2116,10 @@ components:
         verification_id:
           type: integer
           format: int64
-          description: Returns the verification node ID if successful, '-1' if user
-            does not exist with the supplied ID, '-2' if the access token  supplied
-            is invalid, '-3' if there does not exist a verification slip for the access
-            token and UID, or the supplied work report ID does not match the report
-            ID found from the access token
+          description: Returns the verification node ID if successful, '-1' if user does not exist with
+            the supplied ID, '-2' if the access token  supplied is invalid, '-3' if there does not exist
+            a verification slip for the access token and UID, or the supplied work report ID does not
+            match the report ID found from the access token
           example: 2930
     CreateAUR:
       required:
@@ -1489,18 +2137,17 @@ components:
           type: integer
           format: int64
           example: 123
-          description: The ID of a work report that uses the product or service delivered
-            by the beneficiary project
+          description: The ID of a work report that uses the product or service delivered by the beneficiary
+            project
         usage_fee:
           type: string
-          description: the fee paid by the work report creator for usage of the product
-            or service described in the beneficiary project
+          description: the fee paid by the work report creator for usage of the product or service described
+            in the beneficiary project
           example: 9.23
         note:
           type: string
           description: an optional note
-          example: 3% fee levied by the 'Obsidian hand axe' project for using the
-            axe
+          example: 3% fee levied by the 'Obsidian hand axe' project for using the axe
     CreateAURResponse:
       type: object
       properties:
@@ -1509,10 +2156,10 @@ components:
           nullable: true
           format: int32
           example: 49382
-          description: 'success: an integer greater than 0 denoting the AUR ID. ''null''
-            is returned if entities do not exist for the supplied IDs, or the usage
-            fee is empty; ''0'' if work report was not found for the supplied ID;
-            ''-1'' if the work report owner is not the same as the user;'
+          description: 'success: an integer greater than 0 denoting the AUR ID. ''null'' is returned if
+            entities do not exist for the supplied IDs, or the usage fee is empty; ''0'' if work report
+            was not found for the supplied ID; ''-1'' if the work report owner is not the same as the
+            user;'
     NewPurchase:
       required:
       - product_id
@@ -1539,11 +2186,8 @@ components:
         result:
           type: integer
           format: int32
-          description: '* `1` - "for success" * `-1` - "the amount paid is negative
-            or 0 (no purchase was made)" * `-2` - "no enough funds to buy the product"
-            * `-3` - "product not found for the supplied ID"
-
-            '
+          description: |
+            * `1` - "for success" * `-1` - "the amount paid is negative or 0 (no purchase was made)" * `-2` - "no enough funds to buy the product" * `-3` - "product not found for the supplied ID"
           enum:
           - 1
           - -1
@@ -1576,9 +2220,8 @@ components:
         result:
           type: integer
           format: int32
-          description: '* `1` - "for success" * `0` - "for failure"
-
-            '
+          description: |
+            * `1` - "for success" * `0` - "for failure"
           example: 0
         result_explain:
           type: string
@@ -1628,8 +2271,8 @@ components:
           example: 1
         whole_name:
           type: string
-          description: Full name if available. Might be 'nomen omen' for users wo
-            did not set their full name.
+          description: Full name if available. Might be 'nomen omen' for users wo did not set their full
+            name.
           example: Smart User
     UsersMerits:
       required:
@@ -1669,11 +2312,8 @@ components:
           type: integer
           nullable: true
           format: int32
-          description: '* `1` - "success"  * `0` - "failure" * `null` - "returned
-            if the API KEY and TOKEN supplied in the header do not belong to user
-            with the ''api client'' Rovas role "
-
-            '
+          description: |
+            * `1` - "success"  * `0` - "failure" * `null` - "returned if the API KEY and TOKEN supplied in the header do not belong to user with the 'api client' Rovas role "
           enum:
           - 0
           - 1
@@ -1683,10 +2323,8 @@ components:
           type: integer
           nullable: true
           format: int32
-          description: '* `0` - "no error" * `1` - "deleting project not allowed"
-            * `2` - "project not found for the given ID"
-
-            '
+          description: |
+            * `0` - "no error" * `1` - "deleting project not allowed" * `2` - "project not found for the given ID"
           enum:
           - 0
           - 1
@@ -1707,11 +2345,8 @@ components:
       properties:
         result:
           type: integer
-          description: '* `0` - "0 approvals" * `-1` - "one approval" * `1` - "more
-            than one approval" * `-3` - "work report can not be found with the supplied
-            ID"
-
-            '
+          description: |
+            * `0` - "0 approvals" * `-1` - "one approval" * `1` - "more than one approval" * `-3` - "work report can not be found with the supplied ID"
           format: int32
           enum:
           - 0
@@ -1723,9 +2358,8 @@ components:
           example: 1
         count_total:
           type: integer
-          description: the number of verifications made for the work report; a negative
-            number indicates an error during processing of the request, explained
-            by the 'result' parameter;
+          description: the number of verifications made for the work report; a negative number indicates
+            an error during processing of the request, explained by the 'result' parameter;
           enum:
           - -1
           - 0
@@ -1759,7 +2393,7 @@ components:
           example: Trail maintenance
         status:
           type: integer
-          description: '1 = published, 0 = unpublished'
+          description: 1 = published, 0 = unpublished
           example: 1
         uid:
           type: integer
@@ -1811,8 +2445,7 @@ components:
           $ref: '#/components/schemas/valueArray'
     valueArray:
       type: array
-      description: this is a single-value field, so there is only one member in this
-        array
+      description: this is a single-value field, so there is only one member in this array
       items:
         $ref: '#/components/schemas/valueItem'
     valueItem:
@@ -1852,10 +2485,9 @@ components:
       properties:
         project_merits:
           type: string
-          description: 'json-encoded string containig rovas project IDs and their
-            current merit rating. Error states: ''-1'' - the supplied IDs are in an
-            incorrect format; empty set is returned if no projects were found for
-            the supplied IDs'
+          description: 'json-encoded string containig rovas project IDs and their current merit rating.
+            Error states: ''-1'' - the supplied IDs are in an incorrect format; empty set is returned
+            if no projects were found for the supplied IDs'
           example: 'project_merits: ''[{"nid":"23842","merits":"0.6000000000"},{"nid":"23891","merits":"0.0000000000"}]'''
     CheckAddShareholder:
       required:
@@ -1873,9 +2505,8 @@ components:
           type: integer
           nullable: true
           format: int32
-          description: returns a Worker Merit Allocation node ID if the user is a
-            shareholder, '0' if project is private and user can not add themselves,
-            '-1' if project does not exist
+          description: returns a Worker Merit Allocation node ID if the user is a shareholder, '0' if
+            project is private and user can not add themselves, '-1' if project does not exist
           example: 87226
     CheckAddProjectShareholder:
       required:
@@ -1915,11 +2546,10 @@ components:
           type: integer
           nullable: true
           format: int32
-          description: returns the Project Merit Allocation node ID for the shareholder
-            project, '-1' if the project author is not the API and Token owner, '-2'
-            if a project does not exist with the project_nid given, '-3' if a project
-            does not exist with the shareholder_proj_nid given, '-4' if the project
-            shareholder being added isn already a shareholder, or the total shares
+          description: returns the Project Merit Allocation node ID for the shareholder project, '-1'
+            if the project author is not the API and Token owner, '-2' if a project does not exist with
+            the project_nid given, '-3' if a project does not exist with the shareholder_proj_nid given,
+            '-4' if the project shareholder being added isn already a shareholder, or the total shares
             exceeds 100 for non-time-based shareholder
           example: 87226
     ConvertChrons:
@@ -1938,8 +2568,8 @@ components:
         chrons:
           type: number
           format: float
-          description: The amount of Chrons converted to Euros. Negative values are
-            made positive and subsequently converted.
+          description: The amount of Chrons converted to Euros. Negative values are made positive and
+            subsequently converted.
           example: '234.98'
     CheckVerifAccessTokens:
       required:
@@ -1961,10 +2591,8 @@ components:
         verify_allow:
           type: integer
           format: int32
-          description: '* `1` - "user can verify the content" * `0` - "user can not
-            verify the content"
-
-            '
+          description: |
+            * `1` - "user can verify the content" * `0` - "user can not verify the content"
           enum:
           - 1
           - 0
@@ -1983,9 +2611,8 @@ components:
       properties:
         output:
           type: integer
-          description: '* `0` - "language is enabled" * `1` - "language is not enabled"
-
-            '
+          description: |
+            * `0` - "language is enabled" * `1` - "language is not enabled"
           enum:
           - 0
           - 1
@@ -3096,7 +3723,8 @@ components:
         server_url:
           type: string
           format: uri
-          description: Partner base URL for HybridAuth profile link (e.g. trailing slash optional per client).
+          description: Partner base URL for HybridAuth profile link (e.g. trailing slash optional per
+            client).
           example: https://partner.example/
         hybridauth_provider:
           type: string
@@ -3139,3 +3767,325 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/HybridAuthProviderItem'
+    OAuthTokenRequest:
+      type: object
+      properties:
+        grant_type:
+          type: string
+          enum:
+          - authorization_code
+          - refresh_token
+        client_id:
+          type: string
+          example: civic
+        redirect_uri:
+          type: string
+          example: civic://oauth/callback
+        code:
+          type: string
+          description: Required for authorization_code
+        code_verifier:
+          type: string
+          description: PKCE verifier for authorization_code
+        refresh_token:
+          type: string
+          description: Required for refresh_token
+      required:
+      - grant_type
+      - client_id
+    OAuthTokenResponse:
+      type: object
+      properties:
+        access_token:
+          type: string
+        token_type:
+          type: string
+          example: Bearer
+        expires_in:
+          type: integer
+        refresh_token:
+          type: string
+        scope:
+          type: string
+          example: user_profile
+    OAuthTokenIntrospection:
+      type: object
+      properties:
+        user_id:
+          type: integer
+          description: Drupal uid
+        client_id:
+          type: string
+        expires:
+          type: integer
+          description: Unix expiry
+        scope:
+          type: string
+    MeResponse:
+      type: object
+      properties:
+        uid:
+          type: integer
+        username:
+          type: string
+        display_name:
+          type: string
+        total_me:
+          type: number
+          format: float
+        total_chr:
+          type: number
+          format: float
+        created:
+          type: string
+          format: date-time
+        language:
+          type: string
+        receipt_history_retention:
+          description: '`null` | `keep` | `policy`'
+          nullable: true
+          oneOf:
+          - type: string
+            enum:
+            - keep
+            - policy
+          - type: 'null'
+        me_sources_share:
+          type: string
+          enum:
+          - everyone
+          - reciprocal
+          - aggregate
+        trusted_user:
+          type: boolean
+        trusted_notify:
+          type: integer
+          enum:
+          - 0
+          - 1
+          - 2
+          description: 0=no banner, 1=show, 2=dismissed
+    ReceiptHistoryPreferenceRequest:
+      type: object
+      required:
+      - retention
+      properties:
+        retention:
+          type: string
+          enum:
+          - keep
+          - policy
+    ReceiptHistoryPreferenceResponse:
+      type: object
+      properties:
+        receipt_history_retention:
+          type: string
+          enum:
+          - keep
+          - policy
+    MeSourcesPreferenceRequest:
+      type: object
+      required:
+      - share
+      properties:
+        share:
+          type: string
+          enum:
+          - everyone
+          - reciprocal
+          - aggregate
+    MeSourcesPreferenceResponse:
+      type: object
+      properties:
+        me_sources_share:
+          type: string
+          enum:
+          - everyone
+          - reciprocal
+          - aggregate
+    GiveChronsRequest:
+      type: object
+      required:
+      - amount
+      properties:
+        amount:
+          type: number
+          format: float
+          description: Positive Chrons to convert (1:1 to Merits)
+          exclusiveMinimum: 0
+    GiveChronsResponse:
+      type: object
+      properties:
+        chrons_given:
+          type: number
+          format: float
+        merits_gained:
+          type: number
+          format: float
+        total_chr:
+          type: number
+          format: float
+        total_me:
+          type: number
+          format: float
+    TrustedNotifyDismissResponse:
+      type: object
+      properties:
+        trusted_user:
+          type: boolean
+        trusted_notify:
+          type: integer
+          enum:
+          - 0
+          - 1
+          - 2
+    ClaimVatReceiptRequest:
+      type: object
+      description: eKasa VAT claim with optional Merit split across projects
+      properties:
+        receipt_uid:
+          type: string
+        shares:
+          type: array
+          items:
+            type: object
+            properties:
+              project_nid:
+                type: integer
+              share:
+                type: number
+                format: float
+    ClaimVatReceiptResponse:
+      type: object
+      description: Claim outcome (fields vary by implementation)
+      properties:
+        claimed:
+          type: boolean
+        receipt_uid:
+          type: string
+        merits:
+          type: number
+          format: float
+    CivicCreateProjectRequest:
+      type: object
+      required:
+      - name
+      - description
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+        url:
+          type: string
+    CivicCreateProjectResponse:
+      type: object
+      properties:
+        nid:
+          type: integer
+    CivicCreateWorkReportRequest:
+      type: object
+      required:
+      - project_nid
+      - date_started
+      - hours
+      - description
+      - nace_tid
+      properties:
+        project_nid:
+          type: integer
+        date_started:
+          type: string
+          description: Work start date
+        hours:
+          type: number
+          format: float
+        description:
+          type: string
+        nace_tid:
+          type: integer
+        title:
+          type: string
+        web_url:
+          type: string
+          description: Work evidence URL
+        photos:
+          type: array
+          items:
+            type: string
+          description: Base64 proof photos (client-redacted)
+        reward_kind:
+          type: string
+          description: e.g. merits vs chrons payout preference
+        field_location:
+          type: object
+          description: 'GeoJSON geometry: Point, LineString, Polygon, or GeometryCollection'
+        usage_fee_project_id:
+          type: integer
+        usage_fee_rate:
+          type: number
+          format: float
+        photo_redact_mode:
+          type: string
+          description: Ignored if present; redact on the client before upload
+    CivicCreateWorkReportResponse:
+      type: object
+      properties:
+        nid:
+          type: integer
+    CivicSubmitVerificationRequest:
+      type: object
+      properties:
+        work_report_nid:
+          type: integer
+        decision:
+          type: string
+          enum:
+          - approve
+          - reject
+          - decline
+        comment:
+          type: string
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: API-KEY
+      description: From My account → Rovas API for endpoint `rovas_endpoint`.
+    TokenAuth:
+      type: apiKey
+      in: header
+      name: TOKEN
+      description: Paired with API-KEY for the same user.
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: OAuth2 access_token
+      description: OAuth 2 access token with scope `user_profile` (Civic client uses PKCE).
+tags:
+- name: classic-accounts
+  description: Classic API — accounts and identity (API-KEY + TOKEN)
+- name: classic-projects
+  description: Classic API — projects, work reports, verification
+- name: classic-commerce
+  description: Classic API — shares, purchases, conversions
+- name: classic-views
+  description: Classic API — leaderboard / feed Views
+- name: classic-nodes
+  description: Classic API — allowlisted node retrieve/update/delete
+- name: oauth-protocol
+  description: OAuth 2 protocol (authorize, token, revoke, introspect)
+- name: oauth-profile
+  description: OAuth / Civic — home, profile, preferences
+- name: oauth-users
+  description: OAuth / Civic — user search and community lookup
+- name: oauth-claims
+  description: OAuth / Civic — tax claims (Path 1) and national rate
+- name: oauth-projects
+  description: OAuth / Civic — project detail, charity catalog, gifts
+- name: oauth-volunteer
+  description: OAuth / Civic — volunteer work reports
+- name: oauth-verify
+  description: OAuth / Civic — verification and notifications
+- name: oauth-merit-index
+  description: OAuth / Civic — Merit index and spotlight (public)
