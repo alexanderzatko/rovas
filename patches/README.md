@@ -15,3 +15,4 @@ This directory contains patches applied/required for this Drupal 7 codebase.
 - CORE-entity.inc-hardening-1803048-63.patch (core hardening)
 - 86287-translate-reset-password-page-global-xx.patch (custom/behavioral fix)
 - commerce-stripe-pi-translate-please-wait.patch (card checkout submit button loading text)
+- services_rules-honor-allow-null-optional.patch (mark Rules params with allow null/optional as optional in Services so omitted body fields do not 401)

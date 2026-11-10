@@ -1,0 +1,27 @@
+diff --git a/sites/all/modules/contrib/services_rules/services_rules.module b/sites/all/modules/contrib/services_rules/services_rules.module
+index 1859beca..272e976d 100644
+--- a/sites/all/modules/contrib/services_rules/services_rules.module
++++ b/sites/all/modules/contrib/services_rules/services_rules.module
+@@ -29,13 +29,20 @@ function services_rules_services_resources() {
+       // type will be left out.
+       if (!isset($data['parameter']) || (isset($data['parameter']) && $data['parameter'] !== FALSE)) {
+         $variables[] = "[{$machine_name}] = {$data['label']}";
+-        $args[] = array(
++        // Honor Rules "optional" / "allow null" so Services does not 401 when
++        // clients omit those body fields (e.g. reward_kind, access_token).
++        $optional = !empty($data['optional']) || !empty($data['allow null']);
++        $arg = array(
+           'name' => $machine_name,
+           'type' => 'string',
+           'description' => $data['label'],
+           'source' => array('data' => $machine_name),
+-          'optional' => FALSE,
++          'optional' => $optional,
+         );
++        if (array_key_exists('default value', $data)) {
++          $arg['default value'] = $data['default value'];
++        }
++        $args[] = $arg;
+       }
+     }
+     $description = !empty($variables) ?  t('@label - The following values are accepted: <i>@values</i>', array('@label' => $rule->label, '@values' => implode(', ', $variables))) : check_plain($rule->label);
