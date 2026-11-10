@@ -3,7 +3,7 @@
 **Rovas** (Slovak: *Rováš*) is the web application that implements **[NEO](https://neofund.sk/)**, a community economic system for voluntary work.
 
 Live site: [https://rovas.app](https://rovas.app)  
-Operator: [NeoFund s.r.o.](https://neofund.sk/) (Slovakia)
+Operator: [NeoFund n. f.](https://neofund.sk/) (Slovakia)
 
 ## What it does
 
