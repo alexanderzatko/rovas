@@ -20,1755 +20,1755 @@ msgstr ""
 msgid "CustomMessage: !customMessage"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Africa/Abidjan"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Africa/Accra"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Africa/Addis Ababa"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Africa/Algiers"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Africa/Asmara"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Africa/Bamako"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Africa/Bangui"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Africa/Banjul"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Africa/Bissau"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Africa/Blantyre"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Africa/Brazzaville"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Africa/Bujumbura"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Africa/Cairo"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Africa/Casablanca"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Africa/Ceuta"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Africa/Conakry"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Africa/Dakar"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Africa/Dar es Salaam"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Africa/Djibouti"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Africa/Douala"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Africa/El Aaiun"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Africa/Freetown"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Africa/Gaborone"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Africa/Harare"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Africa/Johannesburg"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Africa/Juba"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Africa/Kampala"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Africa/Khartoum"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Africa/Kigali"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Africa/Kinshasa"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Africa/Lagos"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Africa/Libreville"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Africa/Lome"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Africa/Luanda"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Africa/Lubumbashi"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Africa/Lusaka"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Africa/Malabo"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Africa/Maputo"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Africa/Maseru"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Africa/Mbabane"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Africa/Mogadishu"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Africa/Monrovia"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Africa/Nairobi"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Africa/Ndjamena"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Africa/Niamey"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Africa/Nouakchott"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Africa/Ouagadougou"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Africa/Porto-Novo"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Africa/Sao Tome"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Africa/Tripoli"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Africa/Tunis"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Africa/Windhoek"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "America/Adak"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "America/Anchorage"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "America/Anguilla"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "America/Antigua"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "America/Araguaina"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "America/Argentina/Buenos Aires"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "America/Argentina/Catamarca"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "America/Argentina/Cordoba"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "America/Argentina/Jujuy"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "America/Argentina/La Rioja"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "America/Argentina/Mendoza"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "America/Argentina/Rio Gallegos"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "America/Argentina/Salta"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "America/Argentina/San Juan"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "America/Argentina/San Luis"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "America/Argentina/Tucuman"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "America/Argentina/Ushuaia"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "America/Aruba"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "America/Asuncion"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "America/Atikokan"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "America/Bahia"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "America/Bahia Banderas"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "America/Barbados"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "America/Belem"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "America/Belize"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "America/Blanc-Sablon"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "America/Boa Vista"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "America/Bogota"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "America/Boise"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "America/Cambridge Bay"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "America/Campo Grande"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "America/Cancun"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "America/Caracas"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "America/Cayenne"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "America/Cayman"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "America/Chicago"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "America/Chihuahua"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "America/Costa Rica"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "America/Creston"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "America/Cuiaba"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "America/Curacao"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "America/Danmarkshavn"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "America/Dawson"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "America/Dawson Creek"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "America/Denver"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "America/Detroit"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "America/Dominica"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "America/Edmonton"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "America/Eirunepe"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "America/El Salvador"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "America/Fort Nelson"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "America/Fortaleza"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "America/Glace Bay"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "America/Godthab"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "America/Goose Bay"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "America/Grand Turk"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "America/Grenada"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "America/Guadeloupe"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "America/Guatemala"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "America/Guayaquil"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "America/Guyana"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "America/Halifax"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "America/Havana"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "America/Hermosillo"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "America/Indiana/Indianapolis"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "America/Indiana/Knox"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "America/Indiana/Marengo"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "America/Indiana/Petersburg"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "America/Indiana/Tell City"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "America/Indiana/Vevay"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "America/Indiana/Vincennes"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "America/Indiana/Winamac"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "America/Inuvik"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "America/Iqaluit"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "America/Jamaica"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "America/Juneau"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "America/Kentucky/Louisville"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "America/Kentucky/Monticello"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "America/Kralendijk"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "America/La Paz"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "America/Lima"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "America/Los Angeles"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "America/Lower Princes"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "America/Maceio"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "America/Managua"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "America/Manaus"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "America/Marigot"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "America/Martinique"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "America/Matamoros"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "America/Mazatlan"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "America/Menominee"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "America/Merida"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "America/Metlakatla"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "America/Mexico City"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "America/Miquelon"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "America/Moncton"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "America/Monterrey"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "America/Montevideo"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "America/Montserrat"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "America/Nassau"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "America/New York"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "America/Nipigon"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "America/Nome"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "America/Noronha"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "America/North Dakota/Beulah"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "America/North Dakota/Center"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "America/North Dakota/New Salem"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "America/Ojinaga"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "America/Panama"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "America/Pangnirtung"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "America/Paramaribo"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "America/Phoenix"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "America/Port-au-Prince"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "America/Port of Spain"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "America/Porto Velho"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "America/Puerto Rico"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "America/Rainy River"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "America/Rankin Inlet"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "America/Recife"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "America/Regina"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "America/Resolute"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "America/Rio Branco"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "America/Santarem"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "America/Santiago"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "America/Santo Domingo"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "America/Sao Paulo"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "America/Scoresbysund"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "America/Sitka"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "America/St Barthelemy"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "America/St Johns"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "America/St Kitts"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "America/St Lucia"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "America/St Thomas"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "America/St Vincent"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "America/Swift Current"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "America/Tegucigalpa"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "America/Thule"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "America/Thunder Bay"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "America/Tijuana"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "America/Toronto"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "America/Tortola"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "America/Vancouver"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "America/Whitehorse"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "America/Winnipeg"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "America/Yakutat"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "America/Yellowknife"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Antarctica/Casey"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Antarctica/Davis"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Antarctica/DumontDUrville"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Antarctica/Macquarie"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Antarctica/Mawson"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Antarctica/McMurdo"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Antarctica/Palmer"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Antarctica/Rothera"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Antarctica/Syowa"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Antarctica/Troll"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Antarctica/Vostok"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Arctic/Longyearbyen"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Asia/Aden"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Asia/Almaty"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Asia/Amman"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Asia/Anadyr"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Asia/Aqtau"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Asia/Aqtobe"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Asia/Ashgabat"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Asia/Atyrau"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Asia/Baghdad"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Asia/Bahrain"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Asia/Baku"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Asia/Bangkok"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Asia/Barnaul"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Asia/Beirut"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Asia/Bishkek"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Asia/Brunei"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Asia/Chita"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Asia/Choibalsan"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Asia/Colombo"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Asia/Damascus"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Asia/Dhaka"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Asia/Dili"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Asia/Dubai"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Asia/Dushanbe"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Asia/Famagusta"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Asia/Gaza"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Asia/Hebron"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Asia/Ho Chi Minh"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Asia/Hong Kong"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Asia/Hovd"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Asia/Irkutsk"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Asia/Jakarta"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Asia/Jayapura"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Asia/Jerusalem"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Asia/Kabul"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Asia/Kamchatka"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Asia/Karachi"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Asia/Kathmandu"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Asia/Khandyga"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Asia/Kolkata"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Asia/Krasnoyarsk"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Asia/Kuala Lumpur"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Asia/Kuching"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Asia/Kuwait"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Asia/Macau"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Asia/Magadan"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Asia/Makassar"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Asia/Manila"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Asia/Muscat"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Asia/Nicosia"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Asia/Novokuznetsk"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Asia/Novosibirsk"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Asia/Omsk"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Asia/Oral"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Asia/Phnom Penh"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Asia/Pontianak"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Asia/Pyongyang"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Asia/Qatar"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Asia/Qyzylorda"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Asia/Riyadh"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Asia/Sakhalin"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Asia/Samarkand"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Asia/Seoul"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Asia/Shanghai"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Asia/Singapore"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Asia/Srednekolymsk"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Asia/Taipei"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Asia/Tashkent"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Asia/Tbilisi"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Asia/Tehran"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Asia/Thimphu"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Asia/Tokyo"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Asia/Tomsk"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Asia/Ulaanbaatar"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Asia/Urumqi"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Asia/Ust-Nera"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Asia/Vientiane"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Asia/Vladivostok"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Asia/Yakutsk"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Asia/Yangon"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Asia/Yekaterinburg"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Asia/Yerevan"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Atlantic/Azores"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Atlantic/Bermuda"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Atlantic/Canary"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Atlantic/Cape Verde"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Atlantic/Faroe"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Atlantic/Madeira"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Atlantic/Reykjavik"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Atlantic/South Georgia"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Atlantic/St Helena"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Atlantic/Stanley"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Australia/Adelaide"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Australia/Brisbane"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Australia/Broken Hill"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Australia/Currie"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Australia/Darwin"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Australia/Eucla"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Australia/Hobart"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Australia/Lindeman"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Australia/Lord Howe"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Australia/Melbourne"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Australia/Perth"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Australia/Sydney"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Europe/Amsterdam"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Europe/Andorra"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Europe/Astrakhan"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Europe/Athens"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Europe/Belgrade"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Europe/Berlin"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Europe/Bratislava"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Europe/Brussels"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Europe/Bucharest"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Europe/Budapest"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Europe/Busingen"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Europe/Chisinau"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Europe/Copenhagen"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Europe/Dublin"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Europe/Gibraltar"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Europe/Guernsey"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Europe/Helsinki"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Europe/Isle of Man"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Europe/Istanbul"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Europe/Jersey"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Europe/Kaliningrad"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Europe/Kiev"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Europe/Kirov"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Europe/Lisbon"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Europe/Ljubljana"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Europe/London"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Europe/Luxembourg"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Europe/Madrid"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Europe/Malta"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Europe/Mariehamn"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Europe/Minsk"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Europe/Monaco"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Europe/Moscow"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Europe/Oslo"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Europe/Paris"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Europe/Podgorica"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Europe/Prague"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Europe/Riga"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Europe/Rome"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Europe/Samara"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Europe/San Marino"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Europe/Sarajevo"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Europe/Saratov"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Europe/Simferopol"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Europe/Skopje"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Europe/Sofia"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Europe/Stockholm"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Europe/Tallinn"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Europe/Tirane"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Europe/Ulyanovsk"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Europe/Uzhgorod"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Europe/Vaduz"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Europe/Vatican"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Europe/Vienna"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Europe/Vilnius"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Europe/Volgograd"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Europe/Warsaw"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Europe/Zagreb"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Europe/Zaporozhye"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Europe/Zurich"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Indian/Antananarivo"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Indian/Chagos"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Indian/Christmas"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Indian/Cocos"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Indian/Comoro"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Indian/Kerguelen"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Indian/Mahe"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Indian/Maldives"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Indian/Mauritius"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Indian/Mayotte"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Indian/Reunion"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Pacific/Apia"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Pacific/Auckland"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Pacific/Bougainville"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Pacific/Chatham"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Pacific/Chuuk"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Pacific/Easter"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Pacific/Efate"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Pacific/Enderbury"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Pacific/Fakaofo"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Pacific/Fiji"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Pacific/Funafuti"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Pacific/Galapagos"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Pacific/Gambier"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Pacific/Guadalcanal"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Pacific/Guam"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Pacific/Honolulu"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Pacific/Johnston"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Pacific/Kiritimati"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Pacific/Kosrae"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Pacific/Kwajalein"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Pacific/Majuro"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Pacific/Marquesas"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Pacific/Midway"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Pacific/Nauru"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Pacific/Niue"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Pacific/Norfolk"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Pacific/Noumea"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Pacific/Pago Pago"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Pacific/Palau"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Pacific/Pitcairn"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Pacific/Pohnpei"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Pacific/Port Moresby"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Pacific/Rarotonga"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Pacific/Saipan"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Pacific/Tahiti"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Pacific/Tarawa"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Pacific/Tongatapu"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Pacific/Wake"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Pacific/Wallis"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "UTC"
 msgstr ""
 
-#: /?q=system%2Ftimezone%2FCEST%2F7200%2F1&date=Wed+May+03+2017+07%3A16%3A16+GMT%2B0200+(CEST)
+#: /
 msgid "Search result highlighting input"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid ""
 "Order of language detection methods for content. If a version of content is "
 "available in the detected language, it will be displayed."
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Field type(s) in use - see <a href=\"@fields-page\">Field list</a>"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Dashboard (main)"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Dashboard (sidebar)"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Dashboard (inactive)"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "Management"
 msgstr ""
 
-#: /install.php?profile=standard&locale=sk
+#: /install.php
 msgid "User menu"
 msgstr ""
 
-#: /admin/config?render=overlay
+#: /admin/config
 msgid "Database 4 byte UTF-8 support"
 msgstr ""
 
-#: /admin/config?render=overlay
+#: /admin/config
 msgid ""
 "4 byte UTF-8 for @driver is disabled. See the <a href=\"@url\">documentation"
 " on adding 4 byte UTF-8 support</a> for more information."
 msgstr ""
 
-#: /admin/config?render=overlay
+#: /admin/config
 msgid "Public files directory"
 msgstr ""
 
-#: /admin/config/regional/language?render=overlay
+#: /admin/config/regional/language
 msgid ""
 "With multiple languages enabled, interface text can be translated, "
 "registered users may select their preferred language, and authors can assign"
@@ -1948,7 +1948,7 @@ msgstr ""
 msgid "Offset"
 msgstr ""
 
-#: /admin/structure/views/view/chron_balance/edit/page?destination=chron-balance
+#: /admin/structure/views/view/chron_balance/edit/page
 msgid "Goods and services list"
 msgstr ""
 
@@ -3351,547 +3351,547 @@ msgstr ""
 msgid "Current list item"
 msgstr ""
 
-#: /verify-confirm?verf_email=sano%40strings.net
+#: /verify-confirm
 msgid "The source node for this current node's translation set."
 msgstr ""
 
-#: /verify-confirm?verf_email=sano%40strings.net
+#: /verify-confirm
 msgid "The explanation of the most recent changes made to the node."
 msgstr ""
 
-#: /verify-confirm?verf_email=sano%40strings.net
+#: /verify-confirm
 msgid "The content type of the node."
 msgstr ""
 
-#: /verify-confirm?verf_email=sano%40strings.net
+#: /verify-confirm
 msgid "Tokens related to content types."
 msgstr ""
 
-#: /verify-confirm?verf_email=sano%40strings.net
+#: /verify-confirm
 msgid "The name of the content type."
 msgstr ""
 
-#: /verify-confirm?verf_email=sano%40strings.net
+#: /verify-confirm
 msgid "The unique machine-readable name of the content type."
 msgstr ""
 
-#: /verify-confirm?verf_email=sano%40strings.net
+#: /verify-confirm
 msgid "The optional description of the content type."
 msgstr ""
 
-#: /verify-confirm?verf_email=sano%40strings.net
+#: /verify-confirm
 msgid "The number of nodes belonging to the content type."
 msgstr ""
 
-#: /verify-confirm?verf_email=sano%40strings.net
+#: /verify-confirm
 msgid "The URL of the content type's edit page."
 msgstr ""
 
-#: /verify-confirm?verf_email=sano%40strings.net
+#: /verify-confirm
 msgid "The URL of the taxonomy term's edit page."
 msgstr ""
 
-#: /verify-confirm?verf_email=sano%40strings.net
+#: /verify-confirm
 msgid "Parents"
 msgstr ""
 
-#: /verify-confirm?verf_email=sano%40strings.net
+#: /verify-confirm
 msgid "An array of all the term's parents, starting with the root."
 msgstr ""
 
-#: /verify-confirm?verf_email=sano%40strings.net
+#: /verify-confirm
 msgid "Root term"
 msgstr ""
 
-#: /verify-confirm?verf_email=sano%40strings.net
+#: /verify-confirm
 msgid "The root term of the taxonomy term."
 msgstr ""
 
-#: /verify-confirm?verf_email=sano%40strings.net
+#: /verify-confirm
 msgid "The unique machine-readable name of the vocabulary."
 msgstr ""
 
-#: /verify-confirm?verf_email=sano%40strings.net
+#: /verify-confirm
 msgid "The URL of the vocabulary's edit page."
 msgstr ""
 
-#: /verify-confirm?verf_email=sano%40strings.net
+#: /verify-confirm
 msgid "Base name"
 msgstr ""
 
-#: /verify-confirm?verf_email=sano%40strings.net
+#: /verify-confirm
 msgid "The base name of the file."
 msgstr ""
 
-#: /verify-confirm?verf_email=sano%40strings.net
+#: /verify-confirm
 msgid "Extension"
 msgstr ""
 
-#: /verify-confirm?verf_email=sano%40strings.net
+#: /verify-confirm
 msgid "The extension of the file."
 msgstr ""
 
-#: /verify-confirm?verf_email=sano%40strings.net
+#: /verify-confirm
 msgid "File byte size"
 msgstr ""
 
-#: /verify-confirm?verf_email=sano%40strings.net
+#: /verify-confirm
 msgid "The size of the file, in bytes."
 msgstr ""
 
-#: /verify-confirm?verf_email=sano%40strings.net
+#: /verify-confirm
 msgid "Account cancellation URL"
 msgstr ""
 
-#: /verify-confirm?verf_email=sano%40strings.net
+#: /verify-confirm
 msgid "The URL of the confirm delete page for the user account."
 msgstr ""
 
-#: /verify-confirm?verf_email=sano%40strings.net
+#: /verify-confirm
 msgid "One-time login URL"
 msgstr ""
 
-#: /verify-confirm?verf_email=sano%40strings.net
+#: /verify-confirm
 msgid "The URL of the one-time login page for the user account."
 msgstr ""
 
-#: /verify-confirm?verf_email=sano%40strings.net
+#: /verify-confirm
 msgid "The picture of the user."
 msgstr ""
 
-#: /verify-confirm?verf_email=sano%40strings.net
+#: /verify-confirm
 msgid "The user roles associated with the user account."
 msgstr ""
 
-#: /verify-confirm?verf_email=sano%40strings.net
+#: /verify-confirm
 msgid "Menu links"
 msgstr ""
 
-#: /verify-confirm?verf_email=sano%40strings.net
+#: /verify-confirm
 msgid "Tokens related to menu links."
 msgstr ""
 
-#: /verify-confirm?verf_email=sano%40strings.net
+#: /verify-confirm
 msgid "Link ID"
 msgstr ""
 
-#: /verify-confirm?verf_email=sano%40strings.net
+#: /verify-confirm
 msgid "The unique ID of the menu link."
 msgstr ""
 
-#: /verify-confirm?verf_email=sano%40strings.net
+#: /verify-confirm
 msgid "The title of the menu link."
 msgstr ""
 
-#: /verify-confirm?verf_email=sano%40strings.net
+#: /verify-confirm
 msgid "The URL of the menu link."
 msgstr ""
 
-#: /verify-confirm?verf_email=sano%40strings.net
+#: /verify-confirm
 msgid "The menu link's parent."
 msgstr ""
 
-#: /verify-confirm?verf_email=sano%40strings.net
+#: /verify-confirm
 msgid "An array of all the menu link's parents, starting with the root."
 msgstr ""
 
-#: /verify-confirm?verf_email=sano%40strings.net
+#: /verify-confirm
 msgid "Root"
 msgstr ""
 
-#: /verify-confirm?verf_email=sano%40strings.net
+#: /verify-confirm
 msgid "The menu link's root."
 msgstr ""
 
-#: /verify-confirm?verf_email=sano%40strings.net
+#: /verify-confirm
 msgid "Tokens related to the current page request."
 msgstr ""
 
-#: /verify-confirm?verf_email=sano%40strings.net
+#: /verify-confirm
 msgid "The title of the current page."
 msgstr ""
 
-#: /verify-confirm?verf_email=sano%40strings.net
+#: /verify-confirm
 msgid "The URL of the current page."
 msgstr ""
 
-#: /verify-confirm?verf_email=sano%40strings.net
+#: /verify-confirm
 msgid "Page number"
 msgstr ""
 
-#: /verify-confirm?verf_email=sano%40strings.net
+#: /verify-confirm
 msgid "The page number of the current page when viewing paged lists."
 msgstr ""
 
-#: /verify-confirm?verf_email=sano%40strings.net
+#: /verify-confirm
 msgid "Query string value"
 msgstr ""
 
-#: /verify-confirm?verf_email=sano%40strings.net
+#: /verify-confirm
 msgid "The value of a specific query string field of the current page."
 msgstr ""
 
-#: /verify-confirm?verf_email=sano%40strings.net
+#: /verify-confirm
 msgid "Tokens related to URLs."
 msgstr ""
 
-#: /verify-confirm?verf_email=sano%40strings.net
+#: /verify-confirm
 msgid "The path component of the URL."
 msgstr ""
 
-#: /verify-confirm?verf_email=sano%40strings.net
+#: /verify-confirm
 msgid "Relative URL"
 msgstr ""
 
-#: /verify-confirm?verf_email=sano%40strings.net
+#: /verify-confirm
 msgid "The relative URL."
 msgstr ""
 
-#: /verify-confirm?verf_email=sano%40strings.net
+#: /verify-confirm
 msgid "Absolute URL"
 msgstr ""
 
-#: /verify-confirm?verf_email=sano%40strings.net
+#: /verify-confirm
 msgid "The absolute URL."
 msgstr ""
 
-#: /verify-confirm?verf_email=sano%40strings.net
+#: /verify-confirm
 msgid "Brief URL"
 msgstr ""
 
-#: /verify-confirm?verf_email=sano%40strings.net
+#: /verify-confirm
 msgid "The URL without the protocol and trailing backslash."
 msgstr ""
 
-#: /verify-confirm?verf_email=sano%40strings.net
+#: /verify-confirm
 msgid "Unaliased URL"
 msgstr ""
 
-#: /verify-confirm?verf_email=sano%40strings.net
+#: /verify-confirm
 msgid "The unaliased URL."
 msgstr ""
 
-#: /verify-confirm?verf_email=sano%40strings.net
+#: /verify-confirm
 msgid "Arguments"
 msgstr ""
 
-#: /verify-confirm?verf_email=sano%40strings.net
+#: /verify-confirm
 msgid ""
 "The specific argument of the current page (e.g. 'arg:1' on the page 'node/1'"
 " returns '1')."
 msgstr ""
 
-#: /verify-confirm?verf_email=sano%40strings.net
+#: /verify-confirm
 msgid "Array"
 msgstr ""
 
-#: /verify-confirm?verf_email=sano%40strings.net
+#: /verify-confirm
 msgid "Tokens related to arrays of strings."
 msgstr ""
 
-#: /verify-confirm?verf_email=sano%40strings.net
+#: /verify-confirm
 msgid "First"
 msgstr ""
 
-#: /verify-confirm?verf_email=sano%40strings.net
+#: /verify-confirm
 msgid "The first element of the array."
 msgstr ""
 
-#: /verify-confirm?verf_email=sano%40strings.net
+#: /verify-confirm
 msgid "Last"
 msgstr ""
 
-#: /verify-confirm?verf_email=sano%40strings.net
+#: /verify-confirm
 msgid "The last element of the array."
 msgstr ""
 
-#: /verify-confirm?verf_email=sano%40strings.net
+#: /verify-confirm
 msgid "The number of elements in the array."
 msgstr ""
 
-#: /verify-confirm?verf_email=sano%40strings.net
+#: /verify-confirm
 msgid "Reversed"
 msgstr ""
 
-#: /verify-confirm?verf_email=sano%40strings.net
+#: /verify-confirm
 msgid "The array reversed."
 msgstr ""
 
-#: /verify-confirm?verf_email=sano%40strings.net
+#: /verify-confirm
 msgid "Keys"
 msgstr ""
 
-#: /verify-confirm?verf_email=sano%40strings.net
+#: /verify-confirm
 msgid "The array of keys of the array."
 msgstr ""
 
-#: /verify-confirm?verf_email=sano%40strings.net
+#: /verify-confirm
 msgid "Imploded"
 msgstr ""
 
-#: /verify-confirm?verf_email=sano%40strings.net
+#: /verify-confirm
 msgid ""
 "The values of the array joined together with a custom string in-between each"
 " value."
 msgstr ""
 
-#: /verify-confirm?verf_email=sano%40strings.net
+#: /verify-confirm
 msgid "The specific value of the array."
 msgstr ""
 
-#: /verify-confirm?verf_email=sano%40strings.net
+#: /verify-confirm
 msgid "Random"
 msgstr ""
 
-#: /verify-confirm?verf_email=sano%40strings.net
+#: /verify-confirm
 msgid "A random number from 0 to @max."
 msgstr ""
 
-#: /verify-confirm?verf_email=sano%40strings.net
+#: /verify-confirm
 msgid "Hash"
 msgstr ""
 
-#: /verify-confirm?verf_email=sano%40strings.net
+#: /verify-confirm
 msgid "A random hash. The possible hashing algorithms are: @hash-algos."
 msgstr ""
 
-#: /verify-confirm?verf_email=sano%40strings.net
+#: /verify-confirm
 msgid "Countries"
 msgstr ""
 
-#: /verify-confirm?verf_email=sano%40strings.net
+#: /verify-confirm
 msgid "Tokens related to individual countries."
 msgstr ""
 
-#: /verify-confirm?verf_email=sano%40strings.net
+#: /verify-confirm
 msgid "Tokens related to the sites default country."
 msgstr ""
 
-#: /verify-confirm?verf_email=sano%40strings.net
+#: /verify-confirm
 msgid "The unique internal database ID of the country."
 msgstr ""
 
-#: /verify-confirm?verf_email=sano%40strings.net
+#: /verify-confirm
 msgid "The name of the country."
 msgstr ""
 
-#: /verify-confirm?verf_email=sano%40strings.net
+#: /verify-confirm
 msgid "The official name of the country."
 msgstr ""
 
-#: /verify-confirm?verf_email=sano%40strings.net
+#: /verify-confirm
 msgid "The @property of the country."
 msgstr ""
 
-#: /verify-confirm?verf_email=sano%40strings.net
+#: /verify-confirm
 msgid "The Continent code of the country."
 msgstr ""
 
-#: /verify-confirm?verf_email=sano%40strings.net
+#: /verify-confirm
 msgid "Tokens related to menus."
 msgstr ""
 
-#: /verify-confirm?verf_email=sano%40strings.net
+#: /verify-confirm
 msgid "The name of the menu."
 msgstr ""
 
-#: /verify-confirm?verf_email=sano%40strings.net
+#: /verify-confirm
 msgid "The unique machine-readable name of the menu."
 msgstr ""
 
-#: /verify-confirm?verf_email=sano%40strings.net
+#: /verify-confirm
 msgid "The optional description of the menu."
 msgstr ""
 
-#: /verify-confirm?verf_email=sano%40strings.net
+#: /verify-confirm
 msgid "Menu link count"
 msgstr ""
 
-#: /verify-confirm?verf_email=sano%40strings.net
+#: /verify-confirm
 msgid "The number of menu links belonging to the menu."
 msgstr ""
 
-#: /verify-confirm?verf_email=sano%40strings.net
+#: /verify-confirm
 msgid "The URL of the menu's edit page."
 msgstr ""
 
-#: /verify-confirm?verf_email=sano%40strings.net
+#: /verify-confirm
 msgid "The menu of the menu link."
 msgstr ""
 
-#: /verify-confirm?verf_email=sano%40strings.net
+#: /verify-confirm
 msgid "The URL of the menu link's edit page."
 msgstr ""
 
-#: /verify-confirm?verf_email=sano%40strings.net
+#: /verify-confirm
 msgid "The menu link for this node."
 msgstr ""
 
-#: /verify-confirm?verf_email=sano%40strings.net
+#: /verify-confirm
 msgid "Tokens related to private messages."
 msgstr ""
 
-#: /verify-confirm?verf_email=sano%40strings.net
+#: /verify-confirm
 msgid "Message ID"
 msgstr ""
 
-#: /verify-confirm?verf_email=sano%40strings.net
+#: /verify-confirm
 msgid "The unique ID of the message."
 msgstr ""
 
-#: /verify-confirm?verf_email=sano%40strings.net
+#: /verify-confirm
 msgid "Thread ID"
 msgstr ""
 
-#: /verify-confirm?verf_email=sano%40strings.net
+#: /verify-confirm
 msgid "The unique ID of the thread."
 msgstr ""
 
-#: /verify-confirm?verf_email=sano%40strings.net
+#: /verify-confirm
 msgid "URL that points to the message."
 msgstr ""
 
-#: /verify-confirm?verf_email=sano%40strings.net
+#: /verify-confirm
 msgid "The body of the message."
 msgstr ""
 
-#: /verify-confirm?verf_email=sano%40strings.net
+#: /verify-confirm
 msgid "The date the message was sent."
 msgstr ""
 
-#: /verify-confirm?verf_email=sano%40strings.net
+#: /verify-confirm
 msgid "The author of the message."
 msgstr ""
 
-#: /verify-confirm?verf_email=sano%40strings.net
+#: /verify-confirm
 msgid "The recipient of the message."
 msgstr ""
 
-#: /verify-confirm?verf_email=sano%40strings.net
+#: /verify-confirm
 msgid ""
 "A single transaction that grants or removes a certain amount of points from "
 "a user."
 msgstr ""
 
-#: /verify-confirm?verf_email=sano%40strings.net
+#: /verify-confirm
 msgid "Amount of !points a user has."
 msgstr ""
 
-#: /verify-confirm?verf_email=sano%40strings.net
+#: /verify-confirm
 msgid "Maximal !points"
 msgstr ""
 
-#: /verify-confirm?verf_email=sano%40strings.net
+#: /verify-confirm
 msgid "Maximal amount of !points a user had at any time."
 msgstr ""
 
-#: /verify-confirm?verf_email=sano%40strings.net
+#: /verify-confirm
 msgid ""
 "The amount of !points this user has. If there are multiple categories, only "
 "the default category is taken into account."
 msgstr ""
 
-#: /verify-confirm?verf_email=sano%40strings.net
+#: /verify-confirm
 msgid ""
 "The highest amount of !points a user had at any given point. If there are "
 "multiple categories, only the default category is taken into account."
 msgstr ""
 
-#: /verify-confirm?verf_email=sano%40strings.net
+#: /verify-confirm
 msgid "Total amount of !points over all categories."
 msgstr ""
 
-#: /verify-confirm?verf_email=sano%40strings.net
+#: /verify-confirm
 msgid "Total maximum !points"
 msgstr ""
 
-#: /verify-confirm?verf_email=sano%40strings.net
+#: /verify-confirm
 msgid "Total amount of maximal !points over all categories."
 msgstr ""
 
-#: /verify-confirm?verf_email=sano%40strings.net
+#: /verify-confirm
 msgid "!Points absolute"
 msgstr ""
 
-#: /verify-confirm?verf_email=sano%40strings.net
+#: /verify-confirm
 msgid "The absolute (positive) amount of !points of this transaction."
 msgstr ""
 
-#: /verify-confirm?verf_email=sano%40strings.net
+#: /verify-confirm
 msgid "Tokens related to views."
 msgstr ""
 
-#: /verify-confirm?verf_email=sano%40strings.net
+#: /verify-confirm
 msgid "The human-readable name of the view."
 msgstr ""
 
-#: /verify-confirm?verf_email=sano%40strings.net
+#: /verify-confirm
 msgid "The description of the view."
 msgstr ""
 
-#: /verify-confirm?verf_email=sano%40strings.net
+#: /verify-confirm
 msgid "The machine-readable name of the view."
 msgstr ""
 
-#: /verify-confirm?verf_email=sano%40strings.net
+#: /verify-confirm
 msgid "The title of current display of the view."
 msgstr ""
 
-#: /verify-confirm?verf_email=sano%40strings.net
+#: /verify-confirm
 msgid "The URL of the view."
 msgstr ""
 
-#: /verify-confirm?verf_email=sano%40strings.net
+#: /verify-confirm
 msgid "Tokens related to %label Rules variables."
 msgstr ""
 
-#: /verify-confirm?verf_email=sano%40strings.net
+#: /verify-confirm
 msgid "The value of the variable."
 msgstr ""
 
-#: /verify-confirm?verf_email=sano%40strings.net
+#: /verify-confirm
 msgid "Tokens related to the current date and time."
 msgstr ""
 
-#: /verify-confirm?verf_email=sano%40strings.net
+#: /verify-confirm
 msgid "Original @entity"
 msgstr ""
 
-#: /verify-confirm?verf_email=sano%40strings.net
+#: /verify-confirm
 msgid "The original @entity data if the @entity is being updated or saved."
 msgstr ""
 
-#: /verify-confirm?verf_email=sano%40strings.net
+#: /verify-confirm
 msgid "A date in '@type' format. (%date)"
 msgstr ""
 
-#: /verify-confirm?verf_email=sano%40strings.net
+#: /verify-confirm
 msgid "The following properties may be appended to the token: @keys"
 msgstr ""
 
-#: /verify-confirm?verf_email=sano%40strings.net
+#: /verify-confirm
 msgid "List of @entities"
 msgstr ""
 
-#: /verify-confirm?verf_email=sano%40strings.net
+#: /verify-confirm
 msgid "Tokens related to the \"@name\" entities."
 msgstr ""
 
-#: /verify-confirm?verf_email=sano%40strings.net
+#: /verify-confirm
 msgid "@type with delta @delta"
 msgstr ""
 
-#: /verify-confirm?verf_email=sano%40strings.net
+#: /verify-confirm
 msgid ""
 "The list item with delta @delta. Delta values start from 0 and are "
 "incremented by one per list item."
 msgstr ""
 
-#: /verify-confirm?verf_email=sano%40strings.net
+#: /verify-confirm
 msgid "List of @type values"
 msgstr ""
 
-#: /verify-confirm?verf_email=sano%40strings.net
+#: /verify-confirm
 msgid "Tokens for lists of @type values."
 msgstr ""
 
@@ -4033,7 +4033,7 @@ msgstr ""
 msgid "Bootstrap Theme"
 msgstr ""
 
-#: /verify-confirm?verf_email=hu
+#: /verify-confirm
 msgid "Please provide a valid email address for the verifier"
 msgstr ""
 
@@ -5927,7 +5927,7 @@ msgstr ""
 msgid "-Open all-"
 msgstr ""
 
-#: /verify-confirm?verf_email=sano%40strings.net
+#: /verify-confirm
 msgid "@type field."
 msgstr ""
 
@@ -8474,7 +8474,7 @@ msgstr ""
 msgid "Ajax callback for view loading."
 msgstr ""
 
-#: /index.php?q=entityreference/autocomplete/single/field_coworker/node/co_worker_merit_allocation/NULL/Z
+#: /index.php
 msgid "Invalid input"
 msgstr ""
 
@@ -9021,7 +9021,7 @@ msgstr ""
 msgid "Block - all projects"
 msgstr ""
 
-#: /dash?page=1
+#: /dash
 msgid "No projects found using the selected search criteria."
 msgstr ""
 
@@ -9335,11 +9335,11 @@ msgstr ""
 msgid "Usernames"
 msgstr ""
 
-#: /index.php?q=admin/views/ajax/autocomplete/user/H
+#: /index.php
 msgid "All variables"
 msgstr ""
 
-#: /index.php?q=admin/views/ajax/autocomplete/user/H
+#: /index.php
 msgid "multilingual"
 msgstr ""
 
@@ -9449,23 +9449,23 @@ msgstr ""
 msgid "Linked and wrapped"
 msgstr ""
 
-#: /sk/node/add/page?translation=106&target=sk
+#: /sk/node/add/page
 msgid "basic page"
 msgstr ""
 
-#: /sk/node/add/page?translation=106&target=sk
+#: /sk/node/add/page
 msgid "Exclude title from display"
 msgstr ""
 
-#: /sk/node/add/page?translation=106&target=sk
+#: /sk/node/add/page
 msgid "schedules"
 msgstr ""
 
-#: /sk/node/add/page?translation=106&target=sk
+#: /sk/node/add/page
 msgid "Article with comments."
 msgstr ""
 
-#: /sk/node/add/page?translation=106&target=sk
+#: /sk/node/add/page
 msgid "record of a purchase"
 msgstr ""
 
@@ -13094,7 +13094,7 @@ msgstr ""
 msgid "Edit tabs"
 msgstr ""
 
-#: /messages/undo/action?destination=messages/sent
+#: /messages/undo/action
 msgid "Undo last thread action"
 msgstr ""
 
@@ -13476,11 +13476,11 @@ msgstr ""
 msgid "Display the comment as RSS."
 msgstr ""
 
-#: /index.php?q=entityreference/autocomplete/single/field_object_of_complaint/node/dispute/NULL/f
+#: /index.php
 msgid "Typ"
 msgstr ""
 
-#: /index.php?q=entityreference/autocomplete/single/field_object_of_complaint/node/dispute/NULL/f
+#: /index.php
 msgid "Work Report"
 msgstr ""
 
@@ -13577,7 +13577,7 @@ msgctxt "m d Y"
 msgid "j M"
 msgstr ""
 
-#: /index.php?q=entityreference/autocomplete/single/field_accused/node/dispute/NULL/h
+#: /index.php
 msgid "Entity reference used in New Dispute form"
 msgstr ""
 
@@ -14007,7 +14007,7 @@ msgstr ""
 msgid "Missing configuration for parameter %name."
 msgstr ""
 
-#: /?q=system/lightbox2/filter-xss
+#: /
 msgid "Filter XSS"
 msgstr ""
 
@@ -14299,19 +14299,19 @@ msgstr ""
 msgid "View all results for [search-phrase]."
 msgstr ""
 
-#: /search_autocomplete/autocomplete/4/?term=fdkj
+#: /search_autocomplete/autocomplete/4/
 msgid "Autocompleton when using view"
 msgstr ""
 
-#: /search_autocomplete/autocomplete/4/?term=fdkj
+#: /search_autocomplete/autocomplete/4/
 msgid "Odkaz"
 msgstr ""
 
-#: /search_autocomplete/autocomplete/4/?term=fdkj
+#: /search_autocomplete/autocomplete/4/
 msgid "Obrázok"
 msgstr ""
 
-#: /search_autocomplete/autocomplete/4/?term=fdkj
+#: /search_autocomplete/autocomplete/4/
 msgid "Kategórie používateľov"
 msgstr ""
 
@@ -14576,11 +14576,11 @@ msgid ""
 " your email will change its status to unverified.</strong>"
 msgstr ""
 
-#: /search_autocomplete/autocomplete/4/?term=J
+#: /search_autocomplete/autocomplete/4/
 msgid "Only has the 'authenticated user' role"
 msgstr ""
 
-#: /search_autocomplete/autocomplete/4/?term=J
+#: /search_autocomplete/autocomplete/4/
 msgid "Has roles in addition to 'authenticated user'"
 msgstr ""
 
@@ -15458,7 +15458,7 @@ msgstr ""
 msgid "Value of variable !name"
 msgstr ""
 
-#: /search_autocomplete/autocomplete/4/?term=mar
+#: /search_autocomplete/autocomplete/4/
 msgid "Privatemsg Email Notification"
 msgstr ""
 
@@ -15482,7 +15482,7 @@ msgstr ""
 msgid "Don't send me e-mail notifications for mass messages."
 msgstr ""
 
-#: /messages/block/1?destination=messages/view/8
+#: /messages/block/1
 msgid "Block user messages"
 msgstr ""
 
@@ -15506,39 +15506,39 @@ msgstr ""
 msgid "Data selector %selector for parameter %name is invalid."
 msgstr ""
 
-#: /user/7/2389482?verify=confirm
+#: /user/7/2389482
 msgid "Check if URL argument exists"
 msgstr ""
 
-#: /user/7/2389482?verify=confirm
+#: /user/7/2389482
 msgid "Argument"
 msgstr ""
 
-#: /user/7/2389482?verify=confirm
+#: /user/7/2389482
 msgid "URL argument"
 msgstr ""
 
-#: /user/7/2389482?verify=confirm
+#: /user/7/2389482
 msgid "Compare URL argument value"
 msgstr ""
 
-#: /user/7/2389482?verify=confirm
+#: /user/7/2389482
 msgid "Argument value"
 msgstr ""
 
-#: /user/7/2389482?verify=confirm
+#: /user/7/2389482
 msgid "Provide URL argument value"
 msgstr ""
 
-#: /user/7/2389482?verify=confirm
+#: /user/7/2389482
 msgid "URL argument name"
 msgstr ""
 
-#: /user/7/2389482?verify=confirm
+#: /user/7/2389482
 msgid "Argument from URL"
 msgstr ""
 
-#: /user/7/2389482?verify=confirm
+#: /user/7/2389482
 msgid "New message successfully sent, !link"
 msgstr ""
 
@@ -15626,7 +15626,7 @@ msgstr ""
 msgid "Rules component"
 msgstr ""
 
-#: /index.php?q=entityreference/autocomplete/single/field_coworker/node/co_worker_merit_allocation/NULL/mar
+#: /index.php
 msgid "- Restricted access -"
 msgstr ""
 
@@ -17781,7 +17781,7 @@ msgstr ""
 msgid "Also allow !name role to !permission?"
 msgstr ""
 
-#: /admin/structure/views/view/disputes/edit/page?destination=disputes
+#: /admin/structure/views/view/disputes/edit/page
 msgid ""
 "<?php\n"
 "\n"
@@ -17811,7 +17811,7 @@ msgid ""
 "?>"
 msgstr ""
 
-#: /node/360/?prwidget
+#: /node/360/
 msgid ""
 "The path to check against the URL. Beginning and trailing spaces will be "
 "stripped. Use <front>, with an \"equals\" operation, to signify the front "
@@ -17842,7 +17842,7 @@ msgid ""
 "?>"
 msgstr ""
 
-#: /user/105/5771124?verify=confirm
+#: /user/105/5771124
 msgid "worker on project"
 msgstr ""
 
@@ -17854,7 +17854,7 @@ msgstr ""
 msgid "Messages (@count[2] new)"
 msgstr ""
 
-#: /messages/undo/action?destination=messages/inbox
+#: /messages/undo/action
 msgid "Restored @count[2] threads."
 msgstr ""
 
@@ -17918,83 +17918,83 @@ msgstr ""
 msgid "Instantly register with:"
 msgstr ""
 
-#: /user/118/1198555?verify=confirm
+#: /user/118/1198555
 msgid "User token"
 msgstr ""
 
-#: /user/118/1198555?verify=confirm
+#: /user/118/1198555
 msgid "Identity token"
 msgstr ""
 
-#: /user/118/1198555?verify=confirm
+#: /user/118/1198555
 msgid "Social provider"
 msgstr ""
 
-#: /user/118/1198555?verify=confirm
+#: /user/118/1198555
 msgid "Social identity ID"
 msgstr ""
 
-#: /user/118/1198555?verify=confirm
+#: /user/118/1198555
 msgid "Display name"
 msgstr ""
 
-#: /user/118/1198555?verify=confirm
+#: /user/118/1198555
 msgid "Formatted name"
 msgstr ""
 
-#: /user/118/1198555?verify=confirm
+#: /user/118/1198555
 msgid "Given name"
 msgstr ""
 
-#: /user/118/1198555?verify=confirm
+#: /user/118/1198555
 msgid "Family name"
 msgstr ""
 
-#: /user/118/1198555?verify=confirm
+#: /user/118/1198555
 msgid "Preferred name"
 msgstr ""
 
-#: /user/118/1198555?verify=confirm
+#: /user/118/1198555
 msgid "Profile URL"
 msgstr ""
 
-#: /user/118/1198555?verify=confirm
+#: /user/118/1198555
 msgid "Thumbnail URL"
 msgstr ""
 
-#: /user/118/1198555?verify=confirm
+#: /user/118/1198555
 msgid "Picture URL"
 msgstr ""
 
-#: /user/118/1198555?verify=confirm
+#: /user/118/1198555
 msgid "Gender"
 msgstr ""
 
-#: /user/118/1198555?verify=confirm
+#: /user/118/1198555
 msgid "Birthday"
 msgstr ""
 
-#: /user/118/1198555?verify=confirm
+#: /user/118/1198555
 msgid "Social account"
 msgstr ""
 
-#: /user/118/1198555?verify=confirm
+#: /user/118/1198555
 msgid "Social account id"
 msgstr ""
 
-#: /user/118/1198555?verify=confirm
+#: /user/118/1198555
 msgid "Social account name"
 msgstr ""
 
-#: /user/118/1198555?verify=confirm
+#: /user/118/1198555
 msgid "Spoken language"
 msgstr ""
 
-#: /user/118/1198555?verify=confirm
+#: /user/118/1198555
 msgid "OneAll registered user."
 msgstr ""
 
-#: /user/118/1198555?verify=confirm
+#: /user/118/1198555
 msgid "OneAll Social Login"
 msgstr ""
 
@@ -18094,7 +18094,7 @@ msgid ""
 "value]</a>"
 msgstr ""
 
-#: /node/976/edit?destination=957
+#: /node/976/edit
 msgid ""
 "Unable to modify data \"@selector\": Invalid data value given. Be sure it "
 "matches the required data type and format. Value at node(976)->field_photos:"
@@ -18105,7 +18105,7 @@ msgstr ""
 msgid "America/Punta Arenas"
 msgstr ""
 
-#: /social_login/callback?origin=https%3A//rovas.merit.world/
+#: /social_login/callback
 msgid "OneAll Social Login Callback"
 msgstr ""
 
@@ -18375,7 +18375,7 @@ msgstr ""
 msgid "Report reward"
 msgstr ""
 
-#: /wr-time-line?field_classification_tid_i18n=zel&uid=&language%5B%5D=---CURRENT_LANGUAGE---&language%5B%5D=---DEFAULT_LANGUAGE---&language%5B%5D=und&language%5B%5D=en&language%5B%5D=sk&field_system_report_value_i18n=1&op=Obnovi%C5%A5
+#: /wr-time-line
 msgid "Unable to find term: @terms"
 msgstr ""
 
@@ -18383,7 +18383,7 @@ msgstr ""
 msgid "Classification nt"
 msgstr ""
 
-#: /wr-time-line?field_classification_tid_i18n=A+Po%C4%BEnohospod%C3%A1rstvo+lesn%C3%ADctvo+a+rybolov&uid=&language%5B%5D=---CURRENT_LANGUAGE---&language%5B%5D=---DEFAULT_LANGUAGE---&language%5B%5D=und&language%5B%5D=en&language%5B%5D=sk&field_system_report_value_i18n=1
+#: /wr-time-line
 msgid "%error: %message in %function (line %line of %file)."
 msgstr ""
 
@@ -18419,7 +18419,7 @@ msgstr ""
 msgid "Country Icon"
 msgstr ""
 
-#: /wr-time-line-table?uid=&field_system_report_value_i18n=1&language%5B%2A%2A%2ACURRENT_LANGUAGE%2A%2A%2A%5D=%2A%2A%2ACURRENT_LANGUAGE%2A%2A%2A&language%5B%2A%2A%2ADEFAULT_LANGUAGE%2A%2A%2A%5D=%2A%2A%2ADEFAULT_LANGUAGE%2A%2A%2A&language%5Bund%5D=und&language%5Ben%5D=en&language%5Bsk%5D=sk&&field_verification_status_value_i18n%5B0%5D=0&field_verification_status_value_i18n%5B1%5D=1&field_verification_status_value_i18n%5B2%5D=2&order=field_verification_status&sort=asc
+#: /wr-time-line-table
 msgid "(desc)"
 msgstr ""
 
@@ -21561,7 +21561,7 @@ msgstr ""
 msgid "No views match the search criteria."
 msgstr ""
 
-#: /wr-time-line-table?uid=&field_project_target_id=&field_system_report_value_i18n=1
+#: /wr-time-line-table
 msgid "Autocomplete Filters"
 msgstr ""
 
@@ -22044,42 +22044,42 @@ msgstr ""
 msgid "Paypal"
 msgstr ""
 
-#: /hybridauth/window/OpenStreetMap?destination=node/672&destination_error=node/672
+#: /hybridauth/window/OpenStreetMap
 msgid ""
 "If you are completely sure it is your email address, try to login using your"
 " username and password on this site. If you don't remember your password - "
 "<a href=\"@password\">request new password</a>."
 msgstr ""
 
-#: /hybridauth/window/OpenStreetMap?destination=node/672&destination_error=node/672
+#: /hybridauth/window/OpenStreetMap
 msgid "HybridAuth - Providers list"
 msgstr ""
 
-#: /hybridauth/window/OpenStreetMap?destination=node/672&destination_error=node/672
+#: /hybridauth/window/OpenStreetMap
 msgid "List of providers and their status (enabled or not)."
 msgstr ""
 
-#: /hybridauth/window/OpenStreetMap?destination=node/672&destination_error=node/672
+#: /hybridauth/window/OpenStreetMap
 msgid "HybridAuth widget - Title"
 msgstr ""
 
-#: /hybridauth/window/OpenStreetMap?destination=node/672&destination_error=node/672
+#: /hybridauth/window/OpenStreetMap
 msgid "Title of the HybridAuth login widget."
 msgstr ""
 
-#: /hybridauth/window/OpenStreetMap?destination=node/672&destination_error=node/672
+#: /hybridauth/window/OpenStreetMap
 msgid "HybridAuth widget - Link text"
 msgstr ""
 
-#: /hybridauth/window/OpenStreetMap?destination=node/672&destination_error=node/672
+#: /hybridauth/window/OpenStreetMap
 msgid "Text of the link of the HybridAuth login widget."
 msgstr ""
 
-#: /hybridauth/window/OpenStreetMap?destination=node/672&destination_error=node/672
+#: /hybridauth/window/OpenStreetMap
 msgid "HybridAuth widget - Link or icon title"
 msgstr ""
 
-#: /hybridauth/window/OpenStreetMap?destination=node/672&destination_error=node/672
+#: /hybridauth/window/OpenStreetMap
 msgid "Title of the link or icon of the HybridAuth login widget."
 msgstr ""
 
@@ -22095,7 +22095,7 @@ msgstr ""
 msgid "Zocial"
 msgstr ""
 
-#: /hybridauth/window/OpenStreetMap?destination_error=node/672
+#: /hybridauth/window/OpenStreetMap
 msgid "You have already registered this identity."
 msgstr ""
 
@@ -22123,22 +22123,22 @@ msgstr ""
 msgid "Close window"
 msgstr ""
 
-#: /hybridauth/providers/ajax/hybridauth_32?destination=node/672&destination_error=node/672
+#: /hybridauth/providers/ajax/hybridauth_32
 msgid "Log in using your account with"
 msgstr ""
 
-#: /hybridauth/window/Facebook?destination=user/227/hybridauth&destination_error=user/227/hybridauth
+#: /hybridauth/window/Facebook
 msgid "New identity added."
 msgstr ""
 
-#: /hybridauth/window/Facebook?destination=node/672&destination_error=node/672
+#: /hybridauth/window/Facebook
 msgid ""
 "Unable to modify the \"@label\" property for \"@selector\": Invalid data "
 "value given. Be sure it matches the required data type and format. Value at "
 "user(270)->field_country: ."
 msgstr ""
 
-#: /hybridauth/window/Facebook?destination=node/672&destination_error=node/672
+#: /hybridauth/window/Facebook
 msgid ""
 "Unable to modify the \"@label\" property for \"@selector\": Invalid data "
 "value given. Be sure it matches the required data type and format. Value at "
@@ -22149,39 +22149,39 @@ msgstr ""
 msgid "user emails"
 msgstr ""
 
-#: /node/add/verification?wrnid=1871
+#: /node/add/verification
 msgid "User added HybridAuth identity"
 msgstr ""
 
-#: /node/add/verification?wrnid=1871
+#: /node/add/verification
 msgid "User adding the identity"
 msgstr ""
 
-#: /node/add/verification?wrnid=1871
+#: /node/add/verification
 msgid "HybridAuth identity data"
 msgstr ""
 
-#: /node/add/verification?wrnid=1871
+#: /node/add/verification
 msgid "User deleted HybridAuth identity"
 msgstr ""
 
-#: /node/add/verification?wrnid=1871
+#: /node/add/verification
 msgid "User deleting the identity"
 msgstr ""
 
-#: /node/add/verification?wrnid=1871
+#: /node/add/verification
 msgid "User is about to be created through HybridAuth"
 msgstr ""
 
-#: /node/add/verification?wrnid=1871
+#: /node/add/verification
 msgid "registering user"
 msgstr ""
 
-#: /node/add/verification?wrnid=1871
+#: /node/add/verification
 msgid "User registered through HybridAuth"
 msgstr ""
 
-#: /node/add/verification?wrnid=1871
+#: /node/add/verification
 msgid "User logged in through HybridAuth"
 msgstr ""
 
@@ -22620,11 +22620,11 @@ msgstr ""
 msgid "The dates are invalid."
 msgstr ""
 
-#: /index.php?q=autocomplete_filter/title/wr_time_line/page_1/0/Jo
+#: /index.php
 msgid "The %string return no results. Please try something else."
 msgstr ""
 
-#: /hybridauth/window/Facebook?destination=node/672&destination_error=node/672
+#: /hybridauth/window/Facebook
 msgid "There was an error processing your request."
 msgstr ""
 
@@ -22637,7 +22637,7 @@ msgid ""
 "If you want to subscribe to comments you must supply a valid e-mail address."
 msgstr ""
 
-#: /admin/structure/views/view/wr_time_line/edit/page_1?destination=wr-time-line-table
+#: /admin/structure/views/view/wr_time_line/edit/page_1
 msgid "Include System reports"
 msgstr ""
 
@@ -22717,7 +22717,7 @@ msgstr ""
 msgid "Merit Decimal Part"
 msgstr ""
 
-#: /admin/structure/views/view/chron_balance/edit/block?destination=node/8
+#: /admin/structure/views/view/chron_balance/edit/block
 msgid "[field_actually_available_chrons-value] CH"
 msgstr ""
 
@@ -23121,27 +23121,27 @@ msgstr ""
 msgid "Today's popular content"
 msgstr ""
 
-#: /node/2111/edit?destination=2001
+#: /node/2111/edit
 msgid "Popular (page)"
 msgstr ""
 
-#: /node/2111/edit?destination=2001
+#: /node/2111/edit
 msgid "Today (page)"
 msgstr ""
 
-#: /node/2111/edit?destination=2001
+#: /node/2111/edit
 msgid "Popular (block)"
 msgstr ""
 
-#: /node/2111/edit?destination=2001
+#: /node/2111/edit
 msgid " ("
 msgstr ""
 
-#: /node/2111/edit?destination=2001
+#: /node/2111/edit
 msgid ")"
 msgstr ""
 
-#: /node/2111/edit?destination=2001
+#: /node/2111/edit
 msgid "Today (block)"
 msgstr ""
 
@@ -24247,57 +24247,57 @@ msgstr ""
 msgid "Redirect the checkout to the next pane"
 msgstr ""
 
-#: /node/672?destination=node/672
+#: /node/672
 msgid "Review"
 msgstr ""
 
-#: /node/672?destination=node/672
+#: /node/672
 msgid "Complete"
 msgstr ""
 
-#: /node/672?destination=node/672
+#: /node/672
 msgid "Use the button below to proceed to the payment server."
 msgstr ""
 
-#: /node/672?destination=node/672
+#: /node/672
 msgid "Confirm order"
 msgstr ""
 
-#: /node/672?destination=node/672
+#: /node/672
 msgid ""
 "Confirm your order information and use the button at the bottom of the page "
 "to finalize your payment."
 msgstr ""
 
-#: /node/672?destination=node/672
+#: /node/672
 msgid "Shopping cart contents"
 msgstr ""
 
-#: /node/672?destination=node/672
+#: /node/672
 msgid "Completion message"
 msgstr ""
 
-#: /node/672?destination=node/672
+#: /node/672
 msgid "Off-site payment redirect"
 msgstr ""
 
-#: /node/672?destination=node/672
+#: /node/672
 msgid "Review and confirm your order"
 msgstr ""
 
-#: /node/672?destination=node/672
+#: /node/672
 msgid ""
 "PayPal Checkout review and confirm (only to be used on the confirm order "
 "page)"
 msgstr ""
 
-#: /node/672?destination=node/672
+#: /node/672
 msgid ""
 "Express Checkout review and confirm (only to be used on the confirm order "
 "page)"
 msgstr ""
 
-#: /node/672?destination=node/672
+#: /node/672
 msgid "Checkout: @page"
 msgstr ""
 
@@ -26643,7 +26643,7 @@ msgstr ""
 msgid "Customer profile"
 msgstr ""
 
-#: /admin/structure/views/view/work_reports/edit/default?destination=node/2194
+#: /admin/structure/views/view/work_reports/edit/default
 msgid "[name]"
 msgstr ""
 
@@ -26811,11 +26811,11 @@ msgstr ""
 msgid "CAPTCHA"
 msgstr ""
 
-#: /wr-time-line-table?uid=&field_system_report_value_i18n=1&title=&&&&order=php_1&sort=asc
+#: /wr-time-line-table
 msgid "not regex"
 msgstr ""
 
-#: /admin/structure/views/view/wr_time_line/edit/page_1?destination=wr-time-line-table%3Ffield_verification_status_value_i18n%255B0%255D%3D0%26uid%3D%26title%3D%26field_system_report_value_i18n%3D1
+#: /admin/structure/views/view/wr_time_line/edit/page_1
 msgid "[field_verification_reward-value]"
 msgstr ""
 
@@ -26949,11 +26949,11 @@ msgstr ""
 msgid "Body (body:language)"
 msgstr ""
 
-#: /admin/structure/views/view/merit_history/edit/page_1?destination=user/347/merits
+#: /admin/structure/views/view/merit_history/edit/page_1
 msgid "User Chrons"
 msgstr ""
 
-#: /admin/structure/views/view/merit_history/edit/page_1?destination=user/347/merits
+#: /admin/structure/views/view/merit_history/edit/page_1
 msgid "User's Merits"
 msgstr ""
 
@@ -27021,7 +27021,7 @@ msgstr ""
 msgid "Which form the denial occured on."
 msgstr ""
 
-#: /admin/structure/views/view/projects/edit/block?destination=node/8
+#: /admin/structure/views/view/projects/edit/block
 msgid "Lang"
 msgstr ""
 
@@ -27058,7 +27058,7 @@ msgstr ""
 msgid "Project Participation"
 msgstr "Partecipazione"
 
-#: /admin/structure/views/view/project_merits_feed/edit/page_1?destination=project-purchases/2001
+#: /admin/structure/views/view/project_merits_feed/edit/page_1
 msgid "<a href=\"/node/[nid]\">[field_purchase_date]</a>"
 msgstr ""
 
@@ -27374,15 +27374,15 @@ msgstr ""
 msgid "Rich text editor settings"
 msgstr ""
 
-#: /node/add/verification?wrnid=16782
+#: /node/add/verification
 msgid "HTML + Tokens"
 msgstr ""
 
-#: /node/add/verification?wrnid=16782
+#: /node/add/verification
 msgid "Formatter preset"
 msgstr ""
 
-#: /node/add/verification?wrnid=16782
+#: /node/add/verification
 msgid "Compliance score"
 msgstr ""
 
@@ -28018,7 +28018,7 @@ msgstr ""
 msgid "slot"
 msgstr ""
 
-#: /messages/block/1?destination=messages/view/321
+#: /messages/block/1
 msgid "@author has been blocked from sending you any further messages."
 msgstr ""
 
@@ -28092,7 +28092,7 @@ msgstr ""
 msgid "Verification reminders"
 msgstr ""
 
-#: /user/606/edit?pass-reset-token=claZdeM7C_vlojwav2h1pibDb5BbjswbCMqRwTs5jC4
+#: /user/606/edit
 msgid ""
 "The form has become outdated. Press the back button, copy any unsaved work "
 "in the form, and then reload the page."
@@ -28110,39 +28110,39 @@ msgstr ""
 msgid "Score warcher"
 msgstr ""
 
-#: /index.php?q=admin/views/ajax/autocomplete/user/sa
+#: /index.php
 msgid "Watchdog log entry"
 msgstr ""
 
-#: /index.php?q=admin/views/ajax/autocomplete/user/sa
+#: /index.php
 msgid "Logs a message to the system dblog"
 msgstr ""
 
-#: /index.php?q=admin/views/ajax/autocomplete/user/sa
+#: /index.php
 msgid ""
 "The category to which this message belongs, displayed in the first column of"
 " the dblog."
 msgstr ""
 
-#: /index.php?q=admin/views/ajax/autocomplete/user/sa
+#: /index.php
 msgid "The text of the message."
 msgstr ""
 
-#: /index.php?q=admin/views/ajax/autocomplete/user/sa
+#: /index.php
 msgid "Link text"
 msgstr ""
 
-#: /index.php?q=admin/views/ajax/autocomplete/user/sa
+#: /index.php
 msgid "The text to display for the link (optional)"
 msgstr ""
 
-#: /index.php?q=admin/views/ajax/autocomplete/user/sa
+#: /index.php
 msgid ""
 "A Drupal path or path alias. Enter (optional) queries after \"?\" and "
 "(optional) anchor after \"#\"."
 msgstr ""
 
-#: /index.php?q=admin/views/ajax/autocomplete/user/sa
+#: /index.php
 msgid "AND"
 msgstr ""
 
@@ -28188,7 +28188,7 @@ msgstr ""
 msgid "Verify date (field_verify_date)"
 msgstr ""
 
-#: /admin/structure/views/view/projects/edit/projectsxf?destination=find_project
+#: /admin/structure/views/view/projects/edit/projectsxf
 msgid ""
 "<?php\n"
 "print '<a class=\"btn btn-default\" style=\"color: white; background-color: green;\" role=\"button\" href=\"/node/add/project/\">' . t('Add Project') . '</a><br/><br/>';\n"
@@ -28514,7 +28514,7 @@ msgstr ""
 msgid "Snap to features"
 msgstr ""
 
-#: /node/add/verification?wrnid=35209
+#: /node/add/verification
 msgid "NOT AND"
 msgstr ""
 
@@ -28780,7 +28780,7 @@ msgstr ""
 msgid "API keys parameters authentication"
 msgstr ""
 
-#: /admin/structure/views/view/Mentions/edit/page_1?destination=user/289/mentions
+#: /admin/structure/views/view/Mentions/edit/page_1
 msgid ""
 "List of all events when your name was mentioned in a post or a comment.\n"
 "Learn how you can mention people in posts and comments, by clicking the help [?] button at the bottom of this page."
@@ -28790,23 +28790,23 @@ msgstr ""
 msgid "Title: translated"
 msgstr ""
 
-#: /node/35317/translate/sk?destination=35317
+#: /node/35317/translate/sk
 msgid "add"
 msgstr ""
 
-#: /node/35317/translate/sk?destination=35317
+#: /node/35317/translate/sk
 msgid "<strong>@language_name</strong>"
 msgstr ""
 
-#: /node/35317/translate/sk?destination=35317
+#: /node/35317/translate/sk
 msgid "(original content)"
 msgstr ""
 
-#: /node/35317/edit/add/sk/en?destination=35317
+#: /node/35317/edit/add/sk/en
 msgid "Dátum (all languages)"
 msgstr ""
 
-#: /admin/structure/views/view/wr_time_line/edit/page_1?destination=wr-time-line-table
+#: /admin/structure/views/view/wr_time_line/edit/page_1
 msgid "[title] "
 msgstr ""
 
@@ -28818,7 +28818,7 @@ msgstr ""
 msgid "min"
 msgstr ""
 
-#: /admin/structure/views/view/Mentions/edit/page_1?destination=user/2284/mentions
+#: /admin/structure/views/view/Mentions/edit/page_1
 msgid ""
 "How to use mentions: Wrap username of the user you want to mention into brackets and prefix it with the @ sign like this:\n"
 "[@username]\n"
@@ -28858,7 +28858,7 @@ msgstr ""
 msgid "!title (value @number)"
 msgstr ""
 
-#: /hybridauth/window/OpenStreetMap?destination=node/1&destination_error=node/1
+#: /hybridauth/window/OpenStreetMap
 msgid "You need to verify your e-mail address - !email."
 msgstr ""
 
@@ -28904,7 +28904,7 @@ msgstr ""
 msgid "Rovas currency exchange successfully completed"
 msgstr ""
 
-#: /rewpro?paytype=project&recipient=1998&callbackurl=https://sme.sk
+#: /rewpro
 msgid ""
 "Your request can not be processed, because this project does not have a "
 "price."
@@ -28946,11 +28946,11 @@ msgstr ""
 msgid "The %library library could not be found."
 msgstr ""
 
-#: /admin/structure/views/view/wr_time_line/edit/page_1?destination=wr-time-line-table
+#: /admin/structure/views/view/wr_time_line/edit/page_1
 msgid "[php] "
 msgstr ""
 
-#: /admin/structure/views/view/work_reports/edit/default?destination=node/1998
+#: /admin/structure/views/view/work_reports/edit/default
 msgid "[php_1]"
 msgstr ""
 
@@ -29610,7 +29610,7 @@ msgstr ""
 msgid "@merits ME"
 msgstr ""
 
-#: /admin/structure/views/view/merit_history/edit/page_1?destination=user/2271/merits
+#: /admin/structure/views/view/merit_history/edit/page_1
 msgid "Rovas"
 msgstr ""
 
@@ -29709,7 +29709,7 @@ msgstr ""
 msgid "CHR/EUR"
 msgstr ""
 
-#: /node/146489/edit?destination=/node/143921
+#: /node/146489/edit
 msgid "Dátum (všetky jazyky)"
 msgstr ""
 
@@ -29828,11 +29828,11 @@ msgid ""
 "node()->field_input_amount: 692,39."
 msgstr ""
 
-#: /user/789/edit?pass-reset-token=XMl_oKIb5ukAba676w_ULx-mc_yvN3b9gOMh38fi5OE
+#: /user/789/edit
 msgid "The phone number must be accompanied by a country code."
 msgstr ""
 
-#: /user/789/edit?pass-reset-token=XMl_oKIb5ukAba676w_ULx-mc_yvN3b9gOMh38fi5OE
+#: /user/789/edit
 msgid ""
 "The phone number must be between %min_length and %max_length digits in "
 "length."
@@ -29842,7 +29842,7 @@ msgstr ""
 msgid "Page 2"
 msgstr ""
 
-#: /admin/structure/views/view/project_merits_feed/edit/purchases?destination=project-payments/35384%3Fpage%3D1
+#: /admin/structure/views/view/project_merits_feed/edit/purchases
 msgid "<a href=\"/node/[nid]\">[created]</a>"
 msgstr ""
 
@@ -29913,16 +29913,16 @@ msgstr ""
 msgid "Chair"
 msgstr ""
 
-#: /node/add/verification?wrnid=265827&action=decline
+#: /node/add/verification
 msgid ""
 "Thank you for letting us know that you do not want to verify this report"
 msgstr ""
 
-#: /node/add/verification?wrnid=265827&action=decline
+#: /node/add/verification
 msgid "If you can, please mention the reason for your decision below."
 msgstr ""
 
-#: /node/add/verification?wrnid=258568&action=decline
+#: /node/add/verification
 msgid "Your work report verification status"
 msgstr ""
 
@@ -29942,7 +29942,7 @@ msgstr ""
 msgid "@euro €/hour"
 msgstr ""
 
-#: /admin/structure/views/view/verif_slots/edit/page?destination=verif-slots%3Ffield_report_to_verify_target_id%3DAll%26field_slip_owner_target_id%3D%26order%3Dnid%26sort%3Ddesc
+#: /admin/structure/views/view/verif_slots/edit/page
 msgid "Voluntary"
 msgstr ""
 
@@ -29993,7 +29993,7 @@ msgid ""
 "?>"
 msgstr ""
 
-#: /admin/structure/views/view/verif_slots/edit/page?destination=verif-slots%3Ffield_report_to_verify_target_id%3DAll%26field_slip_owner_target_id%3D%26uid%3D%26order%3Dfield_voluntary%26sort%3Ddesc
+#: /admin/structure/views/view/verif_slots/edit/page
 msgid "Declined (field_declined)"
 msgstr ""
 
@@ -30153,7 +30153,7 @@ msgstr ""
 msgid "Placed - month"
 msgstr ""
 
-#: /admin/structure/views/view/commerce_orders/edit/admin_page?destination=admin/commerce/orders
+#: /admin/structure/views/view/commerce_orders/edit/admin_page
 msgid "Buyer email"
 msgstr ""
 
@@ -30282,11 +30282,11 @@ msgstr ""
 msgid "Printable invoice"
 msgstr "Fattura stampabile"
 
-#: /admin/config/regional/translate/edit/21102?destination=admin/config/regional/translate/translate
+#: /admin/config/regional/translate/edit/21102
 msgid "Disable validation"
 msgstr ""
 
-#: /admin/config/regional/translate/edit/19103?destination=admin/config/regional/translate/translate
+#: /admin/config/regional/translate/edit/19103
 msgid "Text format: @name"
 msgstr ""
 
@@ -30328,7 +30328,7 @@ msgstr ""
 msgid "View revisions of this order."
 msgstr ""
 
-#: /admin_menu/flush-cache/theme?token=Q5QMSKkDku-CftOPP2yBT6tf_tC-zQB8StIa71qGocY&destination=admin/reports/dblog
+#: /admin_menu/flush-cache/theme
 msgid "!title cache cleared."
 msgstr ""
 
@@ -30609,11 +30609,11 @@ msgstr ""
 msgid "Switch"
 msgstr ""
 
-#: /admin/structure/views/view/verif_slots/edit/page?destination=verif-slots%3Fuid%3D%26field_declined_value%3DAll%26field_voluntary_value%3D1
+#: /admin/structure/views/view/verif_slots/edit/page
 msgid "Author name"
 msgstr ""
 
-#: /admin/structure/views/view/verif_slots/edit/page?destination=verif-slots%3Fuid%3D%26field_declined_value%3DAll%26field_voluntary_value%3D1
+#: /admin/structure/views/view/verif_slots/edit/page
 msgid "Verifier name"
 msgstr ""
 
@@ -30625,7 +30625,7 @@ msgstr ""
 msgid "The name %name is not allowed."
 msgstr ""
 
-#: /admin/structure/views/view/project_merit_rewards_chart/edit/page?destination=projrew-chart/35259
+#: /admin/structure/views/view/project_merit_rewards_chart/edit/page
 msgid "month"
 msgstr ""
 
@@ -30641,23 +30641,23 @@ msgstr ""
 msgid "Printable Invoice"
 msgstr "Fattura stampabile"
 
-#: /admin/structure/views/view/verif_slots/edit/page?destination=verif-slots%3Fuid%3D%26field_declined_value%3DAll%26field_voluntary_value%3DAll%26nid%3D352814
+#: /admin/structure/views/view/verif_slots/edit/page
 msgid "slip"
 msgstr ""
 
-#: /admin/structure/views/view/verif_slots/edit/page?destination=verif-slots%3Fuid%3D%26field_declined_value%3DAll%26field_voluntary_value%3DAll%26nid%3D352814
+#: /admin/structure/views/view/verif_slots/edit/page
 msgid "report"
 msgstr ""
 
-#: /admin/structure/views/view/forex_purchases/edit/page?destination=forex-purchases%3Fcreated%255Bmin%255D%3D-5%2520days%26created%255Bmax%255D%3Dnow
+#: /admin/structure/views/view/forex_purchases/edit/page
 msgid "/admin/commerce/orders/[order_id]"
 msgstr ""
 
-#: /admin/structure/views/view/forex_purchases/edit/page?destination=forex-purchases%3Fcreated%255Bmin%255D%3D-5%2520days%26created%255Bmax%255D%3Dnow
+#: /admin/structure/views/view/forex_purchases/edit/page
 msgid "<a href=\"/admin/commerce/orders/[order_id]\">[order_id]</a>"
 msgstr ""
 
-#: /verif-slots?field_report_to_verify_target_id=All&field_slip_owner_target_id=&order=nid&sort=desc
+#: /verif-slots
 msgid "Obsah entity referenced from field_report_to_verify"
 msgstr ""
 
@@ -30669,23 +30669,23 @@ msgstr ""
 msgid "Conversion fee"
 msgstr ""
 
-#: /admin/structure/views/view/forex_transactions/edit/page?destination=forex-transactions%3Fpage%3D1%26order%3Dcreated%26sort%3Ddesc
+#: /admin/structure/views/view/forex_transactions/edit/page
 msgid "Order record"
 msgstr ""
 
-#: /admin/structure/views/view/forex_transactions/edit/page?destination=forex-transactions%3Fcreated%255Bmin%255D%3D%26created%255Bmax%255D%3D%26field_conversion_type_value%3Dchrons_to_euros
+#: /admin/structure/views/view/forex_transactions/edit/page
 msgid "Paid amount (field_input_amount)"
 msgstr ""
 
-#: /admin/structure/views/view/forex_transactions/edit/page?destination=forex-transactions%3Fcreated%255Bmin%255D%3D%26created%255Bmax%255D%3D%26field_conversion_type_value%3Dchrons_to_euros%26field_input_amount_value%3D3000%26page%3D7
+#: /admin/structure/views/view/forex_transactions/edit/page
 msgid "Conversion fee (field_conversion_fee)"
 msgstr ""
 
-#: /admin/structure/views/view/forex_purchases/edit/page?destination=forex-purchases%3Fcreated%255Bmin%255D%3D%26created%255Bmax%255D%3D%26order%3Dcreated%26sort%3Ddesc
+#: /admin/structure/views/view/forex_purchases/edit/page
 msgid "email"
 msgstr ""
 
-#: /rewpro?paytype=project&recipient=35384
+#: /rewpro
 msgid ""
 "To claim these benefits, you have to initiate the payment from the project "
 "web site: <a href=\"@url\" target=\"_blank\">@url</a>"
@@ -30715,7 +30715,7 @@ msgstr ""
 msgid "Dátum objednávky"
 msgstr ""
 
-#: /rewpro?paytype=project&recipient=35384&token=b69f1d81761cae52afc6b2f66430215db0a237eda961a38430eeccfc7ed69b3e&callbackurl=https%3A%2F%2Fwww.freemap.sk%2FpurchaseCallback.html&expiration=1747815297
+#: /rewpro
 msgid "Orders Chart"
 msgstr ""
 
@@ -30747,7 +30747,7 @@ msgstr ""
 msgid "No data available for the selected recipient and date range."
 msgstr ""
 
-#: /rewpro?paytype=wreport&recipient=418592
+#: /rewpro
 msgid ""
 "To pay with Chrons instead, please <a href=\"@login\">log in</a>, or <a "
 "href=\"@register\">register</a>."
@@ -31191,7 +31191,7 @@ msgstr ""
 msgid "Value donated* [Merits = €]"
 msgstr ""
 
-#: /admin/structure/views/view/users_merit_rank/edit/page?destination=users-merit-rank
+#: /admin/structure/views/view/users_merit_rank/edit/page
 msgid "From date"
 msgstr ""
 
@@ -31208,15 +31208,15 @@ msgstr ""
 msgid "CHR"
 msgstr ""
 
-#: /index.php?q=autocomplete_filter/field_country_iso2/users_merit_rank/page/0/S
+#: /index.php
 msgid "The %string should have at least %min_chars characters."
 msgstr ""
 
-#: /admin/structure/views/view/users_merit_rank/edit/page?destination=users-merit-rank
+#: /admin/structure/views/view/users_merit_rank/edit/page
 msgid "country"
 msgstr ""
 
-#: /users-merit-rank?country_iso2=
+#: /users-merit-rank
 msgid "country from field_country"
 msgstr ""
 
@@ -31255,19 +31255,19 @@ msgctxt "merit index"
 msgid "ME"
 msgstr ""
 
-#: /admin/structure/views/view/wr_time_line/edit/page_1?destination=wr-time-line-table
+#: /admin/structure/views/view/wr_time_line/edit/page_1
 msgid "verification"
 msgstr ""
 
-#: /admin/structure/views/view/wr_time_line/edit/page_1?destination=wr-time-line-table
+#: /admin/structure/views/view/wr_time_line/edit/page_1
 msgid "Verification note"
 msgstr ""
 
-#: /admin/structure/views/view/wr_time_line/edit/page_1?destination=wr-time-line-table
+#: /admin/structure/views/view/wr_time_line/edit/page_1
 msgid "Note (field_verification_note)"
 msgstr ""
 
-#: /wr-time-line-table?uid=&title=&field_system_report_value_i18n=1&field_verification_note_value=
+#: /wr-time-line-table
 msgid "Has content"
 msgstr ""
 
@@ -31388,7 +31388,7 @@ msgstr ""
 msgid "Rok"
 msgstr ""
 
-#: /admin/structure/views/view/forex_transactions/edit/page?destination=forex-transactions
+#: /admin/structure/views/view/forex_transactions/edit/page
 msgid "Payment status"
 msgstr ""
 
@@ -31396,11 +31396,11 @@ msgstr ""
 msgid "Missing required argument @arg"
 msgstr ""
 
-#: /admin/structure/views/view/forex_purchases/edit/page?destination=forex-purchases
+#: /admin/structure/views/view/forex_purchases/edit/page
 msgid "data-fees"
 msgstr ""
 
-#: /admin/structure/views/view/forex_purchases/edit/page?destination=forex-purchases
+#: /admin/structure/views/view/forex_purchases/edit/page
 msgid "Processor fees"
 msgstr ""
 
@@ -31680,7 +31680,7 @@ msgstr ""
 msgid "Card (Stripe)"
 msgstr ""
 
-#: /rewpro?paytype=project&recipient=35384&token=2c7e0fdc512a43c4b8d70c99a62652e47de2cd029fdc37fb11fb967576f4e7c0&callbackurl=https%3A%2F%2Fmimical-howard-superformally.ngrok-free.dev%2Fcallback%3Ftoken%3D2c7e0fdc512a43c4b8d70c99a62652e47de2cd029fdc37fb11fb967576f4e7c0&expiration=1775028809&email=alexander.zatko%40gmail.com&lang=en&name=gitaara&description=A+test+product+for+integration+testing&price_eur=2000&price_chr=20&signature=b8bee8ba0a88fde9e9e4775e832c109229fffb8a5653a05f7bcf7634fbab92c1
+#: /rewpro
 msgid "Order @id"
 msgstr ""
 
@@ -31725,7 +31725,7 @@ msgid ""
 msgstr ""
 "Il tuo ordine verrà elaborato solo dopo l'accredito del pagamento sul conto."
 
-#: /admin/structure/views/view/commerce_orders/edit/admin_page?destination=admin/commerce/orders
+#: /admin/structure/views/view/commerce_orders/edit/admin_page
 msgid "Transaction"
 msgstr ""
 
@@ -49380,19 +49380,19 @@ msgstr "La data in cui è stato inviato il messaggio"
 msgid "Block a user"
 msgstr "Blocca utente"
 
-#: /verify-confirm?verf_email=sano%40strings.net
+#: /verify-confirm
 msgid "Rovas user validation request"
 msgstr "Rováš: richiesta di verifica dell'utente"
 
-#: /verify-confirm?verf_email=sano%40strings.net
+#: /verify-confirm
 msgid "Country ID"
 msgstr "Paese"
 
-#: /verify-confirm?verf_email=sano%40strings.net
+#: /verify-confirm
 msgid "Total !points"
 msgstr "!Ppunti totali"
 
-#: /verify-confirm?verf_email=sano%40strings.net
+#: /verify-confirm
 msgid ""
 "asked for your help to validate his/her identity for use in the Rovas "
 "application. Please use the link below to review profile of the user and "
@@ -49402,7 +49402,7 @@ msgstr ""
 "verificare cliccando sul link qui sotto. Verifica solo gli utenti che "
 "conosci personalmente."
 
-#: /verify-confirm?verf_email=sano%40strings.net
+#: /verify-confirm
 msgid ""
 "A single account per person is necessary for maintaining stability of the "
 "NEO economy."
@@ -50087,7 +50087,7 @@ msgstr "Indirizzo"
 msgid "Rank / All Workers"
 msgstr "Posizione / Lavoratori"
 
-#: /messages/undo/action?destination=messages/sent
+#: /messages/undo/action
 msgid "Restored 1 thread."
 msgstr "Ripristinato un messaggio."
 
@@ -50269,7 +50269,7 @@ msgstr "Rifiutare"
 msgid "Confirm request"
 msgstr "Conferma la richiesta"
 
-#: /messages/new/33?destination=user/33
+#: /messages/new/33
 msgid "Write new message to @recipient"
 msgstr "Nuovo messaggio per l'utente @recipient"
 
@@ -50467,7 +50467,7 @@ msgstr "Impossibile trovare un utente il cui nome contiene [search-phrase]."
 msgid "New private message at [site:name]."
 msgstr "Nuovo messaggio dall'applicazione [site:name]."
 
-#: /verify-confirm?verf_name=M%C3%A1ria+Tich%C3%A1+%28mary%29
+#: /verify-confirm
 msgid "Your request was sent successfully."
 msgstr "Richiesta inviata con successo."
 
@@ -50475,7 +50475,7 @@ msgstr "Richiesta inviata con successo."
 msgid "Sent messages"
 msgstr "Messaggi inviati"
 
-#: /messages/undo/action?destination=messages/inbox
+#: /messages/undo/action
 msgid "Restored @count threads."
 msgstr "Messaggi @count ripristinati."
 
@@ -50498,13 +50498,13 @@ msgctxt "Dative"
 msgid "you"
 msgstr "da te"
 
-#: /messages/block/1?destination=messages/view/8
+#: /messages/block/1
 msgid ""
 "Are you sure you want to block \"@author\" from sending you any more "
 "messages?"
 msgstr "Bloccare davvero \"@author\" dall'invio di ulteriori messaggi?"
 
-#: /messages/block/1?destination=messages/view/8
+#: /messages/block/1
 msgid "Block @author"
 msgstr "Blocca @author"
 
@@ -50512,7 +50512,7 @@ msgstr "Blocca @author"
 msgid "Write new message to %recipient"
 msgstr "Nuovo messaggio per l'utente %recipient"
 
-#: /user/7/7227386?verify=deny
+#: /user/7/7227386
 msgid "Reason for denial of request"
 msgstr "Motivo del rigetto della domanda"
 
@@ -50873,11 +50873,11 @@ msgstr ""
 msgid "Dispute rules (click to read)"
 msgstr "Regole per le controversie (clicca per vedere)"
 
-#: /node/360/?prwidget
+#: /node/360/
 msgid "NEO project"
 msgstr "Progetto NEO"
 
-#: /node/360/?prwidget
+#: /node/360/
 msgid "Workers"
 msgstr "Lavoratori"
 
@@ -50992,7 +50992,7 @@ msgstr "Registrati tramite:"
 msgid "of "
 msgstr "da"
 
-#: /verify-confirm?verf_name=Alexander+%C5%BDa%C5%A5ko+%28sano%29
+#: /verify-confirm
 msgid "You can cancel the pending verification and create a new request"
 msgstr ""
 "Puoi annullare la richiesta di verifica inviata e richiederne una nuova"
@@ -51142,7 +51142,7 @@ msgstr "Premio per la verifica"
 msgid "Current user's language"
 msgstr "La lingua dell'utente attivo"
 
-#: /node/1524/edit?destination=1515
+#: /node/1524/edit
 msgid ""
 "Use the icons to select what type of feature to draw. Each map can contain "
 "one simple feature. Pan and zoom with arrows and the zoom bar."
@@ -51217,7 +51217,7 @@ msgstr ""
 msgid "The rules and link to the Dispute can be found on the Disputes page."
 msgstr "In quella pagina troverai anche un link alla tua controversia."
 
-#: /node/1723/delete?destination=node/1532
+#: /node/1723/delete
 msgid "was reimbursed for canceled purchase"
 msgstr "rimborso per acquisto annullato"
 
@@ -51256,21 +51256,21 @@ msgstr "Cap"
 msgid "Contacting @title..."
 msgstr "Sto contattando @title..."
 
-#: /hybridauth/window/OpenStreetMap?destination=node/672&destination_error=node/672
+#: /hybridauth/window/OpenStreetMap
 msgid "Required information"
 msgstr "Informazioni richieste"
 
-#: /hybridauth/window/OpenStreetMap?destination=node/672&destination_error=node/672
+#: /hybridauth/window/OpenStreetMap
 msgid "Please fill in additional information to complete your registration."
 msgstr "Compila le informazioni aggiuntive richieste per la registrazione."
 
-#: /hybridauth/window/OpenStreetMap?destination=node/672&destination_error=node/672
+#: /hybridauth/window/OpenStreetMap
 msgid "You are trying to login with email address of another user."
 msgstr ""
 "L'account sul social network che hai scelto ha un indirizzo email per il "
 "quale esiste già un account nell'applicazione Rováš."
 
-#: /hybridauth/window/OpenStreetMap?destination=node/672&destination_error=node/672
+#: /hybridauth/window/OpenStreetMap
 msgid "Closing..."
 msgstr "sto finendo..."
 
@@ -51312,7 +51312,7 @@ msgstr ""
 msgid "Identity deleted."
 msgstr "Identità cancellata."
 
-#: /hybridauth/window/Facebook?destination=node/672&destination_error=node/672
+#: /hybridauth/window/Facebook
 msgid "Choose your username."
 msgstr "Scegli il tuo nome utente."
 
@@ -51322,7 +51322,7 @@ msgstr ""
 "I dati presenti in questa parte dell'ordine verranno utilizzati da PayPal "
 "per verificare la tua identità."
 
-#: /hybridauth/window/Facebook?destination=node/672&destination_error=node/672
+#: /hybridauth/window/Facebook
 msgid ""
 "If you are completely sure it is your email address, try to login through "
 "%provider."
@@ -51391,7 +51391,7 @@ msgctxt "Project page"
 msgid "Reward"
 msgstr "Ricompensa"
 
-#: /hybridauth/window/Nabezky?destination=node/672&destination_error=node/672
+#: /hybridauth/window/Nabezky
 msgid ""
 "The API keys for %service_endpoint service endpoint has been generated."
 msgstr ""
@@ -51616,23 +51616,23 @@ msgctxt "a drupal commerce order"
 msgid "Order number"
 msgstr "Numero dell'ordine"
 
-#: /node/672?destination=node/672
+#: /node/672
 msgid "Review your order before continuing."
 msgstr "Controlla il tuo ordine prima di procedere"
 
-#: /node/672?destination=node/672
+#: /node/672
 msgid "Checkout complete"
 msgstr "Ordine completato"
 
-#: /node/672?destination=node/672
+#: /node/672
 msgid "Go back"
 msgstr "Indietro"
 
-#: /node/672?destination=node/672
+#: /node/672
 msgid "Continue to next step"
 msgstr "Continuare..."
 
-#: /node/672?destination=node/672
+#: /node/672
 msgid "Account information"
 msgstr "Informazioni sull'account"
 
@@ -51725,7 +51725,7 @@ msgstr "Simbolo variabile: [commerce-order:order-id]"
 msgid "Payment information:"
 msgstr "Collegamento bancario:"
 
-#: /admin/structure/views/view/commerce_line_item_table/edit/default?destination=user/289/orders/38
+#: /admin/structure/views/view/commerce_line_item_table/edit/default
 msgid "Title."
 msgstr "Nome"
 
@@ -51769,7 +51769,7 @@ msgstr "Quando il cielo è nuvoloso, cosa blocca il sole?"
 msgid "clouds,cloud"
 msgstr "nuvole, nuvole, nuvola, nuvola, coperto, coperto"
 
-#: /wr-time-line-table?uid=&field_system_report_value_i18n=1&title=&&&&order=php_1&sort=asc
+#: /wr-time-line-table
 msgid "Not regular expression"
 msgstr "Non è un'espressione regolare"
 
@@ -51924,51 +51924,51 @@ msgstr "Altre dichiarazioni"
 msgid "Time worked"
 msgstr "Il tempo ha funzionato"
 
-#: /node/add/verification?wrnid=16782
+#: /node/add/verification
 msgid "not provided"
 msgstr "non riempito"
 
-#: /node/add/verification?wrnid=16782
+#: /node/add/verification
 msgid "min."
 msgstr "min"
 
-#: /node/add/verification?wrnid=16782
+#: /node/add/verification
 msgid "none yet"
 msgstr "nessuno ancora"
 
-#: /node/add/verification?wrnid=16782
+#: /node/add/verification
 msgid "Report name"
 msgstr "Nome della dichiarazione"
 
-#: /node/add/verification?wrnid=16782
+#: /node/add/verification
 msgid "Date filed"
 msgstr "Data di deposito"
 
-#: /node/add/verification?wrnid=16782
+#: /node/add/verification
 msgid "Labor time"
 msgstr "Il tempo ha funzionato"
 
-#: /node/add/verification?wrnid=16782
+#: /node/add/verification
 msgid "minutes"
 msgstr "minuti"
 
-#: /node/add/verification?wrnid=16782
+#: /node/add/verification
 msgid "Merits received"
 msgstr "Premio al merito"
 
-#: /node/add/verification?wrnid=16782
+#: /node/add/verification
 msgid "Proofs provided"
 msgstr "Prove fornite"
 
-#: /node/add/verification?wrnid=16782
+#: /node/add/verification
 msgid "Report Information"
 msgstr "Informazioni sulla dichiarazione"
 
-#: /node/add/verification?wrnid=16782
+#: /node/add/verification
 msgid "What to check when verifying"
 msgstr "Cosa controllare per la verifica"
 
-#: /node/add/verification?wrnid=16782
+#: /node/add/verification
 msgid ""
 "the author provided <strong>sufficient evidence</strong> for actually "
 "performing the work"
@@ -51976,11 +51976,11 @@ msgstr ""
 "l'autore ha fornito <strong>prove sufficienti</strong> di aver svolto il "
 "lavoro"
 
-#: /node/add/verification?wrnid=16782
+#: /node/add/verification
 msgid "the reported <strong>labor time is realistic</strong>"
 msgstr "il <strong>tempo lavorato è realistico</strong>"
 
-#: /node/add/verification?wrnid=16782
+#: /node/add/verification
 msgid ""
 "the product of the work is either <strong>free, or can be (or was already) "
 "purchased with Chrons</strong>"
@@ -51988,18 +51988,18 @@ msgstr ""
 "il prodotto realizzato <strong> è gratuito o può essere acquistato per "
 "Chrony</strong>"
 
-#: /node/add/verification?wrnid=16782
+#: /node/add/verification
 msgid ""
 "the work was performed <strong>after the user registered</strong> in Rovas."
 msgstr ""
 "il lavoro è stato svolto <strong>dopo aver registrato l'utente </strong> a "
 "Rováš."
 
-#: /node/add/verification?wrnid=16782
+#: /node/add/verification
 msgid "<strong>Do not judge usefulness</strong> of the performed work."
 msgstr "<strong>non giudicare l'utilità </strong> del lavoro svolto."
 
-#: /node/add/verification?wrnid=16782
+#: /node/add/verification
 msgid ""
 "If you approve the report and its validity is later challenged in a dispute,"
 " you might be penalized alongside the work report author if you loose in the"
@@ -52010,42 +52010,42 @@ msgstr ""
 "della segnalazione se perdi la controversia. Maggiori informazioni possono "
 "essere trovate nella pagina delle regole di <a href=\"/rules\">neo</a>."
 
-#: /node/add/verification?wrnid=16782
+#: /node/add/verification
 msgid "Instructions"
 msgstr "Istruzioni"
 
-#: /node/add/verification?wrnid=16782
+#: /node/add/verification
 msgid "Full Name"
 msgstr "Nome e cognome"
 
-#: /node/add/verification?wrnid=16782
+#: /node/add/verification
 msgid "Registered"
 msgstr "Conto creato"
 
-#: /node/add/verification?wrnid=16782
+#: /node/add/verification
 msgid "Compl. score"
 msgstr "Indice di conformità"
 
-#: /node/add/verification?wrnid=16782
+#: /node/add/verification
 msgid "Average effort"
 msgstr "Sforzo medio"
 
-#: /node/add/verification?wrnid=16782
+#: /node/add/verification
 msgid "Web address"
 msgstr "Indirizzo web"
 
-#: /node/add/verification?wrnid=16782
+#: /node/add/verification
 msgid ""
 "the work was performed <strong>after the user registered</strong> in Rovas"
 msgstr ""
 "il lavoro è stato svolto <strong>dopo aver registrato l'utente </strong> a "
 "Rováš"
 
-#: /node/add/verification?wrnid=16782
+#: /node/add/verification
 msgid "<strong>do not judge usefulness</strong> of the performed work."
 msgstr "<strong>non giudicare l'utilità </strong> del lavoro svolto."
 
-#: /node/add/verification?wrnid=16782
+#: /node/add/verification
 msgid "Only Rovas-selected users can verify reports"
 msgstr "Solo gli utenti selezionati da Rováš possono verificare i rapporti"
 
@@ -52104,7 +52104,7 @@ msgstr ""
 msgid "The Web address field must contain a valid address"
 msgstr "Il campo Indirizzo Web deve contenere un indirizzo di pagina valido"
 
-#: /hybridauth/window/Nabezky?destination=node/1838&destination_error=node/1838
+#: /hybridauth/window/Nabezky
 msgid "Location"
 msgstr "Posizione"
 
@@ -52176,11 +52176,11 @@ msgstr "Verifica a Rováš"
 msgid "deadline"
 msgstr "scadenza"
 
-#: /admin/config/workflow/rules/components/manage/271/execute?destination=admin/config/workflow/rules/components
+#: /admin/config/workflow/rules/components/manage/271/execute
 msgid "Show in @domain"
 msgstr "Mostra tra @domain"
 
-#: /admin/config/workflow/rules/components/manage/271/execute?destination=admin/config/workflow/rules/components
+#: /admin/config/workflow/rules/components/manage/271/execute
 msgid ""
 "To log into Rovas, click the Na bezky icon <img "
 "src=\"/sites/all/modules/rovas_ha/plugins/icon_pack/hybridauth_32/icons/nabezky.svg\""
@@ -52235,23 +52235,23 @@ msgstr "Menzioni"
 msgid "Reward a project"
 msgstr "Premiare il progetto"
 
-#: /rewpro?paytype=project&recipient=2001
+#: /rewpro
 msgid "You have"
 msgstr "Hai"
 
-#: /rewpro?paytype=project&recipient=2001
+#: /rewpro
 msgid "Clicking the button below will complete your payment"
 msgstr "Fai clic sul pulsante qui sotto per completare il pagamento"
 
-#: /rewpro?paytype=project&recipient=2001
+#: /rewpro
 msgid "chrons"
 msgstr "chron"
 
-#: /rewpro?paytype=project&recipient=2001
+#: /rewpro
 msgid "Chosen amount"
 msgstr "Importo selezionato"
 
-#: /rewpro?paytype=project&recipient=2001
+#: /rewpro
 msgid "Enter the payment amount"
 msgstr "Inserisci l'importo da pagare"
 
@@ -52403,7 +52403,7 @@ msgstr "Nessun utente trovato per l'ID specificato"
 msgid "Recipient must be specified when sending money"
 msgstr "Quando si invia denaro è necessario indicare il destinatario"
 
-#: /rewpro?paytype=project&recipient=2001
+#: /rewpro
 msgid "Please enter amount greater than 0"
 msgstr "Inserisci un importo maggiore di 0"
 
@@ -52546,7 +52546,7 @@ msgstr "Crediti"
 msgid "No operation (circular)"
 msgstr "Senza spostare i chron"
 
-#: /node/35317/translate/sk?destination=35317
+#: /node/35317/translate/sk
 msgid "Translations of %label"
 msgstr "Traduzione del contenuto di %label"
 
@@ -52562,14 +52562,14 @@ msgstr ""
 msgid "hrs"
 msgstr "ore"
 
-#: /admin/structure/views/view/Mentions/edit/page_1?destination=user/289/mentions
+#: /admin/structure/views/view/Mentions/edit/page_1
 msgid ""
 "List of all events when your name was mentioned in a post or a comment."
 msgstr ""
 "Un elenco di tutti gli eventi in cui il tuo nome è stato menzionato in un "
 "post o in un commento."
 
-#: /admin/structure/views/view/Mentions/edit/page_1?destination=user/289/mentions
+#: /admin/structure/views/view/Mentions/edit/page_1
 msgid ""
 "How to use mentions: Wrap username of the user you want to mention into "
 "brackets and prefix it with the @ sign like this "
@@ -52589,11 +52589,11 @@ msgstr "Grazie per il pagamento"
 msgid "rewarding history"
 msgstr "storico dei compensi"
 
-#: /admin/structure/views/view/merit_history/edit/page_1?destination=user/289/merits
+#: /admin/structure/views/view/merit_history/edit/page_1
 msgid "No records found"
 msgstr "Nessuna transazione trovata"
 
-#: /admin/structure/views/view/merit_history/edit/page_1?destination=user/289/merits
+#: /admin/structure/views/view/merit_history/edit/page_1
 msgid "Type the project title or its part"
 msgstr "Inserisci tutto o parte del nome del progetto"
 
@@ -52674,11 +52674,11 @@ msgstr ""
 "Stai inviando l'importo <strong>@eur €</strong> al progetto <a "
 "href=\"@url\">@projname</a>"
 
-#: /rewpro?paytype=project&recipient=35384&callbackurl=https%3A//freemap.sk
+#: /rewpro
 msgid "Pay @euro euro, or a greater amount:"
 msgstr "Paga @euro euro o qualsiasi importo superiore:"
 
-#: /rewpro?paytype=project&recipient=35384
+#: /rewpro
 msgid ""
 "Please note: this project offers premium features to users who pay more than"
 " @fee chrons."
@@ -52686,7 +52686,7 @@ msgstr ""
 "Attenzione: questo progetto offre funzionalità premium agli utenti che "
 "pagano più di @fee chron."
 
-#: /rewpro?paytype=project&recipient=35384
+#: /rewpro
 msgid ""
 "Please note: this project offers premium features to users who pay @fee euro"
 " or more."
@@ -52694,7 +52694,7 @@ msgstr ""
 "Attenzione: questo progetto offre funzionalità premium agli utenti che "
 "pagano @fee o più euro."
 
-#: /rewpro?paytype=project&recipient=35384
+#: /rewpro
 msgid ""
 "Please note: this project offers premium features to users who pay @fee or "
 "more chrons."
@@ -52710,7 +52710,7 @@ msgstr ""
 "L'acquisto di @amt Euro per @input Chronos è stato completato con "
 "successo.<br><br>Puoi trovare la conferma della transazione qui"
 
-#: /rewpro?paytype=project&recipient=1998
+#: /rewpro
 msgid ""
 "A firm price for this product is not set, you can pay any amount of your "
 "choosing."
@@ -52718,18 +52718,18 @@ msgstr ""
 "Questo prodotto non ha un prezzo fisso, puoi scegliere l'importo del "
 "pagamento in base alla tua decisione."
 
-#: /rewpro?paytype=project&recipient=1998
+#: /rewpro
 msgid "Thank you for rewarding this project."
 msgstr "Grazie per il vostro sostegno a questo progetto."
 
-#: /rewpro?paytype=project&recipient=1998
+#: /rewpro
 msgid ""
 " You can pay with Euros, or with community currency Chron one can earn for "
 "volunteering."
 msgstr ""
 "Puoi pagare in euro o chron, che puoi guadagnare facendo volontariato."
 
-#: /rewpro?paytype=project&recipient=1998
+#: /rewpro
 msgid ""
 "To pay with Chrons, please <a href=\"@login\">log in</a>, or <a "
 "href=\"@register\">register</a>."
@@ -52737,7 +52737,7 @@ msgstr ""
 "Se vuoi pagare con chrons, prima <a href=\"@login\">login</a> o <a "
 "href=\"@register\">register</a>."
 
-#: /rewpro?paytype=project&recipient=35384
+#: /rewpro
 msgid ""
 "Please note: this project offers premium features to users who pay @fee euro"
 " (@chrfee chrons) or more."
@@ -53069,7 +53069,7 @@ msgctxt "merit badge"
 msgid "Merit score"
 msgstr "Punteggio di merito"
 
-#: /admin/structure/views/view/merit_history/edit/page_1?destination=user/2271/merits
+#: /admin/structure/views/view/merit_history/edit/page_1
 msgid "Rovas - penaty for breaking rules"
 msgstr "Rováš - multa per aver infranto le regole"
 
@@ -53090,7 +53090,7 @@ msgstr "@count meriti"
 msgid "equivalent to <span class=\"hum-red\">@mertime</span> of labor time"
 msgstr "equivalente del tempo lavorato: <span class=\"hum-red\">@mertime</span>"
 
-#: /admin/structure/views/view/work_reports/edit/default?destination=node/61298
+#: /admin/structure/views/view/work_reports/edit/default
 msgid "Added"
 msgstr "Aggiunto"
 
@@ -53102,7 +53102,7 @@ msgstr ""
 "L'acquisto verrà completato in pochi minuti. Aggiorna questa pagina dopo un "
 "po' per lo stato attuale."
 
-#: /rewpro?paytype=project&recipient=35384&callbackurl=https%3A%2F%2Fwww.freemap.sk%2FrovasCallback.html%3Ftoken%3D%252FdqIFKeF6oBlSDwn6qrotx0CG9I03ysHr3G4XFIMaho%253D
+#: /rewpro
 msgid ""
 "Work on the <strong>Openstreetmap</strong>, <strong>Wikipedia</strong>, any "
 "<strong>FOSS project</strong> and a number of others, all qualify for the "
@@ -53112,11 +53112,11 @@ msgstr ""
 "qualsiasi progetto <strong>FOSS</strong> e molti altri possono essere "
 "ricompensati con chron."
 
-#: /node/add/verification?wrnid=106280
+#: /node/add/verification
 msgid "Optional note for the decision"
 msgstr "Una nota sulla tua decisione (facoltativa)"
 
-#: /node/add/verification?wrnid=106280
+#: /node/add/verification
 msgid "Please provide an explanation of your decision"
 msgstr "Spiega la tua decisione"
 
@@ -53141,11 +53141,11 @@ msgstr "Dichiarazione di ricompensa"
 msgid "Project (Report)"
 msgstr "Progetto (rapporto)"
 
-#: /rewpro?paytype=wreport&recipient=174570
+#: /rewpro
 msgid "Report author"
 msgstr "Autore del rapporto"
 
-#: /rewpro?paytype=wreport&recipient=174570
+#: /rewpro
 msgid ""
 "<strong>Chron</strong> is the currency of the economic system NEO. It is "
 "granted for work on any volunteer, crowdsourced or FOSS project that already"
@@ -53155,7 +53155,7 @@ msgstr ""
 "il lavoro su qualsiasi progetto di volontariato, collaborativo o FOSS già "
 "esistente o che hai inventato tu stesso."
 
-#: /rewpro?paytype=wreport&recipient=174570
+#: /rewpro
 msgid ""
 "To reward work reports you must pay with Chrons. Please <a "
 "href=\"@login\">log in</a>, or <a href=\"@register\">register</a> first."
@@ -53164,19 +53164,19 @@ msgstr ""
 "href=\"@login\">accedendo</a> o <a href=\"@register\">creando un account a "
 "Rováš</a>"
 
-#: /rewpro?paytype=wreport&recipient=174570
+#: /rewpro
 msgid "Reward for the <a href=\"@projurl\">@repname</a> work report"
 msgstr "Ricompensa per il rapporto di lavoro <a href=\"@projurl\">@repname</a>"
 
-#: /rewpro?paytype=wreport&recipient=174570
+#: /rewpro
 msgid "The reward wass sucessfully processed"
 msgstr "La ricompensa è stata elaborata con successo"
 
-#: /rewpro?paytype=wreport&recipient=175011
+#: /rewpro
 msgid "You can not reward your own work"
 msgstr "Non è possibile premiare il proprio lavoro"
 
-#: /admin/structure/views/view/merit_history/edit/page_1?destination=user/2746/merits
+#: /admin/structure/views/view/merit_history/edit/page_1
 msgid "Receipt Id"
 msgstr "Conferma"
 
@@ -53300,11 +53300,11 @@ msgstr "Puoi controllare la dichiarazione <a href=\"@prooflink\">in Rováš</a>.
 msgid "Will not verify"
 msgstr "Mi rifiuto di verificare"
 
-#: /node/add/verification?wrnid=265827&action=decline
+#: /node/add/verification
 msgid "will not verify"
 msgstr "Mi rifiuto di verificare"
 
-#: /node/add/verification?wrnid=61306&action=verify
+#: /node/add/verification
 msgid ""
 "Your verification of this report is voluntary and and can be declined "
 "without penalties"
@@ -53312,7 +53312,7 @@ msgstr ""
 "La verifica di questa dichiarazione è volontaria e puoi rifiutarla senza "
 "penalità"
 
-#: /node/add/verification?wrnid=61306&action=verify
+#: /node/add/verification
 msgid ""
 "If you choose not to verify, please consider describing the reason for your "
 "decision below."
@@ -53320,11 +53320,11 @@ msgstr ""
 "Se scegli di non verificare, ti invitiamo a descrivere il motivo della tua "
 "decisione di seguito."
 
-#: /node/add/verification?wrnid=258568&action=decline
+#: /node/add/verification
 msgid "Hello @user,"
 msgstr "Ciao @user,"
 
-#: /node/add/verification?wrnid=258568&action=decline
+#: /node/add/verification
 msgid ""
 "Recently we asked user <a href=\"@usrlink\">@user</a> to verify your report "
 "<a href=\"@replink\">@repname</a>."
@@ -53332,7 +53332,7 @@ msgstr ""
 "Di recente abbiamo chiesto a <a href=\"@usrlink\">@user</a> di verificare la"
 " tua dichiarazione <a href=\"@replink\">@repname</a>."
 
-#: /node/add/verification?wrnid=258568&action=decline
+#: /node/add/verification
 msgid ""
 "The report requires expertise that @user does not have, and <strong>can "
 "therefore refuse to perform the verification, which they did.</strong>"
@@ -53340,13 +53340,13 @@ msgstr ""
 "Il messaggio richiede competenze che @user non ha e <strong> può quindi "
 "rifiutarsi di eseguire la verifica, cosa che ha fatto.</strong>"
 
-#: /node/add/verification?wrnid=258568&action=decline
+#: /node/add/verification
 msgid "@user left the following commentary when asked to verify the report:"
 msgstr ""
 "@user ha lasciato il seguente commento quando gli è stato chiesto di "
 "verificare l'affermazione:"
 
-#: /node/add/verification?wrnid=258568&action=decline
+#: /node/add/verification
 msgid ""
 "If you need, you might still be able to <a href=\"@editlink\">edit the work "
 "report</a>. In any case, we will try to find another verifier for your "
@@ -53356,7 +53356,7 @@ msgstr ""
 "foglio di lavoro </a> se lo desideri. In ogni caso, proveremo a trovare un "
 "altro verificatore per il rapporto."
 
-#: /node/add/verification?wrnid=258568&action=decline
+#: /node/add/verification
 msgid "Thank you for your patience."
 msgstr "Grazie per la pazienza."
 
@@ -53368,7 +53368,7 @@ msgstr ""
 "Queste richieste possono essere disattivate nel <a "
 "href=\"/user/@uid/edit\">tuo profilo utente</a>"
 
-#: /admin/structure/views/view/project_coworkers/edit/default?destination=node/1998
+#: /admin/structure/views/view/project_coworkers/edit/default
 msgid "Project Chrons"
 msgstr "Progetto Cronia"
 
@@ -53388,7 +53388,7 @@ msgstr "dal progetto \"@projname\""
 msgid "Rate"
 msgstr "Corso"
 
-#: /rewpro?paytype=project&recipient=323008
+#: /rewpro
 msgid ""
 "The project does not have a firm price. You can pay any amount of your "
 "choosing."
@@ -53455,7 +53455,7 @@ msgstr "Sposta"
 msgid "Reports merging"
 msgstr "Combinazione di dichiarazioni"
 
-#: /rewpro?paytype=project&recipient=35384
+#: /rewpro
 msgid ""
 "The amount paid can not be processed. Please split your payment into "
 "multiple smaller amounts."
@@ -53627,7 +53627,7 @@ msgstr ""
 "progetto @project.</strong></p><p>Ti contatteremo non appena risolveremo il "
 "problema.</p>"
 
-#: /rewpro?paytype=project&recipient=35384
+#: /rewpro
 msgid ""
 "To claim these benefits, you have to initiate the order from the project web"
 " site: <a href=\"@url\" target=\"_blank\">@url</a>"
@@ -53635,29 +53635,29 @@ msgstr ""
 "Per ricevere questi vantaggi, è necessario avviare l'ordine dal sito web del"
 " progetto:<br><a href=\"@url\" target=\"_blank\">@url</a>"
 
-#: /rewpro?paytype=project&recipient=35384&token=81987b5a657425e0b9c06d5227c7681094128132d7347f3000206955c0c3a837&callbackurl=https%3A%2F%2Fwww.freemap.sk%2FpurchaseCallback.html&expiration=1746908657
+#: /rewpro
 msgid "Register to earn chrons"
 msgstr "Segnalare il lavoro di volontariato"
 
-#: /rewpro?paytype=project&recipient=35384&token=81987b5a657425e0b9c06d5227c7681094128132d7347f3000206955c0c3a837&callbackurl=https%3A%2F%2Fwww.freemap.sk%2FpurchaseCallback.html&expiration=1746908657
+#: /rewpro
 msgid "Pay with"
 msgstr "Metodo di pagamento"
 
-#: /rewpro?paytype=project&recipient=35384&token=81987b5a657425e0b9c06d5227c7681094128132d7347f3000206955c0c3a837&callbackurl=https%3A%2F%2Fwww.freemap.sk%2FpurchaseCallback.html&expiration=1746908657
+#: /rewpro
 msgctxt "reward project"
 msgid "Chrons"
 msgstr "chron"
 
-#: /rewpro?paytype=project&recipient=35384&token=81987b5a657425e0b9c06d5227c7681094128132d7347f3000206955c0c3a837&callbackurl=https%3A%2F%2Fwww.freemap.sk%2FpurchaseCallback.html&expiration=1746908657
+#: /rewpro
 msgctxt "reward project"
 msgid "Euros"
 msgstr "euro"
 
-#: /rewpro?paytype=project&recipient=35384&token=81987b5a657425e0b9c06d5227c7681094128132d7347f3000206955c0c3a837&callbackurl=https%3A%2F%2Fwww.freemap.sk%2FpurchaseCallback.html&expiration=1746908657
+#: /rewpro
 msgid "Choose the way you want to pay"
 msgstr "Scegli il modo in cui vuoi pagare"
 
-#: /rewpro?paytype=project&recipient=35384&token=81987b5a657425e0b9c06d5227c7681094128132d7347f3000206955c0c3a837&callbackurl=https%3A%2F%2Fwww.freemap.sk%2FpurchaseCallback.html&expiration=1746908657
+#: /rewpro
 msgid ""
 "One, or all of the recipient, euro amount, or the type of recipient are "
 "missing. The payment cannot be executed."
@@ -53665,7 +53665,7 @@ msgstr ""
 "Manca destinatario, prezzo in euro o tipologia destinatario. Non è possibile"
 " effettuare il pagamento."
 
-#: /rewpro?paytype=project&recipient=35384
+#: /rewpro
 msgid ""
 "Please note: this project offers premium features to users who pay @fee or "
 "more chrons or @eurofee or more euros."
@@ -53673,7 +53673,7 @@ msgstr ""
 "Attenzione: questo progetto offre funzionalità premium agli utenti che "
 "pagano @fee o più chron o @eurofee o più euro."
 
-#: /rewpro?paytype=project&recipient=35384&token=e3eada4232864beb33e0e109236384d56a7217f90d5d68fcc37eb653129e2731&callbackurl=https%3A%2F%2Fwww.freemap.sk%2FpurchaseCallback.html&expiration=1747676698
+#: /rewpro
 msgid ""
 "The Chron balance in your account is lower than the requested price.<br>You "
 "can continue with payment in euros"
@@ -53681,11 +53681,11 @@ msgstr ""
 "Il saldo di chron sul tuo conto è inferiore all'importo richiesto.<br>Puoi "
 "continuare con il pagamento in euro."
 
-#: /rewpro?paytype=project&recipient=35384&token=e3eada4232864beb33e0e109236384d56a7217f90d5d68fcc37eb653129e2731&callbackurl=https%3A%2F%2Fwww.freemap.sk%2FpurchaseCallback.html&expiration=1747676698
+#: /rewpro
 msgid "Learn how to earn Chrons"
 msgstr "Scopri come ottenere chron"
 
-#: /rewpro?paytype=wreport&recipient=418592
+#: /rewpro
 msgid "You can pay with Euros to reward this work report."
 msgstr "Puoi pagare in euro come ricompensa per questo rapporto di lavoro."
 
@@ -53844,7 +53844,7 @@ msgstr ""
 "<strong>TOK1__Rováš</a></strong> - consente la partecipazione all'economia "
 "<a href=\"http://neofund.sk/\">NEO</a>"
 
-#: /rewpro?paytype=wreport&recipient=426763
+#: /rewpro
 msgid ""
 "You are trying to pay @paid_amt @unit, but you have only @chrons @unit in "
 "your account!"
@@ -53852,7 +53852,7 @@ msgstr ""
 "Stai cercando di pagare @paid_amt @unit ma hai solo @chrons @unit nel tuo "
 "account!"
 
-#: /rewpro?paytype=project&recipient=35384&token=6975dc686d42567b148152d7fe10eec3eca16572877dce5f5ad22caf21ad3fb4&callbackurl=https%3A%2F%2Fwww.freemap.sk%2FpurchaseCallback.html&expiration=1746857527&name=Freemap.sk+premium+access&description=Premium+access+to+Freemap.sk+for+1+year&price_eur=3000
+#: /rewpro
 msgid ""
 "To get <strong>@prodname</strong>, you need to <strong>pay at least "
 "@payment_amount @unit</strong> (@altpayment @altunit), or more."
@@ -53860,16 +53860,16 @@ msgstr ""
 "Devi <strong>pagare almeno @payment_amount @unit</strong> (@altpayment "
 "@altunit) o più per ottenere <strong>@prodname</strong>."
 
-#: /rewpro?paytype=project&recipient=35384&token=6975dc686d42567b148152d7fe10eec3eca16572877dce5f5ad22caf21ad3fb4&callbackurl=https%3A%2F%2Fwww.freemap.sk%2FpurchaseCallback.html&expiration=1746857527&name=Freemap.sk+premium+access&description=Premium+access+to+Freemap.sk+for+1+year&price_eur=3000
+#: /rewpro
 msgid "Product details"
 msgstr "Descrizione del prodotto"
 
-#: /rewpro?paytype=project&recipient=35384&token=6975dc686d42567b148152d7fe10eec3eca16572877dce5f5ad22caf21ad3fb4&callbackurl=https%3A%2F%2Fwww.freemap.sk%2FpurchaseCallback.html&expiration=1746857527&name=Freemap.sk+premium+access&description=Premium+access+to+Freemap.sk+for+1+year&price_eur=3000
+#: /rewpro
 msgctxt "reward project currency unit"
 msgid "Chrons"
 msgstr "cron"
 
-#: /rewpro?paytype=project&recipient=35384&token=c517cd49875e5e6143101b76cbfbca2f99bdd10f142047c028fadd5747b64050&callbackurl=https%3A%2F%2Fwww.freemap.sk%2FpurchaseCallback.html&expiration=1750425588&email=orders.az%40gmail.com&lang=sk&name=Freemap.sk+pr%C3%A9miov%C3%BD+pr%C3%ADstup&description=Pr%C3%A9miov%C3%BD+pr%C3%ADstup+na+Freemap.sk+na+1+rok&price_eur=500&signature=cf78429fb5f1abde7b5bd46072dedab68074927207a97b6120aa708b70b78f73
+#: /rewpro
 msgid ""
 "To get <strong>@prodname</strong>, you need to <strong>pay @euro "
 "euro</strong>, or more."
@@ -53877,7 +53877,7 @@ msgstr ""
 "Per ottenere il prodotto <strong>@prodname</strong>, devi <strong>pagare "
 "almeno @euro €</strong> o più."
 
-#: /rewpro?paytype=project&recipient=35384&token=c517cd49875e5e6143101b76cbfbca2f99bdd10f142047c028fadd5747b64050&callbackurl=https%3A%2F%2Fwww.freemap.sk%2FpurchaseCallback.html&expiration=1750425588&email=orders.az%40gmail.com&lang=sk&name=Freemap.sk+pr%C3%A9miov%C3%BD+pr%C3%ADstup&description=Pr%C3%A9miov%C3%BD+pr%C3%ADstup+na+Freemap.sk+na+1+rok&price_eur=500&signature=cf78429fb5f1abde7b5bd46072dedab68074927207a97b6120aa708b70b78f73
+#: /rewpro
 msgid ""
 "You can pay also with @chrons Chrons, which can be earned for volunteer work"
 " (see below)."
@@ -53916,11 +53916,11 @@ msgstr ""
 msgid "The amount must be at least @amount @currency."
 msgstr "L'importo deve essere almeno @amount @currency."
 
-#: /rewpro?paytype=project&recipient=35384&token=80cfa0086cbd07998669f55dcf7e0e635ba0b81874d874fb55f0d3f8d3a805cb&callbackurl=https%3A%2F%2Fwww.freemap.sk%2FpurchaseCallback.html&expiration=1750799758&lang=sk&name=Freemap.sk+pr%C3%A9miov%C3%BD+pr%C3%ADstup&description=Pr%C3%A9miov%C3%BD+pr%C3%ADstup+na+Freemap.sk+na+1+rok&price_eur=800&price_chr=80&signature=656ed6bfc229f90d27ae8f8f5410bef5ad50f453955b6d7c953f24acaf8948dd
+#: /rewpro
 msgid "Register to earn Chrons"
 msgstr "Registrati per guadagnare chron"
 
-#: /admin/structure/views/view/users_merit_rank/edit/page?destination=users-merit-rank
+#: /admin/structure/views/view/users_merit_rank/edit/page
 msgid "Donated [Merits = €]*"
 msgstr "Donato da [Meritov = €]*"
 
@@ -54052,7 +54052,7 @@ msgstr "Scadenze per il progetto"
 msgid "Closing date"
 msgstr "Data di chiusura"
 
-#: /admin/structure/views/view/project_income_statements/edit/page?destination=project-income-statements
+#: /admin/structure/views/view/project_income_statements/edit/page
 msgid "Billing period"
 msgstr "Periodo contabile"
 
@@ -54060,7 +54060,7 @@ msgstr "Periodo contabile"
 msgid "Merits purchased"
 msgstr "Meriti acquistati"
 
-#: /rewpro?paytype=project&recipient=35384&token=42ecc35a9e4d23c3b2ddfe0318a45b88da94223b6663b16964410dd4955b7f08&callbackurl=https%3A%2F%2Fwww.freemap.sk%2FpurchaseCallback.html&expiration=1775303471&email=orders.az%40gmail.com&lang=sk&name=Freemap.sk+pr%C3%A9miov%C3%BD+pr%C3%ADstup&description=Pr%C3%A9miov%C3%BD+pr%C3%ADstup+na+Freemap.sk+na+1+rok&price_eur=800&price_chr=80&signature=a733c81af64cbb52e75da91ab6a426bb4d1e5dcecb1f07fbc992f288fbfee457
+#: /rewpro
 msgid "Pay with bank transfer"
 msgstr "Paga tramite bonifico bancario"
 
@@ -54229,11 +54229,11 @@ msgstr ""
 msgid "Pay by card"
 msgstr "Paga con carta"
 
-#: /rewpro?paytype=buyshares&recipient=45623
+#: /rewpro
 msgid "Use your Chrons or Euros to buy time shares for this project."
 msgstr "Puoi acquistare una quota in questo progetto per chron o euro."
 
-#: /rewpro?paytype=buyshares&recipient=45623
+#: /rewpro
 msgid ""
 "One timeshare earns the same Merits as one hour of time worked in the "
 "project."
@@ -54241,11 +54241,11 @@ msgstr ""
 "Riceverai lo stesso numero di crediti per una quota oraria come per un'ora "
 "lavorata nel progetto."
 
-#: /rewpro?paytype=buyshares&recipient=45623
+#: /rewpro
 msgid "Clicking Confirm will complete your Chron payment."
 msgstr "Fai clic sul pulsante Conferma per completare il pagamento chron"
 
-#: /rewpro?paytype=buyshares&recipient=45623
+#: /rewpro
 msgid "Purchased time"
 msgstr "Multiproprietà acquistata"
 
@@ -54298,7 +54298,7 @@ msgstr ""
 "denaro venga indirizzato in modo efficiente alle persone con il reddito più "
 "basso."
 
-#: /rewpro?paytype=buymerits&recipient=289
+#: /rewpro
 msgid "Use your Chrons or Euros to add Merits to your account"
 msgstr "Aumenta il numero di crediti sul tuo conto con chron o euro"
 

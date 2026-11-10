@@ -196,6 +196,16 @@ Arguments:
 3. Regenerate/update language `po/<lang>.po`.
 4. Commit `translations/templates/*.pot` and `translations/po/*.po`.
 
+## Privacy hygiene for `#:` locations
+
+Drupal locale often records the **full request path** (including query
+strings) when a UI string is first seen. That can leak payment tokens,
+emails, password-reset tokens, and similar into `.po` `#:` comments.
+
+`scripts/export-locale-po.php` strips query strings from `#:` lines on
+export. If you edit or merge PO files by hand, keep `#:` paths query-free
+(path only, e.g. `#: /rewpro` not `#: /rewpro?token=…`).
+
 ## About contrib modules (Drupal 7)
 
 There is no single D7 contrib module that cleanly does this full

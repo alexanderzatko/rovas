@@ -193,8 +193,8 @@ Allowlisted types only. Extra keys: `is_public` on `project`; `project_nid` on `
 ```json
 {
   "uid": 42,
-  "username": "sano",
-  "display_name": "Alexander Žaťko",
+  "username": "example_user",
+  "display_name": "Example User",
   "total_me": 1248.35,
   "total_chr": 320.0,
   "created": "2019-03-12T14:22:01+00:00",

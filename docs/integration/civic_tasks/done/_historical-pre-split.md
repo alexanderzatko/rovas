@@ -550,7 +550,7 @@ scanned by someone else):
       "merchant_name": "Tesco Bratislava",
       "purchase_at": "2026-06-11T14:22:00+02:00",
       "scanner_rovas_uid": "7",
-      "scanner_username": "sano",
+      "scanner_username": "example_user",
       "scanner_display_name": "Sano",
       "share_pct": 50,
       "merits_awarded": 3.21,
@@ -631,7 +631,7 @@ the list. `view=submitted` is unchanged.
   "merchant_name": "Tesco Bratislava",
   "purchase_at": "2026-06-11T14:22:00+02:00",
   "scanner_rovas_uid": "7",
-  "scanner_username": "sano",
+  "scanner_username": "example_user",
   "scanner_display_name": "Sano",
   "share_pct": 50,
   "merits_awarded": 3.21,
@@ -770,8 +770,8 @@ No new Services resource — extend the existing `/rovas/me` payload only.
 ```json
 {
   "uid": 42,
-  "username": "sano",
-  "display_name": "Alexander Žaťko",
+  "username": "example_user",
+  "display_name": "Example User",
   "total_me": 1248.35,
   "created": "2019-03-12T14:22:01+00:00"
 }
@@ -844,8 +844,8 @@ persist back to `$account->language` (not required for v1).
 ```json
 {
   "uid": 42,
-  "username": "sano",
-  "display_name": "Alexander Žaťko",
+  "username": "example_user",
+  "display_name": "Example User",
   "total_me": 1248.35,
   "total_chr": 320.0,
   "created": "2019-03-12T14:22:01+00:00",
@@ -900,8 +900,8 @@ In `rovas_oauth` → `rovas_oauth_me_index()`:
 ```json
 {
   "uid": 42,
-  "username": "sano",
-  "display_name": "Alexander Žaťko",
+  "username": "example_user",
+  "display_name": "Example User",
   "total_me": 1248.35,
   "total_chr": 320.0,
   "created": "2019-03-12T14:22:01+00:00",
@@ -2848,7 +2848,7 @@ No new Services resource is needed — this is an extension of the existing
 ```json
 {
   "rovas_uid": "...",
-  "username": "sano",
+  "username": "example_user",
   "display_name": "Sano",
   "total_me": 11578,
   "member_since_year": 2019,
@@ -3361,7 +3361,7 @@ move %-only co_worker ME into `top_charities`.
 
 ```bash
 cd /var/www/rovdev && drush php-eval '
-$uid = 487;
+$uid = 1234;
 module_load_include("inc", "rovas_merit", "rovas_merit.ledger");
 print json_encode(rovas_merit_user_by_source($uid), JSON_PRETTY_PRINT), "\n";
 print json_encode(rovas_civic_users_lookup_top_volunteer_projects($uid, "sk"), JSON_PRETTY_PRINT), "\n";

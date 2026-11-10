@@ -102,7 +102,9 @@ $po .= "\"X-Drupal-Language: " . str_replace('"', '', $language_name) . "\\n\"\n
 $po .= "\n";
 
 foreach ($entries as $entry) {
-  $po .= "#: " . str_replace("\n", " ", $entry['location']) . "\n";
+  // Keep #: locations query-free (avoid leaking tokens/emails from request paths).
+  $location = preg_replace('/\?.*$/', '', str_replace("\n", " ", $entry['location']));
+  $po .= "#: " . $location . "\n";
   if ($entry['context'] !== '') {
     $po .= "msgctxt " . _rovas_po_escape($entry['context']) . "\n";
   }

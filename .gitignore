@@ -9,6 +9,20 @@ sites/*/tmp/
 # Secrets / per-env settings
 sites/*/settings.php
 sites/*/settings.local.php
+sites/*/secrets/
+.env
+.env.*
+auth.json
+
+# DB dumps / keys (never commit)
+*.sql
+*.sql.gz
+*.dump
+*.pem
+*.p8
+*.key
+id_rsa
+id_rsa.pub
 
 # OS / editor
 .DS_Store

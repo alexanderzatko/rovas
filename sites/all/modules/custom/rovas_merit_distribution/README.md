@@ -90,7 +90,7 @@ keys `x_labels` and `count_labels`.
     "max_merits":      980000.0,
     "user_bin":        4,
     "user_merits":     2153.45,
-    "user_name":       "sano",
+    "user_name":       "example_user",
     "total_users":     823,
     "excluded_zero":   17,
     "degenerate":      false

@@ -139,7 +139,7 @@ Quick reference (all steps on Magura)
   cd /var/www/rovas
   php ops/fix_system_paths.php
   php ops/rebuild_registry.php
-  mysql -u rovas -pPASSWORD rovas -e "UPDATE variable SET value = 's:16:\"sites/all/vendor\";' WHERE name = 'composer_manager_vendor_dir';"
-  mysql -u rovas -pPASSWORD rovas -e 'TRUNCATE cache; TRUNCATE cache_bootstrap; TRUNCATE cache_block; TRUNCATE cache_field; TRUNCATE cache_filter; TRUNCATE cache_form; TRUNCATE cache_menu; TRUNCATE cache_page; TRUNCATE cache_path; TRUNCATE cache_rules; TRUNCATE cache_token; TRUNCATE cache_update; TRUNCATE cache_variable; TRUNCATE cache_views; TRUNCATE cache_views_data;'
+  mysql -u rovas -p rovas -e "UPDATE variable SET value = 's:16:\"sites/all/vendor\";' WHERE name = 'composer_manager_vendor_dir';"
+  mysql -u rovas -p rovas -e 'TRUNCATE cache; TRUNCATE cache_bootstrap; TRUNCATE cache_block; TRUNCATE cache_field; TRUNCATE cache_filter; TRUNCATE cache_form; TRUNCATE cache_menu; TRUNCATE cache_page; TRUNCATE cache_path; TRUNCATE cache_rules; TRUNCATE cache_token; TRUNCATE cache_update; TRUNCATE cache_variable; TRUNCATE cache_views; TRUNCATE cache_views_data;'
   drush74 cc all -y
   drush74 updb -y

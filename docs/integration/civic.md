@@ -286,8 +286,8 @@ In `rovas_oauth` (`rovas_oauth_me_index()`).
 ```json
 {
   "uid": 42,
-  "username": "sano",
-  "display_name": "Alexander Žaťko",
+  "username": "example_user",
+  "display_name": "Example User",
   "total_me": 1248.35,
   "total_chr": 320.0,
   "created": "2019-03-12T14:22:01+00:00",
@@ -343,7 +343,7 @@ Reuses `_rovas_merit_distribution_collect_merits()` /
   ],
   "user_bucket_index": 5,
   "user_merits": 1248.35,
-  "username": "sano",
+  "username": "example_user",
   "total_users": 298,
   "bin_edges_log10": [0, 1, 2, 3]
 }
@@ -356,7 +356,5 @@ When **no** Bearer: omit `user_`* fields. When Bearer present: fill them.
 - Public / partner API guides (classic + OAuth): [`../api/`](../api/) — keep NeoFund `rovas-api` pages in sync when contracts change
 - Task specs: [`civic_tasks/`](civic_tasks/)
 - Deploy / enable on a prod clone: [`civic-deploy.md`](civic-deploy.md)
-- Plan: `~/Documents/homeProjects/civic/docs/plan.md` (§6 claim SoT, §7 split claims, §8b claim rule, §15 phases)
-- NeoFund: `~/Documents/Business/NeoFund_NP/` (State Treasury, Path-1 donor Merit, A12; public API page `web/site/src/content/pages/rovas-api/`)
-- Civic API/Expo: `~/Documents/homeProjects/civic/docs/rovas-integration.md`
-- Mockup (home UX): `~/Documents/homeProjects/civic/mocs/civic-mockup.canvas.tsx`
+- Civic plan / API docs (sibling Civic repo): claim SoT, split claims, claim rule, phases
+- NeoFund public API mirror: keep `neofund.sk/rovas-api` in sync when contracts change

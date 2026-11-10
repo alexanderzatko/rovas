@@ -52,7 +52,7 @@ Do **not** fold all of `penalty` into `volunteer`.
 ```bash
 cd /var/www/rovdev && drush74 php-eval '
 module_load_include("inc", "rovas_merit", "rovas_merit.ledger");
-$uid = 2138; // LAO — or pick a rovdev user with penalty + ≥2 non-zero sources
+$uid = 1234; // pick a rovdev user with penalty + ≥2 non-zero sources
 print "by_source=" . json_encode(rovas_merit_user_by_source($uid)) . "\n";
 print "by_category=" . json_encode(rovas_merit_user_by_category($uid)) . "\n";
 $lookup = rovas_civic_users_lookup("LAO", "sk");

@@ -103,7 +103,7 @@
                     { "data_set" : { "data" : [ "slot:field-report-to-verify" ] } },
                     { "entity_save" : { "data" : [ "slot" ], "immediate" : "1" } },
                     { "mail" : {
-                        "to" : "alexander.zatko@freemap.sk",
+                        "to" : [ "slot:field-slip-owner:mail" ],
                         "subject" : "Rovas - request to verify was cancelled",
                         "message" : "The \u003Cstrong\u003E[node:title]\u003C\/strong\u003E report (ID = [node:nid]) you were asked to verify, was deleted. Please disregard the request to verify this report, that was sent to you previously.",
                         "language" : [ "slot:field-slip-owner:language" ]

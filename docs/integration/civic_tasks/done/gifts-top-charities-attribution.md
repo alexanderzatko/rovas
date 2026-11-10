@@ -117,7 +117,7 @@ curl -sS -H "Authorization: Bearer $TOKEN" \
 
 # Optional re-backfill:
 #   drush74 -r /var/www/rovdev rovas-civic-backfill-eur-buy-merits
-#   drush74 -r /var/www/rovdev rovas-civic-backfill-eur-buy-merits --uid=3626
+#   drush74 -r /var/www/rovdev rovas-civic-backfill-eur-buy-merits --uid=1234
 ```
 
 ### Response shape (unchanged)

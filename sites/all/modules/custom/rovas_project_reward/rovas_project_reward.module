@@ -4170,7 +4170,7 @@ function rovas_project_reward_notify_purchase($rewarded_project, $amount_paid_mi
 		drupal_set_message(t('<p>Thank you for the payment.</p><p><strong>Due to a temporary problem, the premium features at @project could not be immediately activated.</strong></p><p>We will remedy the problem, and notify you as soon as possible.</p>',['@project' => $project_name]), 'error');
 
 		$message = 'Unusual response from the receiving server when rewarding project <a href="/node/'.$rewarded_project->nid.'">' . $rewarded_project->nid . '</a>.<p>The response is <pre>' . print_r($response,1) . '</pre></p>';
-		rules_invoke_component('rules_send_email','alexanderz@neofund.sk','Payment failure',$message,'en');
+		rules_invoke_component('rules_send_email', variable_get('site_mail', ''), 'Payment failure', $message, 'en');
     watchdog('rovas_project_reward', 'rewpro notify failed for order @oid via @caller (HTTP @code, error @error).', array(
       '@oid' => $order_id_for_log ? $order_id_for_log : 0,
       '@caller' => 'rules',
@@ -6438,7 +6438,7 @@ function rovas_project_reward_notify_bank_purchase_confirmed($order) {
 
   if ((int) $response->code !== 204) {
     $message = 'Bank transfer: unexpected response notifying project <a href="/node/' . $rewarded_project->nid . '">' . $rewarded_project->nid . '</a> for order ' . $order->order_id . '.<p>Response: <pre>' . print_r($response, 1) . '</pre></p>';
-    rules_invoke_component('rules_send_email', 'alexanderz@neofund.sk', 'Bank payment notification failure', $message, 'en');
+    rules_invoke_component('rules_send_email', variable_get('site_mail', ''), 'Bank payment notification failure', $message, 'en');
   }
 }
 

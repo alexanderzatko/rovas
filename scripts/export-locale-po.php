@@ -42,6 +42,22 @@ if (empty($languages[$langcode])) {
 $language = $languages[$langcode];
 $po_data = _locale_export_po_generate($language, _locale_export_get_strings($language, $textgroup));
 
+// Strip query strings from #: location comments. Potx/locale often records the
+// full request path (tokens, emails, signatures) when a string was first seen.
+$po_data = preg_replace_callback(
+  '/^#: (.+)$/m',
+  function ($m) {
+    $parts = preg_split('/\s+/', trim($m[1]));
+    $clean = array();
+    foreach ($parts as $part) {
+      $q = strpos($part, '?');
+      $clean[] = ($q === FALSE) ? $part : substr($part, 0, $q);
+    }
+    return '#: ' . implode(' ', $clean);
+  },
+  $po_data
+);
+
 $target = $output_path;
 if ($target[0] !== '/') {
   $target = DRUPAL_ROOT . '/' . $target;

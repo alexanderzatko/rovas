@@ -8,7 +8,7 @@ After this clone, deploy Civic-era code with `ops/deploy_rovdev.sh` and follow
 [`integration/civic-deploy.md`](integration/civic-deploy.md). Mail hardening:
 [`dev-setup.md`](dev-setup.md).
 
-**SSH:** Magura root (e.g. `sano-vps` → `root@37.205.11.79`). Prefer `drush74`.
+**SSH:** Magura root (e.g. your SSH host alias → `root@<VPS_HOST>`). Prefer `drush74`.
 
 ## What gets mirrored
 
