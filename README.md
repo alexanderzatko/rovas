@@ -8,8 +8,8 @@ Operator: [NeoFund s.r.o.](https://neofund.sk/) (Slovakia)
 ## What it does
 
 - **Work reports** — people log voluntary labor against projects (with proofs, categories, and peer verification).
-- **Chrons** — Internal work ledger. Each verified hour = 10 CHR. Not money — an auditable measure of effort.
-- **Merits** — non-monetary recognition issued when projects are bought or rewarded (paid chrons are destroyed; merits accumulate as social value).
+- **Chrons** — internal work ledger. Each verified hour = 10 CHR. Not money — an auditable measure of effort.
+- **Merits** — non-transferable, non-financial score representing value contributed to society. Merit arises from work, gifts, investment, or tax payment. Merits cannot be sold or redeemed for money.
 - **Projects** — public or private offerings with shareholder-style merit allocation.
 - **API & Civic** — REST API for partners; [Civic](docs/integration/civic.md) uses Rovas as identity and merit ledger (OAuth2/PKCE).
 
