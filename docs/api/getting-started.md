@@ -74,7 +74,7 @@ curl -sS "https://rovas.app/rovas/rules/rules_fetch_user_data" \
 
 (Exact body parameters vary by rule — see OpenAPI.)
 
-Classic create work report (`POST /rovas/rules/rules_proxy_create_work_report`) accepts optional `reward_kind` (`merits`|`chrons`, default `chrons`) so third-party apps can request Merits after verification — same preference store as Civic OAuth. Omitting `reward_kind` is valid and keeps Chrons.
+Classic create work report (`POST /rovas/rules/rules_proxy_create_work_report`) accepts optional `reward_kind` (`merits`|`chrons`, default `chrons`) so third-party apps can request Merits after approval — same preference store as Civic OAuth. Omitting `reward_kind` is valid and keeps Chrons. On same-day merges into one WR, **merits is sticky** (any session electing merits keeps merits for the whole node, including later Chron top-ups).
 
 ### 4. OpenAPI
 

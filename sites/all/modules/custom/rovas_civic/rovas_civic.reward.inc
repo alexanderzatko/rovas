@@ -5,14 +5,16 @@
  * Civic volunteer work-report reward conversion (CHR→ME on verification).
  *
  * See docs/integration/civic.md → CHR to ME on WR verification /
- * Next work: Civic WR usage fee (app AUR).
+ * auto-approve + same-day merge settlement.
  */
 
 /**
- * Persist WR reward preference (chrons vs merits) for post-verification conversion.
+ * Persist WR reward preference (chrons vs merits) for post-approval conversion.
  *
  * Used by Civic OAuth create and classic rules_proxy_create_work_report.
- * Conversion runs in rovas_civic_maybe_convert_wr_chron_to_merits() after approve.
+ * Merits is sticky: once any session stores merits for this WR, later chrons
+ * submissions do not downgrade. After write, settles when the WR is already
+ * fully verified (covers Trusted auto-approve: create → grant → persist).
  *
  * @param int $wr_nid
  *   Work report node id.
@@ -40,6 +42,15 @@ function rovas_civic_persist_wr_reward_preference($wr_nid, $uid, $reward_kind, $
     $kind = 'chrons';
   }
 
+  // Merits sticky across same-day merges / repeated persist.
+  $existing = db_query(
+    'SELECT reward_kind FROM {civic_work_report_reward} WHERE wr_nid = :nid',
+    array(':nid' => $wr_nid)
+  )->fetchField();
+  if ($existing === 'merits') {
+    $kind = 'merits';
+  }
+
   $fields = array(
     'reward_kind' => $kind,
     'uid' => $uid,
@@ -55,7 +66,37 @@ function rovas_civic_persist_wr_reward_preference($wr_nid, $uid, $reward_kind, $
     ->fields($fields)
     ->execute();
 
+  $work_report = node_load($wr_nid);
+  if ($work_report && $work_report->type === 'work_report' && rovas_civic_wr_is_fully_verified($work_report)) {
+    rovas_civic_settle_wr_reward($work_report);
+  }
+
   return TRUE;
+}
+
+/**
+ * Settle a verified WR: optional app usage fee, then CHR→ME delta when merits.
+ *
+ * Safe to call repeatedly (idempotent fee + delta conversion).
+ *
+ * @param object $work_report
+ *   work_report node.
+ *
+ * @return bool
+ *   TRUE when settlement ran or was not applicable; FALSE on hard failure paths
+ *   mirrored from the underlying helpers.
+ */
+function rovas_civic_settle_wr_reward($work_report) {
+  if (empty($work_report->nid) || empty($work_report->type) || $work_report->type !== 'work_report') {
+    return FALSE;
+  }
+  // Reload so grant fields match DB after Rules / auto-approve / merge sync.
+  $fresh = node_load((int) $work_report->nid, TRUE);
+  if ($fresh && $fresh->type === 'work_report') {
+    $work_report = $fresh;
+  }
+  rovas_civic_maybe_charge_wr_usage_fee($work_report);
+  return rovas_civic_maybe_convert_wr_chron_to_merits($work_report);
 }
 
 /**
@@ -155,11 +196,11 @@ function rovas_civic_maybe_charge_wr_usage_fee($work_report) {
 }
 
 /**
- * Convert a verified Civic work-report Chron grant to Merits (NeoFund A6).
+ * Convert verified WR Chron grant delta to Merits when reward_kind = merits.
  *
- * Called after rules_verify_work_report credits Chrons when
- * {civic_work_report_reward}.reward_kind = merits. Uses the existing forex
- * A6 path (_rovas_forex_grant_merits): 10 CHR ↔ 10 ME, debiting CHR only.
+ * Converts grant − converted_chrons so same-day merge top-ups convert too.
+ * Pre-delta rows (converted > 0, converted_chrons = 0) are marked fully
+ * converted for the current grant without re-granting.
  *
  * @param object $work_report
  *   work_report node (approved: field_verification_status = 1).
@@ -180,23 +221,42 @@ function rovas_civic_maybe_convert_wr_chron_to_merits($work_report) {
     return FALSE;
   }
 
-  $row = db_query(
-    'SELECT reward_kind, converted FROM {civic_work_report_reward} WHERE wr_nid = :nid',
-    array(':nid' => $wr_nid)
-  )->fetchObject();
+  $has_converted_chrons = db_field_exists('civic_work_report_reward', 'converted_chrons');
+  $select = $has_converted_chrons
+    ? 'SELECT reward_kind, converted, converted_chrons FROM {civic_work_report_reward} WHERE wr_nid = :nid'
+    : 'SELECT reward_kind, converted FROM {civic_work_report_reward} WHERE wr_nid = :nid';
+  $row = db_query($select, array(':nid' => $wr_nid))->fetchObject();
   if (!$row || $row->reward_kind !== 'merits') {
     return FALSE;
   }
-  if (!empty($row->converted)) {
-    return TRUE;
-  }
 
-  $chrons = rovas_civic_wr_chron_grant_amount($work_report);
-  if ($chrons <= 0) {
+  $grant = rovas_civic_wr_chron_grant_amount($work_report);
+  if ($grant <= 0) {
     watchdog('rovas_civic', 'CHR→ME: no Chron grant amount for work report @nid.', array(
       '@nid' => $wr_nid,
     ), WATCHDOG_WARNING);
     return FALSE;
+  }
+
+  $already = 0.0;
+  if ($has_converted_chrons && isset($row->converted_chrons)) {
+    $already = (float) $row->converted_chrons;
+  }
+
+  // Pre-delta schema: converted timestamp set, converted_chrons still 0.
+  if (!empty($row->converted) && $already <= 0) {
+    if ($has_converted_chrons) {
+      db_update('civic_work_report_reward')
+        ->fields(array('converted_chrons' => $grant))
+        ->condition('wr_nid', $wr_nid)
+        ->execute();
+    }
+    return TRUE;
+  }
+
+  $delta = $grant - $already;
+  if ($delta <= 0.00001) {
+    return TRUE;
   }
 
   if (!function_exists('_rovas_forex_grant_merits') || !function_exists('_convert_chr_2_merits')) {
@@ -211,21 +271,24 @@ function rovas_civic_maybe_convert_wr_chron_to_merits($work_report) {
     return FALSE;
   }
 
-  $merits = (float) _convert_chr_2_merits($chrons);
+  $merits = (float) _convert_chr_2_merits($delta);
   if ($merits <= 0) {
     return FALSE;
   }
 
-  _rovas_forex_grant_merits($author, $merits, -1 * $chrons);
+  _rovas_forex_grant_merits($author, $merits, -1 * $delta);
 
+  $fields = array('converted' => REQUEST_TIME);
+  if ($has_converted_chrons) {
+    $fields['converted_chrons'] = $grant;
+  }
   db_update('civic_work_report_reward')
-    ->fields(array('converted' => REQUEST_TIME))
+    ->fields($fields)
     ->condition('wr_nid', $wr_nid)
-    ->condition('converted', 0)
     ->execute();
 
   watchdog('rovas_civic', 'CHR→ME: converted @c CHR to @m ME for uid @uid on work report @nid.', array(
-    '@c' => $chrons,
+    '@c' => $delta,
     '@m' => $merits,
     '@uid' => (int) $author->uid,
     '@nid' => $wr_nid,

@@ -325,9 +325,8 @@ function rovas_civic_node_insert($node) {
     return;
   }
   $work_report = node_load((int) $wr_ref[0]['target_id']);
-  if ($work_report && $work_report->type === 'work_report') {
-    rovas_civic_maybe_charge_wr_usage_fee($work_report);
-    rovas_civic_maybe_convert_wr_chron_to_merits($work_report);
+  if ($work_report && $work_report->type === 'work_report' && function_exists('rovas_civic_settle_wr_reward')) {
+    rovas_civic_settle_wr_reward($work_report);
   }
 }
 

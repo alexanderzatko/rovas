@@ -443,6 +443,15 @@ function rovas_repmerger_sync_auto_approved_chrons($node) {
   elseif ($delta != 0.0 && function_exists('rules_invoke_component')) {
     rules_invoke_component('rules_update_user_chron_account', user_load($node->uid), $delta, NULL);
   }
+
+  // Merits-sticky WRs: convert Chron top-up (and any pending grant) via A6.
+  if (module_exists('rovas_civic')) {
+    module_load_include('inc', 'rovas_civic', 'rovas_civic.reward');
+    if (function_exists('rovas_civic_settle_wr_reward')) {
+      rovas_civic_settle_wr_reward($node);
+    }
+  }
+
   return TRUE;
 }
 

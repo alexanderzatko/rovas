@@ -156,9 +156,9 @@ paths:
     post:
       tags:
       - classic-projects
-      summary: Create a work report in Rovas. Optional reward_kind selects Merits vs Chrons after verification.
+      summary: Create a work report in Rovas. Optional reward_kind selects Merits vs Chrons after approval.
       requestBody:
-        description: Only the Web URL is supported as work evidence. Optional reward_kind (merits|chrons) is persisted for post-verification payout.
+        description: Only the Web URL is supported as work evidence. Optional reward_kind (merits|chrons) is persisted for post-approval payout (merits sticky on same-day merges).
         content:
           application/json:
             schema:
@@ -1981,8 +1981,10 @@ components:
           - merits
           - chrons
           default: chrons
-          description: Payout preference after verification. merits converts the Chron grant to Merits (A6);
-            chrons keeps Chrons. Same semantics as Civic civic_create_work_report. Omitted or invalid → chrons.
+          description: Payout preference after approval (peer verify or Trusted auto-approve). merits converts
+            the Chron grant to Merits (A6); chrons keeps Chrons. Same semantics as Civic civic_create_work_report.
+            On same-day merges into one WR, merits is sticky (any merits session wins for the whole node,
+            including later Chron top-ups). Omitted or invalid → chrons.
           example: merits
     NewWReportResponse:
       type: object
@@ -4025,7 +4027,7 @@ components:
           description: Base64 proof photos (client-redacted)
         reward_kind:
           type: string
-          description: e.g. merits vs chrons payout preference
+          description: merits or chrons after approval (Trusted auto-approve or peer verify); merits sticky if WR is merged
         field_location:
           type: object
           description: 'GeoJSON geometry: Point, LineString, Polygon, or GeometryCollection'

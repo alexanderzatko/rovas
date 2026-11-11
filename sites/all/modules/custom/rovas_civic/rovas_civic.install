@@ -307,6 +307,14 @@ function rovas_civic_schema() {
         'not null' => TRUE,
         'default' => 0,
       ),
+      'converted_chrons' => array(
+        'description' => 'Chron amount already converted to Merits (for merge top-up deltas).',
+        'type' => 'numeric',
+        'precision' => 10,
+        'scale' => 2,
+        'not null' => TRUE,
+        'default' => 0,
+      ),
       'usage_fee_project_id' => array(
         'description' => 'App usage-fee AUR owner project nid (0 = none).',
         'type' => 'int',
@@ -817,4 +825,22 @@ function rovas_civic_update_7031() {
     rovas_civic_ensure_services_resources();
   }
   return t('Civic Trusted notify dismiss API (POST /rovas/civic_dismiss_trusted_notify) enabled on rovas_endpoint.');
+}
+
+/**
+ * Delta CHR→ME tracking for auto-approve / same-day merge top-ups.
+ */
+function rovas_civic_update_7032() {
+  if (db_table_exists('civic_work_report_reward')
+    && !db_field_exists('civic_work_report_reward', 'converted_chrons')) {
+    db_add_field('civic_work_report_reward', 'converted_chrons', array(
+      'description' => 'Chron amount already converted to Merits (for merge top-up deltas).',
+      'type' => 'numeric',
+      'precision' => 10,
+      'scale' => 2,
+      'not null' => TRUE,
+      'default' => 0,
+    ));
+  }
+  return t('Civic WR reward converted_chrons column for merits-sticky merge / auto-approve settlement.');
 }
