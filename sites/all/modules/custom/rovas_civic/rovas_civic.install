@@ -336,6 +336,20 @@ function rovas_civic_schema() {
         'not null' => TRUE,
         'default' => 0,
       ),
+      'usage_fee_amount' => array(
+        'description' => 'App usage-fee Chron amount charged (one-shot; for net ME convert).',
+        'type' => 'numeric',
+        'precision' => 10,
+        'scale' => 2,
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+      'rovas_fee_charged' => array(
+        'description' => 'Unix time when Trusted auto-approve Rovas 1% AUR ran (0 = not yet / peer path).',
+        'type' => 'int',
+        'not null' => TRUE,
+        'default' => 0,
+      ),
     ),
     'primary key' => array('wr_nid'),
     'indexes' => array(
@@ -843,4 +857,31 @@ function rovas_civic_update_7032() {
     ));
   }
   return t('Civic WR reward converted_chrons column for merits-sticky merge / auto-approve settlement.');
+}
+
+/**
+ * Net-of-fees Merits: Rovas 1% auto-approve flag + stored app fee amount.
+ */
+function rovas_civic_update_7033() {
+  if (db_table_exists('civic_work_report_reward')) {
+    if (!db_field_exists('civic_work_report_reward', 'usage_fee_amount')) {
+      db_add_field('civic_work_report_reward', 'usage_fee_amount', array(
+        'description' => 'App usage-fee Chron amount charged (one-shot; for net ME convert).',
+        'type' => 'numeric',
+        'precision' => 10,
+        'scale' => 2,
+        'not null' => TRUE,
+        'default' => 0,
+      ));
+    }
+    if (!db_field_exists('civic_work_report_reward', 'rovas_fee_charged')) {
+      db_add_field('civic_work_report_reward', 'rovas_fee_charged', array(
+        'description' => 'Unix time when Trusted auto-approve Rovas 1% AUR ran (0 = not yet / peer path).',
+        'type' => 'int',
+        'not null' => TRUE,
+        'default' => 0,
+      ));
+    }
+  }
+  return t('Civic WR reward rovas_fee_charged + usage_fee_amount for Merits net of fees.');
 }

@@ -156,9 +156,12 @@ paths:
     post:
       tags:
       - classic-projects
-      summary: Create a work report in Rovas. Optional reward_kind selects Merits vs Chrons after approval.
+      summary: Create a work report in Rovas. Optional reward_kind and deferred usage fee for post-approval payout.
       requestBody:
-        description: Only the Web URL is supported as work evidence. Optional reward_kind (merits|chrons) is persisted for post-approval payout (merits sticky on same-day merges).
+        description: Only the Web URL is supported as work evidence. Optional reward_kind (merits|chrons)
+          and optional usage_fee_project_id + usage_fee_rate (both or neither) are persisted for post-approval
+          payout. Merits is sticky on same-day merges; prefer deferred fee over a separate create_aur call
+          when electing merits so fees come from WR proceeds before CHR→ME.
         content:
           application/json:
             schema:
@@ -350,9 +353,18 @@ paths:
     post:
       tags:
       - classic-commerce
-      summary: Create an asset usage record, to charge a fee to an user for using somebody else's product
+      deprecated: true
+      summary: '[Deprecated] Create an asset usage record (app/product usage fee)'
+      description: |
+        Deprecated for work-report app fees. Prefer deferred `usage_fee_project_id` +
+        `usage_fee_rate` on `POST /rovas/rules/rules_proxy_create_work_report` (one call).
+        That charges the fee from WR Chron proceeds on approval and, when
+        `reward_kind=merits`, subtracts it before CHR→ME — so merits-only reporters
+        are not left with a negative Chron balance. A separate create_aur after a
+        Merits payout debits the Chron wallet and can go negative.
+        Still valid for non-WR / legacy AUR charges.
       requestBody:
-        description: Creates an asset usage record.
+        description: Creates an asset usage record charging the work-report author (Chron wallet).
         content:
           application/json:
             schema:
@@ -1982,10 +1994,23 @@ components:
           - chrons
           default: chrons
           description: Payout preference after approval (peer verify or Trusted auto-approve). merits converts
-            the Chron grant to Merits (A6); chrons keeps Chrons. Same semantics as Civic civic_create_work_report.
-            On same-day merges into one WR, merits is sticky (any merits session wins for the whole node,
-            including later Chron top-ups). Omitted or invalid → chrons.
+            the Chron grant net of Rovas 1% and any deferred app fee to Merits (A6); chrons keeps Chrons.
+            Same semantics as Civic civic_create_work_report. On same-day merges into one WR, merits is sticky
+            (any merits session wins for the whole node, including later Chron top-ups). Omitted or invalid → chrons.
           example: merits
+        usage_fee_project_id:
+          type: integer
+          format: int64
+          description: Optional deferred app usage-fee beneficiary project nid. Must be paired with
+            usage_fee_rate. Charged from WR Chron proceeds on approval (prefer this over rules_proxy_create_aur
+            when reward_kind=merits). Invalid/unpublished → ignored (no fee).
+          example: 1998
+        usage_fee_rate:
+          type: number
+          format: float
+          description: Optional deferred app usage-fee fraction in (0, 1], e.g. 0.03 for 3%. Must be paired
+            with usage_fee_project_id. Merits conversion uses grant minus Rovas 1% minus this fee.
+          example: 0.03
     NewWReportResponse:
       type: object
       properties:

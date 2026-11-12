@@ -76,6 +76,8 @@ curl -sS "https://rovas.app/rovas/rules/rules_fetch_user_data" \
 
 Classic create work report (`POST /rovas/rules/rules_proxy_create_work_report`) accepts optional `reward_kind` (`merits`|`chrons`, default `chrons`) so third-party apps can request Merits after approval — same preference store as Civic OAuth. Omitting `reward_kind` is valid and keeps Chrons. On same-day merges into one WR, **merits is sticky** (any session electing merits keeps merits for the whole node, including later Chron top-ups).
 
+Optional deferred app fee: `usage_fee_project_id` + `usage_fee_rate` (both or neither). On approval, Rovas charges that AUR from WR Chron proceeds, then (when `reward_kind=merits`) converts **grant − Rovas 1% − app fee** to Merits. Prefer this over a separate `rules_proxy_create_aur` call when electing Merits (a post-conversion wallet AUR can drive Chron negative).
+
 ### 4. OpenAPI
 
 Complete machine-readable contract (classic **and** OAuth/Civic):
