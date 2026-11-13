@@ -1,5 +1,5 @@
 ---
-status: active
+status: done
 slug: merit-distribution-decade-bins
 owner_repo: rovas
 created: 2026-11-13
@@ -78,7 +78,7 @@ Empty or near-empty high decades are OK if a few whales set `max_merits`.
 1. [x] Rewrite `_rovas_merit_distribution_compute_bins` for decade edges as above
 2. [x] Align `_rovas_merit_distribution_user_bin` + JSON + SVG paths
 3. [x] Update module file header / README (no longer “10 equal-width bins”)
-4. [ ] Deploy rovdev + smoke (human unless asked); clear merits cache
+4. [x] Deploy rovdev + smoke (human unless asked); clear merits cache
 
 ### Smoke test
 
