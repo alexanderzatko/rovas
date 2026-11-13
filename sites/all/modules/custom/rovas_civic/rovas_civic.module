@@ -17,6 +17,8 @@ define('ROVAS_CIVIC_SOURCE_EUR_BUY_MERITS', 'eur_buy_merits');
 define('ROVAS_CIVIC_DEFAULT_COUNTRY', 'SK');
 define('ROVAS_CIVIC_ME_PER_HOUR', 10.0);
 define('ROVAS_CIVIC_SHARE_PCT_TOLERANCE', 0.01);
+/** Sentinel rovas_uid in claim shares[] — burn slice (no Merits; DB beneficiary_uid 0). */
+define('ROVAS_CIVIC_ANONYMOUS_SHARE', 'anonymous');
 define('ROVAS_CIVIC_CLAIMS_DEFAULT_LIMIT', 50);
 define('ROVAS_CIVIC_CLAIMS_MAX_LIMIT', 100);
 define('ROVAS_CIVIC_WR_DEFAULT_LIMIT', 20);
@@ -457,7 +459,7 @@ function rovas_civic_services_resources() {
             array(
               'name' => 'shares',
               'type' => 'array',
-              'description' => 'Array of {rovas_uid, share_pct}; sum ≈ 100; scanner must be included.',
+              'description' => 'Array of {rovas_uid, share_pct}; sum ≈ 100; scanner must be included with share_pct > 0. Optional one-time rovas_uid "anonymous" burns that slice (0 ME).',
               'source' => array('data' => 'shares'),
               'optional' => FALSE,
             ),
@@ -4257,7 +4259,7 @@ function rovas_civic_claims_list_submitted($uid, $limit, $offset, array $filters
         $shares_by_claim[$cid] = array();
       }
       $shares_by_claim[$cid][] = array(
-        'beneficiary_rovas_uid' => (string) (int) $s->beneficiary_uid,
+        'beneficiary_rovas_uid' => rovas_civic_claim_share_uid_label($s->beneficiary_uid),
         'share_pct' => (float) $s->share_pct,
         'merits_awarded' => (float) $s->merits_awarded,
       );
@@ -4529,43 +4531,48 @@ function rovas_civic_claim_vat_receipt(array $params) {
 
     $out_shares = array();
     foreach ($computed as $row) {
-      $account = user_load($row['uid']);
-      if (!$account) {
-        throw new Exception('beneficiary_missing:' . $row['uid']);
-      }
-      $source_id = 'claim:' . $claim_id . ':uid:' . $row['uid'];
-      $desc = t('Civic VAT claim @receipt (@slice EUR VAT → State Treasury)', array(
-        '@receipt' => $receipt_uid,
-        '@slice' => number_format($row['vat_slice'], 4, '.', ''),
-      ));
-      $ok = rovas_civic_issue_donor_merits(
-        $account,
-        $row['merits_awarded'],
-        $treasury_nid,
-        'civic_vat_claim',
-        $source_id,
-        $desc,
-        $row['vat_slice']
-      );
-      if (!$ok) {
-        throw new Exception('merit_grant_failed:' . $row['uid']);
+      $is_anonymous = !empty($row['anonymous']);
+      if (!$is_anonymous) {
+        $account = user_load($row['uid']);
+        if (!$account) {
+          throw new Exception('beneficiary_missing:' . $row['uid']);
+        }
+        $source_id = 'claim:' . $claim_id . ':uid:' . $row['uid'];
+        $desc = t('Civic VAT claim @receipt (@slice EUR VAT → State Treasury)', array(
+          '@receipt' => $receipt_uid,
+          '@slice' => number_format($row['vat_slice'], 4, '.', ''),
+        ));
+        $ok = rovas_civic_issue_donor_merits(
+          $account,
+          $row['merits_awarded'],
+          $treasury_nid,
+          'civic_vat_claim',
+          $source_id,
+          $desc,
+          $row['vat_slice']
+        );
+        if (!$ok) {
+          throw new Exception('merit_grant_failed:' . $row['uid']);
+        }
       }
 
       db_insert('civic_claim_shares')
         ->fields(array(
           'claim_id' => $claim_id,
-          'beneficiary_uid' => $row['uid'],
+          'beneficiary_uid' => $is_anonymous ? 0 : (int) $row['uid'],
           'share_pct' => $row['share_pct'],
           'vat_slice' => $row['vat_slice'],
-          'merits_awarded' => $row['merits_awarded'],
-          'rounding_residue' => $row['rounding_residue'],
+          'merits_awarded' => $is_anonymous ? 0.0 : $row['merits_awarded'],
+          'rounding_residue' => $is_anonymous ? 0.0 : $row['rounding_residue'],
           'created' => REQUEST_TIME,
         ))
         ->execute();
 
       $out_shares[] = array(
-        'beneficiary_rovas_uid' => (string) $row['uid'],
-        'merits_awarded' => $row['merits_awarded'],
+        'beneficiary_rovas_uid' => $is_anonymous
+          ? ROVAS_CIVIC_ANONYMOUS_SHARE
+          : (string) $row['uid'],
+        'merits_awarded' => $is_anonymous ? 0.0 : $row['merits_awarded'],
       );
     }
   }
@@ -4605,10 +4612,24 @@ function rovas_civic_claim_error($code, $explain) {
 }
 
 /**
+ * API label for a claim-share beneficiary_uid.
+ *
+ * @param int|string $uid
+ *   Stored beneficiary_uid (0 = burned anonymous share).
+ *
+ * @return string
+ *   "anonymous" or decimal uid string.
+ */
+function rovas_civic_claim_share_uid_label($uid) {
+  $uid = (int) $uid;
+  return $uid === 0 ? ROVAS_CIVIC_ANONYMOUS_SHARE : (string) $uid;
+}
+
+/**
  * Validate shares array.
  *
  * @return array
- *   keys: error (string) or shares (list of uid+share_pct).
+ *   keys: error (string) or shares (list of uid+share_pct[+anonymous]).
  */
 function rovas_civic_validate_shares($shares_in, $scanner_uid) {
   if (!is_array($shares_in) || empty($shares_in)) {
@@ -4619,14 +4640,36 @@ function rovas_civic_validate_shares($shares_in, $scanner_uid) {
   $seen = array();
   $sum = 0.0;
   $scanner_included = FALSE;
+  $scanner_pct = NULL;
+  $anonymous_seen = FALSE;
 
   foreach ($shares_in as $item) {
     if (!is_array($item)) {
       return array('error' => 'shares_invalid');
     }
-    $uid = isset($item['rovas_uid']) ? (int) $item['rovas_uid'] : 0;
+    $raw_uid = isset($item['rovas_uid']) ? $item['rovas_uid'] : NULL;
     $pct = isset($item['share_pct']) ? (float) $item['share_pct'] : -1;
-    if ($uid < 2 || $pct < 0) {
+    if ($pct < 0) {
+      return array('error' => 'shares_invalid');
+    }
+
+    // Burn sentinel: literal "anonymous" only (case-sensitive); at most one.
+    if ($raw_uid === ROVAS_CIVIC_ANONYMOUS_SHARE) {
+      if ($anonymous_seen) {
+        return array('error' => 'shares_duplicate_uid');
+      }
+      $anonymous_seen = TRUE;
+      $sum += $pct;
+      $shares[] = array(
+        'uid' => 0,
+        'share_pct' => $pct,
+        'anonymous' => TRUE,
+      );
+      continue;
+    }
+
+    $uid = (int) $raw_uid;
+    if ($uid < 2) {
       return array('error' => 'shares_invalid');
     }
     if (isset($seen[$uid])) {
@@ -4639,13 +4682,21 @@ function rovas_civic_validate_shares($shares_in, $scanner_uid) {
     $seen[$uid] = TRUE;
     if ($uid === (int) $scanner_uid) {
       $scanner_included = TRUE;
+      $scanner_pct = $pct;
     }
     $sum += $pct;
-    $shares[] = array('uid' => $uid, 'share_pct' => $pct);
+    $shares[] = array(
+      'uid' => $uid,
+      'share_pct' => $pct,
+      'anonymous' => FALSE,
+    );
   }
 
   if (!$scanner_included) {
     return array('error' => 'scanner_not_in_shares');
+  }
+  if ($scanner_pct === NULL || $scanner_pct <= 0) {
+    return array('error' => 'scanner_share_pct');
   }
   if (abs($sum - 100.0) > ROVAS_CIVIC_SHARE_PCT_TOLERANCE) {
     return array('error' => 'shares_pct_sum');
@@ -4657,37 +4708,59 @@ function rovas_civic_validate_shares($shares_in, $scanner_uid) {
 /**
  * Compute per-share VAT slices and Merits; residue ME to scanner.
  *
+ * Anonymous (burn) shares keep a VAT slice for audit but always award 0 ME
+ * and never receive flooring residue. Residue is among granted shares only.
+ *
  * @return array
- *   List of uid, share_pct, vat_slice, merits_awarded, rounding_residue.
+ *   List of uid, share_pct, vat_slice, merits_awarded, rounding_residue, anonymous.
  */
 function rovas_civic_compute_share_merits(array $shares, $vat_eur, $rate, $scanner_uid) {
-  $total_me_exact = rovas_civic_merits_from_eur_slice($vat_eur, $rate);
   $rows = array();
-  $floored_sum = 0.0;
   $vat_sum = 0.0;
 
   foreach ($shares as $s) {
+    $is_anonymous = !empty($s['anonymous']);
     $vat_slice = round($vat_eur * $s['share_pct'] / 100.0, 4);
-    $me_exact = rovas_civic_merits_from_eur_slice($vat_slice, $rate);
-    $me_floor = rovas_civic_floor2($me_exact);
     $rows[] = array(
-      'uid' => $s['uid'],
+      'uid' => $is_anonymous ? 0 : (int) $s['uid'],
+      'anonymous' => $is_anonymous,
       'share_pct' => $s['share_pct'],
       'vat_slice' => $vat_slice,
-      'merits_awarded' => $me_floor,
+      'merits_awarded' => 0.0,
       'rounding_residue' => 0.0,
     );
-    $floored_sum += $me_floor;
     $vat_sum += $vat_slice;
   }
 
-  // Fix VAT slice residue on scanner (cents).
+  // Fix VAT slice residue on scanner (cents); never on anonymous.
   $vat_residue = round($vat_eur - $vat_sum, 4);
-  $me_residue = round($total_me_exact - $floored_sum, 6);
-
   foreach ($rows as &$row) {
-    if ((int) $row['uid'] === (int) $scanner_uid) {
+    if (empty($row['anonymous']) && (int) $row['uid'] === (int) $scanner_uid) {
       $row['vat_slice'] = round($row['vat_slice'] + $vat_residue, 4);
+      break;
+    }
+  }
+  unset($row);
+
+  // Floor Merits on granted shares only; burn stays at 0 ME.
+  $floored_sum = 0.0;
+  $exact_sum = 0.0;
+  foreach ($rows as &$row) {
+    if (!empty($row['anonymous'])) {
+      $row['merits_awarded'] = 0.0;
+      continue;
+    }
+    $me_exact = rovas_civic_merits_from_eur_slice($row['vat_slice'], $rate);
+    $me_floor = rovas_civic_floor2($me_exact);
+    $row['merits_awarded'] = $me_floor;
+    $floored_sum += $me_floor;
+    $exact_sum += $me_exact;
+  }
+  unset($row);
+
+  $me_residue = round($exact_sum - $floored_sum, 6);
+  foreach ($rows as &$row) {
+    if (empty($row['anonymous']) && (int) $row['uid'] === (int) $scanner_uid) {
       $row['merits_awarded'] = round($row['merits_awarded'] + $me_residue, 6);
       $row['rounding_residue'] = $me_residue;
       break;
