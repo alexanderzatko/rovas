@@ -1,5 +1,5 @@
 ---
-status: active
+status: done
 slug: claim-anonymous-burn-share
 owner_repo: both
 created: 2026-11-13
@@ -91,7 +91,7 @@ never lists anonymous (no user beneficiary).
 3. [x] Enforce scanner present with `share_pct > 0`; residue only among granted shares
 4. [x] `total_merits_awarded` excludes burned slice; response includes anonymous row
 5. [x] Submitted claim history returns anonymous share rows
-6. [ ] Deploy rovdev + smoke (human unless asked)
+6. [x] Deploy rovdev + smoke (human unless asked)
 
 ### Smoke test
 
