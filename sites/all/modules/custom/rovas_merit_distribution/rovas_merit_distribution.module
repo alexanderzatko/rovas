@@ -4,10 +4,10 @@
  * @file
  * Rovas Merit Distribution.
  *
- * Generates an SVG histogram of all active users' merit scores split into
- * 10 equal-width bins on a log10 axis, optionally highlighting one user's
- * bin with a triangle pointer and their username (matching the screenshot
- * provided in the design discussion).
+ * Generates an SVG histogram of all active users' merit scores on power-of-ten
+ * (decade) boundaries: linear edges 0, 1, 10, 100, … encoded as log10 edges
+ * with a JSON-safe zero sentinel. Optionally highlights one user's bin with a
+ * triangle pointer and their username.
  *
  * Surfaces:
  *   - Services resource `rovas_merit_distribution` (operation `index`) on
@@ -23,7 +23,10 @@
  */
 define('ROVAS_MERIT_DISTRIBUTION_DEFAULT_WIDTH', 720);
 define('ROVAS_MERIT_DISTRIBUTION_DEFAULT_HEIGHT', 360);
+/** @deprecated Unused for decade binning; kept for call-site BC. */
 define('ROVAS_MERIT_DISTRIBUTION_BIN_COUNT', 10);
+/** log10 sentinel for linear edge 0 (Civic: pow(10,e) < 1e-9 ⇒ zero). */
+define('ROVAS_MERIT_DISTRIBUTION_ZERO_LOG_SENTINEL', -20.0);
 define('ROVAS_MERIT_DISTRIBUTION_CACHE_TTL', 3600);
 define('ROVAS_MERIT_DISTRIBUTION_CACHE_KEY', 'rovas_merit_distribution:merits');
 
@@ -39,7 +42,7 @@ function rovas_merit_distribution_menu() {
 
   $items['admin/reports/merit-distribution'] = array(
     'title' => 'Merit distribution',
-    'description' => 'Preview the log-binned merit distribution chart.',
+    'description' => 'Preview the decade-binned merit distribution chart.',
     'page callback' => 'rovas_merit_distribution_preview_page',
     'access arguments' => array('access site reports'),
     'type' => MENU_NORMAL_ITEM,
@@ -62,7 +65,7 @@ function rovas_merit_distribution_services_resources() {
     'rovas_merit_distribution' => array(
       'operations' => array(
         'index' => array(
-          'help' => 'Returns an SVG merit distribution chart by deciles (log10-binned). Optional query parameters: uid (highlight this user, defaults to the authenticated caller), width, height.',
+          'help' => 'Returns an SVG merit distribution chart by power-of-ten (decade) bins. Optional query parameters: uid (highlight this user, defaults to the authenticated caller), width, height.',
           'callback' => 'rovas_merit_distribution_endpoint_index',
           'access callback' => 'rovas_api_endpoints_access_callback',
           'access arguments' => array('access'),
@@ -205,34 +208,43 @@ function _rovas_merit_distribution_user_merits($uid) {
 }
 
 /* ===========================================================================
- * 3. Binning (log10 scale)
+ * 3. Binning (power-of-ten / decade edges)
  * ========================================================================= */
 
 /**
- * Builds the 10 log10 bins and per-bin counts.
+ * Builds decade bins and per-bin counts.
  *
- * Users with merits <= 0 cannot live on a log axis, so they are excluded
- * from the bins and their count is reported separately in `excluded_zero`.
+ * Linear edges are `[0, 1, 10, 100, …, 10^k]` with
+ * `k = max(0, ceil(log10(max_positive)))`. Encoded as `bin_edges_log10`:
+ * first edge is ROVAS_MERIT_DISTRIBUTION_ZERO_LOG_SENTINEL (linear 0), then
+ * integers `0..k`. Each positive Merit `v` maps to the unique interval
+ * `(edges[i], edges[i+1]]` (left-open, right-closed). Values above the
+ * final edge clamp into the last bin. Users with merits <= 0 are excluded
+ * (`excluded_zero`).
+ *
+ * Bar count is variable (`len(edges) - 1`); `$bin_count` is ignored (kept
+ * for call-site BC).
  *
  * @param array $merits
  *   Indexed array of stdClass rows with ->merits.
  * @param int $bin_count
- *   Number of bins (default 10).
+ *   Ignored (decade edges are uncapped).
  *
  * @return array
  *   Associative array with keys:
- *     - edges:         array of $bin_count + 1 log10 boundaries
- *     - counts:        array of $bin_count integer counts
- *     - min_log:       float, log10 lower bound
- *     - max_log:       float, log10 upper bound
+ *     - edges:         array of log10 boundaries (variable length)
+ *     - counts:        array of integer counts (len = edges - 1)
+ *     - min_log:       float, first log edge
+ *     - max_log:       float, last log edge (integer k)
  *     - min_merits:    float, smallest positive merit included
  *     - max_merits:    float, largest merit included
  *     - total_users:   int, total rows seen
  *     - excluded_zero: int, count of rows with merits <= 0
- *     - degenerate:    bool, TRUE when there is no usable range
+ *     - degenerate:    bool, TRUE when there are no positive merits
  */
 function _rovas_merit_distribution_compute_bins($merits, $bin_count = ROVAS_MERIT_DISTRIBUTION_BIN_COUNT) {
-  $bin_count = max(2, (int) $bin_count);
+  // $bin_count intentionally unused — decade edges are not a fixed count.
+  unset($bin_count);
 
   $positive = array();
   $excluded_zero = 0;
@@ -247,14 +259,18 @@ function _rovas_merit_distribution_compute_bins($merits, $bin_count = ROVAS_MERI
 
   $total = count($merits);
 
-  if (count($positive) < 2) {
+  if (empty($positive)) {
+    $edges = array(
+      ROVAS_MERIT_DISTRIBUTION_ZERO_LOG_SENTINEL,
+      0.0,
+    );
     return array(
-      'edges' => array_fill(0, $bin_count + 1, 0.0),
-      'counts' => array_fill(0, $bin_count, 0),
-      'min_log' => 0.0,
+      'edges' => $edges,
+      'counts' => array(0),
+      'min_log' => ROVAS_MERIT_DISTRIBUTION_ZERO_LOG_SENTINEL,
       'max_log' => 0.0,
-      'min_merits' => count($positive) ? min($positive) : 0.0,
-      'max_merits' => count($positive) ? max($positive) : 0.0,
+      'min_merits' => 0.0,
+      'max_merits' => 0.0,
       'total_users' => $total,
       'excluded_zero' => $excluded_zero,
       'degenerate' => TRUE,
@@ -264,29 +280,24 @@ function _rovas_merit_distribution_compute_bins($merits, $bin_count = ROVAS_MERI
   $min_merits = min($positive);
   $max_merits = max($positive);
 
-  $min_log_raw = log10($min_merits);
-  $max_log_raw = log10($max_merits);
-
-  $min_log = floor($min_log_raw);
-  $max_log = ceil($max_log_raw);
-  if ($max_log <= $min_log) {
-    $max_log = $min_log + 1.0;
+  // k such that 10^k is the top edge (≥ max_merits when max ≥ 1).
+  $k = (int) max(0, (int) ceil(log10($max_merits)));
+  // Always at least one decade span above linear 0 → edges [0, 1] minimum.
+  if ($k < 0) {
+    $k = 0;
   }
 
-  $step = ($max_log - $min_log) / $bin_count;
-  $edges = array();
-  for ($i = 0; $i <= $bin_count; $i++) {
-    $edges[] = $min_log + $i * $step;
+  $edges = array(ROVAS_MERIT_DISTRIBUTION_ZERO_LOG_SENTINEL);
+  for ($i = 0; $i <= $k; $i++) {
+    $edges[] = (float) $i;
   }
 
-  $counts = array_fill(0, $bin_count, 0);
+  $bin_n = count($edges) - 1;
+  $counts = array_fill(0, $bin_n, 0);
   foreach ($positive as $value) {
-    $idx = (int) floor((log10($value) - $min_log) / $step);
-    if ($idx < 0) {
-      $idx = 0;
-    }
-    elseif ($idx >= $bin_count) {
-      $idx = $bin_count - 1;
+    $idx = _rovas_merit_distribution_assign_bin($value, $edges);
+    if ($idx === NULL) {
+      continue;
     }
     $counts[$idx]++;
   }
@@ -294,14 +305,49 @@ function _rovas_merit_distribution_compute_bins($merits, $bin_count = ROVAS_MERI
   return array(
     'edges' => $edges,
     'counts' => $counts,
-    'min_log' => $min_log,
-    'max_log' => $max_log,
+    'min_log' => ROVAS_MERIT_DISTRIBUTION_ZERO_LOG_SENTINEL,
+    'max_log' => (float) $k,
     'min_merits' => $min_merits,
     'max_merits' => $max_merits,
     'total_users' => $total,
     'excluded_zero' => $excluded_zero,
     'degenerate' => FALSE,
   );
+}
+
+/**
+ * Assign a positive Merit value to a decade bin index.
+ *
+ * Interval convention: `(linear_lo, linear_hi]` — left-open, right-closed.
+ * Linear lo for the first edge (log sentinel ≤ -20) is treated as 0.
+ * Values above the final linear edge clamp to the last bin.
+ *
+ * @param float $value
+ * @param array $log_edges
+ *   log10 edges from compute_bins.
+ *
+ * @return int|null
+ *   0-based bin index, or NULL if edges are unusable.
+ */
+function _rovas_merit_distribution_assign_bin($value, array $log_edges) {
+  $value = (float) $value;
+  $n = count($log_edges) - 1;
+  if ($n < 1 || $value <= 0) {
+    return NULL;
+  }
+
+  for ($i = 0; $i < $n; $i++) {
+    $lo_log = (float) $log_edges[$i];
+    $hi_log = (float) $log_edges[$i + 1];
+    $lo = ($lo_log <= ROVAS_MERIT_DISTRIBUTION_ZERO_LOG_SENTINEL) ? 0.0 : pow(10, $lo_log);
+    $hi = pow(10, $hi_log);
+    if ($value > $lo && $value <= $hi) {
+      return $i;
+    }
+  }
+
+  // Above final edge (float noise / whales past ceil) → last bin.
+  return $n - 1;
 }
 
 /**
@@ -319,22 +365,11 @@ function _rovas_merit_distribution_user_bin($bins, $user_merits) {
   if ($user_merits === NULL || $user_merits <= 0 || !empty($bins['degenerate'])) {
     return NULL;
   }
-
-  $bin_count = count($bins['counts']);
-  $step = ($bins['max_log'] - $bins['min_log']) / $bin_count;
-  if ($step <= 0) {
+  if (empty($bins['edges']) || empty($bins['counts'])) {
     return NULL;
   }
 
-  $idx = (int) floor((log10((float) $user_merits) - $bins['min_log']) / $step);
-  if ($idx < 0) {
-    $idx = 0;
-  }
-  elseif ($idx >= $bin_count) {
-    $idx = $bin_count - 1;
-  }
-
-  return $idx;
+  return _rovas_merit_distribution_assign_bin((float) $user_merits, $bins['edges']);
 }
 
 /* ===========================================================================
@@ -386,10 +421,10 @@ function rovas_merit_distribution_render($opts = array()) {
 
   $width = max(200, (int) $opts['width']);
   $height = max(120, (int) $opts['height']);
-  $title = $opts['title'] !== NULL ? (string) $opts['title'] : t('Merit distribution by deciles');
+  $title = $opts['title'] !== NULL ? (string) $opts['title'] : t('Merit distribution by decades');
 
   $merits_rows = _rovas_merit_distribution_collect_merits();
-  $bins = _rovas_merit_distribution_compute_bins($merits_rows, ROVAS_MERIT_DISTRIBUTION_BIN_COUNT);
+  $bins = _rovas_merit_distribution_compute_bins($merits_rows);
 
   $user_merits = NULL;
   $user_name = NULL;
@@ -499,7 +534,7 @@ function _rovas_merit_distribution_build_svg($width, $height, $bins, $user_bin, 
 
   $title_escaped = check_plain($title);
   $desc_escaped = check_plain(t(
-    'Histogram of @total users across @bins log-scaled merit bins.',
+    'Histogram of @total users across @bins power-of-ten merit bins.',
     array('@total' => $bins['total_users'], '@bins' => $bin_count)
   ));
 
@@ -535,10 +570,10 @@ function _rovas_merit_distribution_build_svg($width, $height, $bins, $user_bin, 
 
     $low = $bins['edges'][$i];
     $high = $bins['edges'][$i + 1];
-    $tooltip = t('Bin @n: 10^@a..10^@b ME, @c users', array(
+    $tooltip = t('Bin @n: @a–@b ME, @c users', array(
       '@n' => $i + 1,
-      '@a' => number_format($low, 2),
-      '@b' => number_format($high, 2),
+      '@a' => _rovas_merit_distribution_format_merit_edge($low),
+      '@b' => _rovas_merit_distribution_format_merit_edge($high),
       '@c' => $count,
     ));
 
@@ -563,13 +598,15 @@ function _rovas_merit_distribution_build_svg($width, $height, $bins, $user_bin, 
     }
   }
 
-  // X-axis labels: rounded merit value at each of the 11 bin edges.
+  // X-axis labels: decade merit value at each bin edge (0, 1, 10, …).
   if ($show_x_labels) {
     $xlbl_y = $baseline_y + 12;
     for ($i = 0; $i <= $bin_count; $i++) {
       $edge_x = $pad_left + $i * $slot_w;
-      $edge_log = $bins['edges'][$i];
-      $edge_value = pow(10, $edge_log);
+      $edge_log = (float) $bins['edges'][$i];
+      $edge_value = ($edge_log <= ROVAS_MERIT_DISTRIBUTION_ZERO_LOG_SENTINEL)
+        ? 0.0
+        : pow(10, $edge_log);
       $edge_text = _rovas_merit_distribution_format_value($edge_value);
 
       // Anchor first/last labels so they stay inside the frame.
@@ -753,7 +790,7 @@ function rovas_merit_distribution_json_index() {
 
   try {
     $merits_rows = _rovas_merit_distribution_collect_merits();
-    $bins = _rovas_merit_distribution_compute_bins($merits_rows, ROVAS_MERIT_DISTRIBUTION_BIN_COUNT);
+    $bins = _rovas_merit_distribution_compute_bins($merits_rows);
   }
   catch (Exception $e) {
     watchdog(
@@ -809,9 +846,14 @@ function _rovas_merit_distribution_bucket_label($lo_log, $hi_log) {
 
 /**
  * Format a log10 edge as a compact merit number for labels.
+ *
+ * Decade edges are integers; the zero sentinel (−20) formats as "0".
  */
 function _rovas_merit_distribution_format_merit_edge($log) {
   $log = (float) $log;
+  if ($log <= ROVAS_MERIT_DISTRIBUTION_ZERO_LOG_SENTINEL) {
+    return '0';
+  }
   $v = pow(10, $log);
   if ($v >= 100) {
     return (string) (int) round($v);

@@ -39,6 +39,7 @@ env): [`civic-deploy.md`](civic-deploy.md).
 | Status | Slug | File | Notes |
 |--------|------|------|-------|
 | done | claim-anonymous-burn-share | [`done/claim-anonymous-burn-share.md`](civic_tasks/done/claim-anonymous-burn-share.md) | Sentinel `rovas_uid: "anonymous"` burn share (0 ME); scanner `share_pct` > 0 |
+| active | merit-distribution-decade-bins | [`active/merit-distribution-decade-bins.md`](civic_tasks/active/merit-distribution-decade-bins.md) | Rovas code done — decade edges + variable bars; deploy + cache clear + smoke pending |
 | active | wr-reward-auto-approve-merge | [`active/wr-reward-auto-approve-merge.md`](civic_tasks/active/wr-reward-auto-approve-merge.md) | Merits sticky + settle on Trusted auto-approve / merge; Merits net of Rovas 1% + deferred app fee (`7032`/`7033`) |
 | done | give-chrons-to-merits | [`done/give-chrons-to-merits.md`](civic_tasks/done/give-chrons-to-merits.md) | Bearer `POST /rovas/civic_give_chrons` — voluntary CHR→ME 1:1 (A6); Civic Get Merits “Give Chrons” (`7029`) |
 | done | work-report-geometry-collection | [`done/work-report-geometry-collection.md`](civic_tasks/done/work-report-geometry-collection.md) | Accept/export GeoJSON `GeometryCollection` on WR `field_location` (multi / mixed map features) |
@@ -340,6 +341,7 @@ Reuses `_rovas_merit_distribution_collect_merits()` /
 ```json
 {
   "buckets": [
+    { "label": "0–1", "count": 12 },
     { "label": "1–10", "count": 48 },
     { "label": "10–100", "count": 104 }
   ],
@@ -347,9 +349,16 @@ Reuses `_rovas_merit_distribution_collect_merits()` /
   "user_merits": 1248.35,
   "username": "example_user",
   "total_users": 298,
-  "bin_edges_log10": [0, 1, 2, 3]
+  "bin_edges_log10": [-20, 0, 1, 2, 3]
 }
 ```
+
+Bins are **power-of-ten** Merit intervals (`0, 1, 10, 100, …`), not a fixed
+10 equal log slices — see
+[merit-distribution-decade-bins](civic_tasks/active/merit-distribution-decade-bins.md).
+First `bin_edges_log10` entry is sentinel `-20` for linear `0`.
+Bar count = `buckets.length` (variable with community Merit span).
+Interval assignment: `(lo, hi]` (left-open, right-closed).
 
 When **no** Bearer: omit `user_`* fields. When Bearer present: fill them.
 

@@ -1,7 +1,7 @@
 # Rovas Merit Distribution
 
 Drupal 7 module that produces an SVG histogram of all active users' merit
-scores split into 10 equal-width bins on a log10 axis, optionally
+scores on **power-of-ten (decade) boundaries** (`0, 1, 10, 100, …`), optionally
 highlighting one user's bin with a triangle pointer and their username.
 
 ## What it provides
@@ -12,6 +12,8 @@ highlighting one user's bin with a triangle pointer and their username.
 - **Services resource** `rovas_merit_distribution` (operation `index`) —
   registers via `hook_services_resources()` for any Services endpoint that
   opts in. Returns JSON `{status, svg, meta}`.
+- **Services resource** `merit_distribution` — JSON buckets only (Civic);
+  Bearer optional for `user_*` fields.
 - **Admin preview** at `admin/reports/merit-distribution` (permission
   `access site reports`) — renders the chart inline with a small
   uid/width/height form and a cache-bust link.
@@ -37,12 +39,17 @@ the admin preview page (`?reset=1`) or programmatically via
 
 ## Binning
 
-- Users with `merits <= 0` are excluded from the log axis and reported in
+- Users with `merits <= 0` are excluded from the bins and reported in
   `meta.excluded_zero`.
-- Bin edges: `floor(log10(min_positive))` to `ceil(log10(max))` in 10 equal
-  log10-wide steps. The highest bin is right-inclusive.
-- `meta.bin_edges_log10` holds the 11 edge values; `meta.bin_counts` holds
-  the 10 counts.
+- Linear edges: `[0, 1, 10, …, 10^k]` where
+  `k = max(0, ceil(log10(max_positive)))`.
+- Encoded as `bin_edges_log10`: first edge is `-20` (JSON-safe sentinel for
+  linear 0; Civic treats `pow(10, e) < 1e-9` as zero), then integers
+  `0, 1, …, k`.
+- Assignment: `(edge[i], edge[i+1]]` (left-open, right-closed). Values above
+  the final edge clamp into the last bin.
+- Bar count is **variable** (`len(edges) - 1`), not a fixed 10.
+- Bucket labels look like `0–1`, `1–10`, `10–100`, …
 
 ## Enabling the Services resource
 
@@ -55,6 +62,9 @@ serve it (typically `rovas_endpoint`):
 3. (If using session/API key auth defaults) make sure the API key + token
    headers are required for this operation, matching the other
    `rovas_api_endpoints` resources.
+
+Civic JSON: ensure `merit_distribution` is enabled (Rovas OAuth Civic
+bootstrap / `rovas_oauth_ensure_civic_resources()`).
 
 ## Request format
 
@@ -84,9 +94,9 @@ keys `x_labels` and `count_labels`.
   "status": "success",
   "svg": "<svg ...>...</svg>",
   "meta": {
-    "bin_edges_log10": [0.0, 0.3, 0.6, ...],
-    "bin_counts":      [12, 38, 91, 140, 210, 175, 95, 40, 18, 4],
-    "min_merits":      1.0,
+    "bin_edges_log10": [-20.0, 0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0],
+    "bin_counts":      [12, 38, 91, 140, 210, 175, 95],
+    "min_merits":      0.4,
     "max_merits":      980000.0,
     "user_bin":        4,
     "user_merits":     2153.45,
@@ -97,6 +107,9 @@ keys `x_labels` and `count_labels`.
   }
 }
 ```
+
+Civic JSON (`GET /rovas/merit_distribution`) uses the same edges under
+`buckets` + `bin_edges_log10` (variable `buckets.length`).
 
 ## Notes
 
