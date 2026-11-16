@@ -189,7 +189,18 @@ function rovas_oauth_civic_auth_attach_identity($account, $ha_provider, $provide
       ->execute();
   }
 
-  $ud = is_array($account->data) ? $account->data : array();
+  $ud = array();
+  if (isset($account->data)) {
+    if (is_array($account->data)) {
+      $ud = $account->data;
+    }
+    elseif (is_string($account->data)) {
+      $un = @unserialize($account->data);
+      if (is_array($un)) {
+        $ud = $un;
+      }
+    }
+  }
   if (empty($ud['hybridauth'])) {
     $ud['hybridauth'] = $data;
     user_save($account, array('data' => $ud));
@@ -334,6 +345,9 @@ function rovas_oauth_civic_auth_session_create($data) {
 
         $edit = array(
           'field_country' => array(LANGUAGE_NONE => array(0 => array('iso2' => $iso2))),
+          'data' => array(
+            ROVAS_OAUTH_SIGNUP_SOURCE_KEY => ROVAS_OAUTH_SIGNUP_SOURCE_CIVIC,
+          ),
         );
         if ($display_name !== '') {
           $edit['field_full_name'] = array(LANGUAGE_NONE => array(0 => array('value' => $display_name)));
@@ -352,6 +366,16 @@ function rovas_oauth_civic_auth_session_create($data) {
           $display_name !== '' ? $display_name : $account->name,
           $user_language_raw
         );
+
+        // Reload after attach; re-stamp signup source in case attach's
+        // user_save saw serialized $account->data and dropped the key.
+        $account = user_load($account->uid);
+        $ud = (is_object($account) && is_array($account->data)) ? $account->data : array();
+        if (empty($ud[ROVAS_OAUTH_SIGNUP_SOURCE_KEY])) {
+          $ud[ROVAS_OAUTH_SIGNUP_SOURCE_KEY] = ROVAS_OAUTH_SIGNUP_SOURCE_CIVIC;
+          user_save($account, array('data' => $ud));
+          $account = user_load($account->uid);
+        }
 
         if (function_exists('rules_invoke_component')) {
           rules_invoke_component('rules_send_welcome_email', $account);

@@ -58,6 +58,7 @@ env): [`civic-deploy.md`](civic-deploy.md).
 | done | gift-donate-iban | [`done/gift-donate-iban.md`](civic_tasks/done/gift-donate-iban.md) | Org IBAN as `donate_iban` on `civic_project` (initially verified-only; gating relaxed in [charity-org-basic-info](civic_tasks/done/charity-org-basic-info.md)) |
 | done | donor-add-charity-org | [`done/donor-add-charity-org.md`](civic_tasks/done/donor-add-charity-org.md) | Donor adds public-benefit org from Civic; SK auto-verify; claim email; smoked on rovdev |
 | done | oauth-authorize-intent | [`done/oauth-authorize-intent.md`](civic_tasks/done/oauth-authorize-intent.md) | `intent=login\|register` on authorize → land on login vs register; smoked on rovdev |
+| done | welcome-email-civic-vs-rovas | [`done/welcome-email-civic-vs-rovas.md`](civic_tasks/done/welcome-email-civic-vs-rovas.md) | Stamp `rovas_signup_source=civic`; separate Civic vs Rovas welcome mail copy |
 | done | merit-period-index | [`done/merit-period-index.md`](civic_tasks/done/merit-period-index.md) | ME•ter period leaderboard; smoked on rovdev |
 | done | historical-pre-split | [`done/_historical-pre-split.md`](civic_tasks/done/_historical-pre-split.md) | Pre-split “Next work” archive — not open work |
 

@@ -310,3 +310,78 @@ function _rovas_site_rules_delete_user_shareholder_records($account) {
 
   node_delete_multiple(array_map('intval', $nids));
 }
+
+/**
+ * Send the post-registration welcome email (Rovas vs Civic copy).
+ *
+ * Branching uses $account->data['rovas_signup_source'] === 'civic' when set by
+ * Civic native auth or Civic OAuth register (see rovas_oauth).
+ *
+ * @param object $account
+ *   Drupal user who just registered.
+ *
+ * @return bool
+ *   TRUE when mail was handed to Drupal; FALSE if skipped.
+ */
+function rovas_site_rules_send_welcome_email($account) {
+  if (!is_object($account) || empty($account->mail) || empty($account->uid)) {
+    return FALSE;
+  }
+
+  $langcode = (!empty($account->language) && $account->language !== LANGUAGE_NONE)
+    ? $account->language
+    : language_default()->language;
+  $t_opts = array('langcode' => $langcode);
+  $name = $account->name;
+  $site_url = url('<front>', array('absolute' => TRUE));
+  $rules_url = url('rules', array('absolute' => TRUE));
+
+  $is_civic = function_exists('rovas_oauth_user_is_civic_signup')
+    ? rovas_oauth_user_is_civic_signup($account)
+    : (!empty($account->data['rovas_signup_source'])
+      && $account->data['rovas_signup_source'] === 'civic');
+
+  if ($is_civic) {
+    $subject = t('Welcome to Civic', array(), $t_opts);
+    $body = t("@name,\n\nCongratulations on creating your Civic app account. Registration lets you record your contributions to the commons as money and volunteer work, and earn recognition for them.\n\nYour account is managed in the <a href=\"!site\">Rovas</a> app, where your data is also stored.", array(
+      '@name' => $name,
+      '!site' => $site_url,
+    ), $t_opts);
+  }
+  else {
+    $subject = t('Welcome to Rovas', array(), $t_opts);
+    $body = t("@name,\n\nWelcome to Rovas, the app for the NEO economic system. Registration lets you make your volunteer work visible, earn reputational or material rewards for it, and motivate others to make their own contributions to the commons.\n\nMore about how to use Rovas is on the <a href=\"!rules\">NEO Rules</a> page.", array(
+      '@name' => $name,
+      '!rules' => $rules_url,
+    ), $t_opts);
+  }
+
+  $from = variable_get('site_mail', ini_get('sendmail_from'));
+  $result = drupal_mail(
+    'rovas_site_rules',
+    'welcome',
+    $account->mail,
+    $langcode,
+    array(
+      'subject' => $subject,
+      'body' => $body,
+    ),
+    $from
+  );
+
+  return !empty($result['result']);
+}
+
+/**
+ * Implements hook_mail().
+ */
+function rovas_site_rules_mail($key, &$message, $params) {
+  if ($key !== 'welcome') {
+    return;
+  }
+  // Bodies include trusted <a href> links to this site.
+  $message['headers']['Content-Type'] = 'text/html; charset=UTF-8';
+  $message['subject'] = isset($params['subject']) ? $params['subject'] : '';
+  $body = isset($params['body']) ? $params['body'] : '';
+  $message['body'][] = nl2br($body);
+}

@@ -45,6 +45,16 @@ define('ROVAS_OAUTH_CIVIC_UI_LANG_SESSION', 'rovas_oauth_civic_ui_lang');
 define('ROVAS_OAUTH_CIVIC_INTENT_SESSION', 'rovas_oauth_civic_intent');
 
 /**
+ * User data key: where the account was first created (welcome mail branching).
+ */
+define('ROVAS_OAUTH_SIGNUP_SOURCE_KEY', 'rovas_signup_source');
+
+/**
+ * Signup source value when the account was created via Civic.
+ */
+define('ROVAS_OAUTH_SIGNUP_SOURCE_CIVIC', 'civic');
+
+/**
  * Services endpoint machine name used by Rovas REST APIs.
  */
 define('ROVAS_OAUTH_SERVICES_ENDPOINT', 'rovas_endpoint');
@@ -918,9 +928,26 @@ function rovas_oauth_hybridauth_userinfo_alter(&$userinfo, $data) {
 }
 
 /**
+ * TRUE when this account was created via Civic (native auth or OAuth register).
+ *
+ * @param object $account
+ *   Drupal user object.
+ *
+ * @return bool
+ */
+function rovas_oauth_user_is_civic_signup($account) {
+  if (!is_object($account) || empty($account->data) || !is_array($account->data)) {
+    return FALSE;
+  }
+  return !empty($account->data[ROVAS_OAUTH_SIGNUP_SOURCE_KEY])
+    && $account->data[ROVAS_OAUTH_SIGNUP_SOURCE_KEY] === ROVAS_OAUTH_SIGNUP_SOURCE_CIVIC;
+}
+
+/**
  * Implements hook_user_presave().
  *
- * Force preferred language from Civic authorize session on new accounts.
+ * Force preferred language from Civic authorize session on new accounts, and
+ * stamp durable signup source for Civic-branded register / HybridAuth create.
  */
 function rovas_oauth_user_presave(&$edit, $account, $category) {
   if ($category !== 'account') {
@@ -939,6 +966,16 @@ function rovas_oauth_user_presave(&$edit, $account, $category) {
   if ($langcode !== '') {
     $edit['language'] = $langcode;
   }
+
+  $data = array();
+  if (isset($edit['data']) && is_array($edit['data'])) {
+    $data = $edit['data'];
+  }
+  elseif (!empty($account->data) && is_array($account->data)) {
+    $data = $account->data;
+  }
+  $data[ROVAS_OAUTH_SIGNUP_SOURCE_KEY] = ROVAS_OAUTH_SIGNUP_SOURCE_CIVIC;
+  $edit['data'] = $data;
 }
 
 /**
