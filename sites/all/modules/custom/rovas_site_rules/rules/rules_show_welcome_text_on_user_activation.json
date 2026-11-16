@@ -7,7 +7,7 @@
     "ON" : { "user_update" : [] },
     "IF" : [
       { "pathrules_checkpath" : { "path" : "pass-reset-token=" } },
-      { "php_eval" : { "code" : "$uid = $account-\u003Euid;\r\n\r\n$result = db_query(\u0022SELECT COUNT(node.nid) AS count\r\nFROM {node} node\r\nWHERE node.uid = :uid\r\nAND node.status = \u00271\u0027\r\nAND node.type = \u0027work_report\u0027\u0022, array(\u0027:uid\u0027 =\u003E $uid));\r\n\r\n$record = $result-\u003EfetchAssoc();\r\nwatchdog(\u0027rule\u0027,\u0027rules_show_welcome_text_on_user_activation [\u0027 . $record[\u0027count\u0027] . \u0027]\u0027);\r\n\r\nreturn !($record[\u0027count\u0027]);" } }
+      { "php_eval" : { "code" : "$uid = $account->uid;\r\n\r\n$result = db_query(\"SELECT COUNT(node.nid) AS count\r\nFROM {node} node\r\nWHERE node.uid = :uid\r\nAND node.status = '1'\r\nAND node.type = 'work_report'\", array(':uid' => $uid));\r\n\r\n$record = $result->fetchAssoc();\r\nwatchdog('rule','rules_show_welcome_text_on_user_activation [' . $record['count'] . ']');\r\n\r\nreturn !($record['count']);" } }
     ],
     "DO" : [
       { "component_rules_find_system_project_for_user" : {
@@ -15,7 +15,7 @@
           "PROVIDE" : { "system_project" : { "system_project" : "The system project" } }
         }
       },
-      { "drupal_message" : { "message" : "Welcome to Rovas, an application of the community economic system NEO, where participants reward work of others with currency Chron, one can earn for time spent on creating own projects.\r\n\r\nYou can earn your first Chrons for the time you spent registering in Rovas, by click the Add Report button below.\r\n\r\nLearn more about NEO on the \u003Ca href=\u0022[site:url]rules\u0022\u003Erules page\u003C\/a\u003E." } },
+      { "php_eval" : { "code" : "rovas_site_rules_show_activation_welcome_message($account);" } },
       { "component_rules_send_welcome_email" : { "user_object" : [ "account" ] } },
       { "redirect" : { "url" : "[system-project:url]" } }
     ]

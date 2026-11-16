@@ -10,7 +10,9 @@ updated: 2026-11-16
 
 **Product:** New accounts created via Civic get a Civic-specific welcome
 email; accounts created on Rovas (web / partners) get the Rovas welcome. Both
-use the same Rules component `rules_send_welcome_email`.
+use the same Rules component `rules_send_welcome_email`. After Rovas email
+confirm, the on-site status message uses the account language (not anonymous
+UI language from the link).
 
 **Owner:** `rovas`
 
@@ -25,15 +27,19 @@ use the same Rules component `rules_send_welcome_email`.
 - Mail: `rovas_site_rules_send_welcome_email()` via Rules component; subjects
   `Welcome to Civic` / `Welcome to Rovas`; bodies in `t()` with translations in
   `translations/po/{sk,cs,it,en}.custom-modules.po`
+- On-site (email confirm): `rovas_site_rules_show_activation_welcome_message()`
+  from `rules_show_welcome_text_on_user_activation` — `t(..., langcode =
+  account language)`; bold linked “rules page”
 
 ### Checklist
 
 1. [x] Stamp `rovas_signup_source` on Civic create paths
 2. [x] Branch welcome mail; new EN source + SK/CS/IT
-3. [ ] Deploy rovdev + re-import `rules_send_welcome_email` + import
+3. [x] Activation status message localized + new copy
+4. [ ] Deploy rovdev + re-import welcome Rules + import
       `*.custom-modules.po` + cache clear (human)
-4. [ ] Smoke: Civic native create vs Rovas `/user/register` → DevelMailLog
-      bodies differ
+5. [ ] Smoke: Civic native create vs Rovas `/user/register` → DevelMailLog
+      bodies differ; Rovas email-confirm → SK (etc.) on-site message
 
 ### Smoke test
 
@@ -42,6 +48,8 @@ use the same Rules component `rules_send_welcome_email`.
 # 1) Civic: POST /rovas/civic_auth_session with a new email → mail body
 #    starts with Civic congratulations + Rovas account note
 # 2) Rovas: register a new user on /user/register → NEO Rules link body
+# 3) Confirm email (pass-reset link) with account language sk → status
+#    message “Vitajte v Rováši…” with bold rules-page link
 # drush74 sqlq "SELECT uid, data FROM users WHERE mail = '…'"  # look for rovas_signup_source
 ```
 

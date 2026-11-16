@@ -312,6 +312,33 @@ function _rovas_site_rules_delete_user_shareholder_records($account) {
 }
 
 /**
+ * On-site status message after email confirmation / first activation.
+ *
+ * Uses the account preferred language (not the anonymous UI language from the
+ * email link), so the welcome text matches the new user's locale.
+ *
+ * @param object $account
+ *   Drupal user being activated.
+ */
+function rovas_site_rules_show_activation_welcome_message($account) {
+  if (!is_object($account) || empty($account->uid)) {
+    return;
+  }
+
+  $langcode = (!empty($account->language) && $account->language !== LANGUAGE_NONE)
+    ? $account->language
+    : language_default()->language;
+  $t_opts = array('langcode' => $langcode);
+  $rules_url = url('rules', array('absolute' => TRUE));
+
+  $message = t('Welcome to Rovas. On this page you can earn your first reward in chrons by adding a work report for work done, for example during registration in Rovas. Learn more about how to use Rovas by visiting the <a href="!rules"><strong>rules page</strong></a>.', array(
+    '!rules' => $rules_url,
+  ), $t_opts);
+
+  drupal_set_message($message);
+}
+
+/**
  * Send the post-registration welcome email (Rovas vs Civic copy).
  *
  * Branching uses $account->data['rovas_signup_source'] === 'civic' when set by
