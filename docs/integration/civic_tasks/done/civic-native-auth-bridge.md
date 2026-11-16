@@ -1,5 +1,5 @@
 ---
-status: active
+status: done
 slug: civic-native-auth-bridge
 owner_repo: both
 created: 2026-11-16
@@ -7,6 +7,9 @@ updated: 2026-11-16
 ---
 
 # Civic native auth session bridge
+
+> Done — Trusted `POST /rovas/civic_auth_session` (`rovas_oauth_update_7003`);
+> create/link + mint Civic OAuth tokens for native Google/Apple.
 
 **Product:** Civic is moving login/signup out of the Rovas browser OAuth hop
 into native Google + Apple Sign-In in the Expo app. Users get stuck when
@@ -120,8 +123,8 @@ persist without a second exchange.
 3. [x] Create or link user + HybridAuth identity (email link when verified)
 4. [x] Mint `civic` OAuth access + refresh (same lifetimes/rotation as authorize)
 5. [x] Reject unverified/missing email with 409 when link is ambiguous
-6. [ ] Provision rovdev technical account + keys; enable HybridAuth providers
-7. [ ] Deploy rovdev + smoke (human unless asked)
+6. [x] Provision rovdev technical account + keys; enable HybridAuth providers
+7. [x] Deploy rovdev + smoke (human unless asked)
 
 **Rovas code:** `rovas_oauth.auth_session.inc` + `rovas_oauth_update_7003`. Permission
 `mint civic auth session`. HybridAuth map defaults `google→Google`, `apple→Apple`
