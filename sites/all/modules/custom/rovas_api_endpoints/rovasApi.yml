@@ -1099,6 +1099,44 @@ paths:
                 $ref: '#/components/schemas/OAuthTokenIntrospection'
         '404':
           description: Invalid or unknown token
+  /rovas/civic_auth_session:
+    post:
+      tags:
+      - classic-accounts
+      summary: Civic native auth session (create/link + mint OAuth tokens)
+      security: *id001
+      description: |
+        Trusted server-to-server bridge for Civic native Google/Apple Sign-In.
+        Civic verifies the IdP token, then calls this endpoint with a technical
+        account `API-KEY` + `TOKEN`. Creates or links the Drupal user (HybridAuth
+        identity) and mints Civic OAuth access + refresh tokens (`client_id=civic`,
+        scope `user_profile`) without `/oauth2/authorize`.
+        Requires permission **mint civic auth session**. HybridAuth providers
+        `Google` / `Apple` must be enabled. Does **not** return classic end-user
+        `api_key`/`token`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CivicAuthSessionRequest'
+      responses:
+        '200':
+          description: Drupal uid plus minted Civic OAuth tokens
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CivicAuthSessionResponse'
+        '400':
+          description: Validation error (provider, country, language, subject, email shape)
+        '401':
+          description: Missing or invalid API-KEY / TOKEN
+        '403':
+          description: Technical account lacks mint civic auth session
+        '409':
+          description: Missing/unverified email when create/link would be ambiguous
+        '500':
+          description: User create or token mint failure
   /rovas/me:
     get:
       tags:
@@ -3841,6 +3879,71 @@ components:
           type: integer
         refresh_token:
           type: string
+        scope:
+          type: string
+          example: user_profile
+    CivicAuthSessionRequest:
+      type: object
+      required:
+      - provider
+      - provider_subject
+      - email
+      - email_verified
+      - user_language
+      - user_country
+      properties:
+        provider:
+          type: string
+          enum:
+          - google
+          - apple
+          description: IdP; mapped to HybridAuth Google / Apple (override via `rovas_oauth_civic_auth_providers`).
+        provider_subject:
+          type: string
+          description: IdP `sub` claim (string; may exceed 32 chars — HybridAuth hashes for storage).
+          example: '108234567890123456789'
+        email:
+          type: string
+          format: email
+          description: Required for create and email-link when identity is new.
+        email_verified:
+          type: boolean
+          description: From IdP claims. Must be true to create or email-link.
+        display_name:
+          type: string
+          nullable: true
+          description: Optional; falls back to email local-part. Stored on `field_full_name` for new users.
+        user_language:
+          type: string
+          description: Normalized like partner create (`sk`/`cs` → `sk`, else enabled / `en`).
+          example: sk
+        user_country:
+          type: string
+          description: Uppercase ISO 3166-1 alpha-2. Civic defaults to `SK`.
+          example: SK
+    CivicAuthSessionResponse:
+      type: object
+      required:
+      - rovas_uid
+      - access_token
+      - refresh_token
+      - expires_in
+      - token_type
+      - scope
+      properties:
+        rovas_uid:
+          type: integer
+          description: Drupal uid (created or linked).
+        access_token:
+          type: string
+        refresh_token:
+          type: string
+        expires_in:
+          type: integer
+          description: Access token lifetime in seconds (civic server default 3600).
+        token_type:
+          type: string
+          example: Bearer
         scope:
           type: string
           example: user_profile

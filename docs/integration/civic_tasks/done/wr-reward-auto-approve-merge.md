@@ -1,9 +1,9 @@
 ---
-status: active
+status: done
 slug: wr-reward-auto-approve-merge
 owner_repo: rovas
 created: 2026-11-11
-updated: 2026-11-12
+updated: 2026-11-16
 ---
 
 # WR reward: auto-approve + merge Merits settlement

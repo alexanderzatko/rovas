@@ -67,3 +67,16 @@ function rovas_oauth_update_7002() {
   }
   return t('Civic OAuth client automatic_authorization enabled.');
 }
+
+/**
+ * Enable POST /rovas/civic_auth_session on rovas_endpoint (native Google/Apple).
+ *
+ * Technical API-client accounts need the new permission
+ * "mint civic auth session" (and HybridAuth Google/Apple enabled).
+ */
+function rovas_oauth_update_7003() {
+  if (function_exists('rovas_oauth_ensure_civic_resources')) {
+    rovas_oauth_ensure_civic_resources();
+  }
+  return t('Civic native auth bridge POST /rovas/civic_auth_session enabled on rovas_endpoint. Grant "mint civic auth session" to the Civic technical API client and enable HybridAuth Google/Apple.');
+}

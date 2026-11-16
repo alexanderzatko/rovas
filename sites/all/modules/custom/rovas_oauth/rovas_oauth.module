@@ -11,9 +11,12 @@
  * - Helpers to resolve a Bearer access token to a Drupal uid.
  * - Civic home-read Services resources: GET /rovas/me,
  *   GET /rovas/contributions/aggregate (Bearer / public).
+ * - Trusted native auth bridge: POST /rovas/civic_auth_session (API-KEY +
+ *   TOKEN) creates/links a user and mints Civic OAuth tokens.
  *
  * oauth2_server provides Services authentication; wire it on rovas_endpoint
- * (server machine name "civic") and disable API-key auth on Civic resources.
+ * (server machine name "civic") and disable API-key auth on Bearer-only
+ * Civic resources. civic_auth_session keeps classic API-key auth enabled.
  */
 
 /**
@@ -54,6 +57,11 @@ function rovas_oauth_permission() {
     'administer rovas oauth' => array(
       'title' => t('Administer Rovas OAuth (Civic)'),
       'description' => t('Bootstrap and inspect the Civic OAuth2 server and client.'),
+      'restrict access' => TRUE,
+    ),
+    'mint civic auth session' => array(
+      'title' => t('Mint Civic auth session (native Google/Apple bridge)'),
+      'description' => t('Call POST /rovas/civic_auth_session to create/link users and mint Civic OAuth tokens. Grant only to the Civic technical API client.'),
       'restrict access' => TRUE,
     ),
   );
@@ -1270,10 +1278,15 @@ function rovas_oauth_uid_from_bearer($scope = NULL) {
 /**
  * Implements hook_services_resources().
  *
- * Civic home reads. Resources must also be enabled on rovas_endpoint
- * (see rovas_oauth_ensure_civic_resources()).
+ * Civic home reads + native auth bridge. Resources must also be enabled on
+ * rovas_endpoint (see rovas_oauth_ensure_civic_resources()).
  */
 function rovas_oauth_services_resources() {
+  $auth_session_file = array(
+    'type' => 'inc',
+    'module' => 'rovas_oauth',
+    'name' => 'rovas_oauth.auth_session',
+  );
   return array(
     'me' => array(
       'operations' => array(
@@ -1299,6 +1312,27 @@ function rovas_oauth_services_resources() {
               'type' => 'string',
               'description' => 'Use "aggregate" for community Merit totals.',
               'source' => array('path' => 0),
+              'optional' => FALSE,
+            ),
+          ),
+        ),
+      ),
+    ),
+    'civic_auth_session' => array(
+      'operations' => array(
+        'create' => array(
+          'help' => 'Trusted Civic native auth: create/link Drupal user from verified Google/Apple identity and mint civic OAuth access+refresh. Classic API-KEY + TOKEN of a technical account; not Bearer.',
+          'callback' => 'rovas_oauth_civic_auth_session_create',
+          'file' => $auth_session_file,
+          'access callback' => 'user_access',
+          'access arguments' => array('mint civic auth session'),
+          'access arguments append' => FALSE,
+          'args' => array(
+            array(
+              'name' => 'data',
+              'type' => 'struct',
+              'description' => 'Fields: provider (google|apple), provider_subject, email, email_verified, display_name?, user_language, user_country.',
+              'source' => 'data',
               'optional' => FALSE,
             ),
           ),
@@ -1617,6 +1651,22 @@ function rovas_oauth_ensure_civic_resources() {
       ),
     );
   }
+
+  // POST /rovas/civic_auth_session — classic API-KEY + TOKEN (technical account).
+  // Keep API-key auth on; do not require OAuth Bearer.
+  $civic_ops['civic_auth_session'] = array(
+    'operations' => array(
+      'create' => array(
+        'enabled' => 1,
+        'settings' => array(
+          'oauth2_server' => array(
+            'require_authentication' => 0,
+            'scope' => '',
+          ),
+        ),
+      ),
+    ),
+  );
 
   foreach ($civic_ops as $resource => $def) {
     if (empty($endpoint->resources[$resource]) || $endpoint->resources[$resource] != $def) {
