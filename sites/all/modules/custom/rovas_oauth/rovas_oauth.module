@@ -15,10 +15,14 @@
  *   username and/or field_full_name (display_name).
  * - Trusted native auth bridge: POST /rovas/civic_auth_session (API-KEY +
  *   TOKEN) creates/links a user and mints Civic OAuth tokens.
+ * - Email/password auth: POST /rovas/civic_auth_register +
+ *   POST /rovas/civic_auth_login (same technical API-KEY + TOKEN) mint the
+ *   same Civic OAuth tokens without HybridAuth.
  *
  * oauth2_server provides Services authentication; wire it on rovas_endpoint
  * (server machine name "civic") and disable API-key auth on Bearer-only
- * Civic resources. civic_auth_session keeps classic API-key auth enabled.
+ * Civic resources. civic_auth_session / civic_auth_register /
+ * civic_auth_login keep classic API-key auth enabled.
  */
 
 /**
@@ -73,7 +77,7 @@ function rovas_oauth_permission() {
     ),
     'mint civic auth session' => array(
       'title' => t('Mint Civic auth session (native Google/Apple bridge)'),
-      'description' => t('Call POST /rovas/civic_auth_session to create/link users and mint Civic OAuth tokens. Grant only to the Civic technical API client.'),
+      'description' => t('Call POST /rovas/civic_auth_session, civic_auth_register, or civic_auth_login to create/link users and mint Civic OAuth tokens. Grant only to the Civic technical API client.'),
       'restrict access' => TRUE,
     ),
   );
@@ -1317,14 +1321,19 @@ function rovas_oauth_uid_from_bearer($scope = NULL) {
 /**
  * Implements hook_services_resources().
  *
- * Civic home reads + native auth bridge. Resources must also be enabled on
- * rovas_endpoint (see rovas_oauth_ensure_civic_resources()).
+ * Civic home reads + native auth bridge + email/password auth. Resources must
+ * also be enabled on rovas_endpoint (see rovas_oauth_ensure_civic_resources()).
  */
 function rovas_oauth_services_resources() {
   $auth_session_file = array(
     'type' => 'inc',
     'module' => 'rovas_oauth',
     'name' => 'rovas_oauth.auth_session',
+  );
+  $auth_password_file = array(
+    'type' => 'inc',
+    'module' => 'rovas_oauth',
+    'name' => 'rovas_oauth.auth_password',
   );
   $profile_file = array(
     'type' => 'inc',
@@ -1397,6 +1406,48 @@ function rovas_oauth_services_resources() {
               'name' => 'data',
               'type' => 'struct',
               'description' => 'Fields: provider (google|apple), provider_subject, email, email_verified, display_name?, user_language, user_country.',
+              'source' => 'data',
+              'optional' => FALSE,
+            ),
+          ),
+        ),
+      ),
+    ),
+    'civic_auth_register' => array(
+      'operations' => array(
+        'create' => array(
+          'help' => 'Civic email/password register: create Drupal user with provided password and mint civic OAuth access+refresh. Classic API-KEY + TOKEN; not Bearer. No HybridAuth row.',
+          'callback' => 'rovas_oauth_civic_auth_register_create',
+          'file' => $auth_password_file,
+          'access callback' => 'user_access',
+          'access arguments' => array('mint civic auth session'),
+          'access arguments append' => FALSE,
+          'args' => array(
+            array(
+              'name' => 'data',
+              'type' => 'struct',
+              'description' => 'Fields: username, email, password, user_language, user_country.',
+              'source' => 'data',
+              'optional' => FALSE,
+            ),
+          ),
+        ),
+      ),
+    ),
+    'civic_auth_login' => array(
+      'operations' => array(
+        'create' => array(
+          'help' => 'Civic email/password login: verify username or email + password and mint civic OAuth access+refresh. Classic API-KEY + TOKEN; not Bearer.',
+          'callback' => 'rovas_oauth_civic_auth_login_create',
+          'file' => $auth_password_file,
+          'access callback' => 'user_access',
+          'access arguments' => array('mint civic auth session'),
+          'access arguments append' => FALSE,
+          'args' => array(
+            array(
+              'name' => 'data',
+              'type' => 'struct',
+              'description' => 'Fields: login (username or email), password.',
               'source' => 'data',
               'optional' => FALSE,
             ),
@@ -1750,6 +1801,23 @@ function rovas_oauth_ensure_civic_resources() {
       ),
     ),
   );
+
+  // POST /rovas/civic_auth_register + civic_auth_login — same technical API-KEY auth.
+  $civic_api_key_create = array(
+    'operations' => array(
+      'create' => array(
+        'enabled' => 1,
+        'settings' => array(
+          'oauth2_server' => array(
+            'require_authentication' => 0,
+            'scope' => '',
+          ),
+        ),
+      ),
+    ),
+  );
+  $civic_ops['civic_auth_register'] = $civic_api_key_create;
+  $civic_ops['civic_auth_login'] = $civic_api_key_create;
 
   foreach ($civic_ops as $resource => $def) {
     if (empty($endpoint->resources[$resource]) || $endpoint->resources[$resource] != $def) {

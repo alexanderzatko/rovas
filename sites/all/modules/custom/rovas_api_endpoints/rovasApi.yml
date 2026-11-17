@@ -1137,6 +1137,77 @@ paths:
           description: Missing/unverified email when create/link would be ambiguous
         '500':
           description: User create or token mint failure
+  /rovas/civic_auth_register:
+    post:
+      tags:
+      - classic-accounts
+      summary: Civic email/password register (+ mint OAuth tokens)
+      security: *id001
+      description: |
+        Trusted server-to-server register for Civic Expo username + email + password.
+        Creates a Drupal user with the provided password (`status=1`), stamps
+        `rovas_signup_source=civic`, and mints Civic OAuth access + refresh
+        (`client_id=civic`, scope `user_profile`). No HybridAuth identity.
+        Same technical `API-KEY` + `TOKEN` and permission **mint civic auth session**
+        as `civic_auth_session`. Does **not** return classic end-user `api_key`/`token`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CivicAuthRegisterRequest'
+      responses:
+        '200':
+          description: Drupal uid plus minted Civic OAuth tokens
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CivicAuthSessionResponse'
+        '400':
+          description: Validation error (username pattern, email, password length, country/language)
+        '401':
+          description: Missing or invalid API-KEY / TOKEN
+        '403':
+          description: Technical account lacks mint civic auth session
+        '409':
+          description: Email or username taken (`code` email_taken | username_taken)
+        '500':
+          description: User create or token mint failure
+  /rovas/civic_auth_login:
+    post:
+      tags:
+      - classic-accounts
+      summary: Civic email/password login (+ mint OAuth tokens)
+      security: *id001
+      description: |
+        Trusted server-to-server login for Civic Expo. Resolves `login` as Drupal
+        username **or** email, verifies password, mints Civic OAuth access + refresh
+        (`client_id=civic`, scope `user_profile`). Unknown user and bad password both
+        return the same generic **401**. Social-only accounts (random password) fail
+        until the user sets a password on Rovas `/user/password`.
+        Same technical `API-KEY` + `TOKEN` and permission **mint civic auth session**
+        as `civic_auth_session`. Does **not** return classic end-user `api_key`/`token`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CivicAuthLoginRequest'
+      responses:
+        '200':
+          description: Drupal uid plus minted Civic OAuth tokens
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CivicAuthSessionResponse'
+        '400':
+          description: Missing/empty login or password
+        '401':
+          description: Bad technical creds or invalid login/password
+        '403':
+          description: Technical account lacks mint civic auth session
+        '500':
+          description: Token mint failure
   /rovas/me:
     get:
       tags:
@@ -3947,6 +4018,51 @@ components:
         scope:
           type: string
           example: user_profile
+    CivicAuthRegisterRequest:
+      type: object
+      required:
+      - username
+      - email
+      - password
+      - user_language
+      - user_country
+      properties:
+        username:
+          type: string
+          maxLength: 50
+          description: Letters, numbers, `.` `_` `-` only; max 50 (Civic profile rules).
+          example: jana.novak
+        email:
+          type: string
+          format: email
+          description: Must be unique.
+        password:
+          type: string
+          minLength: 8
+          maxLength: 128
+          description: Set as the Drupal account password (not random).
+          example: correct-horse-battery
+        user_language:
+          type: string
+          description: Normalized like partner create (`sk`/`cs` → `sk`, else enabled / `en`).
+          example: sk
+        user_country:
+          type: string
+          description: Uppercase ISO 3166-1 alpha-2. Civic defaults to `SK`.
+          example: SK
+    CivicAuthLoginRequest:
+      type: object
+      required:
+      - login
+      - password
+      properties:
+        login:
+          type: string
+          description: Drupal username or email.
+          example: jana.novak
+        password:
+          type: string
+          description: Plain password to verify.
     OAuthTokenIntrospection:
       type: object
       properties:

@@ -90,3 +90,16 @@ function rovas_oauth_update_7004() {
   }
   return t('Civic profile update API (POST /rovas/civic_update_profile) enabled on rovas_endpoint.');
 }
+
+/**
+ * Enable POST /rovas/civic_auth_register + civic_auth_login on rovas_endpoint.
+ *
+ * Same technical API-KEY + TOKEN permission as civic_auth_session
+ * ("mint civic auth session").
+ */
+function rovas_oauth_update_7005() {
+  if (function_exists('rovas_oauth_ensure_civic_resources')) {
+    rovas_oauth_ensure_civic_resources();
+  }
+  return t('Civic email/password auth APIs (POST /rovas/civic_auth_register, civic_auth_login) enabled on rovas_endpoint.');
+}
