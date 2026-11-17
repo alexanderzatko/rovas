@@ -80,3 +80,13 @@ function rovas_oauth_update_7003() {
   }
   return t('Civic native auth bridge POST /rovas/civic_auth_session enabled on rovas_endpoint. Grant "mint civic auth session" to the Civic technical API client and enable HybridAuth Google/Apple.');
 }
+
+/**
+ * Enable POST /rovas/civic_update_profile on rovas_endpoint (Bearer).
+ */
+function rovas_oauth_update_7004() {
+  if (function_exists('rovas_oauth_ensure_civic_resources')) {
+    rovas_oauth_ensure_civic_resources();
+  }
+  return t('Civic profile update API (POST /rovas/civic_update_profile) enabled on rovas_endpoint.');
+}

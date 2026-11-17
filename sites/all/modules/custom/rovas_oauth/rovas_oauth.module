@@ -11,6 +11,8 @@
  * - Helpers to resolve a Bearer access token to a Drupal uid.
  * - Civic home-read Services resources: GET /rovas/me,
  *   GET /rovas/contributions/aggregate (Bearer / public).
+ * - Civic profile write: POST /rovas/civic_update_profile (Bearer) updates
+ *   username and/or field_full_name (display_name).
  * - Trusted native auth bridge: POST /rovas/civic_auth_session (API-KEY +
  *   TOKEN) creates/links a user and mints Civic OAuth tokens.
  *
@@ -1324,6 +1326,11 @@ function rovas_oauth_services_resources() {
     'module' => 'rovas_oauth',
     'name' => 'rovas_oauth.auth_session',
   );
+  $profile_file = array(
+    'type' => 'inc',
+    'module' => 'rovas_oauth',
+    'name' => 'rovas_oauth.profile',
+  );
   return array(
     'me' => array(
       'operations' => array(
@@ -1349,6 +1356,27 @@ function rovas_oauth_services_resources() {
               'type' => 'string',
               'description' => 'Use "aggregate" for community Merit totals.',
               'source' => array('path' => 0),
+              'optional' => FALSE,
+            ),
+          ),
+        ),
+      ),
+    ),
+    'civic_update_profile' => array(
+      'operations' => array(
+        'create' => array(
+          'help' => 'Update signed-in username and/or real name (field_full_name / display_name). Body: username? and/or display_name? (null/"" clears). Bearer; API-key off.',
+          'callback' => 'rovas_oauth_civic_update_profile_create',
+          'file' => $profile_file,
+          'access callback' => 'rovas_oauth_me_access',
+          'access arguments' => array(),
+          'access arguments append' => FALSE,
+          'args' => array(
+            array(
+              'name' => 'data',
+              'type' => 'struct',
+              'description' => 'Fields: username? (string), display_name? (string|null; null/"" clears). At least one required.',
+              'source' => 'data',
               'optional' => FALSE,
             ),
           ),
@@ -1688,6 +1716,24 @@ function rovas_oauth_ensure_civic_resources() {
       ),
     );
   }
+
+  // POST /rovas/civic_update_profile — Bearer; API-key auth off.
+  $civic_ops['civic_update_profile'] = array(
+    'operations' => array(
+      'create' => array(
+        'enabled' => 1,
+        'settings' => array(
+          'services_auth_apikeys' => array(
+            'disable_authentication' => 1,
+          ),
+          'oauth2_server' => array(
+            'require_authentication' => 1,
+            'scope' => 'user_profile',
+          ),
+        ),
+      ),
+    ),
+  );
 
   // POST /rovas/civic_auth_session — classic API-KEY + TOKEN (technical account).
   // Keep API-key auth on; do not require OAuth Bearer.
