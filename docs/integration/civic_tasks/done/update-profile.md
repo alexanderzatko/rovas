@@ -92,7 +92,7 @@ with API-key auth disabled, same pattern as `civic_me_sources_preference`.
 2. [x] Validate username charset/length; uniqueness → `409`
 3. [x] Update `$user->name` and/or `field_full_name`; clear on null/`""`
 4. [x] Response shape `{ username, display_name }` aligned with `/rovas/me`
-5. [ ] Deploy rovdev + smoke (human unless asked)
+5. [x] Deploy rovdev + smoke (human unless asked)
 
 ### Smoke test
 
