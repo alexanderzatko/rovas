@@ -277,10 +277,8 @@ function rovas_oauth_civic_auth_session_create($data) {
     ? rovas_base_map_partner_user_language($user_language_raw)
     : 'en';
 
+  // Real name only when Civic/IdP sent one — never invent from email local-part.
   $display_name = isset($data['display_name']) ? trim((string) $data['display_name']) : '';
-  if ($display_name === '' && $email !== '') {
-    $display_name = preg_replace('/@.*/', '', $email);
-  }
 
   try {
     $account = NULL;

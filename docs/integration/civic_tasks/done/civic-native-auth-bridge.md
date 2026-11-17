@@ -61,7 +61,7 @@ calls it with a technical api-client account.
 | `provider_subject` | **string** | yes | IdP `sub` (not integer — unlike Nabezky `user_id`) |
 | `email` | email | yes* | Required unless product allows anonymous Apple (prefer require) |
 | `email_verified` | boolean | yes | From IdP claims |
-| `display_name` | string | no | Fallback: email local-part |
+| `display_name` | string | no | Set `field_full_name` only when non-empty; omit/null/"" leaves it empty (no email local-part fallback) — see [civic-auth-display-name-idp-only](civic-auth-display-name-idp-only.md) |
 | `user_language` | string | yes | Normalized like partner create (`sk`/`cs` → `sk`, else enabled / `en`) |
 | `user_country` | string | yes | Uppercase ISO 3166-1 alpha-2; Civic defaults to `SK` |
 

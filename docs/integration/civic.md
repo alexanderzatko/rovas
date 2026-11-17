@@ -38,6 +38,7 @@ env): [`civic-deploy.md`](civic-deploy.md).
 
 | Status | Slug | File | Notes |
 |--------|------|------|-------|
+| done | civic-auth-display-name-idp-only | [`done/civic-auth-display-name-idp-only.md`](civic_tasks/done/civic-auth-display-name-idp-only.md) | Stop email local-part → `field_full_name` on Civic auth create; real name only when IdP sent `display_name` |
 | done | update-profile | [`done/update-profile.md`](civic_tasks/done/update-profile.md) | Bearer `POST /rovas/civic_update_profile` — change username + optional real name (`field_full_name`); Civic Profile User profile tab |
 | done | civic-native-auth-bridge | [`done/civic-native-auth-bridge.md`](civic_tasks/done/civic-native-auth-bridge.md) | Trusted `POST /rovas/civic_auth_session` — create/link + mint Civic OAuth tokens for native Google/Apple |
 | done | claim-anonymous-burn-share | [`done/claim-anonymous-burn-share.md`](civic_tasks/done/claim-anonymous-burn-share.md) | Sentinel `rovas_uid: "anonymous"` burn share (0 ME); scanner `share_pct` > 0 |
