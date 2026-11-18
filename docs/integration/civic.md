@@ -38,7 +38,8 @@ env): [`civic-deploy.md`](civic-deploy.md).
 
 | Status | Slug | File | Notes |
 |--------|------|------|-------|
-| done | civic-auth-services-error-swallow | [`done/civic-auth-services-error-swallow.md`](civic_tasks/done/civic-auth-services-error-swallow.md) | `services_error` 401/409 no longer swallowed as 500; awaiting prod+rovdev deploy + smoke |
+| done | civic-auth-osm-username-from-display-name | [`done/civic-auth-osm-username-from-display-name.md`](civic_tasks/done/civic-auth-osm-username-from-display-name.md) | OSM create: `display_name` → Drupal username; leave `field_full_name` empty (other IdPs unchanged) |
+| done | civic-auth-services-error-swallow | [`done/civic-auth-services-error-swallow.md`](civic_tasks/done/civic-auth-services-error-swallow.md) | `services_error` 401/409 no longer swallowed as 500 in civic_auth_session/login/register catch blocks |
 | done | civic-auth-extra-providers | [`done/civic-auth-extra-providers.md`](civic_tasks/done/civic-auth-extra-providers.md) | Extend `civic_auth_session` for Facebook / Nabezky / OpenStreetMap; OSM allows `email_verified: false` |
 | done | civic-email-password-auth | [`done/civic-email-password-auth.md`](civic_tasks/done/civic-email-password-auth.md) | Sibling `POST /rovas/civic_auth_register` + `civic_auth_login` — username/email + password → mint Civic Bearers (`7005`) |
 | done | civic-auth-display-name-idp-only | [`done/civic-auth-display-name-idp-only.md`](civic_tasks/done/civic-auth-display-name-idp-only.md) | Stop email local-part → `field_full_name` on Civic auth create; real name only when IdP sent `display_name` |

@@ -76,15 +76,20 @@ function rovas_oauth_civic_auth_parse_email_verified($raw) {
 }
 
 /**
- * Build a unique Drupal username from email local-part.
+ * Build a unique Drupal username from a raw seed string.
  *
- * @param string $email
+ * Shared sanitizer / collision loop for email local-part and OSM display_name
+ * seeds. Charset [A-Za-z0-9_.-], length ≤50, `_N` suffixes on collision.
+ *
+ * @param string $seed
+ *   Candidate source (e.g. email local-part or OSM display_name).
+ * @param string $collision_salt
+ *   Extra entropy for the rare md5 fallback when `_N` exhausts.
  *
  * @return string
  */
-function rovas_oauth_civic_auth_username_from_email($email) {
-  $local = preg_replace('/@.*/', '', (string) $email);
-  $local = preg_replace('/[^a-zA-Z0-9_\-\.]/', '', $local);
+function rovas_oauth_civic_auth_username_from_seed($seed, $collision_salt = '') {
+  $local = preg_replace('/[^a-zA-Z0-9_\-\.]/', '', (string) $seed);
   if ($local === '' || user_validate_name($local) !== NULL) {
     $local = 'civic_user';
   }
@@ -96,11 +101,23 @@ function rovas_oauth_civic_auth_username_from_email($email) {
     $i++;
     $candidate = $base . '_' . $i;
     if ($i > 9999) {
-      $candidate = 'civic_' . drupal_substr(md5($email . microtime(TRUE)), 0, 12);
+      $candidate = 'civic_' . drupal_substr(md5($seed . $collision_salt . microtime(TRUE)), 0, 12);
       break;
     }
   }
   return $candidate;
+}
+
+/**
+ * Build a unique Drupal username from email local-part.
+ *
+ * @param string $email
+ *
+ * @return string
+ */
+function rovas_oauth_civic_auth_username_from_email($email) {
+  $local = preg_replace('/@.*/', '', (string) $email);
+  return rovas_oauth_civic_auth_username_from_seed($local, (string) $email);
 }
 
 /**
@@ -352,7 +369,14 @@ function rovas_oauth_civic_auth_session_create($data) {
         );
       }
       else {
-        $username = rovas_oauth_civic_auth_username_from_email($email);
+        // OpenStreetMap display_name is an OSM username, not a legal name:
+        // seed Drupal name from it and leave field_full_name empty.
+        if ($provider_key === 'openstreetmap' && $display_name !== '') {
+          $username = rovas_oauth_civic_auth_username_from_seed($display_name, $display_name);
+        }
+        else {
+          $username = rovas_oauth_civic_auth_username_from_email($email);
+        }
         $new = new stdClass();
         $new->is_new = TRUE;
         $new->name = $username;
@@ -370,7 +394,8 @@ function rovas_oauth_civic_auth_session_create($data) {
             ROVAS_OAUTH_SIGNUP_SOURCE_KEY => ROVAS_OAUTH_SIGNUP_SOURCE_CIVIC,
           ),
         );
-        if ($display_name !== '') {
+        // Other IdPs: non-empty display_name → real name. OSM: never set.
+        if ($provider_key !== 'openstreetmap' && $display_name !== '') {
           $edit['field_full_name'] = array(LANGUAGE_NONE => array(0 => array('value' => $display_name)));
         }
 

@@ -3988,7 +3988,7 @@ components:
         display_name:
           type: string
           nullable: true
-          description: Optional; set `field_full_name` only when non-empty (no email local-part fallback).
+          description: Optional. For google/apple/facebook/nabezky, non-empty values set `field_full_name` (no email local-part fallback). For `openstreetmap` create only, non-empty values seed the Drupal username instead and leave `field_full_name` empty (OSM display_name is a username, not a legal name).
         user_language:
           type: string
           description: Normalized like partner create (`sk`/`cs` → `sk`, else enabled / `en`).

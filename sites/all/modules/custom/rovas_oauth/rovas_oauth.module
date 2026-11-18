@@ -1405,7 +1405,7 @@ function rovas_oauth_services_resources() {
             array(
               'name' => 'data',
               'type' => 'struct',
-              'description' => 'Fields: provider (google|apple|facebook|nabezky|openstreetmap), provider_subject, email, email_verified, display_name?, user_language, user_country. openstreetmap may use email_verified=false when email is collected in-app.',
+              'description' => 'Fields: provider (google|apple|facebook|nabezky|openstreetmap), provider_subject, email, email_verified, display_name?, user_language, user_country. openstreetmap may use email_verified=false when email is collected in-app; on OSM create, display_name seeds Drupal username (not field_full_name).',
               'source' => 'data',
               'optional' => FALSE,
             ),

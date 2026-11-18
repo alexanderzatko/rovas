@@ -11,7 +11,7 @@
  * Validate a Civic profile username (charset + length).
  *
  * Matches the sanitizer charset used by
- * rovas_oauth_civic_auth_username_from_email(): [A-Za-z0-9_.-], length 1–50.
+ * rovas_oauth_civic_auth_username_from_seed(): [A-Za-z0-9_.-], length 1–50.
  *
  * @param string $username
  *   Trimmed candidate.
