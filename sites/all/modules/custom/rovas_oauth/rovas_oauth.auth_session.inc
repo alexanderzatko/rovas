@@ -9,21 +9,40 @@
  */
 
 /**
+ * Default Civic provider id → HybridAuth machine name map.
+ *
+ * @return array
+ *   Keys: google|apple|facebook|nabezky|openstreetmap.
+ */
+function rovas_oauth_civic_auth_provider_defaults() {
+  return array(
+    'google' => 'Google',
+    'apple' => 'Apple',
+    'facebook' => 'Facebook',
+    'nabezky' => 'Nabezky',
+    'openstreetmap' => 'OpenStreetMap',
+  );
+}
+
+/**
  * Map Civic provider id → HybridAuth machine name.
  *
  * @param string $provider
- *   Request body provider (google|apple).
+ *   Request body provider (google|apple|facebook|nabezky|openstreetmap).
  *
  * @return string|false
  *   HybridAuth provider id, or FALSE when unknown.
  */
 function rovas_oauth_civic_auth_hybridauth_provider($provider) {
   $provider = drupal_strtolower(trim((string) $provider));
-  $map = variable_get('rovas_oauth_civic_auth_providers', array(
-    'google' => 'Google',
-    'apple' => 'Apple',
-  ));
-  if (!is_array($map) || !isset($map[$provider]) || $map[$provider] === '') {
+  $map = rovas_oauth_civic_auth_provider_defaults();
+  $override = variable_get('rovas_oauth_civic_auth_providers', array());
+  if (is_array($override)) {
+    foreach ($override as $key => $value) {
+      $map[drupal_strtolower(trim((string) $key))] = $value;
+    }
+  }
+  if (!isset($map[$provider]) || $map[$provider] === '' || $map[$provider] === NULL) {
     return FALSE;
   }
   return (string) $map[$provider];
@@ -222,9 +241,10 @@ function rovas_oauth_civic_auth_session_create($data) {
   }
 
   $provider_raw = isset($data['provider']) ? trim((string) $data['provider']) : '';
+  $provider_key = drupal_strtolower($provider_raw);
   $ha_provider = rovas_oauth_civic_auth_hybridauth_provider($provider_raw);
   if ($ha_provider === FALSE) {
-    return services_error(t('provider must be google or apple.'), 400);
+    return services_error(t('provider must be google, apple, facebook, nabezky, or openstreetmap.'), 400);
   }
 
   if (function_exists('rovas_site_rules_hybridauth_provider_is_allowed')
@@ -297,9 +317,12 @@ function rovas_oauth_civic_auth_session_create($data) {
       }
     }
 
-    // 2) Verified email match, or 3) create.
+    // 2) Email match, or 3) create.
+    // OpenStreetMap: Civic collects email in-app; allow email_verified=false.
+    // Other providers still require a verified email when no HybridAuth hit.
     if (!$account) {
-      if ($email === '' || !$email_verified) {
+      $allow_unverified_email = ($provider_key === 'openstreetmap');
+      if ($email === '' || (!$email_verified && !$allow_unverified_email)) {
         return services_error(t('A verified email is required to create or link this account.'), 409);
       }
 

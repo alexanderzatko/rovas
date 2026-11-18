@@ -1106,13 +1106,15 @@ paths:
       summary: Civic native auth session (create/link + mint OAuth tokens)
       security: *id001
       description: |
-        Trusted server-to-server bridge for Civic native Google/Apple Sign-In.
+        Trusted server-to-server bridge for Civic native IdP Sign-In
+        (Google, Apple, Facebook, Nabezky, OpenStreetMap).
         Civic verifies the IdP token, then calls this endpoint with a technical
         account `API-KEY` + `TOKEN`. Creates or links the Drupal user (HybridAuth
         identity) and mints Civic OAuth access + refresh tokens (`client_id=civic`,
         scope `user_profile`) without `/oauth2/authorize`.
-        Requires permission **mint civic auth session**. HybridAuth providers
-        `Google` / `Apple` must be enabled. Does **not** return classic end-user
+        Requires permission **mint civic auth session**. Matching HybridAuth
+        providers must be enabled. OpenStreetMap may pass `email_verified: false`
+        when Civic collected email in-app. Does **not** return classic end-user
         `api_key`/`token`.
       requestBody:
         required: true
@@ -1134,7 +1136,7 @@ paths:
         '403':
           description: Technical account lacks mint civic auth session
         '409':
-          description: Missing/unverified email when create/link would be ambiguous
+          description: Missing/unverified email when create/link would be ambiguous (OSM allows unverified email when present)
         '500':
           description: User create or token mint failure
   /rovas/civic_auth_register:
@@ -3968,7 +3970,10 @@ components:
           enum:
           - google
           - apple
-          description: IdP; mapped to HybridAuth Google / Apple (override via `rovas_oauth_civic_auth_providers`).
+          - facebook
+          - nabezky
+          - openstreetmap
+          description: IdP; mapped to HybridAuth (override via `rovas_oauth_civic_auth_providers`).
         provider_subject:
           type: string
           description: IdP `sub` claim (string; may exceed 32 chars — HybridAuth hashes for storage).
@@ -3979,11 +3984,11 @@ components:
           description: Required for create and email-link when identity is new.
         email_verified:
           type: boolean
-          description: From IdP claims. Must be true to create or email-link.
+          description: From IdP claims. Must be true to create or email-link, except `openstreetmap` (Civic may collect email in-app with false).
         display_name:
           type: string
           nullable: true
-          description: Optional; falls back to email local-part. Stored on `field_full_name` for new users.
+          description: Optional; set `field_full_name` only when non-empty (no email local-part fallback).
         user_language:
           type: string
           description: Normalized like partner create (`sk`/`cs` → `sk`, else enabled / `en`).

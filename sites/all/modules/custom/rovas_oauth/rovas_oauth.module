@@ -1395,7 +1395,7 @@ function rovas_oauth_services_resources() {
     'civic_auth_session' => array(
       'operations' => array(
         'create' => array(
-          'help' => 'Trusted Civic native auth: create/link Drupal user from verified Google/Apple identity and mint civic OAuth access+refresh. Classic API-KEY + TOKEN of a technical account; not Bearer.',
+          'help' => 'Trusted Civic native auth: create/link Drupal user from verified Google/Apple/Facebook/Nabezky/OpenStreetMap identity and mint civic OAuth access+refresh. Classic API-KEY + TOKEN of a technical account; not Bearer. OSM may pass email_verified=false.',
           'callback' => 'rovas_oauth_civic_auth_session_create',
           'file' => $auth_session_file,
           'access callback' => 'user_access',
@@ -1405,7 +1405,7 @@ function rovas_oauth_services_resources() {
             array(
               'name' => 'data',
               'type' => 'struct',
-              'description' => 'Fields: provider (google|apple), provider_subject, email, email_verified, display_name?, user_language, user_country.',
+              'description' => 'Fields: provider (google|apple|facebook|nabezky|openstreetmap), provider_subject, email, email_verified, display_name?, user_language, user_country. openstreetmap may use email_verified=false when email is collected in-app.',
               'source' => 'data',
               'optional' => FALSE,
             ),
