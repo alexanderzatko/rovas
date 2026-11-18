@@ -421,6 +421,11 @@ function rovas_oauth_civic_auth_session_create($data) {
     }
     return $mint;
   }
+  catch (ServicesException $e) {
+    // Intentional services_error() statuses (e.g. 409 needs email) must reach
+    // the REST server unchanged — do not rewrite as a generic 500.
+    throw $e;
+  }
   catch (Exception $e) {
     watchdog('rovas_oauth', 'civic_auth_session: @msg', array('@msg' => $e->getMessage()), WATCHDOG_ERROR);
     return services_error(t('Unable to complete Civic auth session.'), 500);

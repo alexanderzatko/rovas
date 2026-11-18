@@ -192,6 +192,11 @@ function rovas_oauth_civic_auth_register_create($data) {
     }
     return $mint;
   }
+  catch (ServicesException $e) {
+    // Intentional services_error() statuses (e.g. 409 username/email taken)
+    // must reach the REST server unchanged — do not rewrite as a generic 500.
+    throw $e;
+  }
   catch (Exception $e) {
     watchdog('rovas_oauth', 'civic_auth_register: @msg', array('@msg' => $e->getMessage()), WATCHDOG_ERROR);
     return services_error(t('Unable to complete Civic auth register.'), 500);
@@ -278,6 +283,11 @@ function rovas_oauth_civic_auth_login_create($data) {
       return services_error(t('Unable to mint OAuth tokens.'), 500);
     }
     return $mint;
+  }
+  catch (ServicesException $e) {
+    // Intentional services_error() statuses (e.g. 401 bad password) must reach
+    // the REST server unchanged — do not rewrite as a generic 500.
+    throw $e;
   }
   catch (Exception $e) {
     watchdog('rovas_oauth', 'civic_auth_login: @msg', array('@msg' => $e->getMessage()), WATCHDOG_ERROR);
