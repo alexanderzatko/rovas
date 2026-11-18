@@ -335,10 +335,10 @@ function rovas_oauth_civic_auth_session_create($data) {
     }
 
     // 2) Email match, or 3) create.
-    // OpenStreetMap: Civic collects email in-app; allow email_verified=false.
+    // Facebook / OpenStreetMap: Civic collects email in-app; allow email_verified=false.
     // Other providers still require a verified email when no HybridAuth hit.
     if (!$account) {
-      $allow_unverified_email = ($provider_key === 'openstreetmap');
+      $allow_unverified_email = in_array($provider_key, array('facebook', 'openstreetmap'), TRUE);
       if ($email === '' || (!$email_verified && !$allow_unverified_email)) {
         return services_error(t('A verified email is required to create or link this account.'), 409);
       }
