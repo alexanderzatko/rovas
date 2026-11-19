@@ -16,6 +16,34 @@ define('ROVAS_MERIT_PENALTY_NACE_CODE', '94.99');
 define('ROVAS_MERIT_FINANCIAL_NACE_TID', 1601);
 
 /**
+ * Drupal role id: full access (can file work reports).
+ *
+ * Fallback if role rename lookup fails; production uses rid 4.
+ */
+define('ROVAS_MERIT_ROLE_FULL_ACCESS', 4);
+
+/**
+ * Drupal role id: banned (negative Merits; WR privileges revoked).
+ *
+ * Fallback if role rename lookup fails; production uses rid 5.
+ */
+define('ROVAS_MERIT_ROLE_BANNED', 5);
+
+/**
+ * Implements hook_mail().
+ */
+function rovas_merit_mail($key, &$message, $params) {
+  if ($key !== 'privileges_lost') {
+    return;
+  }
+  $account = !empty($params['account']) ? $params['account'] : NULL;
+  $name = $account && !empty($account->name) ? $account->name : '';
+  $message['subject'] = 'Rovas - privileges lost';
+  $message['body'][] = $name . ",\n\nYou have lost some important privileges in Rovas. The reason is either not verifying the work of other users, or submitting problematic work reports.\nYou can regain lost privileges by increasing your merit rating.\n\nPlease see the <a href=\"https://rovas.app/rules\">NEO rules</a> for more information.";
+  $message['headers']['Content-Type'] = 'text/html; charset=UTF-8';
+}
+
+/**
  * Implements hook_menu().
  */
 function rovas_merit_menu() {

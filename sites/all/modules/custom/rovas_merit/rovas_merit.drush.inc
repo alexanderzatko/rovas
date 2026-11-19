@@ -35,6 +35,20 @@ function rovas_merit_drush_command() {
       'drush rovas-merit-reconcile --uid=3767 --fix' => dt('Fix one user.'),
     ),
   );
+  $items['rovas-merit-sync-roles'] = array(
+    'callback' => 'drush_rovas_merit_sync_roles',
+    'description' => dt('Sync full-access / banned roles to Merit balance (negative → banned).'),
+    'options' => array(
+      'fix' => dt('Apply role changes (default is report only).'),
+      'uid' => dt('Limit to one uid.'),
+      'notify' => dt('Send privileges-lost mail when demoting (only with --fix).'),
+    ),
+    'examples' => array(
+      'drush rovas-merit-sync-roles' => dt('Report mismatches.'),
+      'drush rovas-merit-sync-roles --fix' => dt('Fix all mismatches.'),
+      'drush rovas-merit-sync-roles --uid=3853 --fix --notify' => dt('Fix one user and email.'),
+    ),
+  );
   return $items;
 }
 
@@ -150,6 +164,109 @@ function drush_rovas_merit_reconcile() {
     drush_log(dt('@drift user(s) with drift; @fixed fixed.', array(
       '@drift' => $drift,
       '@fixed' => $fixed,
+    )), $fix ? 'success' : 'warning');
+  }
+}
+
+/**
+ * Drush callback: sync full-access / banned to Merit balance.
+ */
+function drush_rovas_merit_sync_roles() {
+  module_load_include('inc', 'rovas_merit', 'rovas_merit.ledger');
+  $fix = (bool) drush_get_option('fix', FALSE);
+  $notify = (bool) drush_get_option('notify', FALSE);
+  $only_uid = drush_get_option('uid', NULL);
+
+  $ids = rovas_merit_access_role_ids();
+  $rid_full = $ids['full_access'];
+  $rid_banned = $ids['banned'];
+
+  if ($only_uid) {
+    $uids = array((int) $only_uid);
+  }
+  else {
+    // Candidates: negative Merits without banned, or banned with non-negative.
+    $uids = db_query("
+      SELECT DISTINCT u.uid
+      FROM {users} u
+      INNER JOIN {userpoints} up ON up.uid = u.uid
+      LEFT JOIN {users_roles} banned ON banned.uid = u.uid AND banned.rid = :banned
+      LEFT JOIN {field_data_field_merit_decimal_part} d
+        ON d.entity_id = u.uid AND d.entity_type = 'user' AND d.deleted = 0
+      WHERE u.uid > 0
+        AND (
+          ((up.points + COALESCE(d.field_merit_decimal_part_value, 0)) < 0 AND banned.uid IS NULL)
+          OR
+          ((up.points + COALESCE(d.field_merit_decimal_part_value, 0)) >= 0 AND banned.uid IS NOT NULL)
+        )
+      ORDER BY u.uid
+    ", array(':banned' => $rid_banned))->fetchCol();
+  }
+
+  $mismatch = 0;
+  $changed = 0;
+  foreach ($uids as $uid) {
+    $uid = (int) $uid;
+    $account = user_load($uid);
+    if (!$account) {
+      continue;
+    }
+    $total = rovas_merit_user_total_me($uid);
+    $has_full = isset($account->roles[$rid_full]);
+    $has_banned = isset($account->roles[$rid_banned]);
+    $expected = ($total < 0) ? 'banned' : 'full_access';
+    if ($has_banned && !$has_full) {
+      $actual = 'banned';
+    }
+    elseif ($has_full && !$has_banned) {
+      $actual = 'full_access';
+    }
+    elseif ($has_banned && $has_full) {
+      $actual = 'both';
+    }
+    else {
+      $actual = 'neither';
+    }
+    $needs = ($total < 0 && (!$has_banned || $has_full))
+      || ($total >= 0 && (!$has_full || $has_banned));
+    if (!$needs) {
+      if ($only_uid) {
+        drush_print(dt('uid @uid (@name): total=@t roles ok (@a).', array(
+          '@uid' => $uid,
+          '@name' => $account->name,
+          '@t' => round($total, 4),
+          '@a' => $actual,
+        )));
+      }
+      continue;
+    }
+    $mismatch++;
+    drush_print(dt('uid @uid (@name): total=@t actual=@a expected=@e', array(
+      '@uid' => $uid,
+      '@name' => $account->name,
+      '@t' => round($total, 4),
+      '@a' => $actual,
+      '@e' => $expected,
+    )));
+    if ($fix) {
+      $result = rovas_merit_sync_access_role($uid, $notify && ($expected === 'banned'));
+      if ($result) {
+        $changed++;
+        drush_print(dt('  -> synced to @r', array('@r' => $result)));
+      }
+      else {
+        drush_print(dt('  -> no change'));
+      }
+    }
+  }
+
+  if ($mismatch === 0) {
+    drush_log(dt('No full-access / banned role mismatches found.'), 'success');
+  }
+  else {
+    drush_log(dt('@n mismatch(es); @c changed.', array(
+      '@n' => $mismatch,
+      '@c' => $changed,
     )), $fix ? 'success' : 'warning');
   }
 }

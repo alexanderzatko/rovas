@@ -954,7 +954,103 @@ function rovas_merit_credit_wallet($account, $delta, $reward_entity, $descriptio
     ));
   }
 
+  // Rules reaction on userpoints_event_points_awarded_after can miss when the
+  // grant runs inside a scheduled Rules component (e.g. The Punisher), or when
+  // only the decimal part crosses zero. Enforce role parity here.
+  rovas_merit_sync_access_role((int) $account->uid);
+
   return TRUE;
+}
+
+/**
+ * Resolve full-access / banned role ids (by name, with numeric fallback).
+ *
+ * @return array
+ *   Keys: full_access, banned.
+ */
+function rovas_merit_access_role_ids() {
+  $roles = user_roles(TRUE);
+  $full = array_search('full access', $roles, TRUE);
+  $banned = array_search('banned', $roles, TRUE);
+  return array(
+    'full_access' => $full !== FALSE ? (int) $full : ROVAS_MERIT_ROLE_FULL_ACCESS,
+    'banned' => $banned !== FALSE ? (int) $banned : ROVAS_MERIT_ROLE_BANNED,
+  );
+}
+
+/**
+ * Sync full-access / banned roles to the user's Merit balance.
+ *
+ * Negative total Merits → banned (remove full access).
+ * Non-negative → full access (remove banned).
+ *
+ * Idempotent: no-op when roles already match. Sends the same privileges-lost
+ * mail as rules_change_user_role_when_merits_is_negative when demoting.
+ *
+ * @param int $uid
+ * @param bool $notify
+ *   When TRUE, email on demotion to banned.
+ *
+ * @return string|false
+ *   'banned', 'full_access', or FALSE if unchanged / invalid uid.
+ */
+function rovas_merit_sync_access_role($uid, $notify = TRUE) {
+  $uid = (int) $uid;
+  if ($uid < 1) {
+    return FALSE;
+  }
+
+  // Reset static cache so a Rules reaction that just saved roles is visible.
+  $account = user_load($uid, TRUE);
+  if (!$account) {
+    return FALSE;
+  }
+
+  $ids = rovas_merit_access_role_ids();
+  $rid_full = $ids['full_access'];
+  $rid_banned = $ids['banned'];
+  if ($rid_full < 1 || $rid_banned < 1) {
+    return FALSE;
+  }
+
+  $total = rovas_merit_user_total_me($uid);
+  $has_full = isset($account->roles[$rid_full]);
+  $has_banned = isset($account->roles[$rid_banned]);
+  $roles = $account->roles;
+
+  if ($total < 0) {
+    if ($has_banned && !$has_full) {
+      return FALSE;
+    }
+    unset($roles[$rid_full]);
+    $roles[$rid_banned] = 'banned';
+    $account->roles = $roles;
+    user_save($account);
+    if ($notify && !empty($account->mail)) {
+      $language = user_preferred_language($account);
+      drupal_mail('rovas_merit', 'privileges_lost', $account->mail, $language, array(
+        'account' => $account,
+      ));
+    }
+    watchdog('rovas_merit', 'Synced uid @uid to banned (total_me=@t).', array(
+      '@uid' => $uid,
+      '@t' => round($total, 4),
+    ), WATCHDOG_NOTICE);
+    return 'banned';
+  }
+
+  if ($has_full && !$has_banned) {
+    return FALSE;
+  }
+  unset($roles[$rid_banned]);
+  $roles[$rid_full] = 'full access';
+  $account->roles = $roles;
+  user_save($account);
+  watchdog('rovas_merit', 'Synced uid @uid to full access (total_me=@t).', array(
+    '@uid' => $uid,
+    '@t' => round($total, 4),
+  ), WATCHDOG_NOTICE);
+  return 'full_access';
 }
 
 /**
