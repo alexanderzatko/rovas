@@ -32,7 +32,6 @@ Owned Views
 -----------
 - Mentions
 - top_compliant_users
-- user_countries
 - user_emails
 - users
 - users_autocomplete

@@ -64,7 +64,6 @@ OWNERSHIP = {
     # rovas_commerce_order
     'users_pending_orders': 'rovas_commerce_order',
     'supporters_countries': 'rovas_commerce_order',
-    'freemap_countries': 'rovas_commerce_order',
     'commerce_cart_summary': 'rovas_commerce_order',
     'commerce_line_item_table': 'rovas_commerce_order',
     'commerce_orders': 'rovas_commerce_order',
@@ -76,7 +75,6 @@ OWNERSHIP = {
     'users_by_activity': 'rovas_user',
     'users_with_low_compliance_score': 'rovas_user',
     'top_compliant_users': 'rovas_user',
-    'user_countries': 'rovas_user',
     'users_autocomplete': 'rovas_user',
     'Mentions': 'rovas_user',
     # rovas_nocat_rank

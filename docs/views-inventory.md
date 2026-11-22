@@ -123,7 +123,6 @@ see `docs/chron-ledger-plan.md`).
 |------|---------|-------|
 | `users_pending_orders` | Normal | |
 | `supporters_countries` | Normal | `supporters-countries` |
-| `freemap_countries` | Normal | `freemap-countries` |
 | `commerce_cart_summary` | Overridden (commerce_cart) | |
 | `commerce_line_item_table` | Overridden (commerce_line_item) | |
 | `commerce_orders` | Overridden (commerce_order_ui) | `admin/commerce/orders/list`, carts |
@@ -141,7 +140,6 @@ Site-owned Commerce overrides are exported here so git wins after revert.
 | `users_by_activity` | Normal | |
 | `users_with_low_compliance_score` | Normal | |
 | `top_compliant_users` | Normal | |
-| `user_countries` | Normal | `user-countries` |
 | `users_autocomplete` | Overridden (search_autocomplete) | `users-autocomplete` |
 | `Mentions` | Overridden (mentions) | `user/%/mentions` |
 

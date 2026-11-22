@@ -34,7 +34,6 @@ Owned Views
 - commerce_line_item_table
 - commerce_orders
 - commerce_user_orders
-- freemap_countries
 - supporters_countries
 - users_pending_orders
 
