@@ -97,13 +97,6 @@ function rovas_stripe_express_checkout_load_order_by_pi_id($payment_intent_id) {
 }
 
 function rovas_stripe_express_checkout_thanks() {
-    /*
-    https://dev.rovas.app/stripe/express-checkout/thank-you?
-    payment_intent=pi_3RSwIbDM0rK3al8P1gUwGvgt&
-    payment_intent_client_secret=pi_3RSwIbDM0rK3al8P1gUwGvgt_secret_gDDr73ZBgAVfPlXRqkLKCKNyD&
-    redirect_status=succeeded
-    */
-
 	global $user;
 
 	$parameters = drupal_get_query_parameters();

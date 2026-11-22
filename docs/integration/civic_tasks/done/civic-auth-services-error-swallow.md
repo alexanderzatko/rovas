@@ -75,7 +75,7 @@ curl -si -X POST "https://rovas.app/rovas/civic_auth_login" \
   -H "Content-Type: application/json" \
   -H "API-KEY: $API_KEY" \
   -H "TOKEN: $TOKEN" \
-  -d '{"login":"orders.az@gmail.com","password":"definitely-wrong"}'
+  -d '{"login":"user@example.com","password":"definitely-wrong"}'
 # Expect HTTP 401 Invalid login or password
 ```
 
