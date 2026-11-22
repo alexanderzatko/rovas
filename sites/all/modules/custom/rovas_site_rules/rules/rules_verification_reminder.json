@@ -1,98 +1,189 @@
-{ "rules_verification_reminder" : {
-    "LABEL" : "verification reminder",
-    "PLUGIN" : "action set",
-    "OWNER" : "rules",
-    "REQUIRES" : [
+{
+  "rules_verification_reminder": {
+    "LABEL": "verification reminder",
+    "PLUGIN": "action set",
+    "OWNER": "rules",
+    "REQUIRES": [
       "views_bulk_operations",
       "rules",
       "rules_conditional",
       "php",
       "rules_scheduler"
     ],
-    "ACTION SET" : [
-      { "views_bulk_operations_action_load_list" : {
-          "USING" : { "view" : "pending_verifications|default" },
-          "PROVIDE" : { "entity_list" : { "slots" : "slots" } }
+    "ACTION SET": [
+      {
+        "views_bulk_operations_action_load_list": {
+          "USING": {
+            "view": "pending_verifications|default"
+          },
+          "PROVIDE": {
+            "entity_list": {
+              "slots": "slots"
+            }
+          }
         }
       },
-      { "variable_add" : {
-          "USING" : { "type" : "text" },
-          "PROVIDE" : { "variable_added" : { "message" : "message" } }
+      {
+        "variable_add": {
+          "USING": {
+            "type": "text"
+          },
+          "PROVIDE": {
+            "variable_added": {
+              "message": "message"
+            }
+          }
         }
       },
-      { "LOOP" : {
-          "USING" : { "list" : [ "slots" ] },
-          "ITEM" : { "slot" : "slot" },
-          "DO" : [
-            { "CONDITIONAL" : [
+      {
+        "LOOP": {
+          "USING": {
+            "list": [
+              "slots"
+            ]
+          },
+          "ITEM": {
+            "slot": "slot"
+          },
+          "DO": [
+            {
+              "CONDITIONAL": [
                 {
-                  "IF" : { "entity_is_of_bundle" : {
-                      "entity" : [ "slot" ],
-                      "type" : "node",
-                      "bundle" : { "value" : { "verification_slot" : "verification_slot" } }
+                  "IF": {
+                    "entity_is_of_bundle": {
+                      "entity": [
+                        "slot"
+                      ],
+                      "type": "node",
+                      "bundle": {
+                        "value": {
+                          "verification_slot": "verification_slot"
+                        }
+                      }
                     }
                   },
-                  "DO" : [
-                    { "CONDITIONAL" : [
+                  "DO": [
+                    {
+                      "CONDITIONAL": [
                         {
-                          "IF" : { "data_is" : { "data" : [ "slot:field-voluntary" ], "value" : "1" } },
-                          "DO" : []
+                          "IF": {
+                            "data_is": {
+                              "data": [
+                                "slot:field-voluntary"
+                              ],
+                              "value": "1"
+                            }
+                          },
+                          "DO": []
                         },
-                        { "ELSE" : [
-                            { "variable_add" : {
-                                "USING" : { "type" : "user", "value" : [ "slot:author" ] },
-                                "PROVIDE" : { "variable_added" : { "slot_owner" : "slot owner" } }
-                              }
-                            },
-                            { "variable_add" : {
-                                "USING" : {
-                                  "type" : "text",
-                                  "value" : "<?php\n\n$object = entity_metadata_wrapper('node', $slot->nid);\n$ex_node = $object->field_report_to_verify->field_web_address->value();\n$ex_token = $object->field_report_to_verify->field_content_access_token->value();\n\n$ex_url = '';\nif (count($ex_node) == 1) {\n\t$ex_url = rovas_base_proof_web_url($ex_node[0], $ex_token, array(\n\t\t'vrfier' => $slot_owner->uid,\n\t));\n}\n\n$rep_id = $object->field_report_to_verify->getIdentifier();\n$rep_name = $object->field_report_to_verify->label();\n\nglobal $base_url;\n$parsed_base = parse_url($base_url);\n$base_domain = $parsed_base['host'];\n\necho '<strong>';\necho $rep_name;\necho '</strong>';\necho '<br>';\n$result = rules_invoke_component('rules_translate_text','deadline',serialize(array()),$slot_owner->language);\necho ' ' . $result[0] . ': ';\necho date('d M Y H:i:s',$object->field_verify_date->value());\necho '<br><br>';\nif (!empty($ex_url)) {\n\t$parsed = parse_url($ex_url);\n\tif (isset($parsed['host']) && $parsed['host'] != $base_url) {\n\t\t$domain = $parsed['host'];\n\t\t$result2 = rules_invoke_component('rules_translate_text','Show in @domain',serialize(array('@domain' => $domain)),$slot_owner->language);\n\t\techo '<a href=\"'.$ex_url.'\"><strong>'. $result2[0] . '</strong></a>';\n\t\techo '&nbsp;&nbsp;&nbsp;&nbsp;';\n\t}\n}\n$result3 = rules_invoke_component('rules_translate_text','Verify in Rovas',serialize(array()),$slot_owner->language);\necho '<a href=\"/node/'.$rep_id.'\"><strong>' . $result3[0] . '</strong></a>';\n?>"
+                        {
+                          "ELSE": [
+                            {
+                              "variable_add": {
+                                "USING": {
+                                  "type": "user",
+                                  "value": [
+                                    "slot:author"
+                                  ]
                                 },
-                                "PROVIDE" : { "variable_added" : { "msg_core" : "msg core" } }
+                                "PROVIDE": {
+                                  "variable_added": {
+                                    "slot_owner": "slot owner"
+                                  }
+                                }
                               }
                             },
-                            { "CONDITIONAL" : [
+                            {
+                              "variable_add": {
+                                "USING": {
+                                  "type": "text",
+                                  "value": "<?php\n\n$object = entity_metadata_wrapper('node', $slot->nid);\n$ex_node = $object->field_report_to_verify->field_web_address->value();\n$ex_token = $object->field_report_to_verify->field_content_access_token->value();\n\n$ex_url = '';\nif (count($ex_node) == 1) {\n\t$ex_url = rovas_base_proof_web_url($ex_node[0], $ex_token, array(\n\t\t'vrfier' => $slot_owner->uid,\n\t));\n}\n\n$rep_id = $object->field_report_to_verify->getIdentifier();\n$rep_name = $object->field_report_to_verify->label();\n\nglobal $base_url;\n$parsed_base = parse_url($base_url);\n$base_domain = $parsed_base['host'];\n\necho '<strong>';\necho $rep_name;\necho '</strong>';\necho '<br>';\n$result = rules_invoke_component('rules_translate_text','deadline',serialize(array()),$slot_owner->language);\necho ' ' . $result[0] . ': ';\necho date('d M Y H:i:s',$object->field_verify_date->value());\necho '<br><br>';\nif (!empty($ex_url)) {\n\t$parsed = parse_url($ex_url);\n\tif (isset($parsed['host']) && $parsed['host'] != $base_url) {\n\t\t$domain = $parsed['host'];\n\t\t$result2 = rules_invoke_component('rules_translate_text','Show in @domain',serialize(array('@domain' => $domain)),$slot_owner->language);\n\t\techo '<a href=\"'.$ex_url.'\"><strong>'. $result2[0] . '</strong></a>';\n\t\techo '&nbsp;&nbsp;&nbsp;&nbsp;';\n\t}\n}\n$result3 = rules_invoke_component('rules_translate_text','Verify in Rovas',serialize(array()),$slot_owner->language);\n$rep_link = function_exists('rovas_verify_invite_path') ? rovas_verify_invite_path($rep_id) : ('/node/' . $rep_id . '?verify_invite=1');\necho '<a href=\"'.$rep_link.'\"><strong>' . $result3[0] . '</strong></a>';\n?>"
+                                },
+                                "PROVIDE": {
+                                  "variable_added": {
+                                    "msg_core": "msg core"
+                                  }
+                                }
+                              }
+                            },
+                            {
+                              "CONDITIONAL": [
                                 {
-                                  "IF" : { "data_is" : { "data" : [ "slot:author:field-verification-reminders" ], "value" : "1" } },
-                                  "DO" : [
-                                    { "variable_add" : {
-                                        "USING" : {
-                                          "type" : "text",
-                                          "value" : "\u003C?php\r\nif (isset($slot_owner-\u003Edata[\u0027hybridauth\u0027][\u0027provider\u0027]) \u0026\u0026 $slot_owner-\u003Edata[\u0027hybridauth\u0027][\u0027provider\u0027] == \u0027Nabezky\u0027) {\r\necho 1;\r\n}\r\n?\u003E"
+                                  "IF": {
+                                    "data_is": {
+                                      "data": [
+                                        "slot:author:field-verification-reminders"
+                                      ],
+                                      "value": "1"
+                                    }
+                                  },
+                                  "DO": [
+                                    {
+                                      "variable_add": {
+                                        "USING": {
+                                          "type": "text",
+                                          "value": "<?php\r\nif (isset($slot_owner->data['hybridauth']['provider']) && $slot_owner->data['hybridauth']['provider'] == 'Nabezky') {\r\necho 1;\r\n}\r\n?>"
                                         },
-                                        "PROVIDE" : { "variable_added" : { "nb_check_text" : "nb check text" } }
+                                        "PROVIDE": {
+                                          "variable_added": {
+                                            "nb_check_text": "nb check text"
+                                          }
+                                        }
                                       }
                                     },
-                                    { "CONDITIONAL" : [
+                                    {
+                                      "CONDITIONAL": [
                                         {
-                                          "IF" : { "data_is" : { "data" : [ "nb-check-text" ], "value" : "1" } },
-                                          "DO" : [
-                                            { "variable_add" : {
-                                                "USING" : {
-                                                  "type" : "text",
-                                                  "value" : "\u003C?php\r\n$result = rules_invoke_component(\u0027rules_translate_text\u0027,\u0027To log into Rovas, click the Na bezky icon \u003Cimg src=\u0022\/sites\/all\/modules\/rovas_ha\/plugins\/icon_pack\/hybridauth_32\/icons\/nabezky.svg\u0022 \/\u003E you can find in the login block.\u0027,serialize(array()),$slot_owner-\u003Elanguage);\r\necho $result[0];\r\n?\u003E"
+                                          "IF": {
+                                            "data_is": {
+                                              "data": [
+                                                "nb-check-text"
+                                              ],
+                                              "value": "1"
+                                            }
+                                          },
+                                          "DO": [
+                                            {
+                                              "variable_add": {
+                                                "USING": {
+                                                  "type": "text",
+                                                  "value": "<?php\r\n$result = rules_invoke_component('rules_translate_text','To log into Rovas, click the Na bezky icon <img src=\"/sites/all/modules/rovas_ha/plugins/icon_pack/hybridauth_32/icons/nabezky.svg\" /> you can find in the login block.',serialize(array()),$slot_owner->language);\r\necho $result[0];\r\n?>"
                                                 },
-                                                "PROVIDE" : { "variable_added" : { "login_with_nabezky" : "login with nabezky" } }
+                                                "PROVIDE": {
+                                                  "variable_added": {
+                                                    "login_with_nabezky": "login with nabezky"
+                                                  }
+                                                }
                                               }
                                             }
                                           ]
                                         },
-                                        { "ELSE" : [
-                                            { "variable_add" : {
-                                                "USING" : { "type" : "text" },
-                                                "PROVIDE" : { "variable_added" : { "login_with_nabezky" : "login with nabezky" } }
+                                        {
+                                          "ELSE": [
+                                            {
+                                              "variable_add": {
+                                                "USING": {
+                                                  "type": "text"
+                                                },
+                                                "PROVIDE": {
+                                                  "variable_added": {
+                                                    "login_with_nabezky": "login with nabezky"
+                                                  }
+                                                }
                                               }
                                             }
                                           ]
                                         }
                                       ]
                                     },
-                                    { "mail" : {
-                                        "to" : "[slot-owner:mail]",
-                                        "subject" : "Rovas - verification reminder",
-                                        "message" : "[slot-owner:name]\r\n\r\nThis is a friendly reminder that there are some unverified reports you have been invited to verify. As the authors of reports shown below will not get chrons until they are verified, a right thing to do is to verify them as soon as you can.\r\n\r\n[msg-core:value]\r\n\r\nYou can cancel these notifications in \u003Ca href=\u0022[slot-owner:edit-url]\u0022\u003Eyour user profile\u003C\/a\u003E, however, by ignoring the verification requests you will lose the ability to earn chrons.\r\n\r\n[login-with-nabezky:value]",
-                                        "language" : [ "slot:author:language" ]
+                                    {
+                                      "mail": {
+                                        "to": "[slot-owner:mail]",
+                                        "subject": "Rovas - verification reminder",
+                                        "message": "[slot-owner:name]\r\n\r\nThis is a friendly reminder that there are some unverified reports you have been invited to verify. As the authors of reports shown below will not get chrons until they are verified, a right thing to do is to verify them as soon as you can.\r\n\r\n[msg-core:value]\r\n\r\nYou can cancel these notifications in <a href=\"[slot-owner:edit-url]\">your user profile</a>, however, by ignoring the verification requests you will lose the ability to earn chrons.\r\n\r\n[login-with-nabezky:value]",
+                                        "language": [
+                                          "slot:author:language"
+                                        ]
                                       }
                                     }
                                   ]
@@ -110,10 +201,11 @@
           ]
         }
       },
-      { "schedule" : {
-          "component" : "rules_verification_reminder",
-          "date" : "+1 day",
-          "identifier" : "verif_reminder"
+      {
+        "schedule": {
+          "component": "rules_verification_reminder",
+          "date": "+1 day",
+          "identifier": "verif_reminder"
         }
       }
     ]

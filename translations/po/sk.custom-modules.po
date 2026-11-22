@@ -571,3 +571,7 @@ msgstr ""
 "chronoch pridaním výkazu za prácu, napríklad odvedenú pri registrácii v "
 "Rováši. Viac o tom, ako Rováš používať, sa dozviete navštívením <a "
 "href=\"!rules\"><strong>stránky pravidiel</strong></a>."
+
+#: sites/all/modules/custom/rovas_verify/rovas_verify.module
+msgid "Please log in to verify this work report."
+msgstr "Na overenie tohto pracovného výkazu sa musíte prihlásiť."

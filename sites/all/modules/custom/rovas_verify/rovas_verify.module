@@ -1384,6 +1384,60 @@ function _rv_count_experts ($classif,$userex) {
 
 
 /**
+ * Query flag appended to work-report links in verification invite emails.
+ *
+ * Lets anonymous click-throughs be detected so we can send the user to login
+ * and return them to the report afterward (#204).
+ */
+define('ROVAS_VERIFY_INVITE_QUERY', 'verify_invite');
+
+/**
+ * Path used in verification invite / reminder emails for a work report.
+ *
+ * @param int $nid
+ *   Work report node id.
+ *
+ * @return string
+ *   Site-relative path including the invite query flag, e.g. /node/12?verify_invite=1
+ */
+function rovas_verify_invite_path($nid) {
+  return '/node/' . (int) $nid . '?' . ROVAS_VERIFY_INVITE_QUERY . '=1';
+}
+
+/**
+ * Implements hook_init().
+ *
+ * Anonymous visitors following a verification email link land on the work
+ * report with Verify disabled. Redirect them to login and return afterward.
+ */
+function rovas_verify_init() {
+  if (user_is_logged_in()) {
+    return;
+  }
+  if (empty($_GET[ROVAS_VERIFY_INVITE_QUERY])) {
+    return;
+  }
+  if (arg(0) !== 'node' || !is_numeric(arg(1)) || arg(2)) {
+    return;
+  }
+
+  $nid = (int) arg(1);
+  $node = node_load($nid);
+  if (!$node || $node->type !== 'work_report') {
+    return;
+  }
+
+  $destination = 'node/' . $nid;
+  // HybridAuth login reads this session key; password login uses ?destination=.
+  $_SESSION['hybridauth_destination'] = $destination;
+
+  drupal_set_message(t('Please log in to verify this work report.'));
+  drupal_goto('user/login', array(
+    'query' => array('destination' => $destination),
+  ));
+}
+
+/**
  * Implements hook_views_api().
  */
 function rovas_verify_views_api($module = NULL, $api = NULL) {

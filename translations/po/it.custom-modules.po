@@ -493,3 +493,7 @@ msgstr ""
 "in chron aggiungendo un report di lavoro per il lavoro svolto, ad esempio "
 "durante la registrazione in Rovas. Per saperne di più su come usare Rovas, "
 "visita la <a href=\"!rules\"><strong>pagina delle regole</strong></a>."
+
+#: sites/all/modules/custom/rovas_verify/rovas_verify.module
+msgid "Please log in to verify this work report."
+msgstr "Accedi per verificare questo report di lavoro."

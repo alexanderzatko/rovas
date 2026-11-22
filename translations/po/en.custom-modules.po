@@ -418,3 +418,7 @@ msgstr ""
 "adding a work report for work done, for example during registration in "
 "Rovas. Learn more about how to use Rovas by visiting the <a "
 "href=\"!rules\"><strong>rules page</strong></a>."
+
+#: sites/all/modules/custom/rovas_verify/rovas_verify.module
+msgid "Please log in to verify this work report."
+msgstr ""
