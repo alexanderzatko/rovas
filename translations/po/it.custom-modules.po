@@ -367,8 +367,8 @@ msgid "Proofs of work are visible to the public, so we encourage you to review a
 msgstr "Le prove di lavoro sono visibili al pubblico: ti invitiamo a controllare le immagini e a oscurare le informazioni sensibili con gli strumenti di disegno forniti qui."
 
 #: sites/all/modules/custom/rovas_report_form/rovas_report_form.module
-msgid "Use \"Black out areas\" under each photo (or click the thumbnail) to cover names, emails, or phones with a black marker."
-msgstr "Usa «Oscura aree» sotto ogni foto (o clicca la miniatura) per coprire nomi, e-mail o telefoni con un pennarello nero."
+msgid "Use \"Black out areas\" under each photo (or click the thumbnail) to rotate the image or cover names, emails, or phones with a black marker."
+msgstr "Usa «Oscura aree» sotto ogni foto (o clicca la miniatura) per ruotare l’immagine o coprire nomi, e-mail o telefoni con un pennarello nero."
 
 #: sites/all/modules/custom/rovas_report_form/rovas_report_form.module
 msgid "Got it"
@@ -379,12 +379,12 @@ msgid "Black out areas"
 msgstr "Oscura aree"
 
 #: sites/all/modules/custom/rovas_report_form/rovas_report_form.module
-msgid "Opens a marker tool to black out sensitive parts of this image. You can also click the thumbnail."
-msgstr "Apre uno strumento a pennarello per oscurare le parti sensibili di questa immagine. Puoi anche cliccare la miniatura."
+msgid "Opens a tool to rotate the photo or black out sensitive parts. You can also click the thumbnail."
+msgstr "Apre uno strumento per ruotare la foto o oscurare le parti sensibili. Puoi anche cliccare la miniatura."
 
 #: sites/all/modules/custom/rovas_report_form/rovas_report_form.module
-msgid "Click to black out sensitive areas"
-msgstr "Clicca per oscurare le aree sensibili"
+msgid "Click to rotate or black out sensitive areas"
+msgstr "Clicca per ruotare o oscurare le aree sensibili"
 
 #: sites/all/modules/custom/rovas_report_form/rovas_report_form.module
 msgid "Marker size"
@@ -393,6 +393,14 @@ msgstr "Spessore pennarello"
 #: sites/all/modules/custom/rovas_report_form/rovas_report_form.module
 msgid "Make lines straight"
 msgstr "Rendi le linee dritte"
+
+#: sites/all/modules/custom/rovas_report_form/rovas_report_form.module
+msgid "Rotate left"
+msgstr "Ruota a sinistra"
+
+#: sites/all/modules/custom/rovas_report_form/rovas_report_form.module
+msgid "Rotate right"
+msgstr "Ruota a destra"
 
 #: sites/all/modules/custom/rovas_report_form/rovas_report_form.module
 msgid "Back"

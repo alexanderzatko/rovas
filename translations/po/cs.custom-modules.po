@@ -387,8 +387,8 @@ msgid "Proofs of work are visible to the public, so we encourage you to review a
 msgstr "Důkazy práce jsou veřejně viditelné, proto vás žádáme, abyste zkontrolovali obrázky a zakryli citlivé údaje pomocí nástrojů na malování dostupných zde."
 
 #: sites/all/modules/custom/rovas_report_form/rovas_report_form.module
-msgid "Use \"Black out areas\" under each photo (or click the thumbnail) to cover names, emails, or phones with a black marker."
-msgstr "Pod každou fotografií použijte „Zakrýt oblasti“ (nebo klikněte na náhled) a černým popisovačem zakryjte jména, e-maily nebo telefony."
+msgid "Use \"Black out areas\" under each photo (or click the thumbnail) to rotate the image or cover names, emails, or phones with a black marker."
+msgstr "Pod každou fotografií použijte „Zakrýt oblasti“ (nebo klikněte na náhled) k otočení obrázku nebo k zakrytí jmen, e-mailů či telefonů černým popisovačem."
 
 #: sites/all/modules/custom/rovas_report_form/rovas_report_form.module
 msgid "Got it"
@@ -399,12 +399,12 @@ msgid "Black out areas"
 msgstr "Zakrýt oblasti"
 
 #: sites/all/modules/custom/rovas_report_form/rovas_report_form.module
-msgid "Opens a marker tool to black out sensitive parts of this image. You can also click the thumbnail."
-msgstr "Otevře nástroj s popisovačem na zakrytí citlivých částí tohoto obrázku. Můžete také kliknout na náhled."
+msgid "Opens a tool to rotate the photo or black out sensitive parts. You can also click the thumbnail."
+msgstr "Otevře nástroj k otočení fotografie nebo zakrytí citlivých částí. Můžete také kliknout na náhled."
 
 #: sites/all/modules/custom/rovas_report_form/rovas_report_form.module
-msgid "Click to black out sensitive areas"
-msgstr "Kliknutím zakryjete citlivé oblasti"
+msgid "Click to rotate or black out sensitive areas"
+msgstr "Kliknutím otočíte nebo zakryjete citlivé oblasti"
 
 #: sites/all/modules/custom/rovas_report_form/rovas_report_form.module
 msgid "Marker size"
@@ -413,6 +413,14 @@ msgstr "Tloušťka popisovače"
 #: sites/all/modules/custom/rovas_report_form/rovas_report_form.module
 msgid "Make lines straight"
 msgstr "Narovnat čáry"
+
+#: sites/all/modules/custom/rovas_report_form/rovas_report_form.module
+msgid "Rotate left"
+msgstr "Otočit doleva"
+
+#: sites/all/modules/custom/rovas_report_form/rovas_report_form.module
+msgid "Rotate right"
+msgstr "Otočit doprava"
 
 #: sites/all/modules/custom/rovas_report_form/rovas_report_form.module
 msgid "Back"

@@ -1,7 +1,7 @@
 /**
- * Client-side blackout paint for work-report proof photos.
+ * Client-side rotate + blackout paint for work-report proof photos.
  *
- * Apply stages the painted JPEG through the field's normal Upload button
+ * Apply stages the edited JPEG through the field's normal Upload button
  * (Remove → assign File → Upload) so form submit and thumbnails stay in sync.
  */
 (function ($) {
@@ -146,7 +146,7 @@
     });
     var $body = $('<p/>').text(t('note', ''));
     var $hint = $('<p/>', { 'class': 'rovas-photo-paint-warn-hint' })
-      .text(t('noteHint', 'Use “Black out areas” under each photo (or click the thumbnail) to cover names, emails, or phones with a black marker.'));
+      .text(t('noteHint', 'Use “Black out areas” under each photo (or click the thumbnail) to rotate the image or cover names, emails, or phones with a black marker.'));
     var $ok = $('<button/>', {
       type: 'button',
       'class': 'button button-primary',
@@ -243,7 +243,7 @@
       // Thumbnail opens the editor.
       if (!$img.hasClass(THUMB_CLASS)) {
         $img.addClass(THUMB_CLASS);
-        $img.attr('title', t('thumbTitle', 'Click to black out sensitive areas'));
+        $img.attr('title', t('thumbTitle', 'Click to rotate or black out sensitive areas'));
         $img.off('click.rovasPhotoPaint').on('click.rovasPhotoPaint', function (e) {
           e.preventDefault();
           openEditor(fid, $img, $w);
@@ -266,7 +266,7 @@
       $wrap.append($btn);
       $wrap.append($('<div/>', {
         'class': 'rovas-photo-paint-btn-hint description',
-        text: t('btnHint', 'Opens a marker tool to black out sensitive parts of this image. You can also click the thumbnail.')
+        text: t('btnHint', 'Opens a tool to rotate the photo or black out sensitive parts. You can also click the thumbnail.')
       }));
       var $slot = $w.find('.image-widget-data').first();
       if ($slot.length) {
@@ -295,6 +295,7 @@
     var startY = 0;
     var brush = parseInt(t('defaultBrush', 24), 10) || 24;
     var straighten = false;
+    var ready = false;
 
     var $size = $('<label/>').append(
       document.createTextNode(t('brushLabel', 'Marker size') + ' '),
@@ -321,13 +322,25 @@
       straighten = !!this.checked;
     });
 
+    var $rotateLeft = $('<button/>', {
+      type: 'button',
+      'class': 'button rovas-photo-paint-rotate',
+      text: t('rotateLeftLabel', 'Rotate left'),
+      title: t('rotateLeftLabel', 'Rotate left')
+    });
+    var $rotateRight = $('<button/>', {
+      type: 'button',
+      'class': 'button rovas-photo-paint-rotate',
+      text: t('rotateRightLabel', 'Rotate right'),
+      title: t('rotateRightLabel', 'Rotate right')
+    });
     var $undo = $('<button/>', { type: 'button', 'class': 'button', text: t('undoLabel', 'Back') });
     var $clear = $('<button/>', { type: 'button', 'class': 'button', text: t('clearLabel', 'Clear marks') });
     var $apply = $('<button/>', { type: 'button', 'class': 'button button-primary', text: t('applyLabel', 'Apply') });
     var $cancel = $('<button/>', { type: 'button', 'class': 'button', text: t('cancelLabel', 'Cancel') });
     var $status = $('<span/>', { 'class': 'rovas-photo-paint-status' });
 
-    toolbar.append($size, $straight, $undo, $clear, $apply, $cancel, $status);
+    toolbar.append($rotateLeft, $rotateRight, $size, $straight, $undo, $clear, $apply, $cancel, $status);
     canvasWrap.append(canvas);
     panel.append(toolbar, canvasWrap);
     overlay.append(panel);
@@ -337,9 +350,42 @@
     $apply.prop('disabled', true);
     $undo.prop('disabled', true);
     $clear.prop('disabled', true);
+    $rotateLeft.prop('disabled', true);
+    $rotateRight.prop('disabled', true);
+
+    function fitDisplaySize() {
+      var maxW = Math.min(1200, window.innerWidth - 48);
+      var maxH = Math.min(700, window.innerHeight - 140);
+      var w = canvas.width;
+      var h = canvas.height;
+      if (!w || !h) {
+        return;
+      }
+      var scale = Math.min(1, maxW / w, maxH / h);
+      canvas.style.width = Math.round(w * scale) + 'px';
+      canvas.style.height = Math.round(h * scale) + 'px';
+    }
+
+    /**
+     * Snapshot current pixels (and dimensions) so rotate can be undone.
+     */
+    function snapshotCanvas() {
+      var snap = document.createElement('canvas');
+      snap.width = canvas.width;
+      snap.height = canvas.height;
+      snap.getContext('2d').drawImage(canvas, 0, 0);
+      return snap;
+    }
+
+    function restoreSnapshot(snap) {
+      canvas.width = snap.width;
+      canvas.height = snap.height;
+      fitDisplaySize();
+      ctx.drawImage(snap, 0, 0);
+    }
 
     function updateUndoButtons() {
-      // Keep index 0 as the clean baseline; Back only when a stroke can be undone.
+      // Keep index 0 as the clean baseline; Back only when a stroke/rotate can be undone.
       var canUndo = undoStack.length > 1;
       $undo.prop('disabled', !canUndo);
       $clear.prop('disabled', !canUndo);
@@ -347,7 +393,7 @@
 
     function pushUndo() {
       try {
-        undoStack.push(ctx.getImageData(0, 0, canvas.width, canvas.height));
+        undoStack.push(snapshotCanvas());
         if (undoStack.length > 25) {
           // Drop oldest stroke snapshot, keep baseline at [0].
           undoStack.splice(1, 1);
@@ -357,6 +403,35 @@
       catch (err) {
         // Ignore quota errors on huge canvases.
       }
+    }
+
+    /**
+     * Rotate 90° clockwise (dir > 0) or counter-clockwise (dir < 0).
+     */
+    function rotateCanvas(dir) {
+      if (!ready || !canvas.width || !canvas.height) {
+        return;
+      }
+      pushUndo();
+      var w = canvas.width;
+      var h = canvas.height;
+      var tmp = document.createElement('canvas');
+      tmp.width = h;
+      tmp.height = w;
+      var tctx = tmp.getContext('2d');
+      if (dir > 0) {
+        tctx.translate(h, 0);
+        tctx.rotate(Math.PI / 2);
+      }
+      else {
+        tctx.translate(0, w);
+        tctx.rotate(-Math.PI / 2);
+      }
+      tctx.drawImage(canvas, 0, 0);
+      canvas.width = tmp.width;
+      canvas.height = tmp.height;
+      fitDisplaySize();
+      ctx.drawImage(tmp, 0, 0);
     }
 
     function canvasPos(evt) {
@@ -424,7 +499,7 @@
       var endX = lastX;
       var endY = lastY;
       try {
-        ctx.putImageData(undoStack[undoStack.length - 1], 0, 0);
+        restoreSnapshot(undoStack[undoStack.length - 1]);
       }
       catch (err) {
         return;
@@ -445,12 +520,22 @@
     $(canvas).on('touchmove', onMove);
     $(canvas).on('touchend touchcancel', onUp);
 
+    $rotateLeft.on('click', function (e) {
+      e.preventDefault();
+      rotateCanvas(-1);
+    });
+
+    $rotateRight.on('click', function (e) {
+      e.preventDefault();
+      rotateCanvas(1);
+    });
+
     $undo.on('click', function (e) {
       e.preventDefault();
       if (undoStack.length <= 1) {
         return;
       }
-      ctx.putImageData(undoStack.pop(), 0, 0);
+      restoreSnapshot(undoStack.pop());
       updateUndoButtons();
     });
 
@@ -459,7 +544,7 @@
       if (undoStack.length <= 1) {
         return;
       }
-      ctx.putImageData(undoStack[0], 0, 0);
+      restoreSnapshot(undoStack[0]);
       undoStack = [undoStack[0]];
       updateUndoButtons();
     });
@@ -542,21 +627,20 @@
       var image = new Image();
       image.crossOrigin = 'anonymous';
       image.onload = function () {
-        var maxW = Math.min(1200, window.innerWidth - 48);
-        var maxH = Math.min(700, window.innerHeight - 140);
         var w = image.naturalWidth || image.width;
         var h = image.naturalHeight || image.height;
-        var scale = Math.min(1, maxW / w, maxH / h);
         // Paint at native (original file) resolution; CSS scales the display.
         canvas.width = w;
         canvas.height = h;
-        canvas.style.width = Math.round(w * scale) + 'px';
-        canvas.style.height = Math.round(h * scale) + 'px';
+        fitDisplaySize();
         ctx.drawImage(image, 0, 0);
         undoStack = [];
         pushUndo();
+        ready = true;
         $status.text('');
         $apply.prop('disabled', false);
+        $rotateLeft.prop('disabled', false);
+        $rotateRight.prop('disabled', false);
         updateUndoButtons();
       };
       image.onerror = function () {

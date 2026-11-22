@@ -262,8 +262,8 @@ msgid "Proofs of work are visible to the public, so we encourage you to review a
 msgstr "Proofs of work are visible to the public, so we encourage you to review and redact sensitive information from the images using the paint tools provided here."
 
 #: sites/all/modules/custom/rovas_report_form/rovas_report_form.module
-msgid "Use \"Black out areas\" under each photo (or click the thumbnail) to cover names, emails, or phones with a black marker."
-msgstr "Use "Black out areas" under each photo (or click the thumbnail) to cover names, emails, or phones with a black marker."
+msgid "Use \"Black out areas\" under each photo (or click the thumbnail) to rotate the image or cover names, emails, or phones with a black marker."
+msgstr "Use \"Black out areas\" under each photo (or click the thumbnail) to rotate the image or cover names, emails, or phones with a black marker."
 
 #: sites/all/modules/custom/rovas_report_form/rovas_report_form.module
 msgid "Got it"
@@ -274,12 +274,12 @@ msgid "Black out areas"
 msgstr "Black out areas"
 
 #: sites/all/modules/custom/rovas_report_form/rovas_report_form.module
-msgid "Opens a marker tool to black out sensitive parts of this image. You can also click the thumbnail."
-msgstr "Opens a marker tool to black out sensitive parts of this image. You can also click the thumbnail."
+msgid "Opens a tool to rotate the photo or black out sensitive parts. You can also click the thumbnail."
+msgstr "Opens a tool to rotate the photo or black out sensitive parts. You can also click the thumbnail."
 
 #: sites/all/modules/custom/rovas_report_form/rovas_report_form.module
-msgid "Click to black out sensitive areas"
-msgstr "Click to black out sensitive areas"
+msgid "Click to rotate or black out sensitive areas"
+msgstr "Click to rotate or black out sensitive areas"
 
 #: sites/all/modules/custom/rovas_report_form/rovas_report_form.module
 msgid "Marker size"
@@ -288,6 +288,14 @@ msgstr "Marker size"
 #: sites/all/modules/custom/rovas_report_form/rovas_report_form.module
 msgid "Make lines straight"
 msgstr "Make lines straight"
+
+#: sites/all/modules/custom/rovas_report_form/rovas_report_form.module
+msgid "Rotate left"
+msgstr "Rotate left"
+
+#: sites/all/modules/custom/rovas_report_form/rovas_report_form.module
+msgid "Rotate right"
+msgstr "Rotate right"
 
 #: sites/all/modules/custom/rovas_report_form/rovas_report_form.module
 msgid "Back"

@@ -105,6 +105,10 @@
   vertical-align: middle;
 }
 
+.rovas-photo-paint-rotate {
+  white-space: nowrap;
+}
+
 .rovas-photo-paint-straight {
   user-select: none;
 }
