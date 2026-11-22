@@ -77,11 +77,6 @@
                   }
                 ]
               }
-            },
-            {
-              "php_eval": {
-                "code": "watchdog('debug', 'heartbeat - Expire projects rule executed');"
-              }
             }
           ],
           "LABEL": "Expire projects"
@@ -92,11 +87,6 @@
           "DO": [
             {
               "component_rules_process_asset_usage_records": []
-            },
-            {
-              "php_eval": {
-                "code": "watchdog('debug', 'heartbeat - AURs processed');"
-              }
             }
           ],
           "LABEL": "process AURs"
@@ -110,11 +100,6 @@
             }
           },
           "DO": [
-            {
-              "php_eval": {
-                "code": "watchdog('debug','starting rule \"heartbeat - Allocate penalty for a dispute\"');"
-              }
-            },
             {
               "entity_query": {
                 "USING": {
@@ -492,11 +477,6 @@
                   }
                 },
                 "identifier": "h-beat"
-              }
-            },
-            {
-              "php_eval": {
-                "code": "watchdog('debug','rule \"heartbeat - Allocate penalty for a dispute\" executed');"
               }
             }
           ],
