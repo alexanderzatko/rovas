@@ -2091,16 +2091,19 @@ function rovas_civic_users_lookup_top_charities($uid, $lang = NULL) {
 /**
  * Top volunteer projects for a user.
  *
- * Attributes ledger Merits already in the volunteer bucket
- * (`field_merit_source` = volunteer_work or empty) to projects via:
+ * Attributes ledger Merits in the volunteer bucket to projects via:
  * (1) shareholder project rewards — parent receipt `field_receipt_project`
- *     (excludes WR receipts so paths stay disjoint);
+ *     (excludes WR receipts so paths stay disjoint) for
+ *     `volunteer_work` / empty source;
  * (2) individually rewarded work reports — parent receipt
- *     `field_rewarded_report` → WR → `field_project`.
+ *     `field_rewarded_report` → WR → `field_project` (same sources);
+ * (3) CHR→ME / forex (`by_source.volunteer`) distributed across projects
+ *     proportional to Chron grants the user earned from WRs on those
+ *     projects (chron ledger `wr_grant`, else verified WR Chron fields).
  *
  * Does **not** use allocation `field_merits_earned` (can drift above what the
- * ledger credited). CHR→ME / forex (`volunteer`) is excluded. Sum of returned
- * `me` is therefore ≤ `by_source.volunteer_work` (modulo rounding).
+ * ledger credited). Without Chron-grant weights, CHR→ME stays unattributed.
+ * Without penalty, sum of returned `me` ≤ `by_category.volunteer`.
  *
  * @param int $uid
  * @param string|null $lang
@@ -2195,6 +2198,9 @@ function rovas_civic_users_lookup_top_volunteer_projects($uid, $lang = NULL) {
     }
   }
 
+  // CHR→ME (ledger source `volunteer`): spread across projects by Chron grants.
+  rovas_civic_users_lookup_merge_chr_me_volunteer_projects($uid, $by_nid);
+
   if (empty($by_nid)) {
     return array();
   }
@@ -2230,6 +2236,217 @@ function rovas_civic_users_lookup_top_volunteer_projects($uid, $lang = NULL) {
     );
   }
   return $out;
+}
+
+/**
+ * Merge CHR→ME (`by_source.volunteer`) into volunteer project ME map.
+ *
+ * Distributes the user's forex/CHR→ME Merits across projects proportional to
+ * Chron grants earned from work reports on those projects. Mutates $by_nid.
+ * Leaves ME unattributed when volunteer ME > 0 but Chron weights are empty.
+ *
+ * @param int $uid
+ * @param array $by_nid
+ *   project_nid => { name, me } (passed by reference).
+ */
+function rovas_civic_users_lookup_merge_chr_me_volunteer_projects($uid, array &$by_nid) {
+  $uid = (int) $uid;
+  if ($uid < 1) {
+    return;
+  }
+  if (!function_exists('rovas_merit_user_by_source') && module_exists('rovas_merit')) {
+    module_load_include('inc', 'rovas_merit', 'rovas_merit.ledger');
+  }
+  if (!function_exists('rovas_merit_user_by_source')) {
+    return;
+  }
+
+  $by_source = rovas_merit_user_by_source($uid);
+  $source_key = defined('ROVAS_MERIT_SOURCE_VOLUNTEER')
+    ? ROVAS_MERIT_SOURCE_VOLUNTEER
+    : 'volunteer';
+  $volunteer_me = isset($by_source[$source_key])
+    ? (float) $by_source[$source_key]
+    : 0.0;
+  if ($volunteer_me <= 0) {
+    return;
+  }
+
+  $weights = rovas_civic_users_lookup_wr_chron_grant_weights($uid);
+  if (empty($weights)) {
+    return;
+  }
+
+  $total_weight = 0.0;
+  foreach ($weights as $row) {
+    $total_weight += (float) $row['chrons'];
+  }
+  if ($total_weight <= 0) {
+    return;
+  }
+
+  foreach ($weights as $nid => $row) {
+    $nid = (int) $nid;
+    $w = (float) $row['chrons'];
+    if ($nid < 1 || $w <= 0) {
+      continue;
+    }
+    $share = $volunteer_me * ($w / $total_weight);
+    if ($share <= 0) {
+      continue;
+    }
+    $name = isset($row['name']) ? trim((string) $row['name']) : '';
+    if (!isset($by_nid[$nid])) {
+      $by_nid[$nid] = array('name' => $name, 'me' => 0.0);
+    }
+    $by_nid[$nid]['me'] += $share;
+    if ($by_nid[$nid]['name'] === '' && $name !== '') {
+      $by_nid[$nid]['name'] = $name;
+    }
+  }
+}
+
+/**
+ * Chron-grant weights per project for CHR→ME volunteer attribution.
+ *
+ * Prefers positive chron_adjustment `wr_grant` amounts linked to the user's
+ * work reports. Falls back to verified WRs authored by the uid using
+ * `field_chrons_to_grant`, else `hours × 10` (same as reward helpers).
+ *
+ * @param int $uid
+ *
+ * @return array
+ *   project_nid => { name, chrons }. Empty when nothing attributable.
+ */
+function rovas_civic_users_lookup_wr_chron_grant_weights($uid) {
+  $uid = (int) $uid;
+  $weights = array();
+  if ($uid < 1 || !field_info_field('field_project')) {
+    return $weights;
+  }
+
+  $src_wr_grant = defined('ROVAS_CHRON_SOURCE_WR_GRANT')
+    ? ROVAS_CHRON_SOURCE_WR_GRANT
+    : 'wr_grant';
+
+  // Prefer chron ledger wr_grant → WR → project.
+  if (field_info_field('field_parent_work_report')
+    && field_info_field('field_chron_source')
+    && field_info_field('field_amount')) {
+    $sql = "
+      SELECT pn.nid AS nid, pn.title AS title, SUM(amt.field_amount_value) AS chrons
+      FROM {node} adj
+      INNER JOIN {field_data_field_chron_source} src
+        ON src.entity_id = adj.nid AND src.entity_type = 'node' AND src.deleted = 0
+      INNER JOIN {field_data_field_amount} amt
+        ON amt.entity_id = adj.nid AND amt.entity_type = 'node' AND amt.deleted = 0
+      INNER JOIN {field_data_field_parent_work_report} wr
+        ON wr.entity_id = adj.nid AND wr.entity_type = 'node' AND wr.deleted = 0
+      INNER JOIN {field_data_field_project} p
+        ON p.entity_id = wr.field_parent_work_report_target_id
+        AND p.entity_type = 'node' AND p.deleted = 0
+      INNER JOIN {node} pn ON pn.nid = p.field_project_target_id
+      WHERE adj.type = 'chron_adjustment'
+        AND adj.status = 1
+        AND adj.uid = :uid
+        AND src.field_chron_source_value = :src
+        AND amt.field_amount_value > 0
+      GROUP BY pn.nid, pn.title
+    ";
+    foreach (db_query($sql, array(':uid' => $uid, ':src' => $src_wr_grant)) as $row) {
+      $nid = (int) $row->nid;
+      $chrons = (float) $row->chrons;
+      $name = trim((string) $row->title);
+      if ($nid < 1 || $chrons <= 0) {
+        continue;
+      }
+      $weights[$nid] = array('name' => $name, 'chrons' => $chrons);
+    }
+  }
+
+  if (!empty($weights)) {
+    return $weights;
+  }
+
+  // Fallback: verified WRs authored by uid — Chron field or hours × 10.
+  if (!field_info_field('field_verification_status')) {
+    return $weights;
+  }
+
+  $has_chrons = field_info_field('field_chrons_to_grant');
+  $has_hours = field_info_field('field_hours_worked');
+  if (!$has_chrons && !$has_hours) {
+    return $weights;
+  }
+
+  $chrons_expr = '0';
+  if ($has_chrons && $has_hours) {
+    $chrons_expr = "
+      CASE
+        WHEN ch.field_chrons_to_grant_value IS NOT NULL
+          AND ch.field_chrons_to_grant_value > 0
+          THEN ch.field_chrons_to_grant_value
+        WHEN hrs.field_hours_worked_value IS NOT NULL
+          AND hrs.field_hours_worked_value > 0
+          THEN hrs.field_hours_worked_value * 10
+        ELSE 0
+      END
+    ";
+  }
+  elseif ($has_chrons) {
+    $chrons_expr = 'COALESCE(ch.field_chrons_to_grant_value, 0)';
+  }
+  else {
+    $chrons_expr = '
+      CASE
+        WHEN hrs.field_hours_worked_value IS NOT NULL
+          AND hrs.field_hours_worked_value > 0
+          THEN hrs.field_hours_worked_value * 10
+        ELSE 0
+      END
+    ';
+  }
+
+  $sql = "
+    SELECT pn.nid AS nid, pn.title AS title, SUM($chrons_expr) AS chrons
+    FROM {node} n
+    INNER JOIN {field_data_field_project} p
+      ON p.entity_id = n.nid AND p.entity_type = 'node' AND p.deleted = 0
+    INNER JOIN {node} pn ON pn.nid = p.field_project_target_id
+    INNER JOIN {field_data_field_verification_status} vs
+      ON vs.entity_id = n.nid AND vs.entity_type = 'node' AND vs.deleted = 0
+  ";
+  if ($has_chrons) {
+    $sql .= "
+    LEFT JOIN {field_data_field_chrons_to_grant} ch
+      ON ch.entity_id = n.nid AND ch.entity_type = 'node' AND ch.deleted = 0
+    ";
+  }
+  if ($has_hours) {
+    $sql .= "
+    LEFT JOIN {field_data_field_hours_worked} hrs
+      ON hrs.entity_id = n.nid AND hrs.entity_type = 'node' AND hrs.deleted = 0
+    ";
+  }
+  $sql .= "
+    WHERE n.type = 'work_report'
+      AND n.status = 1
+      AND n.uid = :uid
+      AND vs.field_verification_status_value = 1
+    GROUP BY pn.nid, pn.title
+  ";
+
+  foreach (db_query($sql, array(':uid' => $uid)) as $row) {
+    $nid = (int) $row->nid;
+    $chrons = (float) $row->chrons;
+    $name = trim((string) $row->title);
+    if ($nid < 1 || $chrons <= 0) {
+      continue;
+    }
+    $weights[$nid] = array('name' => $name, 'chrons' => $chrons);
+  }
+
+  return $weights;
 }
 
 /**
