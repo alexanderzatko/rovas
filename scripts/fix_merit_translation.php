@@ -7,34 +7,35 @@
  * Related content rules for SK/CS:
  * - Use "Rováš" (with inflections) instead of "Rovas" in visible text.
  * - Keep lowercase "rovas" in URLs, anchors, and technical identifiers.
- * - Use "chron/chrony/chronov" instead of kroniky/koruny/chronogram.
- * - Keep "Merit" terminology instead of zásluhy.
+ * - Use chron/chrony/chronov/chronom/chronmi (never kron*); vzor strom.
+ * - Use merit/merity/meritov/meritom/meritmi (never zásluh*); vzor dub.
+ * - SK: lowercase chron/merit mid-sentence (see .cursor/rules/sk-chron-merit-terminology.mdc).
  */
 
 function merit_replacements_sk() {
   return [
-    'odmenu za zásluhy' => 'Meritovú odmenu',
-    'odmene za zásluhy' => 'Meritovej odmene',
-    'odmeny za zásluhy' => 'Meritové odmeny',
-    'Oddelenie odmeny za zásluhy' => 'Oddelenie Meritovej odmeny',
-    'kumulatívneho skóre zásluh' => 'kumulatívneho Meritového skóre',
-    'od skóre zásluh' => 'od Meritového skóre',
-    'skóre zásluh' => 'Meritové skóre',
-    'rozdelenie zásluh' => 'rozdelenie Meritov',
-    'množstvom zásluh' => 'množstvom Meritov',
-    'počtom zásluh' => 'počtom Meritov',
-    'na zásluhy' => 'na Merity',
-    'nové zásluhy' => 'nové Merity',
-    'desať zásluh' => 'desať Meritov',
-    'získavať zásluhy' => 'získavať Merity',
-    'získať zásluhy' => 'získať Merity',
-    'chronogramy a zásluhy' => 'chrony a Merity',
-    'zásluhy sa' => 'Merity sa',
-    'zásluhy,' => 'Merity,',
-    'zásluhy.' => 'Merity.',
-    'zásluhy ' => 'Merity ',
-    'zásluhy' => 'Merity',
-    'zásluh' => 'Meritov',
+    'odmenu za zásluhy' => 'meritovú odmenu',
+    'odmene za zásluhy' => 'meritovej odmene',
+    'odmeny za zásluhy' => 'meritové odmeny',
+    'Oddelenie odmeny za zásluhy' => 'Oddelenie meritovej odmeny',
+    'kumulatívneho skóre zásluh' => 'kumulatívneho meritového skóre',
+    'od skóre zásluh' => 'od meritového skóre',
+    'skóre zásluh' => 'meritové skóre',
+    'rozdelenie zásluh' => 'rozdelenie meritov',
+    'množstvom zásluh' => 'množstvom meritov',
+    'počtom zásluh' => 'počtom meritov',
+    'na zásluhy' => 'na merity',
+    'nové zásluhy' => 'nové merity',
+    'desať zásluh' => 'desať meritov',
+    'získavať zásluhy' => 'získavať merity',
+    'získať zásluhy' => 'získať merity',
+    'chronogramy a zásluhy' => 'chrony a merity',
+    'zásluhy sa' => 'merity sa',
+    'zásluhy,' => 'merity,',
+    'zásluhy.' => 'merity.',
+    'zásluhy ' => 'merity ',
+    'zásluhy' => 'merity',
+    'zásluh' => 'meritov',
   ];
 }
 

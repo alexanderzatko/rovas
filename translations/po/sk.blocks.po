@@ -40,7 +40,7 @@ msgid ""
 "Buy or sell Chrons for foreign currencies. Please select the "
 "appropriate conversion from the list below."
 msgstr ""
-"Na tejto stránke môžte kúpiť alebo predať Chrony za cudziu menu. "
+"Na tejto stránke môžte kúpiť alebo predať chrony za cudziu menu. "
 "V prvom kroku vyberte typ konverzie ktorý chcete uskutočniť."
 
 #: blocks:block:8:body

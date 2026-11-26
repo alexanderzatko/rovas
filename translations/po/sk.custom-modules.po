@@ -141,7 +141,7 @@ msgstr "Súkromie"
 
 #: sites/all/modules/custom/rovas_oauth/rovas_oauth.module:159
 msgid "Read your Rovas username and grant Merits on your behalf."
-msgstr "Čítať vaše používateľské meno v Rováši a prideľovať Merity vo vašom mene."
+msgstr "Čítať vaše používateľské meno v Rováši a prideľovať merity vo vašom mene."
 
 #: sites/all/modules/custom/rovas_civic/rovas_civic.charity.inc
 msgid "Public-benefit / nonprofit project"
@@ -289,7 +289,7 @@ msgstr "Dôveryhodný používateľ — nastavenia"
 
 #: sites/all/modules/custom/rovas_user/rovas_user.module
 msgid "A user can become trusted if their <a href=\"@glossary\">compliance score</a> is at least @score, or if they own a project and have earned more than @merits Merits from rewards to that project (owning shares alone is not enough)."
-msgstr "Dôveryhodným používateľom sa môže stať ten, kto má <a href=\"@glossary\">skóre súladu</a> aspoň @score, alebo ak vlastní projekt a z odmien tohto projektu získal viac ako @merits Meritov (samotné vlastníctvo podielov nestačí)."
+msgstr "Dôveryhodným používateľom sa môže stať ten, kto má <a href=\"@glossary\">skóre súladu</a> aspoň @score, alebo ak vlastní projekt a z odmien tohto projektu získal viac ako @merits meritov (samotné vlastníctvo podielov nestačí)."
 
 #: sites/all/modules/custom/rovas_user/rovas_user.module
 msgid "Even when your reports are immediately approved, other users can still challenge them by filing a dispute. Losing a dispute can revoke Trusted user status."
@@ -366,7 +366,7 @@ msgstr "Prácu je možné nahlásiť len ak začala v posledných 30 dňoch."
 
 #: sites/all/modules/custom/rovas_chron/rovas_chron.module
 msgid "Merit receipt offset"
-msgstr "Vyrovnanie Merit potvrdenky"
+msgstr "Vyrovnanie merit potvrdenky"
 
 #: sites/all/modules/custom/rovas_chron/rovas_chron.module
 msgid "Work report grant"
@@ -382,7 +382,7 @@ msgstr "Počiatočný zostatok"
 
 #: sites/all/modules/custom/rovas_chron/rovas_chron.ledger.inc
 msgid "Opening balance at Chron ledger cutover (no wallet change; closes Chron-tab drift)."
-msgstr "Počiatočný zostatok pri prechode na Chron ledger (bez zmeny peňaženky; uzavrie odchýlku Chron karty)."
+msgstr "Počiatočný zostatok pri prechode na chron ledger (bez zmeny peňaženky; uzavrie odchýlku chron karty)."
 
 #: sites/all/modules/custom/rovas_comment_watch/rovas_comment_watch.module
 msgid "Dismiss comment watch notice"

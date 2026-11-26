@@ -4851,7 +4851,7 @@ msgstr "Pracovné činnosti"
 #: taxonomy:term:1858:description
 msgctxt "term:1858:description"
 msgid "Buy or sell foreign currency for Chrons"
-msgstr "Na tejto stránke môžte kúpiť alebo predať Chrony za cudziu menu."
+msgstr "Na tejto stránke môžte kúpiť alebo predať chrony za cudziu menu."
 
 #: taxonomy:term:1858:name
 msgctxt "term:1858:name"

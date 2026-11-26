@@ -3333,7 +3333,7 @@ msgid ""
 "Error: The specified user does not exist. The new Worker Merit "
 "Allocation record was deleted."
 msgstr ""
-"Chyba: Zadaný používateľ neexistuje. Nový záznam Podielu Meritov "
+"Chyba: Zadaný používateľ neexistuje. Nový záznam Podielu meritov "
 "bol odstránený."
 
 #: rules:rules_config:rules_merit_allocation_deleted_send_email:label

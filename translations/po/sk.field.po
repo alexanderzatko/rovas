@@ -1269,12 +1269,12 @@ msgstr "Dátum uzávierky"
 #: field:field_conversion_type:#allowed_values:chrons_to_euros
 msgctxt "field_conversion_type:#allowed_values:chrons_to_euros"
 msgid "Chrons to Euros"
-msgstr "z Chronov na Eurá"
+msgstr "z chronov na Eurá"
 
 #: field:field_conversion_type:#allowed_values:euros_to_chrons
 msgctxt "field_conversion_type:#allowed_values:euros_to_chrons"
 msgid "Euros to Chrons"
-msgstr "z Eur na Chrony"
+msgstr "z Eur na chrony"
 
 #: field:field_conversion_type:forex_transaction:label
 msgctxt "field_conversion_type:forex_transaction:label"
@@ -1308,7 +1308,7 @@ msgstr "Meno pracovníka"
 #: field:field_coworkers:project:label
 msgctxt "field_coworkers:project:label"
 msgid "Merit Shares"
-msgstr "Podiely Meritov"
+msgstr "Podiely meritov"
 
 #: field:field_date:time_share:label
 msgctxt "field_date:time_share:label"
@@ -1550,20 +1550,20 @@ msgid ""
 "shares is less than 100. The remainder is automatically distributed "
 "among workers according to method 1."
 msgstr ""
-"Existujú dve metódy na prideľovanie Meritov medzi pracovníkov:\r\n"
-"<ol><li> <strong>Podľa času.</strong> Rováš rozdelí Merity mezi "
+"Existujú dve metódy na prideľovanie meritov medzi pracovníkov:\r\n"
+"<ol><li> <strong>Podľa času.</strong> Rováš rozdelí merity mezi "
 "pracovníkov podľa počtu odpracovaných hodín. Napríklad za 100 "
 "Meritov získaných za predaj produktu dostanú Jano s 30 odrobenými "
 "hodinami 3/7 (43 ME) A Mária so 40 hodinami 4/7 (57 ME). Ak chcete "
 "použiť túto metódu, nechajte pole Podiel prázdne.</li>\r\n"
 "<li><strong>Podľa dohody.</strong> Pracovníci na projekte dohodnú "
-"medzi sebou percentuálne podiely podľa ktorých sa budú Merity "
+"medzi sebou percentuálne podiely podľa ktorých sa budú merity "
 "prideľovať. Podiel vyjadrený v percenách vpíšte do poľa "
 "Podiel.</li>\r\n"
 "</ol>\r\n"
 "Obe metódy môžu byť skombinované, ak percentuálny súčet "
 "podielov všetkých podielnikov je menej ako 100. V tom prípade budú "
-"zvyšné Merity rozdelené podľa metódy č. 1"
+"zvyšné merity rozdelené podľa metódy č. 1"
 
 #: field:field_merit_allocation:project_merit_allocation:label
 msgctxt "field_merit_allocation:project_merit_allocation:label"

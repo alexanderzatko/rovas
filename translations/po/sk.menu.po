@@ -96,7 +96,7 @@ msgstr "Výkazy"
 #: menu:item:2737:description
 msgctxt "item:2737:description"
 msgid "Exchange Chrons for national currency and vice versa"
-msgstr "Vymeniť Chrony za národnú menu alebo naopak"
+msgstr "Vymeniť chrony za národnú menu alebo naopak"
 
 #: menu:item:2737:title
 msgctxt "item:2737:title"
@@ -106,7 +106,7 @@ msgstr "Zmenáreň"
 #: menu:item:4159:description
 msgctxt "item:4159:description"
 msgid "Purchase Merit shares in projects"
-msgstr "Kúpiť Merit podiel v projektoch"
+msgstr "Kúpiť merit podiel v projektoch"
 
 #: menu:item:4159:title
 msgctxt "item:4159:title"

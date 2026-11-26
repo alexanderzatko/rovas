@@ -1,0 +1,55 @@
+---
+description: Slovak Chron/Merit spelling, casing, and declension
+alwaysApply: true
+---
+
+# Slovak: Chron and Merit terminology
+
+When writing or translating UI, email, Rules, glossary, or field strings into Slovak:
+
+## Spelling
+
+- **chron** (never *kron*, *krony*, *kronov*, …).
+- **merit** (never *zásluha* / *zásluhy* for this product term).
+
+## Casing
+
+- Use lowercase mid-sentence: **chron** / **merit** and all declined forms.
+- Capitalize only at the start of a sentence, glossary term headings, or short UI labels that are the whole string (e.g. msgstr `"Merity"`, `"Chrony"`).
+- Do **not** treat them as proper nouns mid-sentence.
+- English keeps **Chron(s)** / **Merit(s)**; Czech may keep title case unless aligned separately.
+
+```text
+❌ získate 10 kronov
+✅ získate 10 chronov
+
+❌ odmenu za Merit / prideľovať Merity
+✅ odmenu za merit / prideľovať merity
+
+❌ Vymeniť Chrony za národnú menu
+✅ Vymeniť chrony za národnú menu
+```
+
+## Declension
+
+**chron** — vzor *strom* (inanimate masculine); instrumental plural soft-style as used in product copy:
+
+| Case | Singular | Plural |
+|------|----------|--------|
+| N | chron | chrony |
+| G | chronu | chronov |
+| D | chronu | chronom |
+| A | chron | chrony |
+| L | chrone | chronoch |
+| I | chronom | chronmi |
+
+**merit** — vzor *dub* (inanimate masculine):
+
+| Case | Singular | Plural |
+|------|----------|--------|
+| N | merit | merity |
+| G | meritu | meritov |
+| D | meritu | meritom |
+| A | merit | merity |
+| L | merite | meritoch |
+| I | meritom | meritmi |

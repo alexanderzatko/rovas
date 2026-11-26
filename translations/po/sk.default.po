@@ -48910,7 +48910,7 @@ msgstr "Pracovný výkaz"
 
 #: /user
 msgid "Your Merit score is:"
-msgstr "Vaše Merit skóre je:"
+msgstr "Vaše merit skóre je:"
 
 #: /user
 msgid "Your Chron balance is:"
@@ -49032,7 +49032,7 @@ msgstr "Merity používateľa @username"
 
 #: /user/3/points
 msgid "No !Points earned"
-msgstr "Zatiaľ bez Meritov"
+msgstr "Zatiaľ bez meritov"
 
 #: /user/3/points
 msgid "first"
@@ -49197,7 +49197,7 @@ msgid ""
 "Any Merit reward will be distributed among workers in proportion to the "
 "number of hours reported"
 msgstr ""
-"Akýkoľvek prípadný zisk Meritov bude rozdelený medzi podielnikov podľa hodín"
+"Akýkoľvek prípadný zisk meritov bude rozdelený medzi podielnikov podľa hodín"
 " z ich pracovných výkazov."
 
 #: /node/9
@@ -49205,7 +49205,7 @@ msgid ""
 "Any Merit reward will be distributed among workers according to shown "
 "shares."
 msgstr ""
-"Akýkoľvek prípadný zisk Meritov bude rozdelený medzi pracovníkov podľa ich "
+"Akýkoľvek prípadný zisk meritov bude rozdelený medzi pracovníkov podľa ich "
 "podielov."
 
 #: /node/9
@@ -49213,7 +49213,7 @@ msgid ""
 "% of Merits will be distributed among listed workers according to the number"
 " of hours reported."
 msgstr ""
-"% Meritov bude rozdelených medzi pracovníkov podľa hodín z ich pracovných "
+"% meritov bude rozdelených medzi pracovníkov podľa hodín z ich pracovných "
 "výkazov."
 
 #: /node/9
@@ -49225,7 +49225,7 @@ msgid ""
 "Any Merit reward will be distributed among workers according to shares "
 "shown."
 msgstr ""
-"Akýkoľvek prípadný zisk Meritov bude rozdelený medzi pracovníkov podľa ich "
+"Akýkoľvek prípadný zisk meritov bude rozdelený medzi pracovníkov podľa ich "
 "podielov."
 
 #: /admin/structure/views/view/chron_balance
@@ -49238,7 +49238,7 @@ msgstr "Merit skóre"
 
 #: /admin/structure/views/view/merit_balance
 msgid "You have earned no Merits yet."
-msgstr "Ešte ste nezískali žiadne Merity."
+msgstr "Ešte ste nezískali žiadne merity."
 
 #: /admin/structure/views/view/chron_balance/edit
 msgid "Account balance"
@@ -49404,7 +49404,7 @@ msgstr "Pridať podielnika (pracovníka)"
 
 #: /admin/structure/views/view/project_coworkers/edit
 msgid "Merits Earned"
-msgstr "Odmena v Meritoch"
+msgstr "Odmena v meritoch"
 
 #: /admin/structure/views/view/shares_and_time_sum
 msgid "hours"
@@ -50091,7 +50091,7 @@ msgid ""
 "Please note. Your Merit score is negative, which limits the selection of "
 "functions you can use."
 msgstr ""
-"Upozornenie. Vaše Merit skóre je negatívne, čo obmedzuje rozsah funkcií "
+"Upozornenie. Vaše merit skóre je negatívne, čo obmedzuje rozsah funkcií "
 "aplikácie, ktoré môžte používať."
 
 #: /disputes
@@ -50465,7 +50465,7 @@ msgid ""
 "Any Merit reward will be distributed among shareholders according to shares "
 "shown."
 msgstr ""
-"Akýkoľvek prípadný zisk Meritov bude rozdelený medzi podielnikov podľa "
+"Akýkoľvek prípadný zisk meritov bude rozdelený medzi podielnikov podľa "
 "zobrazených podielov."
 
 #: /node/677
@@ -50473,7 +50473,7 @@ msgid ""
 "Any Merit reward will be distributed among shareholders in proportion to the"
 " number of hours reported"
 msgstr ""
-"Akýkoľvek prípadný zisk Meritov bude rozdelený medzi podielnikov podľa hodín"
+"Akýkoľvek prípadný zisk meritov bude rozdelený medzi podielnikov podľa hodín"
 " z ich pracovných výkazov."
 
 #: /find_project
@@ -50485,7 +50485,7 @@ msgid ""
 "Any Merit reward will be distributed among shareholders according to shown "
 "shares."
 msgstr ""
-"Akýkoľvek prípadný zisk Meritov bude rozdelený medzi podielnikov podľa "
+"Akýkoľvek prípadný zisk meritov bude rozdelený medzi podielnikov podľa "
 "zobrazených podielov."
 
 #: /node/309
@@ -50493,7 +50493,7 @@ msgid ""
 "% of Merits will be distributed among listed shareholders according to the "
 "number of hours reported."
 msgstr ""
-"% Meritov bude rozdelených medzi zobrazenými podielnikmi podľa počtu ich "
+"% meritov bude rozdelených medzi zobrazenými podielnikmi podľa počtu ich "
 "odpracovaných hodín."
 
 #: /node/106/675
@@ -50789,7 +50789,7 @@ msgid ""
 "Error! Please enter value lower than your Chron balance of [current-"
 "user:field_chrons_balance] into the \"Verification reward\" field"
 msgstr ""
-"Chyba! Číslo v poli \"Odmena za overenie\" musí byť menšie ako počet Chronov"
+"Chyba! Číslo v poli \"Odmena za overenie\" musí byť menšie ako počet chronov"
 " na vašom účte: [current-user:field_chrons_balance] CH"
 
 #: /node/add/work-report/1559
@@ -50931,8 +50931,8 @@ msgstr ""
 "<li>Po odoslaní formulára Rováš upraví privilégiá obvineného a upozorní ho na novú situáciu. Počas trvania sporu nebude môcť zakladať vlastné projekty, otvárať spory a podobne.</li>\n"
 "<li>Obe strany sú vyzvané, aby do svojich táborov získali dôveryhodných používateľov. O spore rozhoduje počet dôveryhodných používateľov v každom tábore; vyhráva tábor s väčším počtom. Nábor môže prebiehať tri dni (72 hodín) po tom, čo obvinený spor potvrdí.</li>\n"
 "<li>Ak obvinený napraví sťažnosť do 24 hodín, spor sa zvyčajne uzavrie bez sankcií.</li>\n"
-"<li>Ak obvinený napraví sťažnosť po 24 hodinách, ale pred uplynutím troch dní, spor sa uzavrie a Merit skóre obvineného sa nastaví na 0.</li>\n"
-"<li>Ak obvinený sťažnosť nenapraví, po troch dňoch Rováš spočíta dôveryhodných používateľov v každom tábore. Ak obvinený prehrá, Rováš uplatní sankciu za prehru (Merit skóre vynulované, znížené privilégiá) a odstráni predmet sporu.</li>\n"
+"<li>Ak obvinený napraví sťažnosť po 24 hodinách, ale pred uplynutím troch dní, spor sa uzavrie a merit skóre obvineného sa nastaví na 0.</li>\n"
+"<li>Ak obvinený sťažnosť nenapraví, po troch dňoch Rováš spočíta dôveryhodných používateľov v každom tábore. Ak obvinený prehrá, Rováš uplatní sankciu za prehru (merit skóre vynulované, znížené privilégiá) a odstráni predmet sporu.</li>\n"
 "<li>Ak vyhrá tábor obvineného, alebo spor skončí remízou, spor sa uzavrie a nikto nie je penalizovaný.</li>\n"
 "<li>Ak má obvinený už dva predchádzajúce spory, ktoré neskončili jeho výhrou ani remízou (napríklad boli napravené alebo obvinený prehral), potom pri tomto treťom takom spore dostane trest ako pri prehre, aj keď sťažnosť napraví.</li>\n"
 "</ol>"
@@ -50964,7 +50964,7 @@ msgid ""
 msgstr ""
 "Informácie v tejto časti budú použité pri výmene peňazí. Nie je potrebné "
 "poskytnúť oba typy informácií (čísla bankových účtov alebo e-mailovú adresu "
-"PayPal), ale pri výmene Chronov za národnú menu sa vyžaduje aspoň jeden z "
+"PayPal), ale pri výmene chronov za národnú menu sa vyžaduje aspoň jeden z "
 "nich."
 
 #: /user/289/edit
@@ -50997,7 +50997,7 @@ msgstr "Zmenáreň"
 
 #: /dash
 msgid "Exchange Chrons for national currency and vice versa"
-msgstr "Vymeniť Chrony za národnú menu alebo naopak"
+msgstr "Vymeniť chrony za národnú menu alebo naopak"
 
 #: /forex
 msgid "Buy Euros"
@@ -51014,21 +51014,21 @@ msgstr "Hodnota objednávky musí byť najmenej @euro€, aby mohla byť odoslan
 
 #: /forex
 msgid "Buy Chrons"
-msgstr "Kúpiť Chrony"
+msgstr "Kúpiť chrony"
 
 #: /forex
 msgid ""
 "Your account balance of @chrons CH is insufficient to proceed with this "
 "order."
 msgstr ""
-"Na vašom účte máte len @chrons Chronov, čo bráni v pokračovaní s objednávkou"
+"Na vašom účte máte len @chrons chronov, čo bráni v pokračovaní s objednávkou"
 
 #: /forex
 msgid ""
 "The Chrons amount to receive was rounded down to a whole number, to "
 "accommodate our payment processing system."
 msgstr ""
-"Počet Chronov v objednávke bol zaokrúhlený nadol aby táto mohla byť "
+"Počet chronov v objednávke bol zaokrúhlený nadol aby táto mohla byť "
 "spracovaná našim systémom na spracovanie platieb."
 
 #: /forex
@@ -51095,7 +51095,7 @@ msgstr "Eur/hodinu"
 #: /node/2270
 msgid ""
 "Your purchase of @euros Euro with @chrons Chrons was successfully completed."
-msgstr "Nákup @euros Eur za @chrons Chronov bol úspešne ukončený."
+msgstr "Nákup @euros Eur za @chrons chronov bol úspešne ukončený."
 
 #: /node/2270
 msgid ""
@@ -51126,7 +51126,7 @@ msgstr ""
 
 #: /user/289/chrons
 msgid "Chrons sale"
-msgstr "Predaj Chronov"
+msgstr "Predaj chronov"
 
 #: /cart/checkout
 msgid "Payment Information"
@@ -51195,7 +51195,7 @@ msgstr "Zatiaľ nemáte žiadne objednávky."
 
 #: /user/289/chrons
 msgid "Chrons purchase"
-msgstr "Nákup Chronov"
+msgstr "Nákup chronov"
 
 #: /checkout/12
 msgid "Unit price"
@@ -51257,7 +51257,7 @@ msgstr "Vybrať adresu"
 msgid ""
 "Your purchase of @chrons Chrons with @euros Euros was successfully "
 "completed."
-msgstr "Nákup @chrons Chronov za @euros Eur bol úspešne ukončený."
+msgstr "Nákup @chrons chronov za @euros Eur bol úspešne ukončený."
 
 #: /checkout/30/review
 msgid "Variable symbol: [commerce-order:order-id]"
@@ -51277,11 +51277,11 @@ msgstr "Späť na výber adresy"
 
 #: /node/2452
 msgid "Euros to Chrons"
-msgstr "z Eur na Chrony"
+msgstr "z Eur na chrony"
 
 #: /node/2452
 msgid "Chrons to Euros"
-msgstr "z Chronov na Eurá"
+msgstr "z chronov na Eurá"
 
 #: /checkout/7
 msgid "Billing information"
@@ -51381,7 +51381,7 @@ msgstr "Zadajte platné meno používateľa"
 
 #: /node/add/money-transfer
 msgid "Please enter a value lower than the number of Chrons you have."
-msgstr "Zadajte hodnotu, ktorá je nižšia ako počet Chronov, ktoré máte."
+msgstr "Zadajte hodnotu, ktorá je nižšia ako počet chronov, ktoré máte."
 
 #: /admin/structure/views/view/project_merits_feed/edit/page_1
 msgid "Project rewards"
@@ -51494,7 +51494,7 @@ msgstr "minút"
 
 #: /node/add/verification
 msgid "Merits received"
-msgstr "Odmena v Meritoch"
+msgstr "Odmena v meritoch"
 
 #: /node/add/verification
 msgid "Proofs provided"
@@ -52233,7 +52233,7 @@ msgid ""
 "Your purchase of @amt Euro with @input Chrons was successfully "
 "completed.<br><br>The transaction receipt is available here"
 msgstr ""
-"Nákup @amt Eur za @input Chronov bol úspešne ukončený.<br><br>Potvrdenie o "
+"Nákup @amt Eur za @input chronov bol úspešne ukončený.<br><br>Potvrdenie o "
 "transakcii nájdete tu"
 
 #: /rewpro
@@ -53085,8 +53085,8 @@ msgid ""
 "The order can not be submitted, because you did not recalculate the Merit "
 "value after changing the Chron value."
 msgstr ""
-"Objednávku nie je možné odoslať, pretože ste po zmene hodnoty Chronov "
-"neprepočítali hodnotu Meritov"
+"Objednávku nie je možné odoslať, pretože ste po zmene hodnoty chronov "
+"neprepočítali hodnotu meritov"
 
 #: /prekladac
 msgid ""
@@ -53275,7 +53275,7 @@ msgid ""
 "at least @chr Chrons</strong>, or more."
 msgstr ""
 "Na získanie prístupu k prémiovým funkciám tohto projektu musíte "
-"<strong>zaplatiť @chr Chronov</strong>, alebo viac."
+"<strong>zaplatiť @chr chronov</strong>, alebo viac."
 
 #: /prekladac
 msgid "Payment amount"
@@ -53396,7 +53396,7 @@ msgstr ""
 
 #: /admin/structure/views/view/users_merit_rank/edit
 msgid "Value donated* (Merits = €)"
-msgstr "Darovaná hodnota* (Merity = €)"
+msgstr "Darovaná hodnota* (merity = €)"
 
 #: /admin/structure/views/view/users_merit_rank/edit
 msgid "The Merit Index"
@@ -53423,7 +53423,7 @@ msgstr "Zaregistrujte sa aby ste si mohli zarobiť chrony"
 
 #: /admin/structure/views/view/users_merit_rank/edit/page
 msgid "Donated [Merits = €]*"
-msgstr "Daroval [Meritov = €]*"
+msgstr "Daroval [meritov = €]*"
 
 #: /admin/structure/views/view/users_merit_rank/edit
 msgid ""
