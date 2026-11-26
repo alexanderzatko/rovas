@@ -242,25 +242,9 @@ $handler->display->display_options['fields']['php']['field'] = 'php';
 $handler->display->display_options['fields']['php']['label'] = 'Source';
 $handler->display->display_options['fields']['php']['use_php_setup'] = 0;
 $handler->display->display_options['fields']['php']['php_output'] = '<?php
-
-	$origprojlabel = empty($data->field_field_receipt_project[0][\'rendered\'][\'#label\']) ? \'\' : $data->field_field_receipt_project[0][\'rendered\'][\'#label\'];
-
-if(empty($data->field_field_receipt_project) && empty($data->field_field_rewarded_report)) {
-	echo t(\'Merits purchase\');
-	}
-else if(empty($data->field_field_rewarded_report[0][\'rendered\'][\'#label\'])) {
-	$projlabel = (strlen($origprojlabel) > 55) ? substr($origprojlabel,0,51).\'...\' : $origprojlabel;	
-	echo \'<span class="projct-type">\' . t(\'Project\') . \'</span> \' . \'<a href="/node/\' . $data->field_field_receipt_project[0][\'rendered\'][\'#item\'][\'target_id\'] . \'" title="\'.$origprojlabel.\'">\' . $projlabel . \'</a>\';
-	}
-else {
-/*
-	$projlabel = (strlen($origprojlabel) > 25) ? substr($origprojlabel,0,21).\'...\' : $origprojlabel;	
-	echo t(\'Report\') . \' \' .\'<a href="/node/\' . $data->field_field_receipt_project[0][\'rendered\'][\'#item\'][\'target_id\'] . \'" title="\'.$origprojlabel.\'">\' . $projlabel . \'</a>\';
-*/
-	$origwreplabel = $data->field_field_rewarded_report[0][\'rendered\'][\'#label\'];
-	$wreplabel = (strlen($origwreplabel) > 55) ? substr($origwreplabel,0,51).\'...\' : $origwreplabel;	
-
-	echo \'<span class="wreport-type">\' . t(\'Report\') . \'</span> \' . \'<a href="/node/\' . $data->field_field_rewarded_report[0][\'rendered\'][\'#item\'][\'target_id\'] . \'" title="\'.$origwreplabel.\'">\' . $wreplabel . \'</a>\';
+module_load_include(\'inc\', \'rovas_civic\', \'rovas_civic.me_sources\');
+if (function_exists(\'rovas_civic_me_sources_merit_history_source_html\')) {
+  echo rovas_civic_me_sources_merit_history_source_html($view, $data);
 }
 ?>';
 $handler->display->display_options['fields']['php']['use_php_click_sortable'] = '0';
@@ -429,24 +413,9 @@ $handler->display->display_options['fields']['php']['field'] = 'php';
 $handler->display->display_options['fields']['php']['label'] = 'Source';
 $handler->display->display_options['fields']['php']['use_php_setup'] = 0;
 $handler->display->display_options['fields']['php']['php_output'] = '<?php
-
-$origprojlabel = empty($data->field_field_receipt_project[0][\'rendered\'][\'#label\']) ? \'\' : $data->field_field_receipt_project[0][\'rendered\'][\'#label\'];
-
-if ($data->_field_data[\'nid\'][\'entity\']->type == \'merit_penalty\') {
-	echo t(\'Penalty\');
-}
-else if (empty($data->field_field_receipt_project) && empty($data->field_field_rewarded_report)) {
-	echo t(\'Merits purchase\');
-}
-else if(empty($data->field_field_rewarded_report[0][\'rendered\'][\'#label\'])) {
-	$projlabel = (strlen($origprojlabel) > 55) ? substr($origprojlabel,0,51).\'...\' : $origprojlabel;	
-	echo \'<span class="projct-type">\' . t(\'Project\') . \'</span> \' . \'<a href="/node/\' . $data->field_field_receipt_project[0][\'rendered\'][\'#item\'][\'target_id\'] . \'" title="\'.$origprojlabel.\'">\' . $projlabel . \'</a>\';
-}
-else {
-	$origwreplabel = $data->field_field_rewarded_report[0][\'rendered\'][\'#label\'];
-	$wreplabel = (strlen($origwreplabel) > 55) ? substr($origwreplabel,0,51).\'...\' : $origwreplabel;	
-
-	echo \'<span class="wreport-type">\' . t(\'Report\') . \'</span> \' . \'<a href="/node/\' . $data->field_field_rewarded_report[0][\'rendered\'][\'#item\'][\'target_id\'] . \'" title="\'.$origwreplabel.\'">\' . $wreplabel . \'</a>\';
+module_load_include(\'inc\', \'rovas_civic\', \'rovas_civic.me_sources\');
+if (function_exists(\'rovas_civic_me_sources_merit_history_source_html\')) {
+  echo rovas_civic_me_sources_merit_history_source_html($view, $data);
 }
 ?>';
 $handler->display->display_options['fields']['php']['use_php_click_sortable'] = '0';

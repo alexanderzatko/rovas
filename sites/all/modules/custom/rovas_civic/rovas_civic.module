@@ -79,38 +79,164 @@ function rovas_civic_permission() {
 /**
  * Implements hook_field_access().
  *
- * Hide field_merit_source on ledger nodes when the viewer may only see
- * aggregate ME sources for the reward recipient (ME sources privacy).
+ * ME sources privacy:
+ * - Hide field_merit_source on ledger nodes when the viewer may only see
+ *   aggregate ME sources for the reward recipient.
+ * - Soft-hide tax/gift project attribution (parent receipt / project / note)
+ *   that would otherwise reveal the true origin.
  */
 function rovas_civic_field_access($op, $field, $entity_type, $entity, $account) {
   if ($op !== 'view' || $entity_type !== 'node' || empty($field['field_name'])) {
     return;
   }
-  if ($field['field_name'] !== 'field_merit_source') {
-    return;
-  }
   if (empty($entity) || empty($entity->type)) {
     return;
   }
-  if ($entity->type !== 'merits_disbursement' && $entity->type !== 'merit_penalty') {
-    return;
-  }
-
-  $items = field_get_items('node', $entity, 'field_reward_recipient');
-  if (empty($items[0]['target_id'])) {
-    return;
-  }
-  $subject_uid = (int) $items[0]['target_id'];
-  $viewer_uid = (!empty($account->uid)) ? (int) $account->uid : 0;
 
   module_load_include('inc', 'rovas_civic', 'rovas_civic.me_sources');
   if (!function_exists('rovas_civic_me_sources_detail_resolve')) {
     return;
   }
-  $detail = rovas_civic_me_sources_detail_resolve($subject_uid, $viewer_uid);
-  if ($detail === ROVAS_CIVIC_ME_SOURCES_DETAIL_AGGREGATE) {
-    return FALSE;
+
+  $viewer_uid = (!empty($account->uid)) ? (int) $account->uid : 0;
+  $fname = $field['field_name'];
+
+  // Ledger: hide explicit source + parent receipt when tax/gift + aggregate.
+  if ($entity->type === 'merits_disbursement' || $entity->type === 'merit_penalty') {
+    $items = field_get_items('node', $entity, 'field_reward_recipient');
+    if (empty($items[0]['target_id'])) {
+      return;
+    }
+    $subject_uid = (int) $items[0]['target_id'];
+    $detail = rovas_civic_me_sources_detail_resolve($subject_uid, $viewer_uid);
+    if ($detail !== ROVAS_CIVIC_ME_SOURCES_DETAIL_AGGREGATE) {
+      return;
+    }
+    if ($fname === 'field_merit_source') {
+      return FALSE;
+    }
+    if ($fname === 'field_parent_purchase_receipt'
+      && function_exists('rovas_civic_me_sources_row_is_tax_or_gift')
+      && rovas_civic_me_sources_row_is_tax_or_gift($entity)) {
+      return FALSE;
+    }
+    return;
   }
+
+  // Purchase receipt: hide project + note when buyer is aggregate and project is tax/gift.
+  if ($entity->type === 'purchase_receipt'
+    && ($fname === 'field_receipt_project' || $fname === 'body')) {
+    $buyer = field_get_items('node', $entity, 'field_buyer');
+    if (empty($buyer[0]['target_id'])) {
+      return;
+    }
+    $subject_uid = (int) $buyer[0]['target_id'];
+    if (rovas_civic_me_sources_detail_resolve($subject_uid, $viewer_uid)
+      !== ROVAS_CIVIC_ME_SOURCES_DETAIL_AGGREGATE) {
+      return;
+    }
+    $project_nid = 0;
+    $proj = field_get_items('node', $entity, 'field_receipt_project');
+    if (!empty($proj[0]['target_id'])) {
+      $project_nid = (int) $proj[0]['target_id'];
+    }
+    if (function_exists('rovas_civic_me_sources_is_tax_or_gift_project')
+      && rovas_civic_me_sources_is_tax_or_gift_project($project_nid)) {
+      return FALSE;
+    }
+  }
+}
+
+/**
+ * Implements hook_views_pre_render().
+ *
+ * Force merit_history Source PHP field through the ME sources privacy helper
+ * (works even when the view is overridden in the DB).
+ */
+function rovas_civic_views_pre_render(&$view) {
+  if (empty($view->name) || $view->name !== 'merit_history') {
+    return;
+  }
+  if (empty($view->field['php'])) {
+    return;
+  }
+  module_load_include('inc', 'rovas_civic', 'rovas_civic.me_sources');
+  if (!function_exists('rovas_civic_me_sources_merit_history_source_html')) {
+    return;
+  }
+  $view->field['php']->options['php_output'] = '<?php
+module_load_include(\'inc\', \'rovas_civic\', \'rovas_civic.me_sources\');
+echo rovas_civic_me_sources_merit_history_source_html($view, $data);
+?>';
+}
+
+/**
+ * Implements hook_views_query_alter().
+ *
+ * On tax/gift project buyer lists, omit buyers the viewer may only see as
+ * aggregate (same rule as ME•tre taxes/charity filters).
+ */
+function rovas_civic_views_query_alter(&$view, &$query) {
+  if (empty($view->name) || $view->name !== 'project_merits_feed') {
+    return;
+  }
+  $display = !empty($view->current_display) ? $view->current_display : '';
+  if (!in_array($display, array('block_1', 'page_1', 'services_1'), TRUE)) {
+    return;
+  }
+
+  $project_nid = 0;
+  if (!empty($view->args[0]) && is_numeric($view->args[0])) {
+    $project_nid = (int) $view->args[0];
+  }
+  elseif ($display === 'page_1' && arg(0) === 'project-purchases' && is_numeric(arg(1))) {
+    $project_nid = (int) arg(1);
+  }
+  // services_1 uses exposed filter project_id, not a contextual arg.
+  elseif (!empty($view->exposed_input['project_id']) && is_numeric($view->exposed_input['project_id'])) {
+    $project_nid = (int) $view->exposed_input['project_id'];
+  }
+  elseif (!empty($_GET['project_id']) && is_numeric($_GET['project_id'])) {
+    $project_nid = (int) $_GET['project_id'];
+  }
+  if ($project_nid < 1) {
+    return;
+  }
+
+  if (!db_table_exists('civic_user_prefs') || !field_info_field('field_buyer')) {
+    return;
+  }
+
+  module_load_include('inc', 'rovas_civic', 'rovas_civic.me_sources');
+  if (!function_exists('rovas_civic_me_sources_is_tax_or_gift_project')
+    || !rovas_civic_me_sources_is_tax_or_gift_project($project_nid)) {
+    return;
+  }
+  if (!function_exists('rovas_civic_me_sources_buyer_visible_where')) {
+    return;
+  }
+
+  global $user;
+  $viewer_uid = !empty($user->uid) ? (int) $user->uid : 0;
+  $viewer_pref = function_exists('rovas_civic_me_sources_share_get')
+    ? rovas_civic_me_sources_share_get($viewer_uid)
+    : ROVAS_CIVIC_ME_SOURCES_SHARE_EVERYONE;
+
+  $base_alias = !empty($query->base_table) ? $query->base_table : 'node';
+  // Views often aliases the base table as the table name itself.
+  if (!empty($query->table_queue[$base_alias]['alias'])) {
+    $base_alias = $query->table_queue[$base_alias]['alias'];
+  }
+
+  $expression = rovas_civic_me_sources_buyer_visible_where($base_alias . '.nid');
+  $query->add_where_expression(
+    0,
+    $expression,
+    array(
+      ':me_src_viewer' => $viewer_uid,
+      ':me_src_viewer_pref' => $viewer_pref,
+    )
+  );
 }
 
 /**
